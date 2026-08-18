@@ -28,7 +28,7 @@
 ### 2.1 Formato y Estándar de Pesos y Medidas (Cero Mezclas)
 - **Base de Datos (Supabase PostgreSQL):** El peso se almacena exclusivamente en la columna `peso_gramos` usando el tipo `BIGINT` (gramos enteros sin decimales).
   - *Invariante:* `1 Kg = 1000 gramos`.
-- **API y Capa de Dominio (TypeScript):** Se utiliza el Value Object `PesoGramos`. Está estrictamente prohibido usar flotantes directos para operaciones de peso.
+- **API y Capa de Dominio (TypeScript):** Se utiliza el Value Object `PesoGramos`. Está strictly prohibido usar flotantes directos para operaciones de peso.
 - **Formato en Interfaz de Usuario (UI):** Se muestra en Kilos formateados con **3 decimales de precisión** usando separador decimal por punto o coma local (`24.575 Kg`).
 
 ---
@@ -69,3 +69,19 @@
   - Cédula de Ciudadanía: 6 a 10 dígitos numéricos sin puntos ni espacios (ej. `1018456789`).
   - NIT de Proveedores / Clientes Empresa: Dígitos numéricos con dígito de verificación separado por guion (ej. `900123456-1`).
 - **Teléfonos Móviles:** 10 dígitos prefijados con código de país opcional (ej. `3001234567` o `+57 300 123 4567`).
+
+---
+
+### 2.6 Estándar de Diseño Responsivo y Adaptativo (Mobile-First & Touch UI)
+
+#### Matriz de Breakpoints (Tailwind CSS)
+| Dispositivo / Pantalla | Ancho de Viewport (`px`) | Layout Adaptativo |
+|---|---|---|
+| Smartphone (Mobile) | `< 640px` (`sm`) | Vista en columna única (`flex-col`), navegación inferior o menú hamburguesa, tablas transformadas en tarjetas (`Card View`). |
+| Tablet (Modo Vertical/Horizontal) | `640px` a `1024px` (`md`) | Grid de 2 columnas, barras laterales colapsables, tablas compactas con scroll horizontal suave. |
+| Desktop / Laptop (Administración) | `> 1024px` (`lg`/`xl`) | Dashboard multi-columna completo con panel lateral persistente y tablas extensas de auditoría. |
+
+#### Reglas de Accesibilidad y Táctil (Touch UX)
+- **Touch Target Size:** Todos los botones, inputs y toggles en pantallas táctiles (`< 1024px`) MUST tener un área interactiva mínima de **44x44 px**.
+- **Visualización de Tablas en Móviles:** Las tablas densas (ej. listas de contratos o renglones de alquiler) MUST convertirse dinámicamente en **Vistas de Tarjetas (Cards)** en pantallas menores a `640px` para evitar el desplazamiento horizontal incómodo.
+- **Formularios Adaptativos:** Los formularios de creación de alquiler MUST utilizar teclados virtuales numéricos en dispositivos móviles (`inputMode="numeric"` o `type="number"`) para agilizar el ingreso de depósitos y cantidades.

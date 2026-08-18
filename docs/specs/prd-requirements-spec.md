@@ -2,7 +2,7 @@
 
 **Módulo Core:** `alquileres_app`  
 **Proyecto:** FerreOn ERP  
-**Versión:** 1.0.0  
+**Versión:** 1.1.0  
 **Estándar:** Spec-Driven Development (RFC 2119 & Gherkin BDD)  
 **Fecha:** 2026-08-18  
 
@@ -75,18 +75,19 @@ Scenario: Devolución parcial de equipos con reporte de daños
 
 ---
 
-### 2.3 Módulo de Facturación y Cuentas de Cobro
+### 2.3 Módulo de Interfaz Adaptativa e Inteligencia de Pantalla (Mobile-First UI/UX)
 
-#### RF-FAC-001: Emisión de Cuenta de Cobro / Factura PDF
-* **Definición:** El sistema MUST generar un documento PDF oficial para la cuenta de cobro. **Regla Obligatoria:** El PDF MUST incluir la totalidad de los ítems contratados originalmente, sin filtrar o descartar aquellos con estado devuelto.
+#### RF-UI-001: Detección Automática de Viewport y Renderizado Adaptativo
+* **Definición:** La aplicación MUST detectar automáticamente el tamaño del viewport del dispositivo y adaptar su disposición. En móviles (`< 640px`), las tablas de datos MUST convertirse en tarjetas interactivas (Card Views) y los controles táctiles MUST tener un tamaño mínimo de `44x44 px`.
 * **Criterios de Aceptación (Gherkin):**
 ```gherkin
-Scenario: Generación de PDF de cuenta de cobro con ítems devueltos
-  Given un contrato de alquiler con "3" ítems contratados donde "1" ítem ya fue devuelto
-  When el sistema genera la cuenta de cobro en PDF vía "/api/facturas/[id]/pdf"
-  Then el archivo PDF generado MUST contener "3" renglones en la tabla de detalle
-  And el PDF MUST mostrar el subtotal bruto, el descuento por depósito y el saldo pendiente
-  And el binario PDF MUST guardarse en el bucket "documentos-pdf" de Supabase Storage
+Scenario: Renderizado adaptativo en dispositivo móvil (Smartphone)
+  Given un operador accede a "alquileres_app" desde un smartphone con viewport de "375x812 px"
+  When el operador navega al listado de contratos de alquiler
+  Then el sistema MUST detectar la resolución de pantalla móvil (< 640px)
+  And la lista de contratos MUST renderizarse en formato de Tarjetas (Card Views) en columna única
+  And el botón de "Crear Alquiler" MUST tener un área táctil mínima de 44x44 px
+  And no MUST requerirse desplazamiento horizontal para visualizar la información del contrato
 ```
 
 ---
@@ -101,3 +102,6 @@ Scenario: Generación de PDF de cuenta de cobro con ítems devueltos
 
 ### RNF-003: Seguridad RLS y Principio de Menor Privilegio
 * Todas las tablas de la base de datos MUST tener habilitado **Row Level Security (RLS)**. Ninguna solicitud no autenticada o con rol `LECTOR` MAY ejecutar operaciones de inserción, actualización o borrado.
+
+### RNF-UI-001: Rendimiento y Fluidez Touch en Dispositivos Móviles
+* Las transiciones UI entre vistas en dispositivos móviles MUST responder en menos de `100 ms` sin saltos de layout o bloqueos del hilo principal del navegador.
