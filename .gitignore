@@ -1,0 +1,36 @@
+# Dependencias
+/node_modules
+/.pnpm-store
+
+# Next.js Build Output
+/.next/
+/out/
+/build
+/dist
+
+# Variables de Entorno y Secretos (NUNCA subir a GitHub)
+.env
+.env*.local
+.env.production
+.env.staging
+
+# Supabase Local
+/supabase/.temp/
+
+# Logs & Cobertura de Pruebas
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+/coverage/
+/.nyc_output/
+/playwright-report/
+/test-results/
+
+# Editor & OS
+.DS_Store
+*.pem
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
