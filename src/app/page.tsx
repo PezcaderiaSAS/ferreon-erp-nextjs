@@ -8,31 +8,40 @@ import {
   ShieldCheck, 
   Clock, 
   CheckCircle2,
-  BarChart3
+  BarChart3,
+  Sparkles,
+  Layers
 } from "lucide-react";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100">
-      {/* Header / Navigation Bar */}
-      <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+    <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden font-sans">
+      
+      {/* Resplandores de Luz de Fondo Ambientales (Glow Orbs) */}
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-sky-500/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/3 right-10 w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-10 left-10 w-[450px] h-[450px] bg-emerald-500/10 rounded-full blur-[130px] pointer-events-none" />
+
+      {/* Header Glassmorphism / Navigation Bar */}
+      <header className="glass-header sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="bg-sky-600 p-2 rounded-xl text-white shadow-lg shadow-sky-600/30">
+            <div className="bg-gradient-to-tr from-sky-600 to-cyan-400 p-2.5 rounded-2xl text-white shadow-lg shadow-sky-500/30 ring-1 ring-white/20">
               <Building2 className="h-6 w-6" />
             </div>
             <div>
-              <span className="text-xl font-bold bg-gradient-to-r from-white via-slate-200 to-sky-400 bg-clip-text text-transparent">
-                FerreOn ERP
+              {/* Encabezado Renombrado Oficialmente a "Alquileres ERP" */}
+              <span className="text-xl font-black bg-gradient-to-r from-white via-slate-100 to-sky-400 bg-clip-text text-transparent tracking-tight">
+                Alquileres ERP
               </span>
-              <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
+              <span className="ml-2 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-400/30 backdrop-blur-md shadow-sm">
                 alquileres_app
               </span>
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <button className="h-11 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-medium transition-all shadow-lg shadow-sky-600/30 flex items-center space-x-2 text-sm active:scale-95">
-              <Plus className="h-4 w-4" />
+            <button className="glass-button-primary h-11 px-5 rounded-2xl text-white font-semibold text-sm flex items-center space-x-2 active:scale-95">
+              <Plus className="h-4 w-4 stroke-[2.5]" />
               <span className="hidden sm:inline">Nuevo Alquiler</span>
             </button>
           </div>
@@ -40,127 +49,130 @@ export default function HomePage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative z-10">
         
-        {/* Banner de Bienvenida y Estado del Sistema */}
-        <section className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-2xl">
-          <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-sky-600/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="relative z-10 space-y-3 max-w-2xl">
-            <div className="inline-flex items-center space-x-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full text-xs font-semibold">
-              <CheckCircle2 className="h-3.5 w-3.5" />
+        {/* Hero Card con Efecto Cristal Glassmorphism */}
+        <section className="glass-panel rounded-3xl p-6 sm:p-10 relative overflow-hidden shadow-2xl">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-sky-500/10 via-indigo-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 space-y-4 max-w-3xl">
+            <div className="inline-flex items-center space-x-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3.5 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md">
+              <CheckCircle2 className="h-4 w-4" />
               <span>Instancia Producción Limpia & Ready</span>
+              <Sparkles className="h-3.5 w-3.5 ml-1 text-emerald-300" />
             </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+            <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
               Gestión Inteligente de Alquileres de Maquinaria
             </h1>
-            <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
+            <p className="text-slate-300 text-sm sm:text-base leading-relaxed font-normal">
               Módulo desacoplado bajo Arquitectura Hexagonal. Moneda oficial COP, 
-              control estricto de peso en gramos enteros e inventario en bodega en tiempo real.
+              control estricto de peso en gramos enteros (`peso_gramos BIGINT`) e inventario en bodega en tiempo real.
             </p>
           </div>
         </section>
 
-        {/* Métricas KPI (Grid Responsivo Adaptativo) */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 hover:border-slate-700 transition-all">
+        {/* Métricas KPI Glassmorphism (Grid Responsivo Adaptativo) */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          
+          <div className="glass-panel glass-panel-hover rounded-2xl p-6">
             <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs font-semibold tracking-wider uppercase">Contratos Activos</span>
-              <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-400">
+              <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Contratos Activos</span>
+              <div className="p-3 rounded-2xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
                 <FileText className="h-5 w-5" />
               </div>
             </div>
-            <div className="mt-4">
-              <span className="text-3xl font-extrabold text-white">0</span>
-              <span className="text-xs text-slate-500 ml-2">alquileres en obra</span>
+            <div className="mt-5">
+              <span className="text-4xl font-extrabold text-white">0</span>
+              <span className="text-xs text-slate-400 ml-2 font-medium">alquileres en obra</span>
             </div>
           </div>
 
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 hover:border-slate-700 transition-all">
+          <div className="glass-panel glass-panel-hover rounded-2xl p-6">
             <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs font-semibold tracking-wider uppercase">Equipos en Bodega</span>
-              <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400">
+              <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Equipos en Bodega</span>
+              <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                 <Package className="h-5 w-5" />
               </div>
             </div>
-            <div className="mt-4">
-              <span className="text-3xl font-extrabold text-white">106</span>
-              <span className="text-xs text-slate-500 ml-2">disponibles</span>
+            <div className="mt-5">
+              <span className="text-4xl font-extrabold text-white">106</span>
+              <span className="text-xs text-slate-400 ml-2 font-medium">disponibles</span>
             </div>
           </div>
 
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 hover:border-slate-700 transition-all">
+          <div className="glass-panel glass-panel-hover rounded-2xl p-6">
             <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs font-semibold tracking-wider uppercase">Devoluciones Hoy</span>
-              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400">
+              <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Devoluciones Hoy</span>
+              <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
                 <RotateCcw className="h-5 w-5" />
               </div>
             </div>
-            <div className="mt-4">
-              <span className="text-3xl font-extrabold text-white">0</span>
-              <span className="text-xs text-slate-500 ml-2">corte 5:00 PM</span>
+            <div className="mt-5">
+              <span className="text-4xl font-extrabold text-white">0</span>
+              <span className="text-xs text-amber-300 ml-2 font-medium">corte 5:00 PM</span>
             </div>
           </div>
 
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 hover:border-slate-700 transition-all">
+          <div className="glass-panel glass-panel-hover rounded-2xl p-6">
             <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs font-semibold tracking-wider uppercase">Estado Seguridad</span>
-              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
+              <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Estado Seguridad</span>
+              <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 <ShieldCheck className="h-5 w-5" />
               </div>
             </div>
-            <div className="mt-4">
-              <span className="text-lg font-bold text-emerald-400">RLS Activo</span>
-              <span className="block text-xs text-slate-500">Supabase Auth JWT</span>
+            <div className="mt-5">
+              <span className="text-xl font-bold text-emerald-400 block">RLS Activo</span>
+              <span className="text-xs text-slate-400 font-medium">Supabase Auth JWT</span>
             </div>
           </div>
+
         </section>
 
-        {/* Sección de Accesos Rápidos y Estado de Bodega */}
+        {/* Paneles de Contrato y Estándares con Cristal Translúcido */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Panel Principal: Lista de Contratos */}
-          <div className="lg:col-span-2 bg-slate-950/60 border border-slate-800/80 rounded-3xl p-6 space-y-4">
+          <div className="lg:col-span-2 glass-panel rounded-3xl p-6 space-y-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white flex items-center space-x-2">
-                <FileText className="h-5 w-5 text-sky-400" />
+              <h2 className="text-lg font-extrabold text-white flex items-center space-x-2.5">
+                <Layers className="h-5 w-5 text-sky-400" />
                 <span>Contratos Recientes (`alquileres_app`)</span>
               </h2>
             </div>
-            <div className="bg-slate-900/50 border border-slate-800/60 rounded-2xl p-8 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-between mx-auto text-slate-400">
-                <Clock className="h-6 w-6 mx-auto" />
+            <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-10 text-center space-y-4 backdrop-blur-md">
+              <div className="w-14 h-14 rounded-2xl bg-slate-800/80 border border-white/10 flex items-center justify-center mx-auto text-slate-300 shadow-inner">
+                <Clock className="h-7 w-7" />
               </div>
-              <p className="text-slate-400 text-sm font-medium">
+              <p className="text-slate-300 text-sm font-medium max-w-md mx-auto">
                 No hay contratos registrados. El sistema se encuentra en modo limpio listo para operar.
               </p>
-              <button className="h-11 px-5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-medium text-sm transition-all shadow-lg shadow-sky-600/30">
+              <button className="glass-button-primary h-11 px-6 rounded-2xl text-white font-semibold text-sm">
                 Crear Primer Alquiler
               </button>
             </div>
           </div>
 
-          {/* Panel Lateral: Estándares del Sistema */}
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-3xl p-6 space-y-4">
-            <h2 className="text-lg font-bold text-white flex items-center space-x-2">
+          {/* Panel Lateral: Estándares Activos Glassmorphism */}
+          <div className="glass-panel rounded-3xl p-6 space-y-5">
+            <h2 className="text-lg font-extrabold text-white flex items-center space-x-2.5">
               <BarChart3 className="h-5 w-5 text-indigo-400" />
               <span>Estándares Activos</span>
             </h2>
-            <div className="space-y-3 text-xs">
-              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex justify-between items-center">
-                <span className="text-slate-400">Control de Peso:</span>
-                <span className="font-semibold text-sky-400">`peso_gramos BIGINT` (0.000 Kg)</span>
+            <div className="space-y-3.5 text-xs">
+              <div className="p-4 rounded-2xl bg-slate-900/50 border border-white/5 flex justify-between items-center backdrop-blur-md">
+                <span className="text-slate-400 font-medium">Control de Peso:</span>
+                <span className="font-bold text-sky-300">`peso_gramos BIGINT`</span>
               </div>
-              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex justify-between items-center">
-                <span className="text-slate-400">Moneda Financiera:</span>
-                <span className="font-semibold text-emerald-400">COP `NUMERIC(12, 2)`</span>
+              <div className="p-4 rounded-2xl bg-slate-900/50 border border-white/5 flex justify-between items-center backdrop-blur-md">
+                <span className="text-slate-400 font-medium">Moneda Financiera:</span>
+                <span className="font-bold text-emerald-400">COP `NUMERIC(12, 2)`</span>
               </div>
-              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex justify-between items-center">
-                <span className="text-slate-400">Hora de Corte:</span>
-                <span className="font-semibold text-amber-400">5:00 PM (`America/Bogota`)</span>
+              <div className="p-4 rounded-2xl bg-slate-900/50 border border-white/5 flex justify-between items-center backdrop-blur-md">
+                <span className="text-slate-400 font-medium">Hora de Corte:</span>
+                <span className="font-bold text-amber-300">5:00 PM (`America/Bogota`)</span>
               </div>
-              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex justify-between items-center">
-                <span className="text-slate-400">Generación PDF:</span>
-                <span className="font-semibold text-indigo-400">Serverless 100% Renglones</span>
+              <div className="p-4 rounded-2xl bg-slate-900/50 border border-white/5 flex justify-between items-center backdrop-blur-md">
+                <span className="text-slate-400 font-medium">Generación PDF:</span>
+                <span className="font-bold text-indigo-300">Serverless 100% Renglones</span>
               </div>
             </div>
           </div>
