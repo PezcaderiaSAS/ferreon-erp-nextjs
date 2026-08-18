@@ -1,8 +1,9 @@
-# FerreOn ERP — alquileres_app (Next.js + Supabase + Vercel)
+# FerreOn ERP — `alquileres_app` (Next.js + Supabase + Vercel)
 
 ![License](https://img.shields.io/badge/License-Proprietary-blue.svg)
 ![Stack](https://img.shields.io/badge/Stack-Next.js%2014%20%7C%20Supabase%20%7C%20Vercel-black.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2F%20Hexagonal-green.svg)
+![Spec-Driven](https://img.shields.io/badge/Methodology-Spec--Driven%20Development-purple.svg)
 ![Cost Tier](https://img.shields.io/badge/Cost-%240%20USD%20Free%20Tiers-success.svg)
 
 Sistema ERP desacoplado para la gestión de alquiler de equipos de construcción, facturación, cuentas de cobro y administración de clientes mediante el módulo central **`alquileres_app`**.
@@ -11,12 +12,22 @@ Sistema ERP desacoplado para la gestión de alquiler de equipos de construcción
 
 ## 📌 Tabla de Contenido Documental
 
-1. [Funcionamiento y Estándares Técnicos (`alquileres_app`)](#-funcionamiento-y-estándares-técnicos)
-2. [Estructura del Proyecto](#-estructura-del-proyecto)
-3. [Gobernanza de IA y Skills (.agents/)](#-gobernanza-de-ia-y-skills-agents)
-4. [Diccionario de Funciones (GAS ➔ Next.js)](#-diccionario-de-funciones-gas--nextjs)
-5. [Esquema de Base de Datos (Supabase PostgreSQL)](#-esquema-de-base-de-datos-supabase-postgresql)
-6. [Instrucciones de Instalación y Ejecución](#-instrucciones-de-instalación-y-ejecución)
+1. [Especificaciones Oficiales (Spec-Driven Development)](#-especificaciones-oficiales-spec-driven-development)
+2. [Funcionamiento y Estándares Técnicos (`alquileres_app`)](#-funcionamiento-y-estándares-técnicos)
+3. [Estructura del Proyecto](#-estructura-del-proyecto)
+4. [Gobernanza de IA y Skills (.agents/)](#-gobernanza-de-ia-y-skills-agents)
+5. [Diccionario de Funciones (GAS ➔ Next.js)](#-diccionario-de-funciones-gas--nextjs)
+6. [Esquema de Base de Datos (Supabase PostgreSQL)](#-esquema-de-base-de-datos-supabase-postgresql)
+7. [Instrucciones de Instalación y Ejecución](#-instrucciones-de-instalación-y-ejecución)
+
+---
+
+## 📄 Especificaciones Oficiales (Spec-Driven Development)
+
+El proyecto cuenta con 3 documentos técnicos oficiales de especificación previa al desarrollo:
+- 📋 **[PRD — Documento de Requerimientos del Producto](docs/specs/prd-requirements-spec.md):** Historias de usuario, Requerimientos Funcionales (`RF-xxx`) y No Funcionales (`RNF-xxx`) con criterios de aceptación en formato **Gherkin (Given-When-Then)**.
+- 📐 **[BRD — Especificación de Reglas de Negocio](docs/specs/brd-business-rules.md):** Reglas financieras `NUMERIC(12, 2)`, estándar inmutable de peso (`peso_gramos BIGINT`), cálculo de días efectivos y horas de corte (5:00 PM).
+- ☁️ **[TID — Documento de Infraestructura Tecnológica](docs/specs/tid-infrastructure-spec.md):** Topología Vercel + Supabase, seguridad RLS/JWT, validación de cuotas $0 USD y pipeline de CI/CD.
 
 ---
 
@@ -47,7 +58,9 @@ ferreon-erp-nextjs/
 │   ├── dictionaries/
 │   │   └── function-mapping.md     # Diccionario Completo de Mapeo (GAS ➔ Next.js)
 │   └── specs/
-│       └── functional-requirements.md # PRD y Requerimientos Funcionales
+│       ├── prd-requirements-spec.md    # PRD Oficial (Requerimientos & Gherkin)
+│       ├── brd-business-rules.md       # BRD Oficial (Reglas de Negocio & Fórmulas)
+│       └── tid-infrastructure-spec.md  # TID Oficial (Infraestructura & CI/CD)
 ├── supabase/                       # Infraestructura de Base de Datos
 │   ├── migrations/
 │   │   └── 20260818000000_init_schema.sql # DDL con Tablas, Enums, Triggers y RLS
