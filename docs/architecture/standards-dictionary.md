@@ -1,14 +1,14 @@
 # Diccionario de Estándares Técnicos y Formatos (alquileres_app)
 
 **Aplicación / Módulo Core:** `alquileres_app`  
-**Proyecto:** FerreOn ERP  
+**Proyecto:** Alquileres ERP (FerreOn)  
 **Fecha:** 2026-08-18  
 
 ---
 
 ## 1. Funcionamiento General de `alquileres_app`
 
-`alquileres_app` es el núcleo operativo de FerreOn ERP encargado de gestionar el ciclo de vida completo del alquiler de maquinaria y equipos de construcción. 
+`alquileres_app` es el núcleo operativo de Alquileres ERP encargado de gestionar el ciclo de vida completo del alquiler de maquinaria y equipos de construcción. 
 
 ### Flujo Operativo del Ciclo de Vida:
 ```text
@@ -28,7 +28,7 @@
 ### 2.1 Formato y Estándar de Pesos y Medidas (Cero Mezclas)
 - **Base de Datos (Supabase PostgreSQL):** El peso se almacena exclusivamente en la columna `peso_gramos` usando el tipo `BIGINT` (gramos enteros sin decimales).
   - *Invariante:* `1 Kg = 1000 gramos`.
-- **API y Capa de Dominio (TypeScript):** Se utiliza el Value Object `PesoGramos`. Está strictly prohibido usar flotantes directos para operaciones de peso.
+- **API y Capa de Dominio (TypeScript):** Se utiliza el Value Object `PesoGramos`. Está estrictamente prohibido usar flotantes directos para operaciones de peso.
 - **Formato en Interfaz de Usuario (UI):** Se muestra en Kilos formateados con **3 decimales de precisión** usando separador decimal por punto o coma local (`24.575 Kg`).
 
 ---
@@ -81,7 +81,20 @@
 | Tablet (Modo Vertical/Horizontal) | `640px` a `1024px` (`md`) | Grid de 2 columnas, barras laterales colapsables, tablas compactas con scroll horizontal suave. |
 | Desktop / Laptop (Administración) | `> 1024px` (`lg`/`xl`) | Dashboard multi-columna completo con panel lateral persistente y tablas extensas de auditoría. |
 
-#### Reglas de Accesibilidad y Táctil (Touch UX)
-- **Touch Target Size:** Todos los botones, inputs y toggles en pantallas táctiles (`< 1024px`) MUST tener un área interactiva mínima de **44x44 px**.
-- **Visualización de Tablas en Móviles:** Las tablas densas (ej. listas de contratos o renglones de alquiler) MUST convertirse dinámicamente en **Vistas de Tarjetas (Cards)** en pantallas menores a `640px` para evitar el desplazamiento horizontal incómodo.
-- **Formularios Adaptativos:** Los formularios de creación de alquiler MUST utilizar teclados virtuales numéricos en dispositivos móviles (`inputMode="numeric"` o `type="number"`) para agilizar el ingreso de depósitos y cantidades.
+---
+
+### 2.7 Estándar de Navegación SPA por Pestañas y Navegación Bidireccional
+
+1. **Estructura por Pestañas Dinámicas (Tabbed SPA):**
+   - Toda la interfaz de `alquileres_app` opera en formato Single Page Application (SPA) sin recargas completas de navegador (`window.location.reload`).
+   - Módulos organizados en pestañas dedicadas:
+     - 📊 `dashboard`: Panel principal, indicadores KPI y estados de bodega.
+     - 📄 `alquileres`: Gestión de contratos de alquiler (cotizaciones, despachos, activos).
+     - 📦 `bodega`: Catálogo de equipos, stock total, disponible y tarifas.
+     - 🔄 `devoluciones`: Recepción de equipos devueltos e inspección de daños.
+     - 💳 `facturacion`: Cuentas de cobro, abonos de depósitos y descarga de PDFs.
+     - 👥 `clientes`: Directorio de clientes y terceros.
+
+2. **Navegación Bidireccional Integrada:**
+   - Cada pestaña y sub-vista MUST ofrecer controles síncronos para **retroceder** a la pestaña origen o **avanzar** al siguiente paso lógico.
+   - Botones de acción rápida vinculados de forma bidireccional (ej. Desde la tarjeta de un equipo en la pestaña *Bodega*, un clic en *Alquilar* transiciona a la pestaña *Alquileres* cargando el equipo pre-seleccionado; desde la pestaña *Facturación*, un clic en *Ver Contrato* retorna a la pestaña *Alquileres*).

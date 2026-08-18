@@ -1,8 +1,8 @@
 # Documento de Requerimientos del Producto (PRD) — `alquileres_app`
 
 **Módulo Core:** `alquileres_app`  
-**Proyecto:** FerreOn ERP  
-**Versión:** 1.1.0  
+**Proyecto:** Alquileres ERP (FerreOn)  
+**Versión:** 1.2.0  
 **Estándar:** Spec-Driven Development (RFC 2119 & Gherkin BDD)  
 **Fecha:** 2026-08-18  
 
@@ -79,15 +79,18 @@ Scenario: Devolución parcial de equipos con reporte de daños
 
 #### RF-UI-001: Detección Automática de Viewport y Renderizado Adaptativo
 * **Definición:** La aplicación MUST detectar automáticamente el tamaño del viewport del dispositivo y adaptar su disposición. En móviles (`< 640px`), las tablas de datos MUST convertirse en tarjetas interactivas (Card Views) y los controles táctiles MUST tener un tamaño mínimo de `44x44 px`.
+
+#### RF-UI-002: Arquitectura SPA por Pestañas y Navegación Bidireccional
+* **Definición:** La aplicación MUST mantenerse en formato de Single Page Application (SPA) con navegación por pestañas dinámicas (Dashboard, Alquileres, Bodega, Devoluciones, Facturación, Clientes). Toda interacción MUST ofrecer navegación bidireccional permitiendo retornar a la pestaña de origen sin recargar la página.
 * **Criterios de Aceptación (Gherkin):**
 ```gherkin
-Scenario: Renderizado adaptativo en dispositivo móvil (Smartphone)
-  Given un operador accede a "alquileres_app" desde un smartphone con viewport de "375x812 px"
-  When el operador navega al listado de contratos de alquiler
-  Then el sistema MUST detectar la resolución de pantalla móvil (< 640px)
-  And la lista de contratos MUST renderizarse en formato de Tarjetas (Card Views) en columna única
-  And el botón de "Crear Alquiler" MUST tener un área táctil mínima de 44x44 px
-  And no MUST requerirse desplazamiento horizontal para visualizar la información del contrato
+Scenario: Navegación bidireccional fluida entre pestañas de la SPA
+  Given un usuario navegando en la pestaña "Dashboard"
+  When hace clic en la acción "Crear Primer Alquiler"
+  Then la aplicación MUST cambiar la pestaña activa a "alquileres" sin recargar la página
+  And la pestaña "alquileres" MUST mostrar el botón de navegación bidireccional "Volver al Dashboard"
+  When hace clic en "Volver al Dashboard"
+  Then la aplicación MUST retornar instantáneamente a la pestaña "dashboard" preservando el estado
 ```
 
 ---
@@ -95,13 +98,10 @@ Scenario: Renderizado adaptativo en dispositivo móvil (Smartphone)
 ## 3. Requerimientos No Funcionales (RNF)
 
 ### RNF-001: Límite de Costo $0 USD en Infraestructura Serverless
-* El sistema MUST ejecutarse 100% dentro de los Tiers Gratuitos de **Vercel Hobby** (Serverless Functions <= 10s execution limit) y **Supabase Free Tier** (500 MB DB PostgreSQL, 1 GB Storage, 50,000 MAU Auth).
+* El sistema MUST ejecutarse 100% dentro de los Tiers Gratuitos de **Vercel Hobby** y **Supabase Free Tier**.
 
 ### RNF-002: Concurrencia sin Colisiones ni Bloqueos
-* El sistema MUST procesar peticiones HTTP concurrentes utilizando transacciones aisladas **ACID en PostgreSQL**, garantizando un tiempo de respuesta de API menor a `500 ms` sin timeouts de script lock.
-
-### RNF-003: Seguridad RLS y Principio de Menor Privilegio
-* Todas las tablas de la base de datos MUST tener habilitado **Row Level Security (RLS)**. Ninguna solicitud no autenticada o con rol `LECTOR` MAY ejecutar operaciones de inserción, actualización o borrado.
+* El sistema MUST procesar peticiones HTTP concurrentes utilizando transacciones aisladas **ACID en PostgreSQL**.
 
 ### RNF-UI-001: Rendimiento y Fluidez Touch en Dispositivos Móviles
-* Las transiciones UI entre vistas en dispositivos móviles MUST responder en menos de `100 ms` sin saltos de layout o bloqueos del hilo principal del navegador.
+* Las transiciones UI entre vistas en dispositivos móviles MUST responder en menos de `100 ms` sin recargas de página.
