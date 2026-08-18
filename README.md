@@ -13,19 +13,27 @@ Sistema ERP desacoplado para la gestión de alquiler de equipos de construcción
 ## 📌 Tabla de Contenido Documental
 
 1. [Especificaciones Oficiales (Spec-Driven Development)](#-especificaciones-oficiales-spec-driven-development)
-2. [Funcionamiento y Estándares Técnicos (`alquileres_app`)](#-funcionamiento-y-estándares-técnicos)
-3. [Estructura del Proyecto](#-estructura-del-proyecto)
-4. [Gobernanza de IA y Skills (.agents/)](#-gobernanza-de-ia-y-skills-agents)
-5. [Diccionario de Funciones (GAS ➔ Next.js)](#-diccionario-de-funciones-gas--nextjs)
-6. [Esquema de Base de Datos (Supabase PostgreSQL)](#-esquema-de-base-de-datos-supabase-postgresql)
-7. [Instrucciones de Instalación y Ejecución](#-instrucciones-de-instalación-y-ejecución)
+2. [Guías Operativas (Pruebas Locales y Producción Limpia)](#-guías-operativas)
+3. [Funcionamiento y Estándares Técnicos (`alquileres_app`)](#-funcionamiento-y-estándares-técnicos)
+4. [Estructura del Proyecto](#-estructura-del-proyecto)
+5. [Gobernanza de IA y Skills (.agents/)](#-gobernanza-de-ia-y-skills-agents)
+6. [Diccionario de Funciones (GAS ➔ Next.js)](#-diccionario-de-funciones-gas--nextjs)
+7. [Esquema de Base de Datos (Supabase PostgreSQL)](#-esquema-de-base-de-datos-supabase-postgresql)
+8. [Instrucciones de Instalación y Ejecución](#-instrucciones-de-instalación-y-ejecución)
+
+---
+
+## 🛠️ Guías Operativas
+
+- 🧪 **[Guía de Pruebas Locales](docs/guides/local-testing-guide.md):** Manual completo paso a paso para la instalación de dependencias, ejecución de pruebas unitarias (Vitest), pruebas E2E (Playwright) y emulador local de Supabase.
+- ✨ **[Inicialización de Producción Limpia (`seed_clean.sql`)](supabase/seed_clean.sql):** Script SQL oficial sin datos de prueba, con secuencias reiniciadas en 1, índices optimizados y RLS listo para el despliegue inmediato en producción.
 
 ---
 
 ## 📄 Especificaciones Oficiales (Spec-Driven Development)
 
 El proyecto cuenta con 3 documentos técnicos oficiales de especificación previa al desarrollo:
-- 📋 **[PRD — Documento de Requerimientos del Producto](docs/specs/prd-requirements-spec.md):** Historias de usuario, Requerimientos Funcionales (`RF-xxx`) y No Funcionales (`RNF-xxx`) con criterios de aceptación en formato **Gherkin (Given-When-Then)**.
+- 📋 **[PRD — Documento de Requerimientos del Producto](docs/specs/prd-requirements-spec.md):** Historias de usuario, Requerimientos Funcionales (`RF-xxx`), No Funcionales (`RNF-xxx`) y Responsivos (`RF-UI-001`) con criterios de aceptación en sintaxis **Gherkin (Given-When-Then)**.
 - 📐 **[BRD — Especificación de Reglas de Negocio](docs/specs/brd-business-rules.md):** Reglas financieras `NUMERIC(12, 2)`, estándar inmutable de peso (`peso_gramos BIGINT`), cálculo de días efectivos y horas de corte (5:00 PM).
 - ☁️ **[TID — Documento de Infraestructura Tecnológica](docs/specs/tid-infrastructure-spec.md):** Topología Vercel + Supabase, seguridad RLS/JWT, validación de cuotas $0 USD y pipeline de CI/CD.
 
@@ -37,7 +45,7 @@ Consulte la especificación en [`docs/architecture/standards-dictionary.md`](doc
 - **Pesos y Medidas:** Almacenamiento exclusivo como gramos enteros (`peso_gramos BIGINT`). Presentación en UI en Kilos (`0.000 Kg`).
 - **Fechas y Agendas:** ISO 8601 UTC en DB, hora de corte de devoluciones 5:00 PM (`America/Bogota`).
 - **Moneda y Decimales:** Pesos Colombianos `COP` en `NUMERIC(12, 2)`, formato UI `$ 1.500.000,00`.
-- **Identificaciones y Nombres:** Sanitizados en `UPPERCASE.trim()`, NITs con dígito de verificación (`900123456-1`).
+- **Diseño Responsivo:** Breakpoints Tailwind (`sm`, `md`, `lg`, `xl`), áreas táctiles adaptativas (`>= 44x44 px`) y conversión de tablas a Tarjetas en dispositivos móviles.
 
 ---
 
@@ -57,6 +65,8 @@ ferreon-erp-nextjs/
 │   │   └── standards-dictionary.md # Diccionario de Estándares Iniciales (alquileres_app)
 │   ├── dictionaries/
 │   │   └── function-mapping.md     # Diccionario Completo de Mapeo (GAS ➔ Next.js)
+│   ├── guides/
+│   │   └── local-testing-guide.md  # Guía de Pruebas Locales (Vitest, Playwright, Supabase)
 │   └── specs/
 │       ├── prd-requirements-spec.md    # PRD Oficial (Requerimientos & Gherkin)
 │       ├── brd-business-rules.md       # BRD Oficial (Reglas de Negocio & Fórmulas)
@@ -64,14 +74,12 @@ ferreon-erp-nextjs/
 ├── supabase/                       # Infraestructura de Base de Datos
 │   ├── migrations/
 │   │   └── 20260818000000_init_schema.sql # DDL con Tablas, Enums, Triggers y RLS
-│   └── seed.sql                    # Catálogo de prueba e Items
+│   ├── seed.sql                    # Catálogo demo de prueba
+│   └── seed_clean.sql              # Script oficial para despliegue limpio en PRODUCCIÓN
+├── tests/                          # Suite de Pruebas TDD
+│   └── unit/                       # Pruebas unitarias de Dominio y Casos de Uso
 ├── src/                            # Código Fuente (Clean Architecture)
-│   ├── core/
-│   │   ├── domain/                 # Entidades, Value Objects e Interfaces Repositorio
-│   │   └── application/            # Casos de Uso y DTOs
-│   ├── infrastructure/             # Adaptadores Supabase, PDF Generator, Storage
-│   └── presentation/               # Next.js App Router (API Routes & UI Components)
-├── .env.example                    # Plantilla Segura de Variables de Entorno
+├── .env.example
 ├── .gitignore
 ├── package.json
 └── README.md
@@ -91,6 +99,6 @@ cp .env.example .env.local
 # 3. Iniciar entorno de desarrollo
 npm run dev
 
-# 4. Ejecutar suite de pruebas
+# 4. Ejecutar suite de pruebas unitarias
 npm run test
 ```
