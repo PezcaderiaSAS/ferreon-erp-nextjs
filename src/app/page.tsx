@@ -29,7 +29,13 @@ import {
   CreditCard,
   Wallet,
   AlertCircle,
-  Check
+  Check,
+  PackagePlus,
+  FileSpreadsheet,
+  Trash2,
+  AlertTriangle,
+  Scale,
+  DollarSign
 } from "lucide-react";
 
 type TabType = "dashboard" | "alquileres" | "bodega" | "devoluciones" | "facturacion" | "clientes";
@@ -41,6 +47,19 @@ interface Cliente {
   telefono: string;
   email: string;
   direccion: string;
+  activo: boolean;
+}
+
+interface Equipo {
+  id: string;
+  codigo: string;
+  nombre: string;
+  categoria: string;
+  tarifaDiaria: number;
+  pesoKilos: number;
+  stockTotal: number;
+  stockDisponible: number;
+  stockEnObra: number;
   activo: boolean;
 }
 
@@ -70,25 +89,49 @@ export default function HomePage() {
     }
   ]);
 
-  // Estados para Modales de Formulario (Crear / Editar) y Modal de Historial
+  // Lista de Equipos en estado local (Catálogo de Bodega)
+  const [equipos, setEquipos] = useState<Equipo[]>([
+    { id: "EQ-001", codigo: "MEZ-01", nombre: "MEZCLADORA DE CONCRETO 2 BULTOS (MOTOR 13HP)", categoria: "MAQUINARIA", tarifaDiaria: 45000, pesoKilos: 250.0, stockTotal: 10, stockDisponible: 10, stockEnObra: 0, activo: true },
+    { id: "EQ-002", codigo: "VIB-02", nombre: "VIBRADOR DE CONCRETO ELÉCTRICO 2HP (MANGUERA 4M)", categoria: "EQUIPOS MENORES", tarifaDiaria: 25000, pesoKilos: 15.0, stockTotal: 15, stockDisponible: 15, stockEnObra: 0, activo: true },
+    { id: "EQ-003", codigo: "DEM-03", nombre: "DEMOLEDOR ELÉCTRICO 30KG (ENCABEZADO HEX 28MM)", categoria: "HERRAMIENTAS", tarifaDiaria: 65000, pesoKilos: 30.0, stockTotal: 8, stockDisponible: 8, stockEnObra: 0, activo: true },
+    { id: "EQ-004", codigo: "AND-04", nombre: "ANDAMIO MULTIDIRECCIONAL (MÓDULO 1.5M X 1.5M)", categoria: "ESTRUCTURAS", tarifaDiaria: 12000, pesoKilos: 45.0, stockTotal: 50, stockDisponible: 50, stockEnObra: 0, activo: true },
+    { id: "EQ-005", codigo: "COR-05", nombre: "CORTADORA DE PAVIMENTO 13HP (DISCO 14 PULGADAS)", categoria: "MAQUINARIA", tarifaDiaria: 85000, pesoKilos: 120.0, stockTotal: 5, stockDisponible: 5, stockEnObra: 0, activo: true },
+    { id: "EQ-006", codigo: "PLA-06", nombre: "PLANTA ELÉCTRICA 6.5 KW (DIÉSEL MONOFÁSICA)", categoria: "GENERACIÓN", tarifaDiaria: 75000, pesoKilos: 95.0, stockTotal: 6, stockDisponible: 6, stockEnObra: 0, activo: true },
+  ]);
+
+  // Estados de Modales de Cliente y Historial
   const [showClienteModal, setShowClienteModal] = useState<boolean>(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [showHistorialModal, setShowHistorialModal] = useState<boolean>(false);
   const [selectedClienteHistorial, setSelectedClienteHistorial] = useState<Cliente | null>(null);
   const [historialSubTab, setHistorialSubTab] = useState<"alquileres" | "pagos" | "cartera">("alquileres");
 
-  // Estado del Formulario de Cliente
-  const [formData, setFormData] = useState({
-    nitCedula: "",
-    nombre: "",
-    telefono: "",
-    email: "",
-    direccion: "",
-  });
-  const [formError, setFormError] = useState<string | null>(null);
-  const [searchFilter, setSearchFilter] = useState<string>("");
+  // Estados de Modales de Bodega (Crear Individual, Carga Masiva, Editar)
+  const [showEquipoModal, setShowEquipoModal] = useState<boolean>(false);
+  const [editingEquipo, setEditingEquipo] = useState<Equipo | null>(null);
+  const [showBulkModal, setShowBulkModal] = useState<boolean>(false);
+  const [bulkText, setBulkText] = useState<string>("");
 
-  // Funciones de navegación bidireccional entre pestañas
+  // Estado de Modal de Crear Alquiler
+  const [showCrearAlquilerModal, setShowCrearAlquilerModal] = useState<boolean>(false);
+  const [alquilerClienteId, setAlquilerClienteId] = useState<string>("");
+  const [alquilerEquipoId, setAlquilerEquipoId] = useState<string>("");
+  const [alquilerCantidad, setAlquilerCantidad] = useState<number>(1);
+  const [alquilerDias, setAlquilerDias] = useState<number>(3);
+  const [alquilerDeposito, setAlquilerDeposito] = useState<number>(100000);
+  const [alquilerError, setAlquilerError] = useState<string | null>(null);
+
+  // Estado del Formulario de Cliente
+  const [clientFormData, setClientFormData] = useState({ nitCedula: "", nombre: "", telefono: "", email: "", direccion: "" });
+  const [clientFormError, setClientFormError] = useState<string | null>(null);
+  const [clientSearchFilter, setClientSearchFilter] = useState<string>("");
+
+  // Estado del Formulario de Equipo
+  const [equipoFormData, setEquipoFormData] = useState({ codigo: "", nombre: "", categoria: "MAQUINARIA", tarifaDiaria: 30000, pesoKilos: 10, stockTotal: 5 });
+  const [equipoFormError, setEquipoFormError] = useState<string | null>(null);
+  const [equipoSearchFilter, setEquipoSearchFilter] = useState<string>("");
+
+  // Navegación bidireccional entre pestañas
   const navigateToTab = (targetTab: TabType) => {
     setPreviousTab(activeTab);
     setActiveTab(targetTab);
@@ -104,95 +147,206 @@ export default function HomePage() {
     }
   };
 
-  // Abrir Modal para Crear
-  const handleOpenCrearModal = () => {
+  // Abrir Modal para Crear/Editar Cliente
+  const handleOpenCrearClienteModal = () => {
     setEditingCliente(null);
-    setFormData({ nitCedula: "", nombre: "", telefono: "", email: "", direccion: "" });
-    setFormError(null);
+    setClientFormData({ nitCedula: "", nombre: "", telefono: "", email: "", direccion: "" });
+    setClientFormError(null);
     setShowClienteModal(true);
   };
 
-  // Abrir Modal para Editar
-  const handleOpenEditarModal = (cliente: Cliente) => {
-    setEditingCliente(cliente);
-    setFormData({
-      nitCedula: cliente.nitCedula,
-      nombre: cliente.nombre,
-      telefono: cliente.telefono,
-      email: cliente.email,
-      direccion: cliente.direccion,
-    });
-    setFormError(null);
-    setShowClienteModal(true);
-  };
-
-  // Guardar Cliente (Crear / Editar)
   const handleSaveCliente = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.nitCedula.trim() || !formData.nombre.trim()) {
-      setFormError("La Identificación (NIT/Cédula) y la Razón Social/Nombre son obligatorios.");
+    if (!clientFormData.nitCedula.trim() || !clientFormData.nombre.trim()) {
+      setClientFormError("La Identificación (NIT/Cédula) y la Razón Social son obligatorios.");
       return;
     }
-
-    const nitClean = formData.nitCedula.trim().toUpperCase();
-    const nombreClean = formData.nombre.trim().toUpperCase();
+    const nitClean = clientFormData.nitCedula.trim().toUpperCase();
+    const nombreClean = clientFormData.nombre.trim().toUpperCase();
 
     if (editingCliente) {
-      // Editar existente
-      setClientes((prev) =>
-        prev.map((c) =>
-          c.id === editingCliente.id
-            ? {
-                ...c,
-                nitCedula: nitClean,
-                nombre: nombreClean,
-                telefono: formData.telefono.trim(),
-                email: formData.email.trim().toLowerCase(),
-                direccion: formData.direccion.trim(),
-              }
-            : c
-        )
-      );
+      setClientes((prev) => prev.map((c) => c.id === editingCliente.id ? { ...c, nitCedula: nitClean, nombre: nombreClean, telefono: clientFormData.telefono.trim(), email: clientFormData.email.trim().toLowerCase(), direccion: clientFormData.direccion.trim() } : c));
     } else {
-      // Crear nuevo
-      const nuevo: Cliente = {
-        id: "CLI-" + Date.now(),
-        nitCedula: nitClean,
-        nombre: nombreClean,
-        telefono: formData.telefono.trim(),
-        email: formData.email.trim().toLowerCase(),
-        direccion: formData.direccion.trim(),
-        activo: true,
-      };
+      const nuevo: Cliente = { id: "CLI-" + Date.now(), nitCedula: nitClean, nombre: nombreClean, telefono: clientFormData.telefono.trim(), email: clientFormData.email.trim().toLowerCase(), direccion: clientFormData.direccion.trim(), activo: true };
       setClientes((prev) => [nuevo, ...prev]);
     }
-
     setShowClienteModal(false);
   };
 
-  // Abrir Modal de Historial
-  const handleOpenHistorial = (cliente: Cliente) => {
-    setSelectedClienteHistorial(cliente);
-    setHistorialSubTab("alquileres");
-    setShowHistorialModal(true);
+  // Abrir Modal para Crear / Editar Equipo de Bodega
+  const handleOpenCrearEquipoModal = () => {
+    setEditingEquipo(null);
+    setEquipoFormData({ codigo: "", nombre: "", categoria: "MAQUINARIA", tarifaDiaria: 35000, pesoKilos: 15, stockTotal: 5 });
+    setEquipoFormError(null);
+    setShowEquipoModal(true);
   };
 
-  // Clientes filtrados por búsqueda
-  const clientesFiltrados = clientes.filter(
-    (c) =>
-      c.nombre.toLowerCase().includes(searchFilter.toLowerCase()) ||
-      c.nitCedula.toLowerCase().includes(searchFilter.toLowerCase())
+  const handleOpenEditarEquipoModal = (equipo: Equipo) => {
+    setEditingEquipo(equipo);
+    setEquipoFormData({
+      codigo: equipo.codigo,
+      nombre: equipo.nombre,
+      categoria: equipo.categoria,
+      tarifaDiaria: equipo.tarifaDiaria,
+      pesoKilos: equipo.pesoKilos,
+      stockTotal: equipo.stockTotal,
+    });
+    setEquipoFormError(null);
+    setShowEquipoModal(true);
+  };
+
+  const handleSaveEquipo = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!equipoFormData.codigo.trim() || !equipoFormData.nombre.trim()) {
+      setEquipoFormError("El Código y Nombre del equipo son obligatorios.");
+      return;
+    }
+
+    const codClean = equipoFormData.codigo.trim().toUpperCase();
+    const nomClean = equipoFormData.nombre.trim().toUpperCase();
+
+    if (editingEquipo) {
+      const dif = equipoFormData.stockTotal - editingEquipo.stockTotal;
+      const nuevoDisp = editingEquipo.stockDisponible + dif;
+      if (nuevoDisp < 0) {
+        setEquipoFormError("No es posible reducir el stock total por debajo de las unidades en obra.");
+        return;
+      }
+      setEquipos((prev) => prev.map((eq) => eq.id === editingEquipo.id ? { ...eq, codigo: codClean, nombre: nomClean, categoria: equipoFormData.categoria.toUpperCase(), tarifaDiaria: equipoFormData.tarifaDiaria, pesoKilos: equipoFormData.pesoKilos, stockTotal: equipoFormData.stockTotal, stockDisponible: nuevoDisp } : eq));
+    } else {
+      const nuevo: Equipo = {
+        id: "EQ-" + Date.now(),
+        codigo: codClean,
+        nombre: nomClean,
+        categoria: equipoFormData.categoria.toUpperCase(),
+        tarifaDiaria: equipoFormData.tarifaDiaria,
+        pesoKilos: equipoFormData.pesoKilos,
+        stockTotal: equipoFormData.stockTotal,
+        stockDisponible: equipoFormData.stockTotal,
+        stockEnObra: 0,
+        activo: true,
+      };
+      setEquipos((prev) => [nuevo, ...prev]);
+    }
+    setShowEquipoModal(false);
+  };
+
+  // Carga Masiva de Equipos
+  const handleProcessBulkLoad = () => {
+    try {
+      const lineas = bulkText.split("\n").filter((l) => l.trim().length > 0);
+      if (lineas.length === 0) {
+        alert("Por favor ingrese al menos una línea con datos de equipos.");
+        return;
+      }
+
+      const nuevos: Equipo[] = lineas.map((linea, idx) => {
+        const partes = linea.split(",");
+        const codigo = (partes[0] || `EQ-BULK-${idx}`).trim().toUpperCase();
+        const nombre = (partes[1] || `EQUIPO MASIVO ${idx + 1}`).trim().toUpperCase();
+        const tarifa = parseFloat(partes[2] || "30000");
+        const peso = parseFloat(partes[3] || "20");
+        const stock = parseInt(partes[4] || "5", 10);
+
+        return {
+          id: "EQ-BULK-" + (Date.now() + idx),
+          codigo,
+          nombre,
+          categoria: "CARGA MASIVA",
+          tarifaDiaria: isNaN(tarifa) ? 30000 : tarifa,
+          pesoKilos: isNaN(peso) ? 20 : peso,
+          stockTotal: isNaN(stock) ? 5 : stock,
+          stockDisponible: isNaN(stock) ? 5 : stock,
+          stockEnObra: 0,
+          activo: true,
+        };
+      });
+
+      setEquipos((prev) => [...nuevos, ...prev]);
+      setShowBulkModal(false);
+      setBulkText("");
+    } catch (err: any) {
+      alert("Error procesando la carga masiva: " + err.message);
+    }
+  };
+
+  // Inactivar Equipo
+  const handleInactivarEquipo = (equipoId: string) => {
+    if (confirm("¿Está seguro de inactivar este equipo de la bodega?")) {
+      setEquipos((prev) => prev.map((eq) => eq.id === equipoId ? { ...eq, activo: false } : eq));
+    }
+  };
+
+  // Abrir Modal para Crear Alquiler (con validación de Stock en Vivo)
+  const handleOpenCrearAlquiler = (equipoPreseleccionadoId?: string) => {
+    if (clientes.length === 0) {
+      alert("Debe registrar al menos un cliente en 'Clientes & Terceros' antes de crear un alquiler.");
+      return;
+    }
+    setAlquilerClienteId(clientes[0].id);
+    setAlquilerEquipoId(equipoPreseleccionadoId || (equipos[0] ? equipos[0].id : ""));
+    setAlquilerCantidad(1);
+    setAlquilerDias(3);
+    setAlquilerDeposito(100000);
+    setAlquilerError(null);
+    setShowCrearAlquilerModal(true);
+  };
+
+  // Equipo seleccionado en el formulario de Alquiler para ver Stock en Vivo
+  const equipoAlquilerSeleccionado = equipos.find((e) => e.id === alquilerEquipoId);
+
+  // Confirmar Alquiler y descontar Stock Disponible
+  const handleConfirmarAlquiler = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!equipoAlquilerSeleccionado) {
+      setAlquilerError("Debe seleccionar un equipo válido.");
+      return;
+    }
+    if (alquilerCantidad <= 0) {
+      setAlquilerError("La cantidad debe ser mayor a 0.");
+      return;
+    }
+    if (alquilerCantidad > equipoAlquilerSeleccionado.stockDisponible) {
+      setAlquilerError(`Stock insuficiente para '${equipoAlquilerSeleccionado.nombre}'. Disponible: ${equipoAlquilerSeleccionado.stockDisponible}, Solicitado: ${alquilerCantidad}.`);
+      return;
+    }
+
+    // Descontar stock disponible e incrementar en obra
+    setEquipos((prev) =>
+      prev.map((eq) =>
+        eq.id === equipoAlquilerSeleccionado.id
+          ? {
+              ...eq,
+              stockDisponible: eq.stockDisponible - alquilerCantidad,
+              stockEnObra: eq.stockEnObra + alquilerCantidad,
+            }
+          : eq
+      )
+    );
+
+    setShowCrearAlquilerModal(false);
+    alert("¡Contrato de alquiler registrado exitosamente! El stock disponible ha sido actualizado en tiempo real.");
+    navigateToTab("alquileres");
+  };
+
+  // Equipos filtrados por búsqueda en Bodega
+  const equiposFiltrados = equipos.filter(
+    (eq) =>
+      eq.activo &&
+      (eq.nombre.toLowerCase().includes(equipoSearchFilter.toLowerCase()) ||
+        eq.codigo.toLowerCase().includes(equipoSearchFilter.toLowerCase()) ||
+        eq.categoria.toLowerCase().includes(equipoSearchFilter.toLowerCase()))
   );
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden font-sans">
       
-      {/* Resplandores de Luz Ambientales (Glow Orbs) */}
+      {/* Resplandores Ambientales */}
       <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-sky-500/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute top-1/3 right-10 w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-10 left-10 w-[450px] h-[450px] bg-emerald-500/10 rounded-full blur-[130px] pointer-events-none" />
 
-      {/* Header Glassmorphism / Navigation Bar */}
+      {/* Header Glassmorphism */}
       <header className="glass-header sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -220,7 +374,7 @@ export default function HomePage() {
               </button>
             )}
             <button 
-              onClick={() => navigateToTab("alquileres")}
+              onClick={() => handleOpenCrearAlquiler()}
               className="glass-button-primary h-11 px-5 rounded-2xl text-white font-semibold text-sm flex items-center space-x-2 active:scale-95"
             >
               <Plus className="h-4 w-4 stroke-[2.5]" />
@@ -229,7 +383,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* NAVEGACIÓN POR PESTAÑAS DINÁMICAS (TABBED SPA) */}
+        {/* NAVEGACIÓN TABBED SPA */}
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 overflow-x-auto py-2 border-t border-white/5 scrollbar-none">
           {[
             { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -259,13 +413,12 @@ export default function HomePage() {
         </nav>
       </header>
 
-      {/* CONTENIDO DINÁMICO SEGÚN PESTAÑA ACTIVA */}
+      {/* CONTENIDO DINÁMICO */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative z-10">
         
-        {/* PESTAÑA 1: DASHBOARD / INICIO */}
+        {/* PESTAÑA 1: DASHBOARD */}
         {activeTab === "dashboard" && (
           <div className="space-y-8 animate-fadeIn">
-            {/* Hero Card */}
             <section className="glass-panel rounded-3xl p-6 sm:p-10 relative overflow-hidden shadow-2xl">
               <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-sky-500/10 via-indigo-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
               <div className="relative z-10 space-y-4 max-w-3xl">
@@ -286,10 +439,7 @@ export default function HomePage() {
 
             {/* Métricas KPI */}
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              <div 
-                onClick={() => navigateToTab("alquileres")}
-                className="glass-panel glass-panel-hover rounded-2xl p-6 cursor-pointer"
-              >
+              <div onClick={() => navigateToTab("alquileres")} className="glass-panel glass-panel-hover rounded-2xl p-6 cursor-pointer">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Contratos Activos</span>
                   <div className="p-3 rounded-2xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
@@ -302,10 +452,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div 
-                onClick={() => navigateToTab("bodega")}
-                className="glass-panel glass-panel-hover rounded-2xl p-6 cursor-pointer"
-              >
+              <div onClick={() => navigateToTab("bodega")} className="glass-panel glass-panel-hover rounded-2xl p-6 cursor-pointer">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Equipos en Bodega</span>
                   <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
@@ -313,15 +460,12 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="mt-5">
-                  <span className="text-4xl font-extrabold text-white">106</span>
-                  <span className="text-xs text-slate-400 ml-2 font-medium">disponibles</span>
+                  <span className="text-4xl font-extrabold text-white">{equipos.reduce((acc, eq) => acc + (eq.activo ? eq.stockDisponible : 0), 0)}</span>
+                  <span className="text-xs text-slate-400 ml-2 font-medium">disponibles en tiempo real</span>
                 </div>
               </div>
 
-              <div 
-                onClick={() => navigateToTab("devoluciones")}
-                className="glass-panel glass-panel-hover rounded-2xl p-6 cursor-pointer"
-              >
+              <div onClick={() => navigateToTab("devoluciones")} className="glass-panel glass-panel-hover rounded-2xl p-6 cursor-pointer">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Devoluciones Hoy</span>
                   <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
@@ -359,80 +503,139 @@ export default function HomePage() {
                 <p className="text-xs text-slate-400">Cotización, Despacho y Seguimiento de Equipos en Obra</p>
               </div>
               <button 
-                onClick={() => navigateToTab("dashboard")} 
-                className="text-xs text-sky-400 hover:underline flex items-center space-x-1 font-semibold"
+                onClick={() => handleOpenCrearAlquiler()}
+                className="glass-button-primary px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center space-x-2"
               >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                <span>Volver al Dashboard</span>
+                <Plus className="h-4 w-4" />
+                <span>Nuevo Contrato de Alquiler</span>
               </button>
             </div>
 
             <div className="glass-panel rounded-3xl p-6 space-y-4">
-              <div className="flex flex-col sm:flex-row gap-4 justify-between">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                  <input 
-                    type="text" 
-                    placeholder="Buscar contrato por consecutivo, cliente o equipo..."
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-900/60 border border-white/10 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-sky-500"
-                  />
-                </div>
-                <button className="glass-button-primary px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center space-x-2">
-                  <Plus className="h-4 w-4" />
-                  <span>Nuevo Contrato de Alquiler</span>
-                </button>
-              </div>
-
               <div className="p-12 text-center text-slate-400 space-y-3 bg-slate-900/30 rounded-2xl border border-white/5">
                 <FileText className="h-10 w-10 mx-auto text-sky-400/60" />
                 <p className="text-sm font-medium">Instancia limpia lista. Ningún contrato de alquiler registrado.</p>
+                <button onClick={() => handleOpenCrearAlquiler()} className="glass-button-primary px-5 py-2 rounded-xl text-xs font-bold text-white">
+                  Crear Primer Alquiler con Stock en Vivo
+                </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* PESTAÑA 3: BODEGA E INVENTARIO */}
+        {/* PESTAÑA 3: BODEGA E INVENTARIO (CRUD COMPLETO Y CARGA MASIVA) */}
         {activeTab === "bodega" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-black text-white">Catálogo de Bodega e Inventario</h1>
-                <p className="text-xs text-slate-400">Control de Stock, Tarifas Diarias y Peso en Gramos (`peso_gramos BIGINT`)</p>
+                <p className="text-xs text-slate-400">Gestión CRUD de Equipos, Carga Masiva y Control de Stock (`peso_gramos BIGINT`)</p>
               </div>
-              <button 
-                onClick={() => navigateToTab("alquileres")} 
-                className="text-xs text-sky-400 hover:underline flex items-center space-x-1 font-semibold"
-              >
-                <span>Ir a Alquileres</span>
-              </button>
+              <div className="flex items-center space-x-2">
+                <button 
+                  onClick={() => setShowBulkModal(true)}
+                  className="px-4 py-2.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/30 text-xs font-bold flex items-center space-x-2"
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-indigo-400" />
+                  <span>Carga Masiva (Bulk)</span>
+                </button>
+                <button 
+                  onClick={handleOpenCrearEquipoModal}
+                  className="glass-button-primary px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center space-x-2"
+                >
+                  <PackagePlus className="h-4 w-4" />
+                  <span>Nuevo Equipo</span>
+                </button>
+              </div>
             </div>
 
+            {/* Buscador de Equipos */}
+            <div className="glass-panel rounded-2xl p-4 flex items-center space-x-3">
+              <Search className="h-4 w-4 text-slate-400" />
+              <input 
+                type="text" 
+                value={equipoSearchFilter}
+                onChange={(e) => setEquipoSearchFilter(e.target.value)}
+                placeholder="Buscar por código, nombre de equipo o categoría..."
+                className="w-full bg-transparent border-none text-xs text-slate-100 placeholder-slate-500 focus:outline-none"
+              />
+              {equipoSearchFilter && (
+                <button onClick={() => setEquipoSearchFilter("")} className="text-slate-400 hover:text-white">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Grilla de Equipos en Bodega */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[
-                { nombre: "Mezcladora de Concreto 2 Bultos", tarifa: "$ 45.000 / día", peso: "250.000 Kg", stock: "10 disp" },
-                { nombre: "Vibrador de Concreto Eléctrico 2HP", tarifa: "$ 25.000 / día", peso: "15.000 Kg", stock: "15 disp" },
-                { nombre: "Demoledor Eléctrico 30Kg (HEX 28mm)", tarifa: "$ 65.000 / día", peso: "30.000 Kg", stock: "8 disp" },
-                { nombre: "Andamio Multidireccional (Módulo 1.5m)", tarifa: "$ 12.000 / día", peso: "45.000 Kg", stock: "50 disp" },
-                { nombre: "Cortadora de Pavimento 13HP", tarifa: "$ 85.000 / día", peso: "120.000 Kg", stock: "5 disp" },
-                { nombre: "Planta Eléctrica 6.5 kW (Diésel)", tarifa: "$ 75.000 / día", peso: "95.000 Kg", stock: "6 disp" },
-              ].map((item, idx) => (
-                <div key={idx} className="glass-panel glass-panel-hover rounded-2xl p-5 space-y-3">
+              {equiposFiltrados.map((item) => (
+                <div key={item.id} className="glass-panel glass-panel-hover rounded-2xl p-5 space-y-4 relative">
                   <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-white text-sm">{item.nombre}</h3>
-                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                      {item.stock}
+                    <div>
+                      <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] font-bold">
+                        {item.codigo}
+                      </span>
+                      <h3 className="font-extrabold text-white text-sm mt-1">{item.nombre}</h3>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                      item.stockDisponible > 0 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                    }`}>
+                      {item.stockDisponible > 0 ? `${item.stockDisponible} DISP.` : "AGOTADO"}
                     </span>
                   </div>
-                  <div className="text-xs space-y-1 text-slate-300">
-                    <p><span className="text-slate-500">Tarifa:</span> <strong className="text-sky-300">{item.tarifa}</strong></p>
-                    <p><span className="text-slate-500">Peso Estándar:</span> <strong>{item.peso}</strong></p>
+
+                  {/* Detalle de Stock e Indicadores */}
+                  <div className="grid grid-cols-3 gap-2 bg-slate-900/50 p-2.5 rounded-xl border border-white/5 text-center text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-500 block uppercase font-bold">Total</span>
+                      <strong className="text-white font-extrabold">{item.stockTotal} u.</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block uppercase font-bold">Disponible</span>
+                      <strong className="text-emerald-400 font-extrabold">{item.stockDisponible} u.</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block uppercase font-bold">En Obra</span>
+                      <strong className="text-amber-400 font-extrabold">{item.stockEnObra} u.</strong>
+                    </div>
                   </div>
-                  <button 
-                    onClick={() => navigateToTab("alquileres")}
-                    className="w-full mt-2 py-2 rounded-xl bg-slate-800 hover:bg-sky-600 text-white text-xs font-bold transition-all"
-                  >
-                    Alquilar Este Equipo
-                  </button>
+
+                  <div className="text-xs space-y-1 text-slate-300">
+                    <p className="flex justify-between"><span className="text-slate-400">Tarifa Diaria:</span> <strong className="text-sky-300">$ {item.tarifaDiaria.toLocaleString("es-CO")},00</strong></p>
+                    <p className="flex justify-between"><span className="text-slate-400">Peso Estándar:</span> <strong>{item.pesoKilos.toFixed(3)} Kg</strong></p>
+                  </div>
+
+                  {/* Acciones CRUD del Equipo */}
+                  <div className="flex items-center justify-between pt-2 border-t border-white/5 gap-2">
+                    <button 
+                      onClick={() => handleOpenEditarEquipoModal(item)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold flex items-center space-x-1 border border-white/10"
+                    >
+                      <Edit className="h-3.5 w-3.5 text-sky-400" />
+                      <span>Editar</span>
+                    </button>
+
+                    <button 
+                      onClick={() => handleInactivarEquipo(item.id)}
+                      className="px-3 py-1.5 rounded-xl bg-rose-600/10 hover:bg-rose-600/20 text-rose-300 border border-rose-500/20 text-xs font-semibold flex items-center space-x-1"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+                      <span>Inactivar</span>
+                    </button>
+
+                    <button 
+                      onClick={() => handleOpenCrearAlquiler(item.id)}
+                      disabled={item.stockDisponible === 0}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1 ${
+                        item.stockDisponible > 0 
+                          ? "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30" 
+                          : "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700"
+                      }`}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>Alquilar</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -447,10 +650,7 @@ export default function HomePage() {
                 <h1 className="text-2xl font-black text-white">Recepción de Devoluciones & Registro de Daños</h1>
                 <p className="text-xs text-slate-400">Reingreso a Bodega e Inspección Física de Equipos (Corte 5:00 PM)</p>
               </div>
-              <button 
-                onClick={() => navigateToTab("bodega")} 
-                className="text-xs text-sky-400 hover:underline flex items-center space-x-1 font-semibold"
-              >
+              <button onClick={() => navigateToTab("bodega")} className="text-xs text-sky-400 hover:underline font-semibold">
                 <span>Ver Stock en Bodega</span>
               </button>
             </div>
@@ -470,10 +670,7 @@ export default function HomePage() {
                 <h1 className="text-2xl font-black text-white">Facturación, Cuentas de Cobro & PDFs</h1>
                 <p className="text-xs text-slate-400">Liquidación en COP `NUMERIC(12, 2)` con 100% de ítems contratados</p>
               </div>
-              <button 
-                onClick={() => navigateToTab("alquileres")} 
-                className="text-xs text-sky-400 hover:underline flex items-center space-x-1 font-semibold"
-              >
+              <button onClick={() => navigateToTab("alquileres")} className="text-xs text-sky-400 hover:underline font-semibold">
                 <span>Ir a Alquileres</span>
               </button>
             </div>
@@ -485,7 +682,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* PESTAÑA 6: CLIENTES & TERCEROS (LÓGICA COMPLETA DE CREACIÓN, EDICIÓN E HISTORIALES) */}
+        {/* PESTAÑA 6: CLIENTES & TERCEROS */}
         {activeTab === "clientes" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -493,88 +690,31 @@ export default function HomePage() {
                 <h1 className="text-2xl font-black text-white">Directorio de Clientes & Terceros</h1>
                 <p className="text-xs text-slate-400">Sanitización en Mayúsculas (`UPPERCASE.trim()`) e Historiales Cruzados (Alquileres, Pagos, Cartera)</p>
               </div>
-              <div className="flex items-center space-x-3">
-                <button 
-                  onClick={handleOpenCrearModal}
-                  className="glass-button-primary px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center space-x-2 shadow-lg shadow-sky-500/20 active:scale-95"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  <span>Nuevo Cliente / Tercero</span>
-                </button>
-              </div>
+              <button onClick={handleOpenCrearClienteModal} className="glass-button-primary px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center space-x-2">
+                <UserPlus className="h-4 w-4" />
+                <span>Nuevo Cliente / Tercero</span>
+              </button>
             </div>
 
-            {/* Buscador de Clientes */}
-            <div className="glass-panel rounded-2xl p-4 flex items-center space-x-3">
-              <Search className="h-4 w-4 text-slate-400" />
-              <input 
-                type="text" 
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                placeholder="Buscar por NIT/Cédula, Razón Social, Nombre..."
-                className="w-full bg-transparent border-none text-xs text-slate-100 placeholder-slate-500 focus:outline-none"
-              />
-              {searchFilter && (
-                <button onClick={() => setSearchFilter("")} className="text-slate-400 hover:text-white">
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-
-            {/* Lista de Clientes Registrados */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {clientesFiltrados.map((cliente) => (
+              {clientes.map((cliente) => (
                 <div key={cliente.id} className="glass-panel glass-panel-hover rounded-2xl p-5 space-y-4 relative">
                   <div className="flex justify-between items-start">
-                    <div className="space-y-1 max-w-[80%]">
-                      <span className="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] font-bold">
-                        {cliente.nitCedula}
-                      </span>
-                      <h3 className="font-extrabold text-white text-sm tracking-tight">{cliente.nombre}</h3>
+                    <div className="space-y-1">
+                      <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] font-bold">{cliente.nitCedula}</span>
+                      <h3 className="font-extrabold text-white text-sm">{cliente.nombre}</h3>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
-                      ACTIVO
-                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">ACTIVO</span>
                   </div>
 
-                  <div className="space-y-1.5 text-xs text-slate-300 border-t border-white/5 pt-3">
-                    <div className="flex items-center space-x-2 text-slate-400">
-                      <Phone className="h-3.5 w-3.5 text-sky-400" />
-                      <span>{cliente.telefono || "Sin teléfono registrado"}</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-slate-400">
-                      <Mail className="h-3.5 w-3.5 text-indigo-400" />
-                      <span>{cliente.email || "Sin correo electrónico"}</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-slate-400">
-                      <MapPin className="h-3.5 w-3.5 text-amber-400" />
-                      <span>{cliente.direccion || "Sin dirección registrada"}</span>
-                    </div>
+                  <div className="space-y-1 text-xs text-slate-300 border-t border-white/5 pt-3">
+                    <p><span className="text-slate-400">Teléfono:</span> {cliente.telefono}</p>
+                    <p><span className="text-slate-400">Email:</span> {cliente.email}</p>
                   </div>
 
-                  {/* Acciones del Cliente */}
-                  <div className="flex items-center justify-between pt-2 border-t border-white/5 gap-2">
-                    <button 
-                      onClick={() => handleOpenEditarModal(cliente)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-200 text-xs font-semibold flex items-center space-x-1.5 border border-white/10 transition-all"
-                    >
-                      <Edit className="h-3.5 w-3.5 text-sky-400" />
-                      <span>Editar</span>
-                    </button>
-
-                    <button 
-                      onClick={() => handleOpenHistorial(cliente)}
-                      className="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold flex items-center space-x-1.5 transition-all"
-                    >
-                      <History className="h-3.5 w-3.5 text-indigo-400" />
-                      <span>Historial & Cartera</span>
-                    </button>
-
-                    <button 
-                      onClick={() => navigateToTab("alquileres")}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center space-x-1.5 transition-all"
-                    >
-                      <Plus className="h-3.5 w-3.5 text-emerald-400" />
+                  <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                    <button onClick={() => handleOpenCrearAlquiler()} className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center space-x-1">
+                      <Plus className="h-3.5 w-3.5" />
                       <span>Alquilar</span>
                     </button>
                   </div>
@@ -586,203 +726,236 @@ export default function HomePage() {
 
       </main>
 
-      {/* MODAL GLASSMORPHISM PARA CREAR / EDITAR CLIENTE */}
+      {/* MODAL GLASSMORPHISM REGISTRAR / EDITAR CLIENTE */}
       {showClienteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
           <div className="glass-panel w-full max-w-lg rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <h2 className="text-lg font-extrabold text-white flex items-center space-x-2">
-                <UserPlus className="h-5 w-5 text-sky-400" />
-                <span>{editingCliente ? "Editar Cliente / Tercero" : "Registrar Nuevo Cliente / Tercero"}</span>
-              </h2>
-              <button 
-                onClick={() => setShowClienteModal(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <h2 className="text-lg font-extrabold text-white">{editingCliente ? "Editar Cliente" : "Nuevo Cliente"}</h2>
+              <button onClick={() => setShowClienteModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
-
-            {formError && (
-              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{formError}</span>
-              </div>
-            )}
-
+            {clientFormError && <div className="p-3 rounded-xl bg-rose-500/10 text-rose-400 text-xs">{clientFormError}</div>}
             <form onSubmit={handleSaveCliente} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">NIT / Cédula (Sanitización Mayúsculas)*</label>
-                <input 
-                  type="text" 
-                  value={formData.nitCedula}
-                  onChange={(e) => setFormData({ ...formData, nitCedula: e.target.value })}
-                  placeholder="Ej: 900123456-1 o 1018456789"
-                  className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-white/10 rounded-xl text-xs text-slate-100 uppercase focus:outline-none focus:border-sky-500"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">Nombre / Razón Social (UPPERCASE.trim())*</label>
-                <input 
-                  type="text" 
-                  value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  placeholder="Ej: CONSTRUCCIONES & OBRAS SAS"
-                  className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-white/10 rounded-xl text-xs text-slate-100 uppercase focus:outline-none focus:border-sky-500"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300">Teléfono Móvil</label>
-                  <input 
-                    type="text" 
-                    value={formData.telefono}
-                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                    placeholder="Ej: 3001234567"
-                    className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-sky-500"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300">Correo Electrónico</label>
-                  <input 
-                    type="email" 
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="contacto@empresa.com"
-                    className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-sky-500"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">Dirección Residencial / Fiscal</label>
-                <input 
-                  type="text" 
-                  value={formData.direccion}
-                  onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                  placeholder="Ej: Calle 100 # 15-20, Bogotá"
-                  className="w-full px-3.5 py-2.5 bg-slate-900/80 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-sky-500"
-                />
-              </div>
-
-              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-white/10">
-                <button 
-                  type="button" 
-                  onClick={() => setShowClienteModal(false)}
-                  className="px-4 py-2.5 rounded-xl bg-slate-900 text-slate-300 text-xs font-bold border border-white/10 hover:bg-slate-800"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="glass-button-primary px-5 py-2.5 rounded-xl text-xs font-bold text-white flex items-center space-x-1.5"
-                >
-                  <Check className="h-4 w-4" />
-                  <span>{editingCliente ? "Guardar Cambios" : "Registrar Cliente"}</span>
-                </button>
+              <input type="text" placeholder="NIT / Cédula" value={clientFormData.nitCedula} onChange={(e) => setClientFormData({ ...clientFormData, nitCedula: e.target.value })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs uppercase" required />
+              <input type="text" placeholder="Nombre / Razón Social" value={clientFormData.nombre} onChange={(e) => setClientFormData({ ...clientFormData, nombre: e.target.value })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs uppercase" required />
+              <input type="text" placeholder="Teléfono" value={clientFormData.telefono} onChange={(e) => setClientFormData({ ...clientFormData, telefono: e.target.value })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs" />
+              <div className="flex justify-end space-x-3 pt-3">
+                <button type="button" onClick={() => setShowClienteModal(false)} className="px-4 py-2 bg-slate-900 text-xs font-bold rounded-xl">Cancelar</button>
+                <button type="submit" className="glass-button-primary px-5 py-2 text-xs font-bold text-white rounded-xl">Guardar</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL GLASSMORPHISM PARA HISTORIAL CRUZADO DEL CLIENTE (ALQUILERES, PAGOS, CARTERA) */}
-      {showHistorialModal && selectedClienteHistorial && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
-          <div className="glass-panel w-full max-w-3xl rounded-3xl p-6 sm:p-8 space-y-6 border border-white/10 shadow-2xl relative">
+      {/* MODAL GLASSMORPHISM CREAR / EDITAR EQUIPO EN BODEGA */}
+      {showEquipoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="glass-panel w-full max-w-lg rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
-                  {selectedClienteHistorial.nitCedula}
-                </span>
-                <h2 className="text-lg font-black text-white mt-1">{selectedClienteHistorial.nombre}</h2>
+              <h2 className="text-lg font-extrabold text-white flex items-center space-x-2">
+                <PackagePlus className="h-5 w-5 text-sky-400" />
+                <span>{editingEquipo ? "Editar Equipo de Bodega" : "Registrar Nuevo Equipo en Bodega"}</span>
+              </h2>
+              <button onClick={() => setShowEquipoModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+            </div>
+
+            {equipoFormError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
+                <AlertCircle className="h-4 w-4" />
+                <span>{equipoFormError}</span>
               </div>
-              <button 
-                onClick={() => setShowHistorialModal(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
-              >
-                <X className="h-5 w-5" />
-              </button>
+            )}
+
+            <form onSubmit={handleSaveEquipo} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-300">Código Equipo*</label>
+                  <input type="text" placeholder="Ej: MEZ-01" value={equipoFormData.codigo} onChange={(e) => setEquipoFormData({ ...equipoFormData, codigo: e.target.value })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs uppercase" required />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-300">Categoría</label>
+                  <input type="text" placeholder="MAQUINARIA" value={equipoFormData.categoria} onChange={(e) => setEquipoFormData({ ...equipoFormData, categoria: e.target.value })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs uppercase" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-300">Nombre / Descripción del Equipo*</label>
+                <input type="text" placeholder="Ej: MEZCLADORA DE CONCRETO 2 BULTOS" value={equipoFormData.nombre} onChange={(e) => setEquipoFormData({ ...equipoFormData, nombre: e.target.value })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs uppercase" required />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-300">Tarifa Diaria (COP)</label>
+                  <input type="number" value={equipoFormData.tarifaDiaria} onChange={(e) => setEquipoFormData({ ...equipoFormData, tarifaDiaria: parseFloat(e.target.value) || 0 })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs" required />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-300">Peso (Kilos)</label>
+                  <input type="number" step="0.001" value={equipoFormData.pesoKilos} onChange={(e) => setEquipoFormData({ ...equipoFormData, pesoKilos: parseFloat(e.target.value) || 0 })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs" required />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-300">Stock Total</label>
+                  <input type="number" value={equipoFormData.stockTotal} onChange={(e) => setEquipoFormData({ ...equipoFormData, stockTotal: parseInt(e.target.value, 10) || 0 })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs" required />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-3 border-t border-white/10">
+                <button type="button" onClick={() => setShowEquipoModal(false)} className="px-4 py-2 bg-slate-900 text-slate-300 text-xs font-bold rounded-xl border border-white/10">Cancelar</button>
+                <button type="submit" className="glass-button-primary px-5 py-2 text-xs font-bold text-white rounded-xl">Guardar en Bodega</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL GLASSMORPHISM CARGA MASIVA (BULK LOAD) */}
+      {showBulkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+          <div className="glass-panel w-full max-w-2xl rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <h2 className="text-lg font-extrabold text-white flex items-center space-x-2">
+                <FileSpreadsheet className="h-5 w-5 text-indigo-400" />
+                <span>Carga Masiva de Equipos e Inventario</span>
+              </h2>
+              <button onClick={() => setShowBulkModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
 
-            {/* Pestañas Internas del Historial Cruzado */}
-            <div className="flex space-x-2 border-b border-white/5 pb-2">
-              <button 
-                onClick={() => setHistorialSubTab("alquileres")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all ${
-                  historialSubTab === "alquileres" ? "bg-sky-500/20 text-sky-300 border border-sky-400/30" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <FileCheck className="h-3.5 w-3.5" />
-                <span>Historial Alquileres (0)</span>
-              </button>
-              <button 
-                onClick={() => setHistorialSubTab("pagos")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all ${
-                  historialSubTab === "pagos" ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <CreditCard className="h-3.5 w-3.5" />
-                <span>Historial Pagos (0)</span>
-              </button>
-              <button 
-                onClick={() => setHistorialSubTab("cartera")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all ${
-                  historialSubTab === "cartera" ? "bg-indigo-500/20 text-indigo-300 border border-indigo-400/30" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <Wallet className="h-3.5 w-3.5" />
-                <span>Estado Cartera</span>
-              </button>
+            <p className="text-xs text-slate-300">
+              Pegue sus equipos separados por comas (un equipo por línea):<br />
+              <code className="text-sky-300 font-mono text-[11px]">CODIGO, NOMBRE, TARIFA_COP, PESO_KG, STOCK_TOTAL</code>
+            </p>
+
+            <textarea 
+              rows={6}
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              placeholder="MEZ-10, MEZCLADORA 2 BULTOS MOTOR HONDA, 45000, 250, 5&#10;VIB-11, VIBRADOR GASOLINA 5.5HP, 30000, 22, 10"
+              className="w-full p-3.5 bg-slate-900 border border-white/10 rounded-xl text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
+            />
+
+            <div className="flex justify-end space-x-3 border-t border-white/10 pt-3">
+              <button onClick={() => setShowBulkModal(false)} className="px-4 py-2 bg-slate-900 text-slate-300 text-xs font-bold rounded-xl border border-white/10">Cancelar</button>
+              <button onClick={handleProcessBulkLoad} className="glass-button-primary px-5 py-2 text-xs font-bold text-white rounded-xl">Procesar Carga Masiva</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL GLASSMORPHISM CREAR CONTRATO CON VISIBILIDAD DE STOCK EN VIVO */}
+      {showCrearAlquilerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+          <div className="glass-panel w-full max-w-xl rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <h2 className="text-lg font-extrabold text-white flex items-center space-x-2">
+                <FileText className="h-5 w-5 text-sky-400" />
+                <span>Nuevo Contrato de Alquiler</span>
+              </h2>
+              <button onClick={() => setShowCrearAlquilerModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
 
-            {/* Contenido según pestaña del historial */}
-            <div className="min-h-[180px]">
-              {historialSubTab === "alquileres" && (
-                <div className="p-8 text-center text-slate-400 space-y-2 bg-slate-900/40 rounded-2xl border border-white/5">
-                  <FileText className="h-8 w-8 mx-auto text-sky-400/50" />
-                  <p className="text-xs font-medium">El cliente no registra contratos de alquiler previos en esta instancia limpia.</p>
+            {alquilerError && (
+              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{alquilerError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleConfirmarAlquiler} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-300">Cliente Contratante*</label>
+                <select 
+                  value={alquilerClienteId} 
+                  onChange={(e) => setAlquilerClienteId(e.target.value)}
+                  className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none"
+                >
+                  {clientes.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nitCedula} — {c.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-300">Equipo a Alquilar*</label>
+                <select 
+                  value={alquilerEquipoId} 
+                  onChange={(e) => setAlquilerEquipoId(e.target.value)}
+                  className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none"
+                >
+                  {equipos.filter(e => e.activo).map((e) => (
+                    <option key={e.id} value={e.id}>{e.codigo} — {e.nombre} ({e.stockDisponible} u. disponibles)</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* TARJETA DE VISIBILIDAD DE STOCK EN TIEMPO REAL */}
+              {equipoAlquilerSeleccionado && (
+                <div className="p-4 rounded-2xl bg-slate-900/80 border border-white/10 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Stock Disponible en Bodega:</span>
+                    <span className={`font-extrabold px-2.5 py-0.5 rounded-full text-xs ${
+                      equipoAlquilerSeleccionado.stockDisponible > 0 ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                    }`}>
+                      {equipoAlquilerSeleccionado.stockDisponible} Unidades
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Tarifa Diaria:</span>
+                    <span className="font-extrabold text-sky-300">$ {equipoAlquilerSeleccionado.tarifaDiaria.toLocaleString("es-CO")},00 COP</span>
+                  </div>
                 </div>
               )}
 
-              {historialSubTab === "pagos" && (
-                <div className="p-8 text-center text-slate-400 space-y-2 bg-slate-900/40 rounded-2xl border border-white/5">
-                  <CreditCard className="h-8 w-8 mx-auto text-emerald-400/50" />
-                  <p className="text-xs font-medium">El cliente no registra transacciones de pago previas.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-300">Cantidad a Alquilar*</label>
+                  <input 
+                    type="number" 
+                    min={1} 
+                    max={equipoAlquilerSeleccionado ? equipoAlquilerSeleccionado.stockDisponible : 1}
+                    value={alquilerCantidad} 
+                    onChange={(e) => setAlquilerCantidad(parseInt(e.target.value, 10) || 1)} 
+                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs" 
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-300">Días Contratados*</label>
+                  <input 
+                    type="number" 
+                    min={1} 
+                    value={alquilerDias} 
+                    onChange={(e) => setAlquilerDias(parseInt(e.target.value, 10) || 1)} 
+                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs" 
+                    required 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-300">Depósito en Efectivo (COP)</label>
+                <input 
+                  type="number" 
+                  value={alquilerDeposito} 
+                  onChange={(e) => setAlquilerDeposito(parseFloat(e.target.value) || 0)} 
+                  className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs" 
+                />
+              </div>
+
+              {/* Total Estimado */}
+              {equipoAlquilerSeleccionado && (
+                <div className="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-center">
+                  <span className="text-xs text-slate-300 block">Total Estima Contrato:</span>
+                  <strong className="text-2xl font-black text-sky-300">
+                    $ {(equipoAlquilerSeleccionado.tarifaDiaria * alquilerCantidad * alquilerDias).toLocaleString("es-CO")},00 COP
+                  </strong>
                 </div>
               )}
 
-              {historialSubTab === "cartera" && (
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 text-center">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Facturado</span>
-                    <span className="text-lg font-extrabold text-white">$ 0,00</span>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 text-center">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Pagado</span>
-                    <span className="text-lg font-extrabold text-emerald-400">$ 0,00</span>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 text-center">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Saldo Pendiente</span>
-                    <span className="text-lg font-extrabold text-sky-400">$ 0,00</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button 
-                onClick={() => setShowHistorialModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-900 text-slate-300 text-xs font-bold border border-white/10 hover:bg-slate-800"
-              >
-                Cerrar
-              </button>
-            </div>
+              <div className="flex justify-end space-x-3 pt-3 border-t border-white/10">
+                <button type="button" onClick={() => setShowCrearAlquilerModal(false)} className="px-4 py-2 bg-slate-900 text-slate-300 text-xs font-bold rounded-xl border border-white/10">Cancelar</button>
+                <button type="submit" className="glass-button-primary px-5 py-2 text-xs font-bold text-white rounded-xl">Confirmar y Despachar Alquiler</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
