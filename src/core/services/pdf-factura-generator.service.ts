@@ -1,123 +1,157 @@
 export interface DetalleItemPDF {
   cantidad: number;
   nombre: string;
+  codigo?: string;
+  fechaInicio: string;
+  fechaFin: string;
   dias: number;
   tarifaDiaria: number;
   subtotal: number;
   pesoKilos: number;
 }
 
-export interface FacturaPDFPayload {
-  numeroConsecutivo: number;
+export interface DocumentoPDFPayload {
+  tipo: "COTIZACION" | "CONTRATO" | "CUENTA_COBRO";
+  consecutivo: number;
   fechaEmision: string;
-  alquilerConsecutivo: number;
+  fechaInicioGeneral: string;
   clienteNombre: string;
   clienteNit: string;
-  clienteDireccion: string;
-  clienteTelefono: string;
+  clienteDireccion?: string;
+  clienteTelefono?: string;
   detallesLogistica?: string;
+  garantiaTipo?: string;
+  garantiaMonto?: number;
   items: DetalleItemPDF[];
   subtotalEquipos: number;
   fleteEntrega: number;
   fleteRecogida: number;
   subtotalGeneral: number;
-  costosDano: number;
+  costosDano?: number;
   depositoAplicado: number;
   totalPagar: number;
+  pesoTotalKilos: number;
   observaciones?: string;
 }
 
-export class PDFFacturaGeneratorService {
+export class EnterprisePDFService {
   /**
-   * Genera el documento HTML imprimible en alta definición con estándar A4
-   * listo para imprimir o convertir en PDF con 100% de renglones y fletes.
+   * Genera el documento HTML imprimible A4 corporativo de alta definición.
    */
-  static generarHTMLFactura(payload: FacturaPDFPayload): string {
+  static generarHTMLDocumento(payload: DocumentoPDFPayload): string {
     const totalFletes = (payload.fleteEntrega || 0) + (payload.fleteRecogida || 0);
+
+    const tituloDoc =
+      payload.tipo === "COTIZACION"
+        ? "COTIZACIÓN COMERCIAL"
+        : payload.tipo === "CONTRATO"
+        ? "CONTRATO DE ALQUILER & REMISIÓN"
+        : "CUENTA DE COBRO OFICIAL";
+
+    const badgePrefijo =
+      payload.tipo === "COTIZACION" ? "COT" : payload.tipo === "CONTRATO" ? "ALQ" : "CC";
+
+    const badgeColor =
+      payload.tipo === "COTIZACION" ? "#0284c7" : payload.tipo === "CONTRATO" ? "#059669" : "#4f46e5";
+
+    const badgeBg =
+      payload.tipo === "COTIZACION" ? "#f0f9ff" : payload.tipo === "CONTRATO" ? "#ecfdf5" : "#eef2ff";
 
     return `
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Cuenta de Cobro #CC-${payload.numeroConsecutivo} - Alquileres ERP</title>
+  <title>${tituloDoc} #${badgePrefijo}-${payload.consecutivo} - Alquileres ERP</title>
   <style>
-    @page { size: A4 portrait; margin: 15mm; }
-    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.4; margin: 0; padding: 20px; font-size: 11pt; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0284c7; padding-bottom: 15px; margin-bottom: 20px; }
-    .company-title { font-size: 20pt; font-weight: 900; color: #0f172a; margin: 0; }
-    .company-sub { font-size: 10pt; color: #64748b; font-weight: 600; }
-    .doc-badge { background: #f0f9ff; border: 1px solid #bae6fd; color: #0284c7; padding: 6px 14px; border-radius: 8px; text-align: right; }
-    .doc-badge h2 { margin: 0; font-size: 14pt; font-weight: 800; }
-    .grid-info { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0; }
-    .info-block h4 { margin: 0 0 6px 0; color: #475569; font-size: 9pt; text-transform: uppercase; letter-spacing: 0.5px; }
-    .info-block p { margin: 2px 0; font-size: 10pt; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    th { background: #0f172a; color: #ffffff; text-align: left; padding: 8px 10px; font-size: 9pt; text-transform: uppercase; font-weight: 700; }
-    td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10pt; }
+    @page { size: A4 portrait; margin: 12mm; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.35; margin: 0; padding: 15px; font-size: 9.5pt; background: #ffffff; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid ${badgeColor}; padding-bottom: 12px; margin-bottom: 14px; }
+    .company-title { font-size: 18pt; font-weight: 900; color: #0f172a; margin: 0; letter-spacing: -0.5px; }
+    .company-sub { font-size: 9pt; color: #64748b; font-weight: 600; display: block; margin-top: 2px; }
+    .doc-badge { background: ${badgeBg}; border: 1px solid ${badgeColor}40; color: ${badgeColor}; padding: 6px 14px; border-radius: 8px; text-align: right; }
+    .doc-badge h2 { margin: 0; font-size: 13pt; font-weight: 800; }
+    .grid-info { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; margin-bottom: 14px; background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .info-block h4 { margin: 0 0 4px 0; color: #475569; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; }
+    .info-block p { margin: 2px 0; font-size: 9pt; }
+    .logistica-box { background: #f1f5f9; border-left: 3px solid ${badgeColor}; padding: 8px 12px; border-radius: 4px; margin-bottom: 14px; font-size: 9pt; color: #334155; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+    th { background: #0f172a; color: #ffffff; text-align: left; padding: 6px 8px; font-size: 8pt; text-transform: uppercase; font-weight: 700; }
+    td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; font-size: 8.5pt; }
     tr:nth-child(even) { background-color: #f8fafc; }
     .text-right { text-align: right; }
     .text-center { text-align: center; }
-    .totals-area { display: flex; justify-content: flex-end; margin-top: 10px; }
-    .totals-table { width: 320px; border-collapse: collapse; }
-    .totals-table td { padding: 5px 8px; border: none; }
-    .total-row { font-size: 13pt; font-weight: 900; color: #0284c7; border-top: 2px solid #0f172a !important; }
-    .footer { margin-top: 40px; padding-top: 15px; border-top: 1px dashed #cbd5e1; font-size: 8.5pt; color: #64748b; text-align: center; }
-    .logistica-box { background: #eef2ff; border: 1px solid #c7d2fe; padding: 8px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 9.5pt; color: #3730a3; }
+    .totals-area { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 10px; }
+    .conditions-box { width: 48%; font-size: 7.5pt; color: #64748b; line-height: 1.3; background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; }
+    .totals-table { width: 45%; border-collapse: collapse; }
+    .totals-table td { padding: 4px 6px; border: none; font-size: 9pt; }
+    .total-row { font-size: 11pt; font-weight: 900; color: ${badgeColor}; border-top: 2px solid #0f172a !important; }
+    .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 30px; padding-top: 10px; }
+    .sig-line { border-top: 1px solid #94a3b8; text-align: center; padding-top: 4px; font-size: 8pt; font-weight: bold; color: #475569; }
+    .footer { margin-top: 25px; padding-top: 10px; border-top: 1px dashed #cbd5e1; font-size: 7.5pt; color: #94a3b8; text-align: center; }
+    @media print {
+      body { padding: 0; }
+      .no-print { display: none; }
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <div>
       <h1 class="company-title">ALQUILERES ERP</h1>
-      <span class="company-sub">Alquiler de Maquinaria y Equipos de Construcción</span>
+      <span class="company-sub">Maquinaria, Equipos Menores & Estructuras de Construcción</span>
     </div>
     <div class="doc-badge">
-      <h2>CUENTA DE COBRO</h2>
-      <div># CC-${payload.numeroConsecutivo}</div>
-      <div style="font-size: 8.5pt; color: #64748b; margin-top: 3px;">Fecha: ${payload.fechaEmision}</div>
+      <h2>${tituloDoc}</h2>
+      <div><strong># ${badgePrefijo}-${payload.consecutivo}</strong></div>
+      <div style="font-size: 7.5pt; color: #64748b; margin-top: 2px;">Fecha Emisión: ${payload.fechaEmision}</div>
     </div>
   </div>
 
   <div class="grid-info">
     <div class="info-block">
-      <h4>Datos del Cliente</h4>
+      <h4>Información del Cliente Contratante</h4>
       <p><strong>${payload.clienteNombre}</strong></p>
-      <p>NIT/Cédula: ${payload.clienteNit}</p>
+      <p>NIT/Cédula: <strong>${payload.clienteNit}</strong></p>
       <p>Teléfono: ${payload.clienteTelefono || 'N/A'}</p>
       <p>Dirección: ${payload.clienteDireccion || 'N/A'}</p>
     </div>
     <div class="info-block">
-      <h4>Detalles del Contrato</h4>
-      <p>Contrato Vinculado: <strong>ALQ-${payload.alquilerConsecutivo}</strong></p>
-      <p>Moneda: <strong>Pesos Colombianos (COP)</strong></p>
-      <p>Estado: <strong>Liquidado / Emitido</strong></p>
+      <h4>Condiciones Generales del Documento</h4>
+      <p>Fecha Inicio General: <strong>${payload.fechaInicioGeneral}</strong></p>
+      <p>Peso Total de Carga: <strong>${payload.pesoTotalKilos.toFixed(3)} Kg</strong></p>
+      ${payload.garantiaMonto ? `<p>Garantía: <strong>$ ${payload.garantiaMonto.toLocaleString('es-CO')} (${payload.garantiaTipo || 'Efectivo'})</strong></p>` : ''}
+      <p>Moneda Oficial: <strong>COP (Pesos Colombianos)</strong></p>
     </div>
   </div>
 
   ${payload.detallesLogistica ? `
   <div class="logistica-box">
-    <strong>🚚 Registro de Despacho / Logística:</strong> ${payload.detallesLogistica}
+    <strong>🚚 Registro de Despacho & Transporte:</strong> ${payload.detallesLogistica}
   </div>` : ''}
 
   <table>
     <thead>
       <tr>
-        <th class="text-center" style="width: 40px;">#</th>
-        <th>Descripción del Equipo</th>
-        <th class="text-center" style="width: 60px;">Cant.</th>
-        <th class="text-center" style="width: 60px;">Días</th>
-        <th class="text-right" style="width: 100px;">Tarifa / Día</th>
-        <th class="text-right" style="width: 110px;">Subtotal</th>
+        <th class="text-center" style="width: 25px;">#</th>
+        <th>Equipo / Maquinaria</th>
+        <th class="text-center" style="width: 45px;">Cant.</th>
+        <th class="text-center" style="width: 75px;">Desde</th>
+        <th class="text-center" style="width: 75px;">Hasta</th>
+        <th class="text-center" style="width: 45px;">Días</th>
+        <th class="text-right" style="width: 75px;">Tarifa/Día</th>
+        <th class="text-right" style="width: 85px;">Subtotal</th>
       </tr>
     </thead>
     <tbody>
       ${payload.items.map((it, idx) => `
         <tr>
           <td class="text-center">${idx + 1}</td>
-          <td><strong>${it.nombre}</strong> (${it.pesoKilos.toFixed(2)} Kg)</td>
-          <td class="text-center">${it.cantidad}</td>
-          <td class="text-center">${it.dias}</td>
+          <td><strong>${it.nombre}</strong> <span style="color:#64748b; font-size:7.5pt;">(${it.pesoKilos.toFixed(1)} Kg)</span></td>
+          <td class="text-center"><strong>${it.cantidad}</strong></td>
+          <td class="text-center">${it.fechaInicio}</td>
+          <td class="text-center">${it.fechaFin}</td>
+          <td class="text-center"><strong>${it.dias}</strong></td>
           <td class="text-right">$ ${it.tarifaDiaria.toLocaleString('es-CO')}</td>
           <td class="text-right"><strong>$ ${it.subtotal.toLocaleString('es-CO')}</strong></td>
         </tr>
@@ -126,36 +160,56 @@ export class PDFFacturaGeneratorService {
   </table>
 
   <div class="totals-area">
+    <div class="conditions-box">
+      <strong>TÉRMINOS Y CONDICIONES DE SERVICIO:</strong>
+      <ol style="margin: 4px 0 0 12px; padding: 0;">
+        <li>El horario de corte de facturación es a las 5:00 PM (hora de Bogotá).</li>
+        <li>El arrendatario se compromete a operar los equipos conforme al manual técnico.</li>
+        <li>Cualquier avería o faltante por uso inadecuado será cobrado al precio de reposición.</li>
+        <li>El flete cubre transporte exclusivamente a pie de obra.</li>
+      </ol>
+    </div>
+
     <table class="totals-table">
       <tr>
         <td>Subtotal Equipos:</td>
-        <td class="text-right">$ ${payload.subtotalEquipos.toLocaleString('es-CO')}</td>
+        <td class="text-right"><strong>$ ${payload.subtotalEquipos.toLocaleString('es-CO')}</strong></td>
       </tr>
       ${totalFletes > 0 ? `
       <tr>
         <td>Fletes (Llevar + Recoger):</td>
-        <td class="text-right">$ ${totalFletes.toLocaleString('es-CO')}</td>
+        <td class="text-right"><strong>+ $ ${totalFletes.toLocaleString('es-CO')}</strong></td>
       </tr>` : ''}
-      ${payload.costosDano > 0 ? `
+      ${(payload.costosDano || 0) > 0 ? `
       <tr>
-        <td>Recargos por Averías / Daños:</td>
-        <td class="text-right" style="color: #dc2626;">+ $ ${payload.costosDano.toLocaleString('es-CO')}</td>
+        <td>Recargo por Averías:</td>
+        <td class="text-right" style="color: #dc2626;"><strong>+ $ ${(payload.costosDano || 0).toLocaleString('es-CO')}</strong></td>
       </tr>` : ''}
       ${payload.depositoAplicado > 0 ? `
       <tr>
-        <td>Depósito Aplicado a Favor:</td>
-        <td class="text-right" style="color: #16a34a;">- $ ${payload.depositoAplicado.toLocaleString('es-CO')}</td>
+        <td>Depósito en Garantía Aplicado:</td>
+        <td class="text-right" style="color: #059669;"><strong>- $ ${payload.depositoAplicado.toLocaleString('es-CO')}</strong></td>
       </tr>` : ''}
       <tr class="total-row">
-        <td><strong>TOTAL NETO A PAGAR:</strong></td>
+        <td><strong>TOTAL A LIQUIDAR:</strong></td>
         <td class="text-right"><strong>$ ${payload.totalPagar.toLocaleString('es-CO')} COP</strong></td>
       </tr>
     </table>
   </div>
 
+  <div class="signatures">
+    <div class="sig-line">
+      Por ALQUILERES ERP<br>
+      <span style="font-size: 7pt; font-weight: normal; color: #64748b;">Despachador Responsable</span>
+    </div>
+    <div class="sig-line">
+      Por el CLIENTE CONTRATANTE<br>
+      <span style="font-size: 7pt; font-weight: normal; color: #64748b;">Firma, Cédula y Sello de Recibido</span>
+    </div>
+  </div>
+
   <div class="footer">
-    Documento oficial generado por <strong>Alquileres ERP</strong>. Corte de facturación 5:00 PM (hora de Bogotá).
-    <br>Gracias por confiar en nuestros equipos y servicios.
+    Documento oficial generado por <strong>Alquileres ERP</strong>. Validez legal conforme al Código de Comercio Colombiano.
   </div>
 </body>
 </html>

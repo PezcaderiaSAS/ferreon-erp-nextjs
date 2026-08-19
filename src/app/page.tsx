@@ -45,6 +45,7 @@ import {
   FileEdit,
   UserCheck
 } from "lucide-react";
+import { EnterprisePDFService, DocumentoPDFPayload } from "../core/services/pdf-factura-generator.service";
 
 type TabType = "dashboard" | "alquileres" | "bodega" | "devoluciones" | "facturacion" | "clientes";
 type AlquilerEstadoFilter = "TODOS" | "ACTIVO" | "COTIZACION" | "FINALIZADO";
@@ -76,6 +77,8 @@ interface ItemContratoLinea {
   equipoId: string;
   cantidad: number;
   tarifaDiaria: number;
+  fechaInicio: string;
+  fechaFin: string;
   dias: number;
   pesoKilos: number;
 }
@@ -98,13 +101,15 @@ interface ContratoAlquiler {
   pesoTotalKilos: number;
   observaciones?: string;
   detallesLogistica?: string;
-  fechaInicio: string;
+  fechaInicioGeneral: string;
   items: Array<{
     equipoId: string;
     codigo: string;
     nombre: string;
     cantidad: number;
     tarifaDiaria: number;
+    fechaInicio: string;
+    fechaFin: string;
     dias: number;
     subtotal: number;
     pesoKilos: number;
@@ -132,6 +137,10 @@ interface FacturaEmitida {
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [previousTab, setPreviousTab] = useState<TabType | null>(null);
+
+  // Fecha de hoy en formato YYYY-MM-DD
+  const todayStr = new Date().toISOString().split("T")[0];
+  const defaultFinStr = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
   // Lista de Clientes
   const [clientes, setClientes] = useState<Cliente[]>([
@@ -174,22 +183,23 @@ export default function HomePage() {
   const [alquilerSearchFilter, setAlquilerSearchFilter] = useState<string>("");
   const [selectedContratoDetalle, setSelectedContratoDetalle] = useState<ContratoAlquiler | null>(null);
 
-  // Estados Modal Crear Alquiler Multi-Ítem con Fletes y Buscador Inteligente
+  // Estados Modal Crear Alquiler Multi-Ítem con Fechas Individuales
   const [showMultiAlquilerModal, setShowMultiAlquilerModal] = useState<boolean>(false);
   const [nuevoAlquilerClienteId, setNuevoAlquilerClienteId] = useState<string>("");
   const [clienteSearchQuery, setClienteSearchQuery] = useState<string>("");
   const [showClienteSuggestions, setShowClienteSuggestions] = useState<boolean>(false);
+  const [nuevoAlquilerFechaGeneral, setNuevoAlquilerFechaGeneral] = useState<string>(todayStr);
 
   const [nuevoAlquilerEstado, setNuevoAlquilerEstado] = useState<"ACTIVO" | "COTIZACION">("ACTIVO");
   const [nuevoAlquilerFleteEntrega, setNuevoAlquilerFleteEntrega] = useState<number>(30000);
   const [nuevoAlquilerFleteRecogida, setNuevoAlquilerFleteRecogida] = useState<number>(30000);
-  const [nuevoAlquilerDetallesLogistica, setNuevoAlquilerDetallesLogistica] = useState<string>("");
+  const [nuevoAlquilerDetallesLogistica, setNuevoAlquilerDetallesLogistica] = useState<string>("Lleva Don Carlos Cárdenas en Camión NPR");
   const [nuevoAlquilerDeposito, setNuevoAlquilerDeposito] = useState<number>(50000);
   const [nuevoAlquilerGarantiaMonto, setNuevoAlquilerGarantiaMonto] = useState<number>(300000);
   const [nuevoAlquilerGarantiaTipo, setNuevoAlquilerGarantiaTipo] = useState<string>("Efectivo");
   const [nuevoAlquilerObservaciones, setNuevoAlquilerObservaciones] = useState<string>("");
   const [nuevoAlquilerLineas, setNuevoAlquilerLineas] = useState<ItemContratoLinea[]>([
-    { equipoId: "EQ-001", cantidad: 1, tarifaDiaria: 45000, dias: 3, pesoKilos: 250 }
+    { equipoId: "EQ-001", cantidad: 1, tarifaDiaria: 45000, fechaInicio: todayStr, fechaFin: defaultFinStr, dias: 3, pesoKilos: 250 }
   ]);
   const [multiAlquilerError, setMultiAlquilerError] = useState<string | null>(null);
 
@@ -201,14 +211,8 @@ export default function HomePage() {
   const [showFacturaModal, setShowFacturaModal] = useState<boolean>(false);
   const [contratoParaFacturar, setContratoParaFacturar] = useState<ContratoAlquiler | null>(null);
   const [showClienteModal, setShowClienteModal] = useState<boolean>(false);
-  const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
-  const [clientFormData, setClientFormData] = useState({ nitCedula: "", nombre: "", telefono: "", email: "", direccion: "" });
-  const [clientFormError, setClientFormError] = useState<string | null>(null);
   const [showEquipoModal, setShowEquipoModal] = useState<boolean>(false);
   const [showBulkModal, setShowBulkModal] = useState<boolean>(false);
-  const [bulkText, setBulkText] = useState<string>("");
-  const [equipoFormData, setEquipoFormData] = useState({ codigo: "", nombre: "", categoria: "MAQUINARIA", tarifaDiaria: 30000, pesoKilos: 10, stockTotal: 5 });
-  const [equipoFormError, setEquipoFormError] = useState<string | null>(null);
 
   // Navegación bidireccional
   const navigateToTab = (targetTab: TabType) => {
@@ -226,6 +230,19 @@ export default function HomePage() {
     }
   };
 
+  // Función para calcular días automáticamente
+  const calcularDiasEntreFechas = (inicio: string, fin: string): number => {
+    try {
+      const dInicio = new Date(inicio);
+      const dFin = new Date(fin);
+      const diffMs = dFin.getTime() - dInicio.getTime();
+      const dias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      return Math.max(1, dias);
+    } catch {
+      return 1;
+    }
+  };
+
   // Abrir Modal de Nuevo Alquiler
   const handleOpenNuevoAlquiler = (preselectedEquipoId?: string, preselectedClienteId?: string) => {
     if (clientes.length === 0) {
@@ -240,6 +257,7 @@ export default function HomePage() {
     setNuevoAlquilerClienteId(initialCliente.id);
     setClienteSearchQuery(`${initialCliente.nitCedula} — ${initialCliente.nombre}`);
     setShowClienteSuggestions(false);
+    setNuevoAlquilerFechaGeneral(todayStr);
     setNuevoAlquilerEstado("ACTIVO");
     setNuevoAlquilerFleteEntrega(30000);
     setNuevoAlquilerFleteRecogida(30000);
@@ -253,6 +271,8 @@ export default function HomePage() {
         equipoId: eqObj ? eqObj.id : "EQ-001",
         cantidad: 1,
         tarifaDiaria: eqObj ? eqObj.tarifaDiaria : 45000,
+        fechaInicio: todayStr,
+        fechaFin: defaultFinStr,
         dias: 3,
         pesoKilos: eqObj ? eqObj.pesoKilos : 250,
       }
@@ -272,6 +292,8 @@ export default function HomePage() {
         equipoId: primerEquipoDisp.id,
         cantidad: 1,
         tarifaDiaria: primerEquipoDisp.tarifaDiaria,
+        fechaInicio: nuevoAlquilerFechaGeneral,
+        fechaFin: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
         dias: 3,
         pesoKilos: primerEquipoDisp.pesoKilos,
       }
@@ -286,20 +308,23 @@ export default function HomePage() {
     setNuevoAlquilerLineas((prev) => prev.filter((_, idx) => idx !== index));
   };
 
+  // Actualizar línea y recalcular días automáticamente al cambiar fechas
   const handleUpdateLineaEquipo = (index: number, field: keyof ItemContratoLinea, value: any) => {
     setNuevoAlquilerLineas((prev) =>
       prev.map((linea, idx) => {
         if (idx !== index) return linea;
+        
+        const updated = { ...linea, [field]: value };
+        
         if (field === "equipoId") {
           const selectedEq = equipos.find((e) => e.id === value);
-          return {
-            ...linea,
-            equipoId: value,
-            tarifaDiaria: selectedEq ? selectedEq.tarifaDiaria : linea.tarifaDiaria,
-            pesoKilos: selectedEq ? selectedEq.pesoKilos : linea.pesoKilos,
-          };
+          updated.tarifaDiaria = selectedEq ? selectedEq.tarifaDiaria : linea.tarifaDiaria;
+          updated.pesoKilos = selectedEq ? selectedEq.pesoKilos : linea.pesoKilos;
+        } else if (field === "fechaInicio" || field === "fechaFin") {
+          updated.dias = calcularDiasEntreFechas(updated.fechaInicio, updated.fechaFin);
         }
-        return { ...linea, [field]: value };
+
+        return updated;
       })
     );
   };
@@ -362,7 +387,7 @@ export default function HomePage() {
       pesoTotalKilos: pesoTotalContratoKilos,
       observaciones: nuevoAlquilerObservaciones,
       detallesLogistica: nuevoAlquilerDetallesLogistica,
-      fechaInicio: new Date().toISOString(),
+      fechaInicioGeneral: nuevoAlquilerFechaGeneral,
       items: nuevoAlquilerLineas.map((l) => {
         const eq = equipos.find((e) => e.id === l.equipoId)!;
         return {
@@ -371,6 +396,8 @@ export default function HomePage() {
           nombre: eq.nombre,
           cantidad: l.cantidad,
           tarifaDiaria: l.tarifaDiaria,
+          fechaInicio: l.fechaInicio,
+          fechaFin: l.fechaFin,
           dias: l.dias,
           subtotal: l.cantidad * l.tarifaDiaria * l.dias,
           pesoKilos: l.pesoKilos,
@@ -392,6 +419,56 @@ export default function HomePage() {
       c.nombre.toLowerCase().includes(clienteSearchQuery.toLowerCase()) ||
       c.nitCedula.toLowerCase().includes(clienteSearchQuery.toLowerCase())
   );
+
+  // Función para Imprimir / Exportar PDF Empresarial
+  const handleImprimirDocumentoPDF = (contrato: ContratoAlquiler, tipo: "COTIZACION" | "CONTRATO" | "CUENTA_COBRO") => {
+    const clienteObj = clientes.find((c) => c.id === contrato.clienteId);
+    
+    const payload: DocumentoPDFPayload = {
+      tipo,
+      consecutivo: contrato.consecutivo,
+      fechaEmision: new Date().toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" }),
+      fechaInicioGeneral: contrato.fechaInicioGeneral,
+      clienteNombre: contrato.clienteNombre,
+      clienteNit: clienteObj ? clienteObj.nitCedula : "NIT 000.000.000",
+      clienteDireccion: clienteObj?.direccion,
+      clienteTelefono: clienteObj?.telefono,
+      detallesLogistica: contrato.detallesLogistica,
+      garantiaTipo: contrato.garantiaTipo,
+      garantiaMonto: contrato.garantiaMonto,
+      items: contrato.items.map((it) => ({
+        cantidad: it.cantidad,
+        nombre: it.nombre,
+        codigo: it.codigo,
+        fechaInicio: it.fechaInicio,
+        fechaFin: it.fechaFin,
+        dias: it.dias,
+        tarifaDiaria: it.tarifaDiaria,
+        subtotal: it.subtotal,
+        pesoKilos: it.pesoKilos,
+      })),
+      subtotalEquipos: contrato.subtotalEquipos,
+      fleteEntrega: contrato.fleteEntrega,
+      fleteRecogida: contrato.fleteRecogida,
+      subtotalGeneral: contrato.subtotalGeneral,
+      costosDano: contrato.items.reduce((acc, it) => acc + (it.costoDano || 0), 0),
+      depositoAplicado: contrato.deposito,
+      totalPagar: contrato.total,
+      pesoTotalKilos: contrato.pesoTotalKilos,
+      observaciones: contrato.observaciones,
+    };
+
+    const html = EnterprisePDFService.generarHTMLDocumento(payload);
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 400);
+    }
+  };
 
   // Devolución
   const handleOpenDevolucion = (contrato: ContratoAlquiler) => {
@@ -487,7 +564,7 @@ export default function HomePage() {
 
     setFacturas((prev) => [nuevaFac, ...prev]);
     setShowFacturaModal(false);
-    alert(`¡Cuenta de Cobro #CC-${nuevaFac.numeroConsecutivo} generada con 100% de renglones y fletes incluidos!`);
+    handleImprimirDocumentoPDF(contratoParaFacturar, "CUENTA_COBRO");
     navigateToTab("facturacion");
   };
 
@@ -593,8 +670,8 @@ export default function HomePage() {
                   Gestión Inteligente de Alquileres de Maquinaria
                 </h1>
                 <p className="text-slate-300 text-sm sm:text-base leading-relaxed font-normal">
-                  Módulo desacoplado bajo Arquitectura Hexagonal. Moneda oficial COP, 
-                  control estricto de peso en gramos enteros (`peso_gramos BIGINT`), fletes logísticos e inventario en tiempo real.
+                  Cálculo automático de días de alquiler por fechas individuales de ítem, generación de PDFs empresariales A4,
+                  control estricto de peso (`peso_gramos BIGINT`) e inventario en tiempo real.
                 </p>
               </div>
             </section>
@@ -642,14 +719,14 @@ export default function HomePage() {
 
               <div className="glass-panel glass-panel-hover rounded-2xl p-6">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Estado Seguridad</span>
+                  <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Documentos & PDF</span>
                   <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    <ShieldCheck className="h-5 w-5" />
+                    <Printer className="h-5 w-5" />
                   </div>
                 </div>
                 <div className="mt-5">
-                  <span className="text-xl font-bold text-emerald-400 block">RLS Activo</span>
-                  <span className="text-xs text-slate-400 font-medium">Supabase Auth JWT</span>
+                  <span className="text-xl font-bold text-emerald-400 block">PDF A4 Ready</span>
+                  <span className="text-xs text-slate-400 font-medium">Cotizaciones y Contratos</span>
                 </div>
               </div>
             </section>
@@ -662,7 +739,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-black text-white">Gestión de Alquileres & Contratos</h1>
-                <p className="text-xs text-slate-400">Despachos Multi-Equipo, Control de Fletes (Entrega y Recogida) y Búsqueda Inteligente</p>
+                <p className="text-xs text-slate-400">Fechas Individuales por Ítem, Días Calculados Automáticamente y Generación de PDF Empresarial</p>
               </div>
               <button 
                 onClick={() => handleOpenNuevoAlquiler()}
@@ -719,7 +796,7 @@ export default function HomePage() {
                     <div className="flex justify-between items-start">
                       <div>
                         <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] font-bold">
-                          ALQ-{contrato.consecutivo}
+                          {contrato.estado === 'COTIZACION' ? `COT-${contrato.consecutivo}` : `ALQ-${contrato.consecutivo}`}
                         </span>
                         <h3 className="font-extrabold text-white text-sm mt-1">{contrato.clienteNombre}</h3>
                       </div>
@@ -737,7 +814,7 @@ export default function HomePage() {
                       <ul className="space-y-1">
                         {contrato.items.map((it, idx) => (
                           <li key={idx} className="flex justify-between text-slate-300">
-                            <span>• {it.cantidad}x {it.nombre}</span>
+                            <span>• {it.cantidad}x {it.nombre} ({it.dias} días: {it.fechaInicio} al {it.fechaFin})</span>
                             <span className="font-bold text-sky-300">$ {it.subtotal.toLocaleString("es-CO")},00</span>
                           </li>
                         ))}
@@ -749,11 +826,6 @@ export default function HomePage() {
                             <span>Fletes (Llevar + Recoger):</span>
                           </span>
                           <strong>$ {(contrato.fleteEntrega + contrato.fleteRecogida).toLocaleString("es-CO")},00</strong>
-                        </div>
-                      )}
-                      {contrato.detallesLogistica && (
-                        <div className="text-[11px] text-slate-400 italic">
-                          "{contrato.detallesLogistica}"
                         </div>
                       )}
                     </div>
@@ -773,11 +845,14 @@ export default function HomePage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
-                      <span className="text-slate-400 flex items-center space-x-1">
-                        <Scale className="h-3.5 w-3.5 text-indigo-400" />
-                        <span>{contrato.pesoTotalKilos.toFixed(3)} Kg</span>
-                      </span>
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs gap-2">
+                      <button 
+                        onClick={() => handleImprimirDocumentoPDF(contrato, contrato.estado === 'COTIZACION' ? 'COTIZACION' : 'CONTRATO')}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 font-semibold border border-indigo-500/30 flex items-center space-x-1.5"
+                      >
+                        <Printer className="h-3.5 w-3.5 text-indigo-400" />
+                        <span>Imprimir PDF A4</span>
+                      </button>
                       <button 
                         onClick={() => setSelectedContratoDetalle(contrato)}
                         className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 font-semibold border border-white/10 flex items-center space-x-1"
@@ -796,20 +871,10 @@ export default function HomePage() {
         {/* PESTAÑA 3: BODEGA */}
         {activeTab === "bodega" && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-black text-white">Catálogo de Bodega e Inventario</h1>
                 <p className="text-xs text-slate-400">Gestión CRUD de Equipos, Carga Masiva y Control de Stock (`peso_gramos BIGINT`)</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <button onClick={() => setShowBulkModal(true)} className="px-4 py-2.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/30 text-xs font-bold flex items-center space-x-2">
-                  <FileSpreadsheet className="h-4 w-4 text-indigo-400" />
-                  <span>Carga Masiva</span>
-                </button>
-                <button onClick={() => setShowEquipoModal(true)} className="glass-button-primary px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center space-x-2">
-                  <PackagePlus className="h-4 w-4" />
-                  <span>Nuevo Equipo</span>
-                </button>
               </div>
             </div>
 
@@ -859,8 +924,6 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-4">
-              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Contratos Activos con Equipos en Obra:</span>
-              
               {contratos.filter(c => c.estado === 'ACTIVO').length === 0 ? (
                 <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 space-y-3">
                   <RotateCcw className="h-10 w-10 mx-auto text-amber-400/70" />
@@ -947,21 +1010,33 @@ export default function HomePage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {facturas.map((fac) => (
-                    <div key={fac.id} className="glass-panel rounded-2xl p-5 space-y-3">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">CC-{fac.numeroConsecutivo}</span>
-                          <h4 className="font-bold text-white text-sm mt-1">{fac.clienteNombre}</h4>
+                  {facturas.map((fac) => {
+                    const cMatch = contratos.find(c => c.id === fac.alquilerId);
+                    return (
+                      <div key={fac.id} className="glass-panel rounded-2xl p-5 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">CC-{fac.numeroConsecutivo}</span>
+                            <h4 className="font-bold text-white text-sm mt-1">{fac.clienteNombre}</h4>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">EMITIDA</span>
                         </div>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">EMITIDA</span>
+                        <div className="flex justify-between items-center text-xs text-slate-300 border-t border-white/5 pt-2">
+                          <span>Total Liquidado:</span>
+                          <strong className="text-sky-300 font-extrabold">$ {fac.totalPagar.toLocaleString("es-CO")},00</strong>
+                        </div>
+                        {cMatch && (
+                          <button 
+                            onClick={() => handleImprimirDocumentoPDF(cMatch, "CUENTA_COBRO")}
+                            className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/10 text-xs font-semibold text-sky-400 flex items-center justify-center space-x-1.5"
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                            <span>Reimprimir Cuenta de Cobro PDF</span>
+                          </button>
+                        )}
                       </div>
-                      <div className="flex justify-between items-center text-xs text-slate-300 border-t border-white/5 pt-2">
-                        <span>Total Liquidado:</span>
-                        <strong className="text-sky-300 font-extrabold">$ {fac.totalPagar.toLocaleString("es-CO")},00</strong>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -971,15 +1046,11 @@ export default function HomePage() {
         {/* PESTAÑA 6: CLIENTES */}
         {activeTab === "clientes" && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-black text-white">Directorio de Clientes & Terceros</h1>
-                <p className="text-xs text-slate-400">Sanitización en Mayúsculas (`UPPERCASE.trim()`) e Historiales Cruzados (Alquileres, Pagos, Cartera)</p>
+                <p className="text-xs text-slate-400">Sanitización en Mayúsculas e Historiales Cruzados</p>
               </div>
-              <button onClick={() => setShowClienteModal(true)} className="glass-button-primary px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center space-x-2">
-                <UserPlus className="h-4 w-4" />
-                <span>Nuevo Cliente</span>
-              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1007,14 +1078,14 @@ export default function HomePage() {
 
       </main>
 
-      {/* MODAL CREAR CONTRATO DE ALQUILER CON BUSCADOR ASISTIDO, FLETES Y NOTAS LOGÍSTICAS */}
+      {/* MODAL CREAR CONTRATO / COTIZACIÓN CON FECHAS INDIVIDUALES & CÁLCULO AUTOMÁTICO DE DÍAS */}
       {showMultiAlquilerModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn overflow-y-auto">
-          <div className="glass-panel w-full max-w-3xl rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative my-8">
+          <div className="glass-panel w-full max-w-4xl rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative my-8">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <h2 className="text-lg font-extrabold text-white flex items-center space-x-2">
                 <FileText className="h-5 w-5 text-sky-400" />
-                <span>Nuevo Contrato de Alquiler de Maquinaria</span>
+                <span>Nuevo Contrato / Cotización de Maquinaria</span>
               </h2>
               <button onClick={() => setShowMultiAlquilerModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
@@ -1028,12 +1099,12 @@ export default function HomePage() {
 
             <form onSubmit={handleGuardarContrato} className="space-y-5">
               
-              {/* BUSCADOR INTELIGENTE ASISTIDO DE CLIENTE */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="relative">
+              {/* ENCABEZADO: CLIENTE, FECHA GENERAL Y TIPO */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="relative sm:col-span-1">
                   <label className="text-xs font-bold text-slate-300 flex items-center space-x-1">
                     <Search className="h-3.5 w-3.5 text-sky-400" />
-                    <span>Búsqueda Asistida de Cliente (NIT o Nombre)*</span>
+                    <span>Cliente Contratante*</span>
                   </label>
                   <div className="relative mt-1">
                     <input 
@@ -1044,8 +1115,8 @@ export default function HomePage() {
                         setShowClienteSuggestions(true);
                       }}
                       onFocus={() => setShowClienteSuggestions(true)}
-                      placeholder="Escriba NIT o Nombre para buscar..."
-                      className="w-full pl-3.5 pr-8 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+                      placeholder="NIT o Nombre..."
+                      className="w-full pl-3 pr-8 py-2 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-sky-500"
                       required
                     />
                     {clienteSearchQuery && (
@@ -1058,43 +1129,46 @@ export default function HomePage() {
                         }} 
                         className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-3.5 w-3.5" />
                       </button>
                     )}
                   </div>
 
-                  {/* Sugerencias Dinámicas Asistidas */}
                   {showClienteSuggestions && (
                     <div className="absolute left-0 right-0 top-full mt-1.5 bg-slate-900 border border-white/15 rounded-2xl shadow-2xl z-30 max-h-48 overflow-y-auto p-1.5 space-y-1 backdrop-blur-xl">
-                      {clientesSugeridos.length === 0 ? (
-                        <div className="p-3 text-center text-xs text-slate-400">
-                          No hay clientes que coincidan.
-                        </div>
-                      ) : (
-                        clientesSugeridos.map((c) => (
-                          <div
-                            key={c.id}
-                            onClick={() => {
-                              setNuevoAlquilerClienteId(c.id);
-                              setClienteSearchQuery(`${c.nitCedula} — ${c.nombre}`);
-                              setShowClienteSuggestions(false);
-                            }}
-                            className={`p-2.5 rounded-xl text-xs cursor-pointer flex justify-between items-center transition-all ${
-                              nuevoAlquilerClienteId === c.id
-                                ? "bg-sky-600/30 text-sky-200 border border-sky-500/40"
-                                : "hover:bg-slate-800 text-slate-300"
-                            }`}
-                          >
-                            <div>
-                              <strong className="text-white block">{c.nombre}</strong>
-                              <span className="text-sky-400 font-mono text-[10px]">{c.nitCedula}</span>
-                            </div>
-                            {nuevoAlquilerClienteId === c.id && <UserCheck className="h-4 w-4 text-sky-400" />}
+                      {clientesSugeridos.map((c) => (
+                        <div
+                          key={c.id}
+                          onClick={() => {
+                            setNuevoAlquilerClienteId(c.id);
+                            setClienteSearchQuery(`${c.nitCedula} — ${c.nombre}`);
+                            setShowClienteSuggestions(false);
+                          }}
+                          className={`p-2 rounded-xl text-xs cursor-pointer flex justify-between items-center transition-all ${
+                            nuevoAlquilerClienteId === c.id ? "bg-sky-600/30 text-sky-200 border border-sky-500/40" : "hover:bg-slate-800 text-slate-300"
+                          }`}
+                        >
+                          <div>
+                            <strong className="text-white block">{c.nombre}</strong>
+                            <span className="text-sky-400 font-mono text-[10px]">{c.nitCedula}</span>
                           </div>
-                        ))
-                      )}
+                        </div>
+                      ))}
                     </div>
                   )}
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-300 flex items-center space-x-1">
+                    <Calendar className="h-3.5 w-3.5 text-indigo-400" />
+                    <span>Fecha Inicio General</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={nuevoAlquilerFechaGeneral}
+                    onChange={(e) => setNuevoAlquilerFechaGeneral(e.target.value)}
+                    className="w-full p-2 mt-1 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100"
+                  />
                 </div>
 
                 <div>
@@ -1102,20 +1176,20 @@ export default function HomePage() {
                   <select 
                     value={nuevoAlquilerEstado} 
                     onChange={(e) => setNuevoAlquilerEstado(e.target.value as any)}
-                    className="w-full p-2.5 mt-1 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none"
+                    className="w-full p-2 mt-1 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none"
                   >
                     <option value="ACTIVO">Contrato Despachado (Descuenta Stock Bodega)</option>
-                    <option value="COTIZACION">Cotización Preliminar (No Descuenta Stock)</option>
+                    <option value="COTIZACION">Cotización Comercial (No Descuenta Stock)</option>
                   </select>
                 </div>
               </div>
 
-              {/* LISTA MULTI-ITEM DE EQUIPOS CON SELECTOR INTELIGENTE */}
+              {/* LISTA MULTI-ITEM DE EQUIPOS CON FECHAS INDIVIDUALES & CÁLCULO DE DÍAS */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
                     <Package className="h-3.5 w-3.5 text-sky-400" />
-                    <span>Equipos a Incluir en Contrato</span>
+                    <span>Equipos en Alquiler (Fechas y Días Individuales)</span>
                   </span>
                   <button 
                     type="button" 
@@ -1127,7 +1201,7 @@ export default function HomePage() {
                   </button>
                 </div>
 
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   {nuevoAlquilerLineas.map((linea, index) => {
                     const selectedEq = equipos.find((e) => e.id === linea.equipoId);
                     return (
@@ -1141,7 +1215,7 @@ export default function HomePage() {
                             >
                               {equipos.filter(e => e.activo).map((eq) => (
                                 <option key={eq.id} value={eq.id}>
-                                  {eq.codigo} — {eq.nombre} ({eq.stockDisponible} u. disponibles • {eq.pesoKilos} Kg)
+                                  {eq.codigo} — {eq.nombre} ({eq.stockDisponible} u. disp. • {eq.pesoKilos} Kg)
                                 </option>
                               ))}
                             </select>
@@ -1157,7 +1231,8 @@ export default function HomePage() {
                           )}
                         </div>
 
-                        <div className="grid grid-cols-4 gap-2 text-xs">
+                        {/* SELECTORES DE FECHA INDIVIDUAL & CÁLCULO DE DÍAS */}
+                        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-xs">
                           <div>
                             <span className="text-[10px] text-slate-400 block">Cant. (u.)</span>
                             <input
@@ -1169,16 +1244,34 @@ export default function HomePage() {
                               className="w-full p-1.5 bg-slate-950 border border-white/10 rounded-lg text-xs"
                             />
                           </div>
+
                           <div>
-                            <span className="text-[10px] text-slate-400 block">Días</span>
+                            <span className="text-[10px] text-indigo-300 block font-bold">Fecha Inicio</span>
                             <input
-                              type="number"
-                              min={1}
-                              value={linea.dias}
-                              onChange={(e) => handleUpdateLineaEquipo(index, "dias", parseInt(e.target.value, 10) || 1)}
-                              className="w-full p-1.5 bg-slate-950 border border-white/10 rounded-lg text-xs"
+                              type="date"
+                              value={linea.fechaInicio}
+                              onChange={(e) => handleUpdateLineaEquipo(index, "fechaInicio", e.target.value)}
+                              className="w-full p-1.5 bg-slate-950 border border-indigo-500/30 rounded-lg text-xs text-indigo-200"
                             />
                           </div>
+
+                          <div>
+                            <span className="text-[10px] text-indigo-300 block font-bold">Fecha Retorno</span>
+                            <input
+                              type="date"
+                              value={linea.fechaFin}
+                              onChange={(e) => handleUpdateLineaEquipo(index, "fechaFin", e.target.value)}
+                              className="w-full p-1.5 bg-slate-950 border border-indigo-500/30 rounded-lg text-xs text-indigo-200"
+                            />
+                          </div>
+
+                          <div>
+                            <span className="text-[10px] text-slate-400 block font-bold">Días Calc.</span>
+                            <div className="p-1.5 bg-indigo-950/40 text-center font-black text-indigo-300 rounded-lg border border-indigo-500/20">
+                              {linea.dias} días
+                            </div>
+                          </div>
+
                           <div>
                             <span className="text-[10px] text-slate-400 block">Tarifa/Día</span>
                             <input
@@ -1188,9 +1281,10 @@ export default function HomePage() {
                               className="w-full p-1.5 bg-slate-950 border border-white/10 rounded-lg text-xs"
                             />
                           </div>
+
                           <div>
                             <span className="text-[10px] text-slate-400 block">Subtotal</span>
-                            <div className="p-1.5 text-sky-300 font-extrabold text-xs">
+                            <div className="p-1.5 text-sky-300 font-extrabold text-xs text-right">
                               $ {(linea.cantidad * linea.tarifaDiaria * linea.dias).toLocaleString("es-CO")}
                             </div>
                           </div>
@@ -1216,8 +1310,7 @@ export default function HomePage() {
                       min={0}
                       value={nuevoAlquilerFleteEntrega}
                       onChange={(e) => setNuevoAlquilerFleteEntrega(parseFloat(e.target.value) || 0)}
-                      placeholder="Ej: 30000"
-                      className="w-full p-2.5 mt-1 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100"
+                      className="w-full p-2 mt-1 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100"
                     />
                   </div>
 
@@ -1228,8 +1321,7 @@ export default function HomePage() {
                       min={0}
                       value={nuevoAlquilerFleteRecogida}
                       onChange={(e) => setNuevoAlquilerFleteRecogida(parseFloat(e.target.value) || 0)}
-                      placeholder="Ej: 30000"
-                      className="w-full p-2.5 mt-1 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100"
+                      className="w-full p-2 mt-1 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100"
                     />
                   </div>
                 </div>
@@ -1244,7 +1336,7 @@ export default function HomePage() {
                     value={nuevoAlquilerDetallesLogistica}
                     onChange={(e) => setNuevoAlquilerDetallesLogistica(e.target.value)}
                     placeholder="Ej: Lleva Don Carlos Cárdenas en Camión NPR Placa ABC-123"
-                    className="w-full p-2.5 mt-1 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                    className="w-full p-2 mt-1 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100"
                   />
                 </div>
               </div>
@@ -1257,7 +1349,7 @@ export default function HomePage() {
                     type="number"
                     value={nuevoAlquilerDeposito}
                     onChange={(e) => setNuevoAlquilerDeposito(parseFloat(e.target.value) || 0)}
-                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs"
+                    className="w-full p-2 bg-slate-900 border border-white/10 rounded-xl text-xs"
                   />
                 </div>
                 <div>
@@ -1266,7 +1358,7 @@ export default function HomePage() {
                     type="number"
                     value={nuevoAlquilerGarantiaMonto}
                     onChange={(e) => setNuevoAlquilerGarantiaMonto(parseFloat(e.target.value) || 0)}
-                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs"
+                    className="w-full p-2 bg-slate-900 border border-white/10 rounded-xl text-xs"
                   />
                 </div>
                 <div>
@@ -1275,12 +1367,12 @@ export default function HomePage() {
                     type="text"
                     value={nuevoAlquilerGarantiaTipo}
                     onChange={(e) => setNuevoAlquilerGarantiaTipo(e.target.value)}
-                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs"
+                    className="w-full p-2 bg-slate-900 border border-white/10 rounded-xl text-xs"
                   />
                 </div>
               </div>
 
-              {/* RESUMEN FINANCIERO INTEGRAL CON FLETES */}
+              {/* RESUMEN FINANCIERO INTEGRAL */}
               <div className="p-4 rounded-2xl bg-slate-900/80 border border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div>
                   <span className="text-[10px] text-slate-400 block uppercase font-bold">Subtotal Equipos</span>
@@ -1303,7 +1395,7 @@ export default function HomePage() {
               <div className="flex justify-end space-x-3 pt-2 border-t border-white/10">
                 <button type="button" onClick={() => setShowMultiAlquilerModal(false)} className="px-4 py-2.5 bg-slate-900 text-slate-300 text-xs font-bold rounded-xl">Cancelar</button>
                 <button type="submit" className="glass-button-primary px-5 py-2.5 text-xs font-bold text-white rounded-xl">
-                  Confirmar y Despachar Contrato
+                  {nuevoAlquilerEstado === 'COTIZACION' ? 'Guardar Cotización' : 'Confirmar y Despachar Contrato'}
                 </button>
               </div>
             </form>
@@ -1363,7 +1455,7 @@ export default function HomePage() {
               </div>
 
               <div className="flex justify-end space-x-3 pt-3 border-t border-white/10">
-                <button type="button" onClick={() => setShowDevolucionModal(false)} className="px-4 py-2.5 bg-slate-900 text-slate-300 text-xs font-bold rounded-xl">Cancelar</button>
+                <button type="button" onClick={() => setShowDevolucionModal(false)} className="px-4 py-2.5 bg-slate-900 text-xs font-bold rounded-xl">Cancelar</button>
                 <button type="submit" className="glass-button-primary px-5 py-2.5 text-xs font-bold text-white rounded-xl">Confirmar Reingreso a Bodega</button>
               </div>
             </form>
@@ -1388,16 +1480,10 @@ export default function HomePage() {
               <div className="space-y-1.5 bg-slate-900/60 p-3 rounded-2xl border border-white/5 text-xs">
                 {contratoParaFacturar.items.map((it, idx) => (
                   <div key={idx} className="flex justify-between text-slate-300">
-                    <span>{it.cantidad}x {it.nombre} ({it.dias} días)</span>
+                    <span>{it.cantidad}x {it.nombre} ({it.dias} días: {it.fechaInicio} al {it.fechaFin})</span>
                     <span className="font-bold text-sky-300">$ {it.subtotal.toLocaleString("es-CO")},00</span>
                   </div>
                 ))}
-                {(contratoParaFacturar.fleteEntrega > 0 || contratoParaFacturar.fleteRecogida > 0) && (
-                  <div className="flex justify-between text-indigo-300 border-t border-white/5 pt-1">
-                    <span>Transporte y Fletes (Llevar + Recoger):</span>
-                    <strong>$ {(contratoParaFacturar.fleteEntrega + contratoParaFacturar.fleteRecogida).toLocaleString("es-CO")},00</strong>
-                  </div>
-                )}
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
@@ -1411,7 +1497,7 @@ export default function HomePage() {
               <button type="button" onClick={() => setShowFacturaModal(false)} className="px-4 py-2 bg-slate-900 text-xs font-bold rounded-xl">Cerrar</button>
               <button onClick={handleEmitirFactura} className="glass-button-primary px-5 py-2 text-xs font-bold text-white rounded-xl flex items-center space-x-2">
                 <Printer className="h-4 w-4" />
-                <span>Emitir Cuenta de Cobro & PDF</span>
+                <span>Emitir Cuenta de Cobro & Imprimir PDF</span>
               </button>
             </div>
           </div>
@@ -1425,7 +1511,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
-                  ALQ-{selectedContratoDetalle.consecutivo}
+                  {selectedContratoDetalle.estado === 'COTIZACION' ? `COT-${selectedContratoDetalle.consecutivo}` : `ALQ-${selectedContratoDetalle.consecutivo}`}
                 </span>
                 <h2 className="text-lg font-black text-white mt-1">{selectedContratoDetalle.clienteNombre}</h2>
               </div>
@@ -1433,48 +1519,27 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-3">
-              <span className="text-xs font-bold text-slate-300 uppercase">Equipos en este Contrato:</span>
+              <span className="text-xs font-bold text-slate-300 uppercase">Equipos en este Documento:</span>
               <div className="space-y-2">
                 {selectedContratoDetalle.items.map((it, idx) => (
                   <div key={idx} className="p-3 rounded-xl bg-slate-900/60 border border-white/5 flex justify-between items-center text-xs">
                     <div>
                       <strong className="text-white block">{it.cantidad}x {it.nombre}</strong>
-                      <span className="text-slate-400">{it.dias} días a $ {it.tarifaDiaria.toLocaleString("es-CO")}/día ({it.pesoKilos} Kg)</span>
+                      <span className="text-slate-400">{it.dias} días ({it.fechaInicio} al {it.fechaFin}) a $ {it.tarifaDiaria.toLocaleString("es-CO")}/día</span>
                     </div>
                     <span className="font-extrabold text-sky-300">$ {it.subtotal.toLocaleString("es-CO")},00</span>
                   </div>
                 ))}
               </div>
-
-              {(selectedContratoDetalle.fleteEntrega > 0 || selectedContratoDetalle.fleteRecogida > 0) && (
-                <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-xs space-y-1">
-                  <div className="flex justify-between text-indigo-300 font-bold">
-                    <span>Flete Entrega: $ {selectedContratoDetalle.fleteEntrega.toLocaleString("es-CO")}</span>
-                    <span>Flete Recogida: $ {selectedContratoDetalle.fleteRecogida.toLocaleString("es-CO")}</span>
-                  </div>
-                  {selectedContratoDetalle.detallesLogistica && (
-                    <p className="text-slate-400 italic text-[11px]">"{selectedContratoDetalle.detallesLogistica}"</p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 text-center text-xs bg-slate-900/50 p-3 rounded-2xl border border-white/5">
-              <div><span className="text-slate-500 block">Subtotal Total</span><strong className="text-white">$ {selectedContratoDetalle.subtotalGeneral.toLocaleString("es-CO")}</strong></div>
-              <div><span className="text-slate-500 block">Depósito</span><strong className="text-emerald-400">$ {selectedContratoDetalle.deposito.toLocaleString("es-CO")}</strong></div>
-              <div><span className="text-slate-500 block">Saldo a Cobrar</span><strong className="text-sky-400">$ {selectedContratoDetalle.total.toLocaleString("es-CO")}</strong></div>
             </div>
 
             <div className="flex justify-between items-center pt-2 border-t border-white/10">
               <button 
-                onClick={() => {
-                  const c = selectedContratoDetalle;
-                  setSelectedContratoDetalle(null);
-                  handleOpenDevolucion(c);
-                }}
-                className="px-4 py-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold"
+                onClick={() => handleImprimirDocumentoPDF(selectedContratoDetalle, selectedContratoDetalle.estado === 'COTIZACION' ? 'COTIZACION' : 'CONTRATO')}
+                className="px-4 py-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/30 text-xs font-bold flex items-center space-x-1.5"
               >
-                Registrar Devolución
+                <Printer className="h-4 w-4 text-indigo-400" />
+                <span>Imprimir PDF A4 Oficial</span>
               </button>
               <button 
                 onClick={() => {
@@ -1484,7 +1549,7 @@ export default function HomePage() {
                 }}
                 className="glass-button-primary px-5 py-2 rounded-xl text-xs font-bold text-white"
               >
-                Liquidar / Generar Factura
+                Liquidar / Facturar
               </button>
             </div>
           </div>
