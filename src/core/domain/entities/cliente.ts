@@ -1,50 +1,68 @@
+import { BaseAuditableEntity } from "./base-auditable.entity";
+
 export interface HistorialAlquilerCliente {
   id: string;
   consecutivo: number;
+  fechaInicio: Date;
   estado: string;
   total: number;
-  createdAt: Date;
+  saldoPendiente: number;
 }
 
 export interface HistorialPagoCliente {
   id: string;
-  facturaId: string;
-  numeroCC: string;
+  consecutivoRecibo: number;
+  alquilerId: string;
+  fechaPago: Date;
   monto: number;
-  createdAt: Date;
+  metodoPago: string;
 }
 
 export interface EstadoCarteraCliente {
-  totalFacturado: number;
-  totalPagado: number;
-  saldoPendiente: number;
+  totalAlquiladoHistorico: number;
+  totalPagadoHistorico: number;
+  saldoCarteraVigente: number;
+  alquileresMoraCount: number;
+  estadoGeneral: 'AL_DIA' | 'EN_MORA' | 'BLOQUEADO';
 }
 
-export class ClienteEntity {
+export class ClienteEntity extends BaseAuditableEntity {
   constructor(
-    public readonly id: string | undefined,
+    public readonly id: string,
     public nitCedula: string,
     public nombre: string,
-    public telefono: string | undefined,
-    public email: string | undefined,
-    public direccion: string | undefined,
+    public telefono?: string,
+    public email?: string,
+    public direccion?: string,
     public activo: boolean = true,
-    public readonly createdAt?: Date
+    createdAt?: Date,
+    updatedAt?: Date,
+    deletedAt?: Date | null,
+    deletedBy?: string | null
   ) {
+    super(createdAt, updatedAt, deletedAt, deletedBy);
     this.sanitizarDatos();
   }
 
   sanitizarDatos(): void {
-    if (!this.nitCedula) {
-      throw new Error("El NIT o Cédula es obligatorio.");
-    }
-    if (!this.nombre) {
-      throw new Error("El nombre o razón social es obligatorio.");
-    }
-    this.nitCedula = this.nitCedula.trim().toUpperCase();
-    this.nombre = this.nombre.trim().toUpperCase();
-    if (this.email) {
-      this.email = this.email.trim().toLowerCase();
-    }
+    if (this.nitCedula) this.nitCedula = this.nitCedula.trim().toUpperCase();
+    if (this.nombre) this.nombre = this.nombre.trim().toUpperCase();
+    if (this.email) this.email = this.email.trim().toLowerCase();
+    if (this.direccion) this.direccion = this.direccion.trim();
+    if (this.telefono) this.telefono = this.telefono.trim();
+  }
+
+  sanitizar(): void {
+    this.sanitizarDatos();
+  }
+
+  override softDelete(userId: string = "sistema"): void {
+    super.softDelete(userId);
+    this.activo = false;
+  }
+
+  override restore(): void {
+    super.restore();
+    this.activo = true;
   }
 }

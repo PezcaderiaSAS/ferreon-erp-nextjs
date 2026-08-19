@@ -1,4 +1,5 @@
 import { PesoGramos } from "../value-objects/peso-gramos";
+import { BaseAuditableEntity } from "./base-auditable.entity";
 
 export type AlquilerEstado = 'COTIZACION' | 'ACTIVO' | 'FINALIZADO' | 'CANCELADO';
 
@@ -18,7 +19,7 @@ export interface ItemAlquilerDetalle {
   fechaFin?: Date;
 }
 
-export class AlquilerEntity {
+export class AlquilerEntity extends BaseAuditableEntity {
   constructor(
     public readonly id: string | undefined,
     public readonly consecutivo: number | undefined,
@@ -38,8 +39,12 @@ export class AlquilerEntity {
     public detallesLogistica: string | undefined,
     public creadoPor: string | undefined,
     public readonly detalles: ItemAlquilerDetalle[] = [],
-    public readonly createdAt?: Date
+    createdAt?: Date,
+    updatedAt?: Date,
+    deletedAt?: Date | null,
+    deletedBy?: string | null
   ) {
+    super(createdAt, updatedAt, deletedAt, deletedBy);
     this.calcularTotales();
   }
 
@@ -66,15 +71,25 @@ export class AlquilerEntity {
       throw new Error(`No se puede activar un alquiler en estado ${this.estado}.`);
     }
     this.estado = 'ACTIVO';
+    this.updatedAt = new Date();
   }
 
   finalizar(): void {
     this.estado = 'FINALIZADO';
     this.garantiaEstado = 'Liberada';
+    this.updatedAt = new Date();
   }
 
   cancelar(): void {
     this.estado = 'CANCELADO';
     this.garantiaEstado = 'Anulada';
+    this.updatedAt = new Date();
+  }
+
+  override softDelete(userId: string = "sistema"): void {
+    if (this.estado === "ACTIVO") {
+      throw new Error("No se puede eliminar un contrato en estado ACTIVO. Primero debe recibir las devoluciones o cancelarlo.");
+    }
+    super.softDelete(userId);
   }
 }
