@@ -9,36 +9,40 @@ import {
   Plus, 
   ShieldCheck, 
   Clock, 
-  CheckCircle2,
-  BarChart3,
-  Sparkles,
-  Layers,
-  LayoutDashboard,
-  Users,
-  Receipt,
-  ArrowLeft,
-  Search,
-  Edit,
-  History,
-  X,
-  UserPlus,
-  Mail,
-  Phone,
-  MapPin,
-  FileCheck,
-  CreditCard,
-  Wallet,
-  AlertCircle,
-  Check,
-  PackagePlus,
-  FileSpreadsheet,
-  Trash2,
-  AlertTriangle,
+  CheckCircle2, 
+  BarChart3, 
+  Sparkles, 
+  Layers, 
+  LayoutDashboard, 
+  Users, 
+  Receipt, 
+  ArrowLeft, 
+  Search, 
+  Edit, 
+  History, 
+  X, 
+  UserPlus, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  FileCheck, 
+  CreditCard, 
+  Wallet, 
+  AlertCircle, 
+  Check, 
+  PackagePlus, 
+  FileSpreadsheet, 
+  Trash2, 
+  Calendar,
+  DollarSign,
   Scale,
-  DollarSign
+  Eye,
+  FileDown,
+  ArrowRight
 } from "lucide-react";
 
 type TabType = "dashboard" | "alquileres" | "bodega" | "devoluciones" | "facturacion" | "clientes";
+type AlquilerEstadoFilter = "TODOS" | "ACTIVO" | "COTIZACION" | "FINALIZADO";
 
 interface Cliente {
   id: string;
@@ -63,11 +67,48 @@ interface Equipo {
   activo: boolean;
 }
 
+interface ItemContratoLinea {
+  equipoId: string;
+  cantidad: number;
+  tarifaDiaria: number;
+  dias: number;
+  pesoKilos: number;
+}
+
+interface ContratoAlquiler {
+  id: string;
+  consecutivo: number;
+  clienteId: string;
+  clienteNombre: string;
+  estado: "COTIZACION" | "ACTIVO" | "FINALIZADO" | "CANCELADO";
+  subtotal: number;
+  total: number;
+  deposito: number;
+  garantiaMonto: number;
+  garantiaTipo: string;
+  garantiaEstado: string;
+  pesoTotalKilos: number;
+  observaciones?: string;
+  fechaInicio: string;
+  items: Array<{
+    equipoId: string;
+    codigo: string;
+    nombre: string;
+    cantidad: number;
+    tarifaDiaria: number;
+    dias: number;
+    subtotal: number;
+    pesoKilos: number;
+    devuelto: boolean;
+  }>;
+  createdAt: string;
+}
+
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [previousTab, setPreviousTab] = useState<TabType | null>(null);
 
-  // Lista de Clientes en estado local
+  // Lista de Clientes
   const [clientes, setClientes] = useState<Cliente[]>([
     {
       id: "CLI-001",
@@ -89,7 +130,7 @@ export default function HomePage() {
     }
   ]);
 
-  // Lista de Equipos en estado local (Catálogo de Bodega)
+  // Catálogo de Bodega
   const [equipos, setEquipos] = useState<Equipo[]>([
     { id: "EQ-001", codigo: "MEZ-01", nombre: "MEZCLADORA DE CONCRETO 2 BULTOS (MOTOR 13HP)", categoria: "MAQUINARIA", tarifaDiaria: 45000, pesoKilos: 250.0, stockTotal: 10, stockDisponible: 10, stockEnObra: 0, activo: true },
     { id: "EQ-002", codigo: "VIB-02", nombre: "VIBRADOR DE CONCRETO ELÉCTRICO 2HP (MANGUERA 4M)", categoria: "EQUIPOS MENORES", tarifaDiaria: 25000, pesoKilos: 15.0, stockTotal: 15, stockDisponible: 15, stockEnObra: 0, activo: true },
@@ -99,39 +140,45 @@ export default function HomePage() {
     { id: "EQ-006", codigo: "PLA-06", nombre: "PLANTA ELÉCTRICA 6.5 KW (DIÉSEL MONOFÁSICA)", categoria: "GENERACIÓN", tarifaDiaria: 75000, pesoKilos: 95.0, stockTotal: 6, stockDisponible: 6, stockEnObra: 0, activo: true },
   ]);
 
-  // Estados de Modales de Cliente y Historial
+  // Lista de Contratos de Alquiler
+  const [contratos, setContratos] = useState<ContratoAlquiler[]>([]);
+
+  // Estados de Modales y Filtros
+  const [alquilerEstadoFilter, setAlquilerEstadoFilter] = useState<AlquilerEstadoFilter>("TODOS");
+  const [alquilerSearchFilter, setAlquilerSearchFilter] = useState<string>("");
+  const [selectedContratoDetalle, setSelectedContratoDetalle] = useState<ContratoAlquiler | null>(null);
+
+  // Estados para Crear Alquiler Multi-Ítem
+  const [showMultiAlquilerModal, setShowMultiAlquilerModal] = useState<boolean>(false);
+  const [nuevoAlquilerClienteId, setNuevoAlquilerClienteId] = useState<string>("");
+  const [nuevoAlquilerEstado, setNuevoAlquilerEstado] = useState<"ACTIVO" | "COTIZACION">("ACTIVO");
+  const [nuevoAlquilerDeposito, setNuevoAlquilerDeposito] = useState<number>(100000);
+  const [nuevoAlquilerGarantiaMonto, setNuevoAlquilerGarantiaMonto] = useState<number>(500000);
+  const [nuevoAlquilerGarantiaTipo, setNuevoAlquilerGarantiaTipo] = useState<string>("Efectivo");
+  const [nuevoAlquilerObservaciones, setNuevoAlquilerObservaciones] = useState<string>("");
+  const [nuevoAlquilerLineas, setNuevoAlquilerLineas] = useState<ItemContratoLinea[]>([
+    { equipoId: "EQ-001", cantidad: 1, tarifaDiaria: 45000, dias: 3, pesoKilos: 250 }
+  ]);
+  const [multiAlquilerError, setMultiAlquilerError] = useState<string | null>(null);
+
+  // Estados para Clientes y Bodega Modales
   const [showClienteModal, setShowClienteModal] = useState<boolean>(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [showHistorialModal, setShowHistorialModal] = useState<boolean>(false);
   const [selectedClienteHistorial, setSelectedClienteHistorial] = useState<Cliente | null>(null);
   const [historialSubTab, setHistorialSubTab] = useState<"alquileres" | "pagos" | "cartera">("alquileres");
-
-  // Estados de Modales de Bodega (Crear Individual, Carga Masiva, Editar)
   const [showEquipoModal, setShowEquipoModal] = useState<boolean>(false);
   const [editingEquipo, setEditingEquipo] = useState<Equipo | null>(null);
   const [showBulkModal, setShowBulkModal] = useState<boolean>(false);
   const [bulkText, setBulkText] = useState<string>("");
-
-  // Estado de Modal de Crear Alquiler
-  const [showCrearAlquilerModal, setShowCrearAlquilerModal] = useState<boolean>(false);
-  const [alquilerClienteId, setAlquilerClienteId] = useState<string>("");
-  const [alquilerEquipoId, setAlquilerEquipoId] = useState<string>("");
-  const [alquilerCantidad, setAlquilerCantidad] = useState<number>(1);
-  const [alquilerDias, setAlquilerDias] = useState<number>(3);
-  const [alquilerDeposito, setAlquilerDeposito] = useState<number>(100000);
-  const [alquilerError, setAlquilerError] = useState<string | null>(null);
-
-  // Estado del Formulario de Cliente
   const [clientFormData, setClientFormData] = useState({ nitCedula: "", nombre: "", telefono: "", email: "", direccion: "" });
   const [clientFormError, setClientFormError] = useState<string | null>(null);
   const [clientSearchFilter, setClientSearchFilter] = useState<string>("");
-
-  // Estado del Formulario de Equipo
   const [equipoFormData, setEquipoFormData] = useState({ codigo: "", nombre: "", categoria: "MAQUINARIA", tarifaDiaria: 30000, pesoKilos: 10, stockTotal: 5 });
   const [equipoFormError, setEquipoFormError] = useState<string | null>(null);
   const [equipoSearchFilter, setEquipoSearchFilter] = useState<string>("");
 
-  // Navegación bidireccional entre pestañas
+  // Navegación bidireccional
   const navigateToTab = (targetTab: TabType) => {
     setPreviousTab(activeTab);
     setActiveTab(targetTab);
@@ -147,196 +194,169 @@ export default function HomePage() {
     }
   };
 
-  // Abrir Modal para Crear/Editar Cliente
-  const handleOpenCrearClienteModal = () => {
-    setEditingCliente(null);
-    setClientFormData({ nitCedula: "", nombre: "", telefono: "", email: "", direccion: "" });
-    setClientFormError(null);
-    setShowClienteModal(true);
-  };
-
-  const handleSaveCliente = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!clientFormData.nitCedula.trim() || !clientFormData.nombre.trim()) {
-      setClientFormError("La Identificación (NIT/Cédula) y la Razón Social son obligatorios.");
-      return;
-    }
-    const nitClean = clientFormData.nitCedula.trim().toUpperCase();
-    const nombreClean = clientFormData.nombre.trim().toUpperCase();
-
-    if (editingCliente) {
-      setClientes((prev) => prev.map((c) => c.id === editingCliente.id ? { ...c, nitCedula: nitClean, nombre: nombreClean, telefono: clientFormData.telefono.trim(), email: clientFormData.email.trim().toLowerCase(), direccion: clientFormData.direccion.trim() } : c));
-    } else {
-      const nuevo: Cliente = { id: "CLI-" + Date.now(), nitCedula: nitClean, nombre: nombreClean, telefono: clientFormData.telefono.trim(), email: clientFormData.email.trim().toLowerCase(), direccion: clientFormData.direccion.trim(), activo: true };
-      setClientes((prev) => [nuevo, ...prev]);
-    }
-    setShowClienteModal(false);
-  };
-
-  // Abrir Modal para Crear / Editar Equipo de Bodega
-  const handleOpenCrearEquipoModal = () => {
-    setEditingEquipo(null);
-    setEquipoFormData({ codigo: "", nombre: "", categoria: "MAQUINARIA", tarifaDiaria: 35000, pesoKilos: 15, stockTotal: 5 });
-    setEquipoFormError(null);
-    setShowEquipoModal(true);
-  };
-
-  const handleOpenEditarEquipoModal = (equipo: Equipo) => {
-    setEditingEquipo(equipo);
-    setEquipoFormData({
-      codigo: equipo.codigo,
-      nombre: equipo.nombre,
-      categoria: equipo.categoria,
-      tarifaDiaria: equipo.tarifaDiaria,
-      pesoKilos: equipo.pesoKilos,
-      stockTotal: equipo.stockTotal,
-    });
-    setEquipoFormError(null);
-    setShowEquipoModal(true);
-  };
-
-  const handleSaveEquipo = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!equipoFormData.codigo.trim() || !equipoFormData.nombre.trim()) {
-      setEquipoFormError("El Código y Nombre del equipo son obligatorios.");
-      return;
-    }
-
-    const codClean = equipoFormData.codigo.trim().toUpperCase();
-    const nomClean = equipoFormData.nombre.trim().toUpperCase();
-
-    if (editingEquipo) {
-      const dif = equipoFormData.stockTotal - editingEquipo.stockTotal;
-      const nuevoDisp = editingEquipo.stockDisponible + dif;
-      if (nuevoDisp < 0) {
-        setEquipoFormError("No es posible reducir el stock total por debajo de las unidades en obra.");
-        return;
-      }
-      setEquipos((prev) => prev.map((eq) => eq.id === editingEquipo.id ? { ...eq, codigo: codClean, nombre: nomClean, categoria: equipoFormData.categoria.toUpperCase(), tarifaDiaria: equipoFormData.tarifaDiaria, pesoKilos: equipoFormData.pesoKilos, stockTotal: equipoFormData.stockTotal, stockDisponible: nuevoDisp } : eq));
-    } else {
-      const nuevo: Equipo = {
-        id: "EQ-" + Date.now(),
-        codigo: codClean,
-        nombre: nomClean,
-        categoria: equipoFormData.categoria.toUpperCase(),
-        tarifaDiaria: equipoFormData.tarifaDiaria,
-        pesoKilos: equipoFormData.pesoKilos,
-        stockTotal: equipoFormData.stockTotal,
-        stockDisponible: equipoFormData.stockTotal,
-        stockEnObra: 0,
-        activo: true,
-      };
-      setEquipos((prev) => [nuevo, ...prev]);
-    }
-    setShowEquipoModal(false);
-  };
-
-  // Carga Masiva de Equipos
-  const handleProcessBulkLoad = () => {
-    try {
-      const lineas = bulkText.split("\n").filter((l) => l.trim().length > 0);
-      if (lineas.length === 0) {
-        alert("Por favor ingrese al menos una línea con datos de equipos.");
-        return;
-      }
-
-      const nuevos: Equipo[] = lineas.map((linea, idx) => {
-        const partes = linea.split(",");
-        const codigo = (partes[0] || `EQ-BULK-${idx}`).trim().toUpperCase();
-        const nombre = (partes[1] || `EQUIPO MASIVO ${idx + 1}`).trim().toUpperCase();
-        const tarifa = parseFloat(partes[2] || "30000");
-        const peso = parseFloat(partes[3] || "20");
-        const stock = parseInt(partes[4] || "5", 10);
-
-        return {
-          id: "EQ-BULK-" + (Date.now() + idx),
-          codigo,
-          nombre,
-          categoria: "CARGA MASIVA",
-          tarifaDiaria: isNaN(tarifa) ? 30000 : tarifa,
-          pesoKilos: isNaN(peso) ? 20 : peso,
-          stockTotal: isNaN(stock) ? 5 : stock,
-          stockDisponible: isNaN(stock) ? 5 : stock,
-          stockEnObra: 0,
-          activo: true,
-        };
-      });
-
-      setEquipos((prev) => [...nuevos, ...prev]);
-      setShowBulkModal(false);
-      setBulkText("");
-    } catch (err: any) {
-      alert("Error procesando la carga masiva: " + err.message);
-    }
-  };
-
-  // Inactivar Equipo
-  const handleInactivarEquipo = (equipoId: string) => {
-    if (confirm("¿Está seguro de inactivar este equipo de la bodega?")) {
-      setEquipos((prev) => prev.map((eq) => eq.id === equipoId ? { ...eq, activo: false } : eq));
-    }
-  };
-
-  // Abrir Modal para Crear Alquiler (con validación de Stock en Vivo)
-  const handleOpenCrearAlquiler = (equipoPreseleccionadoId?: string) => {
+  // Abrir Modal de Nuevo Alquiler
+  const handleOpenNuevoAlquiler = (preselectedEquipoId?: string, preselectedClienteId?: string) => {
     if (clientes.length === 0) {
-      alert("Debe registrar al menos un cliente en 'Clientes & Terceros' antes de crear un alquiler.");
+      alert("Debe registrar al menos un cliente en 'Clientes & Terceros' antes de generar un contrato.");
+      navigateToTab("clientes");
       return;
     }
-    setAlquilerClienteId(clientes[0].id);
-    setAlquilerEquipoId(equipoPreseleccionadoId || (equipos[0] ? equipos[0].id : ""));
-    setAlquilerCantidad(1);
-    setAlquilerDias(3);
-    setAlquilerDeposito(100000);
-    setAlquilerError(null);
-    setShowCrearAlquilerModal(true);
+    const defaultEqId = preselectedEquipoId || (equipos[0] ? equipos[0].id : "EQ-001");
+    const eqObj = equipos.find((e) => e.id === defaultEqId) || equipos[0];
+
+    setNuevoAlquilerClienteId(preselectedClienteId || clientes[0].id);
+    setNuevoAlquilerEstado("ACTIVO");
+    setNuevoAlquilerDeposito(50000);
+    setNuevoAlquilerGarantiaMonto(300000);
+    setNuevoAlquilerGarantiaTipo("Efectivo");
+    setNuevoAlquilerObservaciones("");
+    setNuevoAlquilerLineas([
+      {
+        equipoId: eqObj ? eqObj.id : "EQ-001",
+        cantidad: 1,
+        tarifaDiaria: eqObj ? eqObj.tarifaDiaria : 45000,
+        dias: 3,
+        pesoKilos: eqObj ? eqObj.pesoKilos : 250,
+      }
+    ]);
+    setMultiAlquilerError(null);
+    setShowMultiAlquilerModal(true);
   };
 
-  // Equipo seleccionado en el formulario de Alquiler para ver Stock en Vivo
-  const equipoAlquilerSeleccionado = equipos.find((e) => e.id === alquilerEquipoId);
+  // Agregar fila de equipo al contrato
+  const handleAddLineaEquipo = () => {
+    const primerEquipoDisp = equipos.find((e) => e.activo && e.stockDisponible > 0) || equipos[0];
+    if (!primerEquipoDisp) return;
 
-  // Confirmar Alquiler y descontar Stock Disponible
-  const handleConfirmarAlquiler = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!equipoAlquilerSeleccionado) {
-      setAlquilerError("Debe seleccionar un equipo válido.");
-      return;
-    }
-    if (alquilerCantidad <= 0) {
-      setAlquilerError("La cantidad debe ser mayor a 0.");
-      return;
-    }
-    if (alquilerCantidad > equipoAlquilerSeleccionado.stockDisponible) {
-      setAlquilerError(`Stock insuficiente para '${equipoAlquilerSeleccionado.nombre}'. Disponible: ${equipoAlquilerSeleccionado.stockDisponible}, Solicitado: ${alquilerCantidad}.`);
-      return;
-    }
+    setNuevoAlquilerLineas((prev) => [
+      ...prev,
+      {
+        equipoId: primerEquipoDisp.id,
+        cantidad: 1,
+        tarifaDiaria: primerEquipoDisp.tarifaDiaria,
+        dias: 3,
+        pesoKilos: primerEquipoDisp.pesoKilos,
+      }
+    ]);
+  };
 
-    // Descontar stock disponible e incrementar en obra
-    setEquipos((prev) =>
-      prev.map((eq) =>
-        eq.id === equipoAlquilerSeleccionado.id
-          ? {
-              ...eq,
-              stockDisponible: eq.stockDisponible - alquilerCantidad,
-              stockEnObra: eq.stockEnObra + alquilerCantidad,
-            }
-          : eq
-      )
+  // Eliminar fila de equipo
+  const handleRemoveLineaEquipo = (index: number) => {
+    if (nuevoAlquilerLineas.length <= 1) {
+      setMultiAlquilerError("El contrato debe incluir al menos un equipo.");
+      return;
+    }
+    setNuevoAlquilerLineas((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  // Modificar línea de equipo
+  const handleUpdateLineaEquipo = (index: number, field: keyof ItemContratoLinea, value: any) => {
+    setNuevoAlquilerLineas((prev) =>
+      prev.map((linea, idx) => {
+        if (idx !== index) return linea;
+        if (field === "equipoId") {
+          const selectedEq = equipos.find((e) => e.id === value);
+          return {
+            ...linea,
+            equipoId: value,
+            tarifaDiaria: selectedEq ? selectedEq.tarifaDiaria : linea.tarifaDiaria,
+            pesoKilos: selectedEq ? selectedEq.pesoKilos : linea.pesoKilos,
+          };
+        }
+        return { ...linea, [field]: value };
+      })
     );
-
-    setShowCrearAlquilerModal(false);
-    alert("¡Contrato de alquiler registrado exitosamente! El stock disponible ha sido actualizado en tiempo real.");
-    navigateToTab("alquileres");
   };
 
-  // Equipos filtrados por búsqueda en Bodega
-  const equiposFiltrados = equipos.filter(
-    (eq) =>
-      eq.activo &&
-      (eq.nombre.toLowerCase().includes(equipoSearchFilter.toLowerCase()) ||
-        eq.codigo.toLowerCase().includes(equipoSearchFilter.toLowerCase()) ||
-        eq.categoria.toLowerCase().includes(equipoSearchFilter.toLowerCase()))
-  );
+  // Cálculos financieros del contrato
+  const subtotalContrato = nuevoAlquilerLineas.reduce((acc, l) => acc + (l.cantidad * l.tarifaDiaria * l.dias), 0);
+  const totalContrato = Math.max(0, subtotalContrato - nuevoAlquilerDeposito);
+  const pesoTotalContratoKilos = nuevoAlquilerLineas.reduce((acc, l) => acc + (l.cantidad * l.pesoKilos), 0);
+
+  // Guardar y despachar contrato
+  const handleGuardarContrato = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clienteObj = clientes.find((c) => c.id === nuevoAlquilerClienteId);
+    if (!clienteObj) {
+      setMultiAlquilerError("Seleccione un cliente válido.");
+      return;
+    }
+
+    // Validar disponibilidad de stock para cada equipo si es ACTIVO
+    if (nuevoAlquilerEstado === "ACTIVO") {
+      for (const linea of nuevoAlquilerLineas) {
+        const eq = equipos.find((e) => e.id === linea.equipoId);
+        if (!eq) {
+          setMultiAlquilerError("Uno de los equipos seleccionados no existe.");
+          return;
+        }
+        if (linea.cantidad > eq.stockDisponible) {
+          setMultiAlquilerError(`Stock insuficiente para '${eq.nombre}'. Disponible: ${eq.stockDisponible} u., Solicitado: ${linea.cantidad} u.`);
+          return;
+        }
+      }
+
+      // Descontar del stock disponible en bodega
+      setEquipos((prev) =>
+        prev.map((eq) => {
+          const linea = nuevoAlquilerLineas.find((l) => l.equipoId === eq.id);
+          if (linea) {
+            return {
+              ...eq,
+              stockDisponible: eq.stockDisponible - linea.cantidad,
+              stockEnObra: eq.stockEnObra + linea.cantidad,
+            };
+          }
+          return eq;
+        })
+      );
+    }
+
+    const nuevoContrato: ContratoAlquiler = {
+      id: "ALQ-" + Date.now(),
+      consecutivo: contratos.length + 101,
+      clienteId: clienteObj.id,
+      clienteNombre: clienteObj.nombre,
+      estado: nuevoAlquilerEstado,
+      subtotal: subtotalContrato,
+      total: totalContrato,
+      deposito: nuevoAlquilerDeposito,
+      garantiaMonto: nuevoAlquilerGarantiaMonto,
+      garantiaTipo: nuevoAlquilerGarantiaTipo,
+      garantiaEstado: "Activa",
+      pesoTotalKilos: pesoTotalContratoKilos,
+      observaciones: nuevoAlquilerObservaciones,
+      fechaInicio: new Date().toISOString(),
+      items: nuevoAlquilerLineas.map((l) => {
+        const eq = equipos.find((e) => e.id === l.equipoId)!;
+        return {
+          equipoId: l.equipoId,
+          codigo: eq.codigo,
+          nombre: eq.nombre,
+          cantidad: l.cantidad,
+          tarifaDiaria: l.tarifaDiaria,
+          dias: l.dias,
+          subtotal: l.cantidad * l.tarifaDiaria * l.dias,
+          pesoKilos: l.pesoKilos,
+          devuelto: false,
+        };
+      }),
+      createdAt: new Date().toISOString(),
+    };
+
+    setContratos((prev) => [nuevoContrato, ...prev]);
+    setShowMultiAlquilerModal(false);
+  };
+
+  // Contratos filtrados
+  const contratosFiltrados = contratos.filter((c) => {
+    const matchEstado = alquilerEstadoFilter === "TODOS" || c.estado === alquilerEstadoFilter;
+    const matchSearch =
+      c.clienteNombre.toLowerCase().includes(alquilerSearchFilter.toLowerCase()) ||
+      `ALQ-${c.consecutivo}`.toLowerCase().includes(alquilerSearchFilter.toLowerCase()) ||
+      c.items.some((i) => i.nombre.toLowerCase().includes(alquilerSearchFilter.toLowerCase()));
+    return matchEstado && matchSearch;
+  });
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden font-sans">
@@ -374,7 +394,7 @@ export default function HomePage() {
               </button>
             )}
             <button 
-              onClick={() => handleOpenCrearAlquiler()}
+              onClick={() => handleOpenNuevoAlquiler()}
               className="glass-button-primary h-11 px-5 rounded-2xl text-white font-semibold text-sm flex items-center space-x-2 active:scale-95"
             >
               <Plus className="h-4 w-4 stroke-[2.5]" />
@@ -387,7 +407,7 @@ export default function HomePage() {
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 overflow-x-auto py-2 border-t border-white/5 scrollbar-none">
           {[
             { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-            { id: "alquileres", label: "Alquileres", icon: FileText },
+            { id: "alquileres", label: `Alquileres (${contratos.filter(c => c.estado === 'ACTIVO').length})`, icon: FileText },
             { id: "bodega", label: "Bodega e Inventario", icon: Package },
             { id: "devoluciones", label: "Devoluciones", icon: RotateCcw },
             { id: "facturacion", label: "Facturación & PDF", icon: Receipt },
@@ -413,7 +433,7 @@ export default function HomePage() {
         </nav>
       </header>
 
-      {/* CONTENIDO DINÁMICO */}
+      {/* CONTENIDO PRINCIPAL */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative z-10">
         
         {/* PESTAÑA 1: DASHBOARD */}
@@ -447,7 +467,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="mt-5">
-                  <span className="text-4xl font-extrabold text-white">0</span>
+                  <span className="text-4xl font-extrabold text-white">{contratos.filter(c => c.estado === 'ACTIVO').length}</span>
                   <span className="text-xs text-slate-400 ml-2 font-medium">alquileres en obra</span>
                 </div>
               </div>
@@ -494,87 +514,155 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* PESTAÑA 2: CONTRATOS DE ALQUILER */}
+        {/* PESTAÑA 2: CONTRATOS DE ALQUILER (CICLO DE VIDA COMPLETO MULTI-ITEM) */}
         {activeTab === "alquileres" && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-black text-white">Gestión de Alquileres & Contratos</h1>
-                <p className="text-xs text-slate-400">Cotización, Despacho y Seguimiento de Equipos en Obra</p>
+                <p className="text-xs text-slate-400">Cotizaciones, Despachos Multi-Equipo, Control de Depósitos y Garantías</p>
               </div>
               <button 
-                onClick={() => handleOpenCrearAlquiler()}
-                className="glass-button-primary px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center space-x-2"
+                onClick={() => handleOpenNuevoAlquiler()}
+                className="glass-button-primary px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center space-x-2 shadow-lg shadow-sky-500/20"
               >
                 <Plus className="h-4 w-4" />
-                <span>Nuevo Contrato de Alquiler</span>
+                <span>Nuevo Contrato Multi-Equipo</span>
               </button>
             </div>
 
-            <div className="glass-panel rounded-3xl p-6 space-y-4">
-              <div className="p-12 text-center text-slate-400 space-y-3 bg-slate-900/30 rounded-2xl border border-white/5">
-                <FileText className="h-10 w-10 mx-auto text-sky-400/60" />
-                <p className="text-sm font-medium">Instancia limpia lista. Ningún contrato de alquiler registrado.</p>
-                <button onClick={() => handleOpenCrearAlquiler()} className="glass-button-primary px-5 py-2 rounded-xl text-xs font-bold text-white">
-                  Crear Primer Alquiler con Stock en Vivo
-                </button>
+            {/* Filtros de Estado y Buscador */}
+            <div className="glass-panel rounded-2xl p-4 flex flex-col sm:flex-row gap-3 justify-between items-center">
+              <div className="flex space-x-1.5 overflow-x-auto w-full sm:w-auto">
+                {(["TODOS", "ACTIVO", "COTIZACION", "FINALIZADO"] as AlquilerEstadoFilter[]).map((estado) => (
+                  <button
+                    key={estado}
+                    onClick={() => setAlquilerEstadoFilter(estado)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      alquilerEstadoFilter === estado
+                        ? "bg-sky-500/20 text-sky-300 border border-sky-400/30"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {estado === "TODOS" ? "Todos" : estado}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={alquilerSearchFilter}
+                  onChange={(e) => setAlquilerSearchFilter(e.target.value)}
+                  placeholder="Buscar contrato, cliente, equipo..."
+                  className="w-full pl-9 pr-4 py-2 bg-slate-900/60 border border-white/10 rounded-xl text-xs text-slate-200 focus:outline-none"
+                />
               </div>
             </div>
+
+            {/* Listado de Contratos */}
+            {contratosFiltrados.length === 0 ? (
+              <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 space-y-3">
+                <FileText className="h-10 w-10 mx-auto text-sky-400/60" />
+                <p className="text-sm font-medium">No hay contratos registrados para este criterio de búsqueda.</p>
+                <button onClick={() => handleOpenNuevoAlquiler()} className="glass-button-primary px-5 py-2 text-xs font-bold text-white rounded-xl">
+                  Crear Primer Alquiler
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {contratosFiltrados.map((contrato) => (
+                  <div key={contrato.id} className="glass-panel glass-panel-hover rounded-2xl p-5 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] font-bold">
+                          ALQ-{contrato.consecutivo}
+                        </span>
+                        <h3 className="font-extrabold text-white text-sm mt-1">{contrato.clienteNombre}</h3>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                        contrato.estado === 'ACTIVO' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                        contrato.estado === 'COTIZACION' ? "bg-sky-500/10 text-sky-400 border-sky-500/20" :
+                        "bg-slate-500/10 text-slate-400 border-slate-500/20"
+                      }`}>
+                        {contrato.estado}
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-900/50 p-3 rounded-xl border border-white/5 space-y-1.5 text-xs">
+                      <div className="text-slate-400 font-medium">Equipos Contratados ({contrato.items.length}):</div>
+                      <ul className="space-y-1">
+                        {contrato.items.map((it, idx) => (
+                          <li key={idx} className="flex justify-between text-slate-300">
+                            <span>• {it.cantidad}x {it.nombre}</span>
+                            <span className="font-bold text-sky-300">$ {it.subtotal.toLocaleString("es-CO")},00</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div className="p-2 rounded-xl bg-slate-900/40 border border-white/5">
+                        <span className="text-[10px] text-slate-500 block">Subtotal</span>
+                        <strong className="text-white">$ {contrato.subtotal.toLocaleString("es-CO")}</strong>
+                      </div>
+                      <div className="p-2 rounded-xl bg-slate-900/40 border border-white/5">
+                        <span className="text-[10px] text-slate-500 block">Depósito</span>
+                        <strong className="text-emerald-400">$ {contrato.deposito.toLocaleString("es-CO")}</strong>
+                      </div>
+                      <div className="p-2 rounded-xl bg-slate-900/40 border border-white/5">
+                        <span className="text-[10px] text-slate-500 block">Saldo</span>
+                        <strong className="text-sky-400">$ {contrato.total.toLocaleString("es-CO")}</strong>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
+                      <span className="text-slate-400 flex items-center space-x-1">
+                        <Scale className="h-3.5 w-3.5 text-indigo-400" />
+                        <span>{contrato.pesoTotalKilos.toFixed(3)} Kg</span>
+                      </span>
+                      <button 
+                        onClick={() => setSelectedContratoDetalle(contrato)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 font-semibold border border-white/10 flex items-center space-x-1"
+                      >
+                        <Eye className="h-3.5 w-3.5 text-sky-400" />
+                        <span>Ver Detalle</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* PESTAÑA 3: BODEGA E INVENTARIO (CRUD COMPLETO Y CARGA MASIVA) */}
+        {/* PESTAÑA 3: BODEGA E INVENTARIO */}
         {activeTab === "bodega" && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-black text-white">Catálogo de Bodega e Inventario</h1>
                 <p className="text-xs text-slate-400">Gestión CRUD de Equipos, Carga Masiva y Control de Stock (`peso_gramos BIGINT`)</p>
               </div>
               <div className="flex items-center space-x-2">
-                <button 
-                  onClick={() => setShowBulkModal(true)}
-                  className="px-4 py-2.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/30 text-xs font-bold flex items-center space-x-2"
-                >
+                <button onClick={() => setShowBulkModal(true)} className="px-4 py-2.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/30 text-xs font-bold flex items-center space-x-2">
                   <FileSpreadsheet className="h-4 w-4 text-indigo-400" />
-                  <span>Carga Masiva (Bulk)</span>
+                  <span>Carga Masiva</span>
                 </button>
-                <button 
-                  onClick={handleOpenCrearEquipoModal}
-                  className="glass-button-primary px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center space-x-2"
-                >
+                <button onClick={() => setShowEquipoModal(true)} className="glass-button-primary px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center space-x-2">
                   <PackagePlus className="h-4 w-4" />
                   <span>Nuevo Equipo</span>
                 </button>
               </div>
             </div>
 
-            {/* Buscador de Equipos */}
-            <div className="glass-panel rounded-2xl p-4 flex items-center space-x-3">
-              <Search className="h-4 w-4 text-slate-400" />
-              <input 
-                type="text" 
-                value={equipoSearchFilter}
-                onChange={(e) => setEquipoSearchFilter(e.target.value)}
-                placeholder="Buscar por código, nombre de equipo o categoría..."
-                className="w-full bg-transparent border-none text-xs text-slate-100 placeholder-slate-500 focus:outline-none"
-              />
-              {equipoSearchFilter && (
-                <button onClick={() => setEquipoSearchFilter("")} className="text-slate-400 hover:text-white">
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-
-            {/* Grilla de Equipos en Bodega */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {equiposFiltrados.map((item) => (
-                <div key={item.id} className="glass-panel glass-panel-hover rounded-2xl p-5 space-y-4 relative">
+              {equipos.filter(e => e.activo).map((item) => (
+                <div key={item.id} className="glass-panel glass-panel-hover rounded-2xl p-5 space-y-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] font-bold">
-                        {item.codigo}
-                      </span>
+                      <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] font-bold">{item.codigo}</span>
                       <h3 className="font-extrabold text-white text-sm mt-1">{item.nombre}</h3>
                     </div>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
@@ -584,56 +672,18 @@ export default function HomePage() {
                     </span>
                   </div>
 
-                  {/* Detalle de Stock e Indicadores */}
                   <div className="grid grid-cols-3 gap-2 bg-slate-900/50 p-2.5 rounded-xl border border-white/5 text-center text-xs">
-                    <div>
-                      <span className="text-[10px] text-slate-500 block uppercase font-bold">Total</span>
-                      <strong className="text-white font-extrabold">{item.stockTotal} u.</strong>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 block uppercase font-bold">Disponible</span>
-                      <strong className="text-emerald-400 font-extrabold">{item.stockDisponible} u.</strong>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 block uppercase font-bold">En Obra</span>
-                      <strong className="text-amber-400 font-extrabold">{item.stockEnObra} u.</strong>
-                    </div>
+                    <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Total</span><strong className="text-white font-extrabold">{item.stockTotal} u.</strong></div>
+                    <div><span className="text-[10px] text-slate-500 block uppercase font-bold">Disponible</span><strong className="text-emerald-400 font-extrabold">{item.stockDisponible} u.</strong></div>
+                    <div><span className="text-[10px] text-slate-500 block uppercase font-bold">En Obra</span><strong className="text-amber-400 font-extrabold">{item.stockEnObra} u.</strong></div>
                   </div>
 
-                  <div className="text-xs space-y-1 text-slate-300">
-                    <p className="flex justify-between"><span className="text-slate-400">Tarifa Diaria:</span> <strong className="text-sky-300">$ {item.tarifaDiaria.toLocaleString("es-CO")},00</strong></p>
-                    <p className="flex justify-between"><span className="text-slate-400">Peso Estándar:</span> <strong>{item.pesoKilos.toFixed(3)} Kg</strong></p>
-                  </div>
-
-                  {/* Acciones CRUD del Equipo */}
                   <div className="flex items-center justify-between pt-2 border-t border-white/5 gap-2">
-                    <button 
-                      onClick={() => handleOpenEditarEquipoModal(item)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold flex items-center space-x-1 border border-white/10"
-                    >
-                      <Edit className="h-3.5 w-3.5 text-sky-400" />
-                      <span>Editar</span>
-                    </button>
-
-                    <button 
-                      onClick={() => handleInactivarEquipo(item.id)}
-                      className="px-3 py-1.5 rounded-xl bg-rose-600/10 hover:bg-rose-600/20 text-rose-300 border border-rose-500/20 text-xs font-semibold flex items-center space-x-1"
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-rose-400" />
-                      <span>Inactivar</span>
-                    </button>
-
-                    <button 
-                      onClick={() => handleOpenCrearAlquiler(item.id)}
-                      disabled={item.stockDisponible === 0}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1 ${
-                        item.stockDisponible > 0 
-                          ? "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30" 
-                          : "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700"
-                      }`}
-                    >
+                    <button onClick={() => handleOpenNuevoAlquiler(item.id)} disabled={item.stockDisponible === 0} className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center space-x-1 ${
+                      item.stockDisponible > 0 ? "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30" : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                    }`}>
                       <Plus className="h-3.5 w-3.5" />
-                      <span>Alquilar</span>
+                      <span>Alquilar Este Equipo</span>
                     </button>
                   </div>
                 </div>
@@ -644,31 +694,31 @@ export default function HomePage() {
 
         {/* PESTAÑA 4: DEVOLUCIONES */}
         {activeTab === "devoluciones" && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fadeIn">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-black text-white">Recepción de Devoluciones & Registro de Daños</h1>
-                <p className="text-xs text-slate-400">Reingreso a Bodega e Inspección Física de Equipos (Corte 5:00 PM)</p>
+                <p className="text-xs text-slate-400">Reingreso a Bodega e Inspección Física de Equipos (Corte 5:00 PM `America/Bogota`)</p>
               </div>
-              <button onClick={() => navigateToTab("bodega")} className="text-xs text-sky-400 hover:underline font-semibold">
-                <span>Ver Stock en Bodega</span>
+              <button onClick={() => navigateToTab("alquileres")} className="text-xs text-sky-400 hover:underline font-semibold">
+                <span>Ver Contratos Activos</span>
               </button>
             </div>
 
             <div className="glass-panel rounded-3xl p-8 space-y-4 text-center">
               <RotateCcw className="h-10 w-10 mx-auto text-amber-400/70" />
-              <p className="text-slate-300 text-sm font-medium">No hay devoluciones pendientes programadas para hoy.</p>
+              <p className="text-slate-300 text-sm font-medium">Seleccione un contrato de alquiler activo para registrar la devolución parcial o total de los equipos.</p>
             </div>
           </div>
         )}
 
         {/* PESTAÑA 5: FACTURACIÓN & PDF */}
         {activeTab === "facturacion" && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fadeIn">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-black text-white">Facturación, Cuentas de Cobro & PDFs</h1>
-                <p className="text-xs text-slate-400">Liquidación en COP `NUMERIC(12, 2)` con 100% de ítems contratados</p>
+                <p className="text-xs text-slate-400">Liquidación en COP `NUMERIC(12, 2)` con 100% de renglones contratados</p>
               </div>
               <button onClick={() => navigateToTab("alquileres")} className="text-xs text-sky-400 hover:underline font-semibold">
                 <span>Ir a Alquileres</span>
@@ -677,45 +727,40 @@ export default function HomePage() {
 
             <div className="glass-panel rounded-3xl p-8 space-y-4 text-center">
               <Receipt className="h-10 w-10 mx-auto text-indigo-400/70" />
-              <p className="text-slate-300 text-sm font-medium">Instancia limpia sin facturas o cuentas de cobro emitidas.</p>
+              <p className="text-slate-300 text-sm font-medium">Módulo de emisión de Cuentas de Cobro con descarga serverless de PDF.</p>
             </div>
           </div>
         )}
 
         {/* PESTAÑA 6: CLIENTES & TERCEROS */}
         {activeTab === "clientes" && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-black text-white">Directorio de Clientes & Terceros</h1>
                 <p className="text-xs text-slate-400">Sanitización en Mayúsculas (`UPPERCASE.trim()`) e Historiales Cruzados (Alquileres, Pagos, Cartera)</p>
               </div>
-              <button onClick={handleOpenCrearClienteModal} className="glass-button-primary px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center space-x-2">
+              <button onClick={() => setShowClienteModal(true)} className="glass-button-primary px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center space-x-2">
                 <UserPlus className="h-4 w-4" />
-                <span>Nuevo Cliente / Tercero</span>
+                <span>Nuevo Cliente</span>
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {clientes.map((cliente) => (
-                <div key={cliente.id} className="glass-panel glass-panel-hover rounded-2xl p-5 space-y-4 relative">
+                <div key={cliente.id} className="glass-panel glass-panel-hover rounded-2xl p-5 space-y-4">
                   <div className="flex justify-between items-start">
-                    <div className="space-y-1">
+                    <div>
                       <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] font-bold">{cliente.nitCedula}</span>
-                      <h3 className="font-extrabold text-white text-sm">{cliente.nombre}</h3>
+                      <h3 className="font-extrabold text-white text-sm mt-1">{cliente.nombre}</h3>
                     </div>
                     <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">ACTIVO</span>
                   </div>
 
-                  <div className="space-y-1 text-xs text-slate-300 border-t border-white/5 pt-3">
-                    <p><span className="text-slate-400">Teléfono:</span> {cliente.telefono}</p>
-                    <p><span className="text-slate-400">Email:</span> {cliente.email}</p>
-                  </div>
-
                   <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                    <button onClick={() => handleOpenCrearAlquiler()} className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center space-x-1">
+                    <button onClick={() => handleOpenNuevoAlquiler(undefined, cliente.id)} className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center space-x-1">
                       <Plus className="h-3.5 w-3.5" />
-                      <span>Alquilar</span>
+                      <span>Generar Alquiler</span>
                     </button>
                   </div>
                 </div>
@@ -726,236 +771,253 @@ export default function HomePage() {
 
       </main>
 
-      {/* MODAL GLASSMORPHISM REGISTRAR / EDITAR CLIENTE */}
-      {showClienteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-          <div className="glass-panel w-full max-w-lg rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <h2 className="text-lg font-extrabold text-white">{editingCliente ? "Editar Cliente" : "Nuevo Cliente"}</h2>
-              <button onClick={() => setShowClienteModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
-            </div>
-            {clientFormError && <div className="p-3 rounded-xl bg-rose-500/10 text-rose-400 text-xs">{clientFormError}</div>}
-            <form onSubmit={handleSaveCliente} className="space-y-4">
-              <input type="text" placeholder="NIT / Cédula" value={clientFormData.nitCedula} onChange={(e) => setClientFormData({ ...clientFormData, nitCedula: e.target.value })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs uppercase" required />
-              <input type="text" placeholder="Nombre / Razón Social" value={clientFormData.nombre} onChange={(e) => setClientFormData({ ...clientFormData, nombre: e.target.value })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs uppercase" required />
-              <input type="text" placeholder="Teléfono" value={clientFormData.telefono} onChange={(e) => setClientFormData({ ...clientFormData, telefono: e.target.value })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs" />
-              <div className="flex justify-end space-x-3 pt-3">
-                <button type="button" onClick={() => setShowClienteModal(false)} className="px-4 py-2 bg-slate-900 text-xs font-bold rounded-xl">Cancelar</button>
-                <button type="submit" className="glass-button-primary px-5 py-2 text-xs font-bold text-white rounded-xl">Guardar</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL GLASSMORPHISM CREAR / EDITAR EQUIPO EN BODEGA */}
-      {showEquipoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-          <div className="glass-panel w-full max-w-lg rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <h2 className="text-lg font-extrabold text-white flex items-center space-x-2">
-                <PackagePlus className="h-5 w-5 text-sky-400" />
-                <span>{editingEquipo ? "Editar Equipo de Bodega" : "Registrar Nuevo Equipo en Bodega"}</span>
-              </h2>
-              <button onClick={() => setShowEquipoModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
-            </div>
-
-            {equipoFormError && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
-                <AlertCircle className="h-4 w-4" />
-                <span>{equipoFormError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSaveEquipo} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-300">Código Equipo*</label>
-                  <input type="text" placeholder="Ej: MEZ-01" value={equipoFormData.codigo} onChange={(e) => setEquipoFormData({ ...equipoFormData, codigo: e.target.value })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs uppercase" required />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-300">Categoría</label>
-                  <input type="text" placeholder="MAQUINARIA" value={equipoFormData.categoria} onChange={(e) => setEquipoFormData({ ...equipoFormData, categoria: e.target.value })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs uppercase" />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-300">Nombre / Descripción del Equipo*</label>
-                <input type="text" placeholder="Ej: MEZCLADORA DE CONCRETO 2 BULTOS" value={equipoFormData.nombre} onChange={(e) => setEquipoFormData({ ...equipoFormData, nombre: e.target.value })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs uppercase" required />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-300">Tarifa Diaria (COP)</label>
-                  <input type="number" value={equipoFormData.tarifaDiaria} onChange={(e) => setEquipoFormData({ ...equipoFormData, tarifaDiaria: parseFloat(e.target.value) || 0 })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs" required />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-300">Peso (Kilos)</label>
-                  <input type="number" step="0.001" value={equipoFormData.pesoKilos} onChange={(e) => setEquipoFormData({ ...equipoFormData, pesoKilos: parseFloat(e.target.value) || 0 })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs" required />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-300">Stock Total</label>
-                  <input type="number" value={equipoFormData.stockTotal} onChange={(e) => setEquipoFormData({ ...equipoFormData, stockTotal: parseInt(e.target.value, 10) || 0 })} className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs" required />
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-3 border-t border-white/10">
-                <button type="button" onClick={() => setShowEquipoModal(false)} className="px-4 py-2 bg-slate-900 text-slate-300 text-xs font-bold rounded-xl border border-white/10">Cancelar</button>
-                <button type="submit" className="glass-button-primary px-5 py-2 text-xs font-bold text-white rounded-xl">Guardar en Bodega</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL GLASSMORPHISM CARGA MASIVA (BULK LOAD) */}
-      {showBulkModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
-          <div className="glass-panel w-full max-w-2xl rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <h2 className="text-lg font-extrabold text-white flex items-center space-x-2">
-                <FileSpreadsheet className="h-5 w-5 text-indigo-400" />
-                <span>Carga Masiva de Equipos e Inventario</span>
-              </h2>
-              <button onClick={() => setShowBulkModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
-            </div>
-
-            <p className="text-xs text-slate-300">
-              Pegue sus equipos separados por comas (un equipo por línea):<br />
-              <code className="text-sky-300 font-mono text-[11px]">CODIGO, NOMBRE, TARIFA_COP, PESO_KG, STOCK_TOTAL</code>
-            </p>
-
-            <textarea 
-              rows={6}
-              value={bulkText}
-              onChange={(e) => setBulkText(e.target.value)}
-              placeholder="MEZ-10, MEZCLADORA 2 BULTOS MOTOR HONDA, 45000, 250, 5&#10;VIB-11, VIBRADOR GASOLINA 5.5HP, 30000, 22, 10"
-              className="w-full p-3.5 bg-slate-900 border border-white/10 rounded-xl text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500"
-            />
-
-            <div className="flex justify-end space-x-3 border-t border-white/10 pt-3">
-              <button onClick={() => setShowBulkModal(false)} className="px-4 py-2 bg-slate-900 text-slate-300 text-xs font-bold rounded-xl border border-white/10">Cancelar</button>
-              <button onClick={handleProcessBulkLoad} className="glass-button-primary px-5 py-2 text-xs font-bold text-white rounded-xl">Procesar Carga Masiva</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL GLASSMORPHISM CREAR CONTRATO CON VISIBILIDAD DE STOCK EN VIVO */}
-      {showCrearAlquilerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
-          <div className="glass-panel w-full max-w-xl rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative">
+      {/* MODAL CREAR CONTRATO DE ALQUILER MULTI-ITEM */}
+      {showMultiAlquilerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn overflow-y-auto">
+          <div className="glass-panel w-full max-w-3xl rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative my-8">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <h2 className="text-lg font-extrabold text-white flex items-center space-x-2">
                 <FileText className="h-5 w-5 text-sky-400" />
-                <span>Nuevo Contrato de Alquiler</span>
+                <span>Nuevo Contrato de Alquiler de Maquinaria</span>
               </h2>
-              <button onClick={() => setShowCrearAlquilerModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+              <button onClick={() => setShowMultiAlquilerModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
 
-            {alquilerError && (
+            {multiAlquilerError && (
               <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
                 <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{alquilerError}</span>
+                <span>{multiAlquilerError}</span>
               </div>
             )}
 
-            <form onSubmit={handleConfirmarAlquiler} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-300">Cliente Contratante*</label>
-                <select 
-                  value={alquilerClienteId} 
-                  onChange={(e) => setAlquilerClienteId(e.target.value)}
-                  className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none"
-                >
-                  {clientes.map((c) => (
-                    <option key={c.id} value={c.id}>{c.nitCedula} — {c.nombre}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-300">Equipo a Alquilar*</label>
-                <select 
-                  value={alquilerEquipoId} 
-                  onChange={(e) => setAlquilerEquipoId(e.target.value)}
-                  className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none"
-                >
-                  {equipos.filter(e => e.activo).map((e) => (
-                    <option key={e.id} value={e.id}>{e.codigo} — {e.nombre} ({e.stockDisponible} u. disponibles)</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* TARJETA DE VISIBILIDAD DE STOCK EN TIEMPO REAL */}
-              {equipoAlquilerSeleccionado && (
-                <div className="p-4 rounded-2xl bg-slate-900/80 border border-white/10 space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-400">Stock Disponible en Bodega:</span>
-                    <span className={`font-extrabold px-2.5 py-0.5 rounded-full text-xs ${
-                      equipoAlquilerSeleccionado.stockDisponible > 0 ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                    }`}>
-                      {equipoAlquilerSeleccionado.stockDisponible} Unidades
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-400">Tarifa Diaria:</span>
-                    <span className="font-extrabold text-sky-300">$ {equipoAlquilerSeleccionado.tarifaDiaria.toLocaleString("es-CO")},00 COP</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={handleGuardarContrato} className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-300">Cantidad a Alquilar*</label>
-                  <input 
-                    type="number" 
-                    min={1} 
-                    max={equipoAlquilerSeleccionado ? equipoAlquilerSeleccionado.stockDisponible : 1}
-                    value={alquilerCantidad} 
-                    onChange={(e) => setAlquilerCantidad(parseInt(e.target.value, 10) || 1)} 
-                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs" 
-                    required 
+                  <label className="text-xs font-bold text-slate-300">Cliente Contratante*</label>
+                  <select 
+                    value={nuevoAlquilerClienteId} 
+                    onChange={(e) => setNuevoAlquilerClienteId(e.target.value)}
+                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none"
+                  >
+                    {clientes.map((c) => (
+                      <option key={c.id} value={c.id}>{c.nitCedula} — {c.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-300">Tipo de Documento</label>
+                  <select 
+                    value={nuevoAlquilerEstado} 
+                    onChange={(e) => setNuevoAlquilerEstado(e.target.value as any)}
+                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none"
+                  >
+                    <option value="ACTIVO">Contrato Despachado (Descuenta Stock Bodega)</option>
+                    <option value="COTIZACION">Cotización Preliminar (No Descuenta Stock)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* LISTA MULTI-ITEM DE EQUIPOS */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Equipos a Incluir en Contrato</span>
+                  <button 
+                    type="button" 
+                    onClick={handleAddLineaEquipo}
+                    className="px-3 py-1 rounded-xl bg-sky-600/20 text-sky-300 border border-sky-500/30 text-xs font-bold flex items-center space-x-1"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Añadir Otro Equipo</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {nuevoAlquilerLineas.map((linea, index) => {
+                    const selectedEq = equipos.find((e) => e.id === linea.equipoId);
+                    return (
+                      <div key={index} className="p-3.5 rounded-2xl bg-slate-900/60 border border-white/10 space-y-3">
+                        <div className="flex justify-between items-center gap-2">
+                          <div className="flex-1">
+                            <select
+                              value={linea.equipoId}
+                              onChange={(e) => handleUpdateLineaEquipo(index, "equipoId", e.target.value)}
+                              className="w-full p-2 bg-slate-950 border border-white/10 rounded-xl text-xs text-slate-100"
+                            >
+                              {equipos.filter(e => e.activo).map((eq) => (
+                                <option key={eq.id} value={eq.id}>
+                                  {eq.codigo} — {eq.nombre} ({eq.stockDisponible} u. disp.)
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          {nuevoAlquilerLineas.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveLineaEquipo(index)}
+                              className="p-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-2 text-xs">
+                          <div>
+                            <span className="text-[10px] text-slate-400 block">Cant. (u.)</span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={selectedEq ? selectedEq.stockDisponible : 1}
+                              value={linea.cantidad}
+                              onChange={(e) => handleUpdateLineaEquipo(index, "cantidad", parseInt(e.target.value, 10) || 1)}
+                              className="w-full p-1.5 bg-slate-950 border border-white/10 rounded-lg text-xs"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 block">Días</span>
+                            <input
+                              type="number"
+                              min={1}
+                              value={linea.dias}
+                              onChange={(e) => handleUpdateLineaEquipo(index, "dias", parseInt(e.target.value, 10) || 1)}
+                              className="w-full p-1.5 bg-slate-950 border border-white/10 rounded-lg text-xs"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 block">Tarifa/Día</span>
+                            <input
+                              type="number"
+                              value={linea.tarifaDiaria}
+                              onChange={(e) => handleUpdateLineaEquipo(index, "tarifaDiaria", parseFloat(e.target.value) || 0)}
+                              className="w-full p-1.5 bg-slate-950 border border-white/10 rounded-lg text-xs"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 block">Subtotal</span>
+                            <div className="p-1.5 text-sky-300 font-extrabold text-xs">
+                              $ {(linea.cantidad * linea.tarifaDiaria * linea.dias).toLocaleString("es-CO")}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Depósitos & Garantías */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-300">Depósito en Efectivo (COP)</label>
+                  <input
+                    type="number"
+                    value={nuevoAlquilerDeposito}
+                    onChange={(e) => setNuevoAlquilerDeposito(parseFloat(e.target.value) || 0)}
+                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-300">Días Contratados*</label>
-                  <input 
-                    type="number" 
-                    min={1} 
-                    value={alquilerDias} 
-                    onChange={(e) => setAlquilerDias(parseInt(e.target.value, 10) || 1)} 
-                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs" 
-                    required 
+                  <label className="text-xs font-bold text-slate-300">Monto Garantía (COP)</label>
+                  <input
+                    type="number"
+                    value={nuevoAlquilerGarantiaMonto}
+                    onChange={(e) => setNuevoAlquilerGarantiaMonto(parseFloat(e.target.value) || 0)}
+                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-300">Tipo Garantía</label>
+                  <input
+                    type="text"
+                    value={nuevoAlquilerGarantiaTipo}
+                    onChange={(e) => setNuevoAlquilerGarantiaTipo(e.target.value)}
+                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-300">Depósito en Efectivo (COP)</label>
-                <input 
-                  type="number" 
-                  value={alquilerDeposito} 
-                  onChange={(e) => setAlquilerDeposito(parseFloat(e.target.value) || 0)} 
-                  className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs" 
-                />
+              {/* RESUMEN FINANCIERO */}
+              <div className="p-4 rounded-2xl bg-slate-900/80 border border-white/10 grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Subtotal Equipos</span>
+                  <strong className="text-lg font-black text-white">$ {subtotalContrato.toLocaleString("es-CO")},00</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Peso Total Carga</span>
+                  <strong className="text-lg font-black text-indigo-400">{pesoTotalContratoKilos.toFixed(3)} Kg</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Saldo a Cobrar</span>
+                  <strong className="text-lg font-black text-sky-400">$ {totalContrato.toLocaleString("es-CO")},00</strong>
+                </div>
               </div>
 
-              {/* Total Estimado */}
-              {equipoAlquilerSeleccionado && (
-                <div className="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-center">
-                  <span className="text-xs text-slate-300 block">Total Estima Contrato:</span>
-                  <strong className="text-2xl font-black text-sky-300">
-                    $ {(equipoAlquilerSeleccionado.tarifaDiaria * alquilerCantidad * alquilerDias).toLocaleString("es-CO")},00 COP
-                  </strong>
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-3 pt-3 border-t border-white/10">
-                <button type="button" onClick={() => setShowCrearAlquilerModal(false)} className="px-4 py-2 bg-slate-900 text-slate-300 text-xs font-bold rounded-xl border border-white/10">Cancelar</button>
-                <button type="submit" className="glass-button-primary px-5 py-2 text-xs font-bold text-white rounded-xl">Confirmar y Despachar Alquiler</button>
+              <div className="flex justify-end space-x-3 pt-2 border-t border-white/10">
+                <button type="button" onClick={() => setShowMultiAlquilerModal(false)} className="px-4 py-2.5 bg-slate-900 text-slate-300 text-xs font-bold rounded-xl">Cancelar</button>
+                <button type="submit" className="glass-button-primary px-5 py-2.5 text-xs font-bold text-white rounded-xl">
+                  Confirmar y Despachar Contrato
+                </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DETALLE DE CONTRATO */}
+      {selectedContratoDetalle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+          <div className="glass-panel w-full max-w-2xl rounded-3xl p-6 sm:p-8 space-y-6 border border-white/10 shadow-2xl relative">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                  ALQ-{selectedContratoDetalle.consecutivo}
+                </span>
+                <h2 className="text-lg font-black text-white mt-1">{selectedContratoDetalle.clienteNombre}</h2>
+              </div>
+              <button onClick={() => setSelectedContratoDetalle(null)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+            </div>
+
+            <div className="space-y-3">
+              <span className="text-xs font-bold text-slate-300 uppercase">Equipos en este Contrato:</span>
+              <div className="space-y-2">
+                {selectedContratoDetalle.items.map((it, idx) => (
+                  <div key={idx} className="p-3 rounded-xl bg-slate-900/60 border border-white/5 flex justify-between items-center text-xs">
+                    <div>
+                      <strong className="text-white block">{it.cantidad}x {it.nombre}</strong>
+                      <span className="text-slate-400">{it.dias} días a $ {it.tarifaDiaria.toLocaleString("es-CO")}/día ({it.pesoKilos} Kg)</span>
+                    </div>
+                    <span className="font-extrabold text-sky-300">$ {it.subtotal.toLocaleString("es-CO")},00</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 text-center text-xs bg-slate-900/50 p-3 rounded-2xl border border-white/5">
+              <div><span className="text-slate-500 block">Subtotal</span><strong className="text-white">$ {selectedContratoDetalle.subtotal.toLocaleString("es-CO")}</strong></div>
+              <div><span className="text-slate-500 block">Depósito</span><strong className="text-emerald-400">$ {selectedContratoDetalle.deposito.toLocaleString("es-CO")}</strong></div>
+              <div><span className="text-slate-500 block">Saldo</span><strong className="text-sky-400">$ {selectedContratoDetalle.total.toLocaleString("es-CO")}</strong></div>
+            </div>
+
+            <div className="flex justify-between items-center pt-2 border-t border-white/10">
+              <button 
+                onClick={() => {
+                  setSelectedContratoDetalle(null);
+                  navigateToTab("devoluciones");
+                }}
+                className="px-4 py-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold"
+              >
+                Registrar Devolución
+              </button>
+              <button 
+                onClick={() => {
+                  setSelectedContratoDetalle(null);
+                  navigateToTab("facturacion");
+                }}
+                className="glass-button-primary px-5 py-2 rounded-xl text-xs font-bold text-white"
+              >
+                Liquidar / Generar Factura
+              </button>
+            </div>
           </div>
         </div>
       )}

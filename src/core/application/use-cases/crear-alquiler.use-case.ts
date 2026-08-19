@@ -1,22 +1,28 @@
-import { AlquilerEntity } from "../../domain/entities/alquiler";
+import { AlquilerEntity, AlquilerEstado } from "../../domain/entities/alquiler";
 import { IAlquilerRepository } from "../../domain/repositories/alquiler-repository.interface";
 import { PesoGramos } from "../../domain/value-objects/peso-gramos";
 
+export interface ItemCrearAlquilerDTO {
+  itemId: string;
+  nombreItem?: string;
+  cantidad: number;
+  tarifaAplicada: number;
+  pesoKilos: number;
+  diasContratados: number;
+  fechaInicio: string;
+  fechaFin?: string;
+}
+
 export interface CrearAlquilerDTO {
   clienteId: string;
+  clienteNombre?: string;
+  estado?: AlquilerEstado;
   deposito: number;
   garantiaMonto: number;
   garantiaTipo?: string;
   observaciones?: string;
   creadoPor?: string;
-  items: Array<{
-    itemId: string;
-    cantidad: number;
-    tarifaAplicada: number;
-    pesoKilos: number;
-    diasContratados: number;
-    fechaInicio: string;
-  }>;
+  items: ItemCrearAlquilerDTO[];
 }
 
 export class CrearAlquilerUseCase {
@@ -33,12 +39,17 @@ export class CrearAlquilerUseCase {
 
       return {
         itemId: item.itemId,
+        nombreItem: item.nombreItem,
         cantidad: item.cantidad,
         tarifaAplicada: item.tarifaAplicada,
         pesoGramos,
+        diasContratados: item.diasContratados,
         subtotalLinea,
         costoDano: 0,
+        devuelto: false,
+        cantidadDevuelta: 0,
         fechaInicio: new Date(item.fechaInicio),
+        fechaFin: item.fechaFin ? new Date(item.fechaFin) : undefined,
       };
     });
 
@@ -46,7 +57,8 @@ export class CrearAlquilerUseCase {
       undefined,
       undefined,
       dto.clienteId,
-      'ACTIVO',
+      dto.clienteNombre,
+      dto.estado || 'ACTIVO',
       0,
       0,
       dto.deposito || 0,
@@ -58,7 +70,6 @@ export class CrearAlquilerUseCase {
       detalles
     );
 
-    alquiler.calcularTotales();
     return await this.alquilerRepo.save(alquiler);
   }
 }
