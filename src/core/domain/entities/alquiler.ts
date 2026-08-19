@@ -38,7 +38,7 @@ export class AlquilerEntity extends BaseAuditableEntity {
     public observacionesGenerales: string | undefined,
     public detallesLogistica: string | undefined,
     public creadoPor: string | undefined,
-    public readonly detalles: ItemAlquilerDetalle[] = [],
+    public detalles: ItemAlquilerDetalle[] = [],
     createdAt?: Date,
     updatedAt?: Date,
     deletedAt?: Date | null,
@@ -84,6 +84,33 @@ export class AlquilerEntity extends BaseAuditableEntity {
     this.estado = 'CANCELADO';
     this.garantiaEstado = 'Anulada';
     this.updatedAt = new Date();
+  }
+
+  actualizarContrato(
+    nuevosDetalles: ItemAlquilerDetalle[],
+    fleteEntrega: number,
+    fleteRecogida: number,
+    deposito: number,
+    garantiaMonto: number,
+    garantiaTipo: string,
+    observacionesGenerales: string | undefined,
+    detallesLogistica: string | undefined
+  ): void {
+    if (this.estado === 'FINALIZADO' || this.estado === 'CANCELADO') {
+      throw new Error(`No se puede editar un alquiler en estado ${this.estado}.`);
+    }
+
+    this.detalles = nuevosDetalles;
+    this.fleteEntrega = fleteEntrega;
+    this.fleteRecogida = fleteRecogida;
+    this.deposito = deposito;
+    this.garantiaMonto = garantiaMonto;
+    this.garantiaTipo = garantiaTipo;
+    this.observacionesGenerales = observacionesGenerales;
+    this.detallesLogistica = detallesLogistica;
+    this.updatedAt = new Date();
+
+    this.calcularTotales();
   }
 
   override softDelete(userId: string = "sistema"): void {

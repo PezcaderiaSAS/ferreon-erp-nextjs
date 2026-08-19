@@ -208,8 +208,9 @@ export default function HomePage() {
   const [alquilerSearchFilter, setAlquilerSearchFilter] = useState<string>("");
   const [selectedContratoDetalle, setSelectedContratoDetalle] = useState<ContratoAlquiler | null>(null);
 
-  // Estados Modal Crear Alquiler Multi-Ítem con Fechas Individuales
+  // Estados Modal Crear/Editar Alquiler Multi-Ítem
   const [showMultiAlquilerModal, setShowMultiAlquilerModal] = useState<boolean>(false);
+  const [contratoEnEdicionId, setContratoEnEdicionId] = useState<string | null>(null);
   const [nuevoAlquilerClienteId, setNuevoAlquilerClienteId] = useState<string>("");
   const [clienteSearchQuery, setClienteSearchQuery] = useState<string>("");
   const [showClienteSuggestions, setShowClienteSuggestions] = useState<boolean>(false);
@@ -287,7 +288,7 @@ export default function HomePage() {
     }
   };
 
-  // Abrir Modal de Nuevo Alquiler
+  // Abrir Modal de Nuevo/Editar Alquiler
   const handleOpenNuevoAlquiler = (preselectedEquipoId?: string, preselectedClienteId?: string) => {
     if (clientes.length === 0) {
       alert("Debe registrar al menos un cliente en 'Clientes & Terceros' antes de generar un contrato.");
@@ -298,6 +299,7 @@ export default function HomePage() {
     const eqObj = equipos.find((e) => e.id === defaultEqId) || equipos[0];
     const initialCliente = clientes.find((c) => c.id === preselectedClienteId) || clientes[0];
 
+    setContratoEnEdicionId(null);
     setNuevoAlquilerClienteId(initialCliente.id);
     setClienteSearchQuery(`${initialCliente.nitCedula} — ${initialCliente.nombre}`);
     setShowClienteSuggestions(false);
@@ -321,6 +323,35 @@ export default function HomePage() {
         pesoKilos: eqObj ? eqObj.pesoKilos : 250,
       }
     ]);
+    setMultiAlquilerError(null);
+    setShowMultiAlquilerModal(true);
+  };
+
+  const handleOpenEditarAlquiler = (contrato: ContratoAlquiler) => {
+    setContratoEnEdicionId(contrato.id);
+    setNuevoAlquilerClienteId(contrato.clienteId);
+    const cObj = clientes.find(c => c.id === contrato.clienteId);
+    setClienteSearchQuery(cObj ? `${cObj.nitCedula} — ${cObj.nombre}` : contrato.clienteNombre);
+    setShowClienteSuggestions(false);
+    setNuevoAlquilerFechaGeneral(contrato.fechaInicioGeneral || todayStr);
+    setNuevoAlquilerEstado(contrato.estado === "FINALIZADO" || contrato.estado === "CANCELADO" ? "ACTIVO" : contrato.estado);
+    setNuevoAlquilerFleteEntrega(contrato.fleteEntrega);
+    setNuevoAlquilerFleteRecogida(contrato.fleteRecogida);
+    setNuevoAlquilerDetallesLogistica(contrato.detallesLogistica || "");
+    setNuevoAlquilerDeposito(contrato.deposito);
+    setNuevoAlquilerGarantiaMonto(contrato.garantiaMonto);
+    setNuevoAlquilerGarantiaTipo(contrato.garantiaTipo);
+    setNuevoAlquilerObservaciones(contrato.observaciones || "");
+    
+    setNuevoAlquilerLineas(contrato.items.map(it => ({
+      equipoId: it.equipoId,
+      cantidad: it.cantidad,
+      tarifaDiaria: it.tarifaDiaria,
+      fechaInicio: it.fechaInicio,
+      fechaFin: it.fechaFin,
+      dias: it.dias,
+      pesoKilos: it.pesoKilos
+    })));
     setMultiAlquilerError(null);
     setShowMultiAlquilerModal(true);
   };
@@ -389,9 +420,22 @@ export default function HomePage() {
       return;
     }
 
+    const oldContrato = contratoEnEdicionId ? contratos.find(c => c.id === contratoEnEdicionId) : null;
+    let stockVirtual = [...equipos];
+
+    if (oldContrato && oldContrato.estado === "ACTIVO") {
+      stockVirtual = stockVirtual.map(eq => {
+        const oldLinea = oldContrato.items.find(l => l.equipoId === eq.id);
+        if (oldLinea) {
+          return { ...eq, stockDisponible: eq.stockDisponible + oldLinea.cantidad, stockEnObra: Math.max(0, eq.stockEnObra - oldLinea.cantidad) };
+        }
+        return eq;
+      });
+    }
+
     if (nuevoAlquilerEstado === "ACTIVO") {
       for (const linea of nuevoAlquilerLineas) {
-        const eq = equipos.find((e) => e.id === linea.equipoId);
+        const eq = stockVirtual.find((e) => e.id === linea.equipoId);
         if (!eq || linea.cantidad > eq.stockDisponible) {
           setMultiAlquilerError(`Stock insuficiente para '${eq ? eq.nombre : "Equipo"}'. Disponible: ${eq ? eq.stockDisponible : 0} u.`);
           return;
@@ -400,22 +444,45 @@ export default function HomePage() {
 
       setEquipos((prev) =>
         prev.map((eq) => {
-          const linea = nuevoAlquilerLineas.find((l) => l.equipoId === eq.id);
-          if (linea) {
-            return {
-              ...eq,
-              stockDisponible: eq.stockDisponible - linea.cantidad,
-              stockEnObra: eq.stockEnObra + linea.cantidad,
-            };
+          let updatedEq = { ...eq };
+          if (oldContrato && oldContrato.estado === "ACTIVO") {
+            const oldLinea = oldContrato.items.find(l => l.equipoId === eq.id);
+            if (oldLinea) {
+              updatedEq.stockDisponible += oldLinea.cantidad;
+              updatedEq.stockEnObra = Math.max(0, updatedEq.stockEnObra - oldLinea.cantidad);
+            }
           }
-          return eq;
+          const nuevaLinea = nuevoAlquilerLineas.find((l) => l.equipoId === eq.id);
+          if (nuevaLinea) {
+            updatedEq.stockDisponible -= nuevaLinea.cantidad;
+            updatedEq.stockEnObra += nuevaLinea.cantidad;
+          }
+          return updatedEq;
+        })
+      );
+    } else if (oldContrato && oldContrato.estado === "ACTIVO" && nuevoAlquilerEstado === "COTIZACION") {
+      // Transitioning from ACTIVO back to COTIZACION
+      setEquipos((prev) =>
+        prev.map((eq) => {
+          let updatedEq = { ...eq };
+          const oldLinea = oldContrato.items.find(l => l.equipoId === eq.id);
+          if (oldLinea) {
+            updatedEq.stockDisponible += oldLinea.cantidad;
+            updatedEq.stockEnObra = Math.max(0, updatedEq.stockEnObra - oldLinea.cantidad);
+          }
+          return updatedEq;
         })
       );
     }
 
+    const consecutivoNuevo = oldContrato ? oldContrato.consecutivo : contratos.length + 101;
+    const totalPagadoMantener = oldContrato ? oldContrato.totalPagado : 0;
+    const idContrato = oldContrato ? oldContrato.id : "ALQ-" + Date.now();
+    const createdAtVal = oldContrato ? oldContrato.createdAt : new Date().toISOString();
+
     const nuevoContrato: ContratoAlquiler = {
-      id: "ALQ-" + Date.now(),
-      consecutivo: contratos.length + 101,
+      id: idContrato,
+      consecutivo: consecutivoNuevo,
       clienteId: clienteObj.id,
       clienteNombre: clienteObj.nombre,
       estado: nuevoAlquilerEstado,
@@ -425,7 +492,7 @@ export default function HomePage() {
       subtotalGeneral,
       total: totalContrato,
       deposito: nuevoAlquilerDeposito || 0,
-      totalPagado: 0,
+      totalPagado: totalPagadoMantener,
       garantiaMonto: nuevoAlquilerGarantiaMonto || 0,
       garantiaTipo: nuevoAlquilerGarantiaTipo,
       garantiaEstado: "Activa",
@@ -435,6 +502,7 @@ export default function HomePage() {
       fechaInicioGeneral: nuevoAlquilerFechaGeneral,
       items: nuevoAlquilerLineas.map((l) => {
         const eq = equipos.find((e) => e.id === l.equipoId)!;
+        const oldLinea = oldContrato ? oldContrato.items.find(i => i.equipoId === l.equipoId) : null;
         return {
           equipoId: l.equipoId,
           codigo: eq.codigo,
@@ -446,15 +514,20 @@ export default function HomePage() {
           dias: l.dias,
           subtotal: l.cantidad * l.tarifaDiaria * l.dias,
           pesoKilos: l.pesoKilos,
-          devuelto: false,
-          cantidadDevuelta: 0,
-          costoDano: 0,
+          devuelto: oldLinea ? oldLinea.devuelto : false,
+          cantidadDevuelta: oldLinea ? oldLinea.cantidadDevuelta : 0,
+          costoDano: oldLinea ? oldLinea.costoDano : 0,
         };
       }),
-      createdAt: new Date().toISOString(),
+      createdAt: createdAtVal,
     };
 
-    setContratos((prev) => [nuevoContrato, ...prev]);
+    if (oldContrato) {
+      setContratos(prev => prev.map(c => c.id === idContrato ? nuevoContrato : c));
+    } else {
+      setContratos((prev) => [nuevoContrato, ...prev]);
+    }
+    
     setShowMultiAlquilerModal(false);
   };
 
@@ -940,13 +1013,24 @@ export default function HomePage() {
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs gap-2">
-                      <button 
-                        onClick={() => handleAbrirVisorPDFCarta(contrato, contrato.estado === 'COTIZACION' ? 'COTIZACION' : 'CONTRATO')}
-                        className="px-3 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 font-semibold border border-indigo-500/30 flex items-center space-x-1.5"
-                      >
-                        <Printer className="h-3.5 w-3.5 text-indigo-400" />
-                        <span>PDF Carta</span>
-                      </button>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => handleAbrirVisorPDFCarta(contrato, contrato.estado === 'COTIZACION' ? 'COTIZACION' : 'CONTRATO')}
+                          className="px-3 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 font-semibold border border-indigo-500/30 flex items-center space-x-1.5"
+                        >
+                          <Printer className="h-3.5 w-3.5 text-indigo-400" />
+                          <span>PDF Carta</span>
+                        </button>
+                        {(contrato.estado === 'COTIZACION' || contrato.estado === 'ACTIVO') && (
+                          <button 
+                            onClick={() => handleOpenEditarAlquiler(contrato)}
+                            className="px-3 py-1.5 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 font-semibold border border-sky-500/30 flex items-center space-x-1"
+                          >
+                            <FileEdit className="h-3.5 w-3.5" />
+                            <span>Editar</span>
+                          </button>
+                        )}
+                      </div>
                       <button 
                         onClick={() => handleOpenRegistrarPago(contrato)}
                         className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-semibold border border-emerald-500/30 flex items-center space-x-1"
@@ -1496,7 +1580,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <h2 className="text-lg font-extrabold text-white flex items-center space-x-2">
                 <FileText className="h-5 w-5 text-sky-400" />
-                <span>Nuevo Contrato / Cotización de Maquinaria</span>
+                <span>{contratoEnEdicionId ? `Editando Contrato` : "Nuevo Contrato / Cotización de Maquinaria"}</span>
               </h2>
               <button onClick={() => setShowMultiAlquilerModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
