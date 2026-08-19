@@ -1,18 +1,19 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { EditarAlquilerUseCase, EditarAlquilerDTO } from "../../src/core/application/use-cases/editar-alquiler.use-case";
 import { IAlquilerRepository } from "../../src/core/domain/repositories/alquiler-repository.interface";
 import { AlquilerEntity } from "../../src/core/domain/entities/alquiler";
 
 describe('EditarAlquilerUseCase', () => {
-  let mockRepo: jest.Mocked<IAlquilerRepository>;
+  let mockRepo: any;
   let useCase: EditarAlquilerUseCase;
 
   beforeEach(() => {
     mockRepo = {
-      findById: jest.fn(),
-      save: jest.fn(),
-      findAll: jest.fn(),
-      findByEstado: jest.fn(),
-    } as any;
+      findById: vi.fn(),
+      save: vi.fn(),
+      findAll: vi.fn(),
+      findByEstado: vi.fn(),
+    };
     useCase = new EditarAlquilerUseCase(mockRepo);
   });
 

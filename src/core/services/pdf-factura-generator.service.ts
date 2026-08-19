@@ -10,7 +10,7 @@ export interface DetalleItemPDF {
   dias: number;
   tarifaDiaria: number;
   subtotal: number;
-  pesoKilos: number;
+  pesoKilos?: number;
 }
 
 export interface DocumentoPDFPayload {
@@ -33,7 +33,7 @@ export interface DocumentoPDFPayload {
   costosDano?: number;
   depositoAplicado: number;
   totalPagar: number;
-  pesoTotalKilos: number;
+  pesoTotalKilos?: number;
   observaciones?: string;
   empresa?: EmpresaConfig;
 }
@@ -348,7 +348,7 @@ export class EnterprisePDFService {
       <div class="info-block">
         <h4>Condiciones Generales del Documento</h4>
         <p>Fecha Inicio General: <strong>${payload.fechaInicioGeneral}</strong></p>
-        <p>Peso Total de Carga: <strong>${payload.pesoTotalKilos.toFixed(3)} Kg</strong></p>
+        ${payload.pesoTotalKilos ? `<p>Peso Total de Carga: <strong>${payload.pesoTotalKilos.toFixed(3)} Kg</strong></p>` : ''}
         ${payload.garantiaMonto ? `<p>Garantía: <strong>${formatearMonedaCOP(payload.garantiaMonto)} (${payload.garantiaTipo || 'Efectivo'})</strong></p>` : ''}
         <p>Formato de Hoja: <strong>Tamaño Carta (Letter)</strong></p>
       </div>
@@ -376,7 +376,7 @@ export class EnterprisePDFService {
         ${payload.items.map((it, idx) => `
           <tr>
             <td class="text-center">${idx + 1}</td>
-            <td><strong>${it.nombre}</strong> <span style="color:#64748b; font-size:7.5pt;">(${it.pesoKilos.toFixed(1)} Kg)</span></td>
+            <td><strong>${it.nombre}</strong></td>
             <td class="text-center"><strong>${it.cantidad}</strong></td>
             <td class="text-center">${it.fechaInicio}</td>
             <td class="text-center">${it.fechaFin}</td>

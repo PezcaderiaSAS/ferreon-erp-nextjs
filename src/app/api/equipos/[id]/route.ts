@@ -5,8 +5,9 @@ const EditarEquipoSchema = z.object({
   codigo: z.string().min(2),
   nombre: z.string().min(2),
   categoria: z.string(),
+  subcategoria: z.string().optional(),
   tarifaDiaria: z.number().min(0),
-  pesoKilos: z.number().min(0),
+  pesoKilos: z.number().min(0).optional(),
   stockTotal: z.number().int().min(0),
   activo: z.boolean().optional(),
 });
@@ -24,6 +25,7 @@ export async function PUT(
       codigo: validatedData.codigo.trim().toUpperCase(),
       nombre: validatedData.nombre.trim().toUpperCase(),
       categoria: validatedData.categoria.trim().toUpperCase(),
+      subcategoria: validatedData.subcategoria ? validatedData.subcategoria.trim().toUpperCase() : undefined,
       tarifaDiaria: validatedData.tarifaDiaria,
       pesoKilos: validatedData.pesoKilos,
       stockTotal: validatedData.stockTotal,

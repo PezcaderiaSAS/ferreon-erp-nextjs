@@ -76,8 +76,8 @@ describe("Domain Entity & Use Cases: Equipo / Inventario", () => {
 
     const resultado = await useCase.execute({
       equipos: [
-        { codigo: "EQ-01", nombre: "MEZCLADORA", categoria: "OBRA", tarifaDiaria: 45000, pesoKilos: 250, stockTotal: 10 },
-        { codigo: "EQ-02", nombre: "VIBRADOR", categoria: "OBRA", tarifaDiaria: 25000, pesoKilos: 15, stockTotal: 15 },
+        { codigo: "EQ-01", nombre: "MEZCLADORA", categoria: "OBRA", tarifaDiaria: 45000, stockTotal: 10 },
+        { codigo: "EQ-02", nombre: "VIBRADOR", categoria: "OBRA", tarifaDiaria: 25000, stockTotal: 15 },
       ],
     });
 
@@ -85,4 +85,142 @@ describe("Domain Entity & Use Cases: Equipo / Inventario", () => {
     expect(resultado[0].codigo).toBe("EQ-01");
     expect(resultado[1].codigo).toBe("EQ-02");
   });
+
+  it("debe crear un equipo individual y verificar stock disponible inicial sin requerir peso", async () => {
+    const mockRepo: IEquipoRepository = {
+      findById: vi.fn(),
+      findByCodigo: vi.fn().mockResolvedValue(null),
+      findAll: vi.fn(),
+      save: vi.fn().mockImplementation((e) => Promise.resolve(e)),
+      saveBulk: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    };
+
+    const useCase = new CrearEquipoUseCase(mockRepo);
+    const resultado = await useCase.execute({
+      codigo: "TAL-01",
+      nombre: "TALADRO PERCUTOR",
+      categoria: "HERRAMIENTAS",
+      tarifaDiaria: 20000,
+      stockTotal: 8,
+    });
+
+    expect(resultado.codigo).toBe("TAL-01");
+    expect(resultado.stockTotal).toBe(8);
+    expect(resultado.stockDisponible).toBe(8);
+    expect(resultado.stockEnObra).toBe(0);
+  });
+
+  it("debe ajustar stock y tarifas mediante EditarEquipoUseCase", async () => {
+    const equipoExistente = new EquipoEntity(
+      "EQ-100",
+      "AND-01",
+      "ANDAMIO ESTANDAR",
+      "ESTRUCTURAS",
+      12000,
+      PesoGramos.fromKilos(45),
+      20,
+      15,
+      5 // 5 en obra
+    );
+
+    const mockRepo: IEquipoRepository = {
+      findById: vi.fn().mockResolvedValue(equipoExistente),
+      findByCodigo: vi.fn().mockResolvedValue(null),
+      findAll: vi.fn(),
+      save: vi.fn(),
+      saveBulk: vi.fn(),
+      update: vi.fn().mockImplementation((e) => Promise.resolve(e)),
+      delete: vi.fn(),
+    };
+
+    const useCase = new EditarEquipoUseCase(mockRepo);
+    const resultado = await useCase.execute({
+      id: "EQ-100",
+      codigo: "AND-01",
+      nombre: "ANDAMIO MULTIDIRECCIONAL REFORZADO",
+      categoria: "ESTRUCTURAS",
+      tarifaDiaria: 15000,
+      pesoKilos: 50,
+      stockTotal: 30, // incremento de 10
+    });
+
+    expect(resultado.nombre).toBe("ANDAMIO MULTIDIRECCIONAL REFORZADO");
+    expect(resultado.stockTotal).toBe(30);
+    expect(resultado.stockDisponible).toBe(25); // 15 + 10 = 25
+    expect(resultado.stockEnObra).toBe(5); // en obra se mantiene protegido
+  });
+
+  it("debe gestionar subcategorías jerárquicas en la entidad y casos de uso", async () => {
+    const equipo = new EquipoEntity(
+      "EQ-200",
+      "TAL-05",
+      "TALADRO SDS PLUS",
+      "HERRAMIENTAS",
+      25000,
+      PesoGramos.fromKilos(0),
+      10,
+      10,
+      0,
+      true,
+      0,
+      "PERFORACIÓN"
+    );
+
+    expect(equipo.subcategoria).toBe("PERFORACIÓN");
+
+    const mockRepo: IEquipoRepository = {
+      findById: vi.fn().mockResolvedValue(equipo),
+      findByCodigo: vi.fn().mockResolvedValue(null),
+      findAll: vi.fn(),
+      save: vi.fn().mockImplementation((e) => Promise.resolve(e)),
+      saveBulk: vi.fn().mockImplementation((list) => Promise.resolve(list)),
+      update: vi.fn().mockImplementation((e) => Promise.resolve(e)),
+      delete: vi.fn(),
+    };
+
+    // Caso de uso: CrearEquipo con subcategoría
+    const crearUseCase = new CrearEquipoUseCase(mockRepo);
+    const nuevo = await crearUseCase.execute({
+      codigo: "GEN-01",
+      nombre: "PLANTA ELÉCTRICA DIESEL 10KVA",
+      categoria: "GENERACIÓN",
+      subcategoria: "PLANTAS ELÉCTRICAS",
+      tarifaDiaria: 95000,
+      stockTotal: 4,
+    });
+    expect(nuevo.categoria).toBe("GENERACIÓN");
+    expect(nuevo.subcategoria).toBe("PLANTAS ELÉCTRICAS");
+
+    // Caso de uso: EditarEquipo actualizando subcategoría
+    const editarUseCase = new EditarEquipoUseCase(mockRepo);
+    const editado = await editarUseCase.execute({
+      id: "EQ-200",
+      codigo: "TAL-05",
+      nombre: "TALADRO SDS PLUS INDUSTRIAL",
+      categoria: "HERRAMIENTAS",
+      subcategoria: "DEMOLICIÓN LIVIANA",
+      tarifaDiaria: 28000,
+      stockTotal: 12,
+    });
+    expect(editado.subcategoria).toBe("DEMOLICIÓN LIVIANA");
+
+    // Caso de uso: CargaMasiva con subcategorías
+    const cargaMasivaUseCase = new CargaMasivaEquiposUseCase(mockRepo);
+    const lote = await cargaMasivaUseCase.execute({
+      equipos: [
+        {
+          codigo: "AND-10",
+          nombre: "CUERPO ANDAMIO",
+          categoria: "ESTRUCTURAS",
+          subcategoria: "TUBULAR ESTÁNDAR",
+          tarifaDiaria: 5000,
+          stockTotal: 50,
+        },
+      ],
+    });
+    expect(lote[0].subcategoria).toBe("TUBULAR ESTÁNDAR");
+  });
 });
+

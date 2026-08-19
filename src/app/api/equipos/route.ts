@@ -5,8 +5,9 @@ const CrearEquipoSchema = z.object({
   codigo: z.string().min(2, "El código debe tener al menos 2 caracteres"),
   nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
   categoria: z.string().default("GENERAL"),
+  subcategoria: z.string().optional(),
   tarifaDiaria: z.number().min(0, "La tarifa debe ser mayor o igual a 0"),
-  pesoKilos: z.number().min(0, "El peso debe ser mayor o igual a 0"),
+  pesoKilos: z.number().min(0, "El peso debe ser mayor o igual a 0").optional(),
   stockTotal: z.number().int().min(1, "El stock total debe ser al menos 1"),
 });
 
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
         codigo: item.codigo.trim().toUpperCase(),
         nombre: item.nombre.trim().toUpperCase(),
         categoria: item.categoria.trim().toUpperCase(),
+        subcategoria: (item.subcategoria || "GENERAL").trim().toUpperCase(),
         tarifaDiaria: item.tarifaDiaria,
         pesoKilos: item.pesoKilos,
         stockTotal: item.stockTotal,
@@ -59,6 +61,7 @@ export async function POST(request: Request) {
         codigo: validatedData.codigo.trim().toUpperCase(),
         nombre: validatedData.nombre.trim().toUpperCase(),
         categoria: validatedData.categoria.trim().toUpperCase(),
+        subcategoria: (validatedData.subcategoria || "GENERAL").trim().toUpperCase(),
         tarifaDiaria: validatedData.tarifaDiaria,
         pesoKilos: validatedData.pesoKilos,
         stockTotal: validatedData.stockTotal,

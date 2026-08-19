@@ -89,4 +89,25 @@ describe("AlquilerEntity Domain Tests", () => {
     expect(alquiler.estado).toBe("FINALIZADO");
     expect(alquiler.garantiaEstado).toBe("Liberada");
   });
+
+  it("debe ordenar un listado de contratos en orden descendente estricto por ID / consecutivo", () => {
+    const listado = [
+      { id: "ALQ-1001", consecutivo: 1001, clienteNombre: "Cliente A" },
+      { id: "ALQ-1003", consecutivo: 1003, clienteNombre: "Cliente C" },
+      { id: "ALQ-1002", consecutivo: 1002, clienteNombre: "Cliente B" },
+      { id: "ALQ-1004", consecutivo: 1004, clienteNombre: "Cliente D" },
+    ];
+
+    const ordenados = [...listado].sort((a, b) => {
+      const numA = parseInt(a.id.replace(/\D/g, ""), 10) || a.consecutivo || 0;
+      const numB = parseInt(b.id.replace(/\D/g, ""), 10) || b.consecutivo || 0;
+      if (numA !== numB) return numB - numA;
+      if (b.consecutivo !== a.consecutivo) return b.consecutivo - a.consecutivo;
+      return b.id.localeCompare(a.id, undefined, { numeric: true });
+    });
+
+    expect(ordenados.map((c) => c.id)).toEqual(["ALQ-1004", "ALQ-1003", "ALQ-1002", "ALQ-1001"]);
+    expect(ordenados[0].id).toBe("ALQ-1004");
+    expect(ordenados[3].id).toBe("ALQ-1001");
+  });
 });

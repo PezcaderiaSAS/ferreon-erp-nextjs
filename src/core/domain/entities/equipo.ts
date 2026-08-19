@@ -2,24 +2,28 @@ import { PesoGramos } from "../value-objects/peso-gramos";
 import { BaseAuditableEntity } from "./base-auditable.entity";
 
 export class EquipoEntity extends BaseAuditableEntity {
+  public pesoGramos: PesoGramos;
+
   constructor(
-    public readonly id: string,
+    public readonly id: string | undefined,
     public codigo: string,
     public nombre: string,
     public categoria: string,
     public tarifaDiaria: number,
-    public pesoGramos: PesoGramos,
-    public stockTotal: number,
-    public stockDisponible: number,
+    pesoGramos?: PesoGramos,
+    public stockTotal: number = 0,
+    public stockDisponible: number = 0,
     public stockEnObra: number = 0,
     public activo: boolean = true,
     public stockMantenimiento: number = 0,
+    public subcategoria: string = "GENERAL",
     createdAt?: Date,
     updatedAt?: Date,
     deletedAt?: Date | null,
     deletedBy?: string | null
   ) {
     super(createdAt, updatedAt, deletedAt, deletedBy);
+    this.pesoGramos = pesoGramos || PesoGramos.fromKilos(0);
     this.sanitizar();
     this.validarBalanceStock();
   }
@@ -28,6 +32,11 @@ export class EquipoEntity extends BaseAuditableEntity {
     if (this.codigo) this.codigo = this.codigo.trim().toUpperCase();
     if (this.nombre) this.nombre = this.nombre.trim().toUpperCase();
     if (this.categoria) this.categoria = this.categoria.trim().toUpperCase();
+    if (this.subcategoria) {
+      this.subcategoria = this.subcategoria.trim().toUpperCase();
+    } else {
+      this.subcategoria = "GENERAL";
+    }
   }
 
   validarBalanceStock(): void {

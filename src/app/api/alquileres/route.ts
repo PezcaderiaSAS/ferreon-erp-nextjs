@@ -6,7 +6,7 @@ const ItemAlquilerSchema = z.object({
   nombreItem: z.string().optional(),
   cantidad: z.number().int().min(1, "La cantidad debe ser mayor a cero"),
   tarifaAplicada: z.number().min(0, "La tarifa debe ser mayor o igual a cero"),
-  pesoKilos: z.number().min(0),
+  pesoKilos: z.number().min(0).optional(),
   diasContratados: z.number().int().min(1, "Los días contratados deben ser al menos 1"),
   fechaInicio: z.string().optional(),
   fechaFin: z.string().optional(),
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     const subtotalGeneral = subtotalEquipos + totalFletes;
     const total = Math.max(0, subtotalGeneral - validatedData.deposito);
     const totalPesoKilos = validatedData.items.reduce(
-      (acc, item) => acc + item.cantidad * item.pesoKilos,
+      (acc, item) => acc + item.cantidad * (item.pesoKilos || 0),
       0
     );
 
