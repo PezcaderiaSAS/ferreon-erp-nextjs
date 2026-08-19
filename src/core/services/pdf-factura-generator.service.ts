@@ -1,4 +1,5 @@
 import { numeroALetras, formatearMonedaCOP } from "../utils/numero-a-letras";
+import { EmpresaConfig, DEFAULT_EMPRESA_CONFIG } from "../domain/entities/empresa-config";
 
 export interface DetalleItemPDF {
   cantidad: number;
@@ -34,14 +35,16 @@ export interface DocumentoPDFPayload {
   totalPagar: number;
   pesoTotalKilos: number;
   observaciones?: string;
+  empresa?: EmpresaConfig;
 }
 
 export class EnterprisePDFService {
   /**
    * Genera el documento HTML corporativo en tamaño CARTA (Letter)
-   * con formato de moneda $40.000, conversión a letras y visor limpio.
+   * con Logo de la empresa, datos fiscales, notas bancarias y formato $40.000.
    */
   static generarHTMLDocumento(payload: DocumentoPDFPayload): string {
+    const emp = payload.empresa || DEFAULT_EMPRESA_CONFIG;
     const totalFletes = (payload.fleteEntrega || 0) + (payload.fleteRecogida || 0);
     const totalEnLetras = numeroALetras(payload.totalPagar);
 
@@ -66,7 +69,7 @@ export class EnterprisePDFService {
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>${tituloDoc} #${badgePrefijo}-${payload.consecutivo} - Alquileres ERP</title>
+  <title>${tituloDoc} #${badgePrefijo}-${payload.consecutivo} - ${emp.razonSocial}</title>
   <style>
     @page { 
       size: letter portrait; 
@@ -85,7 +88,7 @@ export class EnterprisePDFService {
       max-width: 800px;
       margin: 0 auto;
       background: #ffffff;
-      padding: 30px;
+      padding: 26px 30px;
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.06);
       border: 1px solid #e2e8f0;
@@ -125,24 +128,34 @@ export class EnterprisePDFService {
     .header { 
       display: flex; 
       justify-content: space-between; 
-      align-items: flex-start; 
+      align-items: center; 
       border-bottom: 2px solid ${badgeColor}; 
       padding-bottom: 12px; 
       margin-bottom: 14px; 
     }
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .company-logo {
+      max-height: 52px;
+      max-width: 150px;
+      object-fit: contain;
+    }
     .company-title { 
-      font-size: 18pt; 
+      font-size: 16pt; 
       font-weight: 900; 
       color: #0f172a; 
       margin: 0; 
       letter-spacing: -0.5px; 
     }
     .company-sub { 
-      font-size: 9pt; 
+      font-size: 8.5pt; 
       color: #64748b; 
       font-weight: 600; 
       display: block; 
-      margin-top: 2px; 
+      margin-top: 1px; 
     }
     .doc-badge { 
       background: ${badgeBg}; 
@@ -154,7 +167,7 @@ export class EnterprisePDFService {
     }
     .doc-badge h2 { 
       margin: 0; 
-      font-size: 13pt; 
+      font-size: 12pt; 
       font-weight: 800; 
     }
     .grid-info { 
@@ -220,10 +233,10 @@ export class EnterprisePDFService {
     .conditions-box { 
       width: 48%; 
       font-size: 7.5pt; 
-      color: #64748b; 
-      line-height: 1.3; 
+      color: #475569; 
+      line-height: 1.35; 
       background: #f8fafc; 
-      padding: 8px; 
+      padding: 8px 10px; 
       border-radius: 6px; 
       border: 1px solid #e2e8f0; 
     }
@@ -252,11 +265,21 @@ export class EnterprisePDFService {
       font-weight: 800;
       color: #0f172a;
     }
+    .bank-box {
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      font-size: 8pt;
+      color: #1e40af;
+      line-height: 1.3;
+    }
     .signatures { 
       display: grid; 
       grid-template-columns: 1fr 1fr; 
       gap: 40px; 
-      margin-top: 30px; 
+      margin-top: 25px; 
       padding-top: 10px; 
     }
     .sig-line { 
@@ -268,8 +291,8 @@ export class EnterprisePDFService {
       color: #475569; 
     }
     .footer { 
-      margin-top: 25px; 
-      padding-top: 10px; 
+      margin-top: 20px; 
+      padding-top: 8px; 
       border-top: 1px dashed #cbd5e1; 
       font-size: 7.5pt; 
       color: #94a3b8; 
@@ -300,9 +323,12 @@ export class EnterprisePDFService {
     </div>
 
     <div class="header">
-      <div>
-        <h1 class="company-title">ALQUILERES ERP</h1>
-        <span class="company-sub">Maquinaria, Equipos Menores & Estructuras de Construcción</span>
+      <div class="brand-section">
+        ${emp.logoBase64 ? `<img src="${emp.logoBase64}" alt="Logo Empresa" class="company-logo" />` : ''}
+        <div>
+          <h1 class="company-title">${emp.razonSocial}</h1>
+          <span class="company-sub">NIT: ${emp.nit} • Tel: ${emp.telefono} • ${emp.direccion}, ${emp.ciudad}</span>
+        </div>
       </div>
       <div class="doc-badge">
         <h2>${tituloDoc}</h2>
@@ -365,12 +391,7 @@ export class EnterprisePDFService {
     <div class="totals-area">
       <div class="conditions-box">
         <strong>TÉRMINOS Y CONDICIONES DE SERVICIO:</strong>
-        <ol style="margin: 4px 0 0 12px; padding: 0;">
-          <li>El horario de corte de facturación es a las 5:00 PM (hora de Bogotá).</li>
-          <li>El arrendatario se compromete a operar los equipos conforme al manual técnico.</li>
-          <li>Cualquier avería o faltante por uso inadecuado será cobrado al precio de reposición.</li>
-          <li>El flete cubre transporte exclusivamente a pie de obra.</li>
-        </ol>
+        <p style="margin: 4px 0 0 0;">${emp.notasFacturaPDF || 'Horario de corte 5:00 PM. Devolución en óptimas condiciones.'}</p>
       </div>
 
       <table class="totals-table">
@@ -404,9 +425,15 @@ export class EnterprisePDFService {
       ${totalEnLetras}
     </div>
 
+    ${emp.cuentaBancariaInfo ? `
+    <div class="bank-box">
+      <strong>🏦 Instrucciones de Pago y Transferencia:</strong><br>
+      ${emp.cuentaBancariaInfo}
+    </div>` : ''}
+
     <div class="signatures">
       <div class="sig-line">
-        Por ALQUILERES ERP<br>
+        Por ${emp.razonSocial}<br>
         <span style="font-size: 7pt; font-weight: normal; color: #64748b;">Despachador Responsable</span>
       </div>
       <div class="sig-line">
@@ -416,7 +443,7 @@ export class EnterprisePDFService {
     </div>
 
     <div class="footer">
-      Documento oficial generado por <strong>Alquileres ERP</strong> en formato estándar Carta. Validez comercial y probatoria.
+      Documento oficial emitido por <strong>${emp.razonSocial}</strong> (${emp.nit}) • ${emp.email} • ${emp.telefono}
     </div>
   </div>
 </body>

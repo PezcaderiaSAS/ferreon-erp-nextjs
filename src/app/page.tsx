@@ -43,12 +43,18 @@ import {
   Truck, 
   Car, 
   FileEdit,
-  UserCheck
+  UserCheck,
+  Settings,
+  Upload,
+  Image as ImageIcon,
+  Landmark,
+  BadgePercent
 } from "lucide-react";
 import { EnterprisePDFService, DocumentoPDFPayload } from "../core/services/pdf-factura-generator.service";
 import { formatearMonedaCOP } from "../core/utils/numero-a-letras";
+import { EmpresaConfig, DEFAULT_EMPRESA_CONFIG } from "../core/domain/entities/empresa-config";
 
-type TabType = "dashboard" | "alquileres" | "bodega" | "devoluciones" | "facturacion" | "clientes";
+type TabType = "dashboard" | "alquileres" | "bodega" | "devoluciones" | "facturacion" | "cartera" | "clientes" | "configuracion";
 type AlquilerEstadoFilter = "TODOS" | "ACTIVO" | "COTIZACION" | "FINALIZADO";
 
 interface Cliente {
@@ -96,6 +102,7 @@ interface ContratoAlquiler {
   subtotalGeneral: number;
   total: number;
   deposito: number;
+  totalPagado: number;
   garantiaMonto: number;
   garantiaTipo: string;
   garantiaEstado: string;
@@ -135,13 +142,29 @@ interface FacturaEmitida {
   createdAt: string;
 }
 
+interface ReciboPago {
+  id: string;
+  consecutivo: number;
+  alquilerId: string;
+  consecutivoAlquiler: number;
+  clienteNombre: string;
+  monto: number;
+  metodoPago: "EFECTIVO" | "TRANSFERENCIA" | "NEQUI" | "DAVIPLATA" | "CHEQUE";
+  referencia?: string;
+  fecha: string;
+}
+
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [previousTab, setPreviousTab] = useState<TabType | null>(null);
 
-  // Fecha de hoy en formato YYYY-MM-DD
+  // Fecha de hoy
   const todayStr = new Date().toISOString().split("T")[0];
   const defaultFinStr = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+  // Configuración de la Empresa
+  const [empresaConfig, setEmpresaConfig] = useState<EmpresaConfig>(DEFAULT_EMPRESA_CONFIG);
+  const [logoPreview, setLogoPreview] = useState<string>(DEFAULT_EMPRESA_CONFIG.logoBase64 || "");
 
   // Lista de Clientes
   const [clientes, setClientes] = useState<Cliente[]>([
@@ -175,9 +198,10 @@ export default function HomePage() {
     { id: "EQ-006", codigo: "PLA-06", nombre: "PLANTA ELÉCTRICA 6.5 KW (DIÉSEL MONOFÁSICA)", categoria: "GENERACIÓN", tarifaDiaria: 75000, pesoKilos: 95.0, stockTotal: 6, stockDisponible: 6, stockEnObra: 0, activo: true },
   ]);
 
-  // Contratos de Alquiler y Facturas
+  // Contratos de Alquiler, Facturas y Pagos
   const [contratos, setContratos] = useState<ContratoAlquiler[]>([]);
   const [facturas, setFacturas] = useState<FacturaEmitida[]>([]);
+  const [pagos, setPagos] = useState<ReciboPago[]>([]);
 
   // Filtros y Búsquedas
   const [alquilerEstadoFilter, setAlquilerEstadoFilter] = useState<AlquilerEstadoFilter>("TODOS");
@@ -209,11 +233,16 @@ export default function HomePage() {
   const [contratoParaDevolucion, setContratoParaDevolucion] = useState<ContratoAlquiler | null>(null);
   const [devolucionCantidades, setDevolucionCantidades] = useState<{ [equipoId: string]: number }>({});
   const [devolucionDanos, setDevolucionDanos] = useState<{ [equipoId: string]: number }>({});
+  
   const [showFacturaModal, setShowFacturaModal] = useState<boolean>(false);
   const [contratoParaFacturar, setContratoParaFacturar] = useState<ContratoAlquiler | null>(null);
-  const [showClienteModal, setShowClienteModal] = useState<boolean>(false);
-  const [showEquipoModal, setShowEquipoModal] = useState<boolean>(false);
-  const [showBulkModal, setShowBulkModal] = useState<boolean>(false);
+
+  // Modal Pago / Cartera
+  const [showPagoModal, setShowPagoModal] = useState<boolean>(false);
+  const [contratoParaPago, setContratoParaPago] = useState<ContratoAlquiler | null>(null);
+  const [pagoMonto, setPagoMonto] = useState<number>(0);
+  const [pagoMetodo, setPagoMetodo] = useState<"EFECTIVO" | "TRANSFERENCIA" | "NEQUI" | "DAVIPLATA" | "CHEQUE">("TRANSFERENCIA");
+  const [pagoReferencia, setPagoReferencia] = useState<string>("");
 
   // Navegación bidireccional
   const navigateToTab = (targetTab: TabType) => {
@@ -241,6 +270,20 @@ export default function HomePage() {
       return Math.max(1, dias);
     } catch {
       return 1;
+    }
+  };
+
+  // Manejo de Carga de Logo en Base64
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setLogoPreview(base64String);
+        setEmpresaConfig((prev) => ({ ...prev, logoBase64: base64String }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -382,6 +425,7 @@ export default function HomePage() {
       subtotalGeneral,
       total: totalContrato,
       deposito: nuevoAlquilerDeposito || 0,
+      totalPagado: 0,
       garantiaMonto: nuevoAlquilerGarantiaMonto || 0,
       garantiaTipo: nuevoAlquilerGarantiaTipo,
       garantiaEstado: "Activa",
@@ -421,7 +465,7 @@ export default function HomePage() {
       c.nitCedula.toLowerCase().includes(clienteSearchQuery.toLowerCase())
   );
 
-  // Función para Abrir Visor PDF Tamaño Carta en limpio
+  // Función para Abrir Visor PDF Tamaño Carta con Logo y Datos Dinámicos
   const handleAbrirVisorPDFCarta = (contrato: ContratoAlquiler, tipo: "COTIZACION" | "CONTRATO" | "CUENTA_COBRO") => {
     const clienteObj = clientes.find((c) => c.id === contrato.clienteId);
     
@@ -457,6 +501,7 @@ export default function HomePage() {
       totalPagar: contrato.total,
       pesoTotalKilos: contrato.pesoTotalKilos,
       observaciones: contrato.observaciones,
+      empresa: empresaConfig,
     };
 
     const html = EnterprisePDFService.generarHTMLDocumento(payload);
@@ -565,6 +610,57 @@ export default function HomePage() {
     navigateToTab("facturacion");
   };
 
+  // Modal Registrar Pago / Cartera
+  const handleOpenRegistrarPago = (contrato: ContratoAlquiler) => {
+    setContratoParaPago(contrato);
+    const saldoPendiente = Math.max(0, contrato.total - (contrato.totalPagado || 0));
+    setPagoMonto(saldoPendiente);
+    setPagoMetodo("TRANSFERENCIA");
+    setPagoReferencia("");
+    setShowPagoModal(true);
+  };
+
+  const handleConfirmarPago = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contratoParaPago) return;
+
+    if (pagoMonto <= 0) {
+      alert("El monto del pago debe ser mayor a cero.");
+      return;
+    }
+
+    const nuevoRecibo: ReciboPago = {
+      id: "PAG-" + Date.now(),
+      consecutivo: pagos.length + 101,
+      alquilerId: contratoParaPago.id,
+      consecutivoAlquiler: contratoParaPago.consecutivo,
+      clienteNombre: contratoParaPago.clienteNombre,
+      monto: pagoMonto,
+      metodoPago: pagoMetodo,
+      referencia: pagoReferencia,
+      fecha: todayStr,
+    };
+
+    setPagos((prev) => [nuevoRecibo, ...prev]);
+
+    // Actualizar el saldo pagado en el contrato
+    setContratos((prev) =>
+      prev.map((c) => {
+        if (c.id === contratoParaPago.id) {
+          const nuevoTotalPagado = (c.totalPagado || 0) + pagoMonto;
+          return {
+            ...c,
+            totalPagado: nuevoTotalPagado,
+          };
+        }
+        return c;
+      })
+    );
+
+    setShowPagoModal(false);
+    alert(`¡Pago de ${formatearMonedaCOP(pagoMonto)} registrado con éxito!`);
+  };
+
   // Contratos filtrados
   const contratosFiltrados = contratos.filter((c) => {
     const matchEstado = alquilerEstadoFilter === "TODOS" || c.estado === alquilerEstadoFilter;
@@ -573,6 +669,11 @@ export default function HomePage() {
       `ALQ-${c.consecutivo}`.toLowerCase().includes(alquilerSearchFilter.toLowerCase());
     return matchEstado && matchSearch;
   });
+
+  // Totales de Cartera
+  const totalFacturadoGlobal = contratos.reduce((acc, c) => acc + c.total, 0);
+  const totalRecaudadoGlobal = pagos.reduce((acc, p) => acc + p.monto, 0);
+  const saldoCarteraPendienteGlobal = Math.max(0, totalFacturadoGlobal - totalRecaudadoGlobal);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden font-sans">
@@ -586,15 +687,19 @@ export default function HomePage() {
       <header className="glass-header sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-tr from-sky-600 to-cyan-400 p-2.5 rounded-2xl text-white shadow-lg shadow-sky-500/30 ring-1 ring-white/20">
-              <Building2 className="h-6 w-6" />
-            </div>
+            {empresaConfig.logoBase64 ? (
+              <img src={empresaConfig.logoBase64} alt="Logo" className="h-10 max-w-[120px] object-contain rounded-lg p-1 bg-white/10" />
+            ) : (
+              <div className="bg-gradient-to-tr from-sky-600 to-cyan-400 p-2.5 rounded-2xl text-white shadow-lg shadow-sky-500/30 ring-1 ring-white/20">
+                <Building2 className="h-6 w-6" />
+              </div>
+            )}
             <div>
               <span className="text-xl font-black bg-gradient-to-r from-white via-slate-100 to-sky-400 bg-clip-text text-transparent tracking-tight">
-                Alquileres ERP
+                {empresaConfig.razonSocial}
               </span>
               <span className="ml-2 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-400/30 backdrop-blur-md shadow-sm">
-                alquileres_app
+                NIT: {empresaConfig.nit}
               </span>
             </div>
           </div>
@@ -619,7 +724,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* NAVEGACIÓN TABBED SPA */}
+        {/* NAVEGACIÓN TABBED SPA (8 MÓDULOS COMPLETOS) */}
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 overflow-x-auto py-2 border-t border-white/5 scrollbar-none">
           {[
             { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -627,7 +732,9 @@ export default function HomePage() {
             { id: "bodega", label: "Bodega e Inventario", icon: Package },
             { id: "devoluciones", label: "Devoluciones", icon: RotateCcw },
             { id: "facturacion", label: `Facturación (${facturas.length})`, icon: Receipt },
+            { id: "cartera", label: `Cartera & Pagos (${pagos.length})`, icon: Landmark },
             { id: "clientes", label: "Clientes & Terceros", icon: Users },
+            { id: "configuracion", label: "Configuración Empresa", icon: Settings },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -660,15 +767,14 @@ export default function HomePage() {
               <div className="relative z-10 space-y-4 max-w-3xl">
                 <div className="inline-flex items-center space-x-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3.5 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md">
                   <CheckCircle2 className="h-4 w-4" />
-                  <span>Instancia Producción Limpia & Ready</span>
+                  <span>Branding & Cartera Sincronizados</span>
                   <Sparkles className="h-3.5 w-3.5 ml-1 text-emerald-300" />
                 </div>
                 <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
-                  Gestión Inteligente de Alquileres de Maquinaria
+                  {empresaConfig.razonSocial}
                 </h1>
                 <p className="text-slate-300 text-sm sm:text-base leading-relaxed font-normal">
-                  Cálculo automático de días de alquiler por fechas individuales de ítem, generación de PDFs en tamaño Carta (Letter),
-                  formato de moneda colombiano ($40.000) e inventario en tiempo real.
+                  Control integral de alquileres, cuentas de cobro, fletes, recaudo de cartera y generación de documentos en tamaño Carta con logo corporativo.
                 </p>
               </div>
             </section>
@@ -688,6 +794,19 @@ export default function HomePage() {
                 </div>
               </div>
 
+              <div onClick={() => navigateToTab("cartera")} className="glass-panel glass-panel-hover rounded-2xl p-6 cursor-pointer">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Saldo en Cartera</span>
+                  <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <Landmark className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="mt-5">
+                  <span className="text-2xl font-extrabold text-emerald-400">{formatearMonedaCOP(saldoCarteraPendienteGlobal)}</span>
+                  <span className="text-xs text-slate-400 block mt-1 font-medium">recaudo: {formatearMonedaCOP(totalRecaudadoGlobal)}</span>
+                </div>
+              </div>
+
               <div onClick={() => navigateToTab("bodega")} className="glass-panel glass-panel-hover rounded-2xl p-6 cursor-pointer">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Equipos en Bodega</span>
@@ -697,33 +816,20 @@ export default function HomePage() {
                 </div>
                 <div className="mt-5">
                   <span className="text-4xl font-extrabold text-white">{equipos.reduce((acc, eq) => acc + (eq.activo ? eq.stockDisponible : 0), 0)}</span>
-                  <span className="text-xs text-slate-400 ml-2 font-medium">disponibles en tiempo real</span>
+                  <span className="text-xs text-slate-400 ml-2 font-medium">disponibles</span>
                 </div>
               </div>
 
-              <div onClick={() => navigateToTab("devoluciones")} className="glass-panel glass-panel-hover rounded-2xl p-6 cursor-pointer">
+              <div onClick={() => navigateToTab("configuracion")} className="glass-panel glass-panel-hover rounded-2xl p-6 cursor-pointer">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Devoluciones Pendientes</span>
+                  <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Empresa & Logo</span>
                   <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                    <RotateCcw className="h-5 w-5" />
+                    <Settings className="h-5 w-5" />
                   </div>
                 </div>
                 <div className="mt-5">
-                  <span className="text-4xl font-extrabold text-white">{contratos.filter(c => c.estado === 'ACTIVO').length}</span>
-                  <span className="text-xs text-amber-300 ml-2 font-medium">corte 5:00 PM</span>
-                </div>
-              </div>
-
-              <div className="glass-panel glass-panel-hover rounded-2xl p-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Documentos & PDF</span>
-                  <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    <Printer className="h-5 w-5" />
-                  </div>
-                </div>
-                <div className="mt-5">
-                  <span className="text-xl font-bold text-emerald-400 block">Formato Carta</span>
-                  <span className="text-xs text-slate-400 font-medium">Cotizaciones y Contratos</span>
+                  <span className="text-base font-bold text-amber-300 block">{empresaConfig.logoBase64 ? "Logo Personalizado" : "Sin Logo"}</span>
+                  <span className="text-xs text-slate-400 font-medium">Formato Carta & Notas</span>
                 </div>
               </div>
             </section>
@@ -736,7 +842,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-black text-white">Gestión de Alquileres & Contratos</h1>
-                <p className="text-xs text-slate-400">Fechas Individuales por Ítem, Días Calculados Automáticamente y Generador de PDF en Tamaño Carta</p>
+                <p className="text-xs text-slate-400">Fechas Individuales por Ítem, Días Calculados y PDF Carta con Logo de {empresaConfig.razonSocial}</p>
               </div>
               <button 
                 onClick={() => handleOpenNuevoAlquiler()}
@@ -747,7 +853,7 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* Filtros de Estado y Buscador */}
+            {/* Filtros */}
             <div className="glass-panel rounded-2xl p-4 flex flex-col sm:flex-row gap-3 justify-between items-center">
               <div className="flex space-x-1.5 overflow-x-auto w-full sm:w-auto">
                 {(["TODOS", "ACTIVO", "COTIZACION", "FINALIZADO"] as AlquilerEstadoFilter[]).map((estado) => (
@@ -771,13 +877,13 @@ export default function HomePage() {
                   type="text"
                   value={alquilerSearchFilter}
                   onChange={(e) => setAlquilerSearchFilter(e.target.value)}
-                  placeholder="Buscar contrato, cliente, equipo..."
+                  placeholder="Buscar contrato, cliente..."
                   className="w-full pl-9 pr-4 py-2 bg-slate-900/60 border border-white/10 rounded-xl text-xs text-slate-200 focus:outline-none"
                 />
               </div>
             </div>
 
-            {/* Listado de Contratos */}
+            {/* Listado */}
             {contratosFiltrados.length === 0 ? (
               <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 space-y-3">
                 <FileText className="h-10 w-10 mx-auto text-sky-400/60" />
@@ -807,38 +913,29 @@ export default function HomePage() {
                     </div>
 
                     <div className="bg-slate-900/50 p-3 rounded-xl border border-white/5 space-y-1.5 text-xs">
-                      <div className="text-slate-400 font-medium">Equipos Contratados ({contrato.items.length}):</div>
+                      <div className="text-slate-400 font-medium">Equipos ({contrato.items.length}):</div>
                       <ul className="space-y-1">
                         {contrato.items.map((it, idx) => (
                           <li key={idx} className="flex justify-between text-slate-300">
-                            <span>• {it.cantidad}x {it.nombre} ({it.dias} días: {it.fechaInicio} al {it.fechaFin})</span>
+                            <span>• {it.cantidad}x {it.nombre} ({it.dias} días)</span>
                             <span className="font-bold text-sky-300">{formatearMonedaCOP(it.subtotal)}</span>
                           </li>
                         ))}
                       </ul>
-                      {(contrato.fleteEntrega > 0 || contrato.fleteRecogida > 0) && (
-                        <div className="border-t border-white/5 pt-1.5 flex justify-between text-indigo-300 text-[11px]">
-                          <span className="flex items-center space-x-1">
-                            <Truck className="h-3 w-3" />
-                            <span>Fletes (Llevar + Recoger):</span>
-                          </span>
-                          <strong>{formatearMonedaCOP(contrato.fleteEntrega + contrato.fleteRecogida)}</strong>
-                        </div>
-                      )}
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 text-center text-xs">
                       <div className="p-2 rounded-xl bg-slate-900/40 border border-white/5">
-                        <span className="text-[10px] text-slate-500 block">Subtotal Total</span>
-                        <strong className="text-white">{formatearMonedaCOP(contrato.subtotalGeneral)}</strong>
+                        <span className="text-[10px] text-slate-500 block">Total</span>
+                        <strong className="text-white">{formatearMonedaCOP(contrato.total)}</strong>
                       </div>
                       <div className="p-2 rounded-xl bg-slate-900/40 border border-white/5">
-                        <span className="text-[10px] text-slate-500 block">Depósito</span>
-                        <strong className="text-emerald-400">{formatearMonedaCOP(contrato.deposito)}</strong>
+                        <span className="text-[10px] text-slate-500 block">Abonado</span>
+                        <strong className="text-emerald-400">{formatearMonedaCOP(contrato.totalPagado || 0)}</strong>
                       </div>
                       <div className="p-2 rounded-xl bg-slate-900/40 border border-white/5">
-                        <span className="text-[10px] text-slate-500 block">Saldo a Cobrar</span>
-                        <strong className="text-sky-400">{formatearMonedaCOP(contrato.total)}</strong>
+                        <span className="text-[10px] text-slate-500 block">Saldo</span>
+                        <strong className="text-sky-400">{formatearMonedaCOP(Math.max(0, contrato.total - (contrato.totalPagado || 0)))}</strong>
                       </div>
                     </div>
 
@@ -848,14 +945,14 @@ export default function HomePage() {
                         className="px-3 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 font-semibold border border-indigo-500/30 flex items-center space-x-1.5"
                       >
                         <Printer className="h-3.5 w-3.5 text-indigo-400" />
-                        <span>Generar PDF Carta</span>
+                        <span>PDF Carta</span>
                       </button>
                       <button 
-                        onClick={() => setSelectedContratoDetalle(contrato)}
-                        className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 font-semibold border border-white/10 flex items-center space-x-1"
+                        onClick={() => handleOpenRegistrarPago(contrato)}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-semibold border border-emerald-500/30 flex items-center space-x-1"
                       >
-                        <Eye className="h-3.5 w-3.5 text-sky-400" />
-                        <span>Ver Detalle</span>
+                        <Wallet className="h-3.5 w-3.5" />
+                        <span>Abonar</span>
                       </button>
                     </div>
                   </div>
@@ -871,7 +968,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-black text-white">Catálogo de Bodega e Inventario</h1>
-                <p className="text-xs text-slate-400">Gestión CRUD de Equipos, Carga Masiva y Control de Stock (`peso_gramos BIGINT`)</p>
+                <p className="text-xs text-slate-400">Control de Stock en Vivo y Peso en Gramos (`peso_gramos BIGINT`)</p>
               </div>
             </div>
 
@@ -896,14 +993,12 @@ export default function HomePage() {
                     <div><span className="text-[10px] text-slate-500 block uppercase font-bold">En Obra</span><strong className="text-amber-400 font-extrabold">{item.stockEnObra} u.</strong></div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-white/5 gap-2">
-                    <button onClick={() => handleOpenNuevoAlquiler(item.id)} disabled={item.stockDisponible === 0} className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center space-x-1 ${
-                      item.stockDisponible > 0 ? "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30" : "bg-slate-800 text-slate-500 cursor-not-allowed"
-                    }`}>
-                      <Plus className="h-3.5 w-3.5" />
-                      <span>Alquilar Este Equipo</span>
-                    </button>
-                  </div>
+                  <button onClick={() => handleOpenNuevoAlquiler(item.id)} disabled={item.stockDisponible === 0} className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center space-x-1 ${
+                    item.stockDisponible > 0 ? "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30" : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                  }`}>
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Alquilar Este Equipo</span>
+                  </button>
                 </div>
               ))}
             </div>
@@ -916,7 +1011,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-black text-white">Recepción de Devoluciones & Registro de Daños</h1>
-                <p className="text-xs text-slate-400">Reingreso a Bodega e Inspección Física de Equipos (Corte 5:00 PM `America/Bogota`)</p>
+                <p className="text-xs text-slate-400">Reingreso a Bodega e Inspección Física de Equipos</p>
               </div>
             </div>
 
@@ -962,17 +1057,16 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* PESTAÑA 5: FACTURACIÓN & PDF */}
+        {/* PESTAÑA 5: FACTURACIÓN */}
         {activeTab === "facturacion" && (
           <div className="space-y-6 animate-fadeIn">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-black text-white">Facturación, Cuentas de Cobro & PDFs</h1>
-                <p className="text-xs text-slate-400">Liquidación en COP con formato de moneda $40.000 y totales en letras</p>
+                <h1 className="text-2xl font-black text-white">Facturación & Cuentas de Cobro</h1>
+                <p className="text-xs text-slate-400">Liquidación en COP con Logo Corporativo y Totales en Letras</p>
               </div>
             </div>
 
-            {/* Contratos Listos para Liquidar */}
             <div className="space-y-4">
               <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Contratos Listos para Liquidación:</span>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1000,7 +1094,7 @@ export default function HomePage() {
 
             {/* Facturas Emitidas */}
             <div className="space-y-4 pt-4 border-t border-white/10">
-              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Historial de Cuentas de Cobro Emitidas ({facturas.length}):</span>
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Historial de Cuentas de Cobro ({facturas.length}):</span>
               {facturas.length === 0 ? (
                 <div className="glass-panel rounded-2xl p-8 text-center text-slate-400 text-xs">
                   No hay cuentas de cobro generadas todavía.
@@ -1028,7 +1122,7 @@ export default function HomePage() {
                             className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/10 text-xs font-semibold text-sky-400 flex items-center justify-center space-x-1.5"
                           >
                             <Printer className="h-3.5 w-3.5" />
-                            <span>Generar PDF Carta</span>
+                            <span>Generar PDF Carta con Logo</span>
                           </button>
                         )}
                       </div>
@@ -1040,7 +1134,105 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* PESTAÑA 6: CLIENTES */}
+        {/* PESTAÑA 6: CARTERA & PAGOS */}
+        {activeTab === "cartera" && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-black text-white">Módulo de Cartera, Recaudo & Pagos</h1>
+                <p className="text-xs text-slate-400">Control de Cuentas por Cobrar (CxC), Abonos Parciales y Recibos de Caja</p>
+              </div>
+            </div>
+
+            {/* Resumen Financiero Cartera */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="glass-panel rounded-2xl p-5 border border-white/10">
+                <span className="text-xs text-slate-400 uppercase font-bold block">Total Facturado</span>
+                <strong className="text-2xl font-black text-white mt-1 block">{formatearMonedaCOP(totalFacturadoGlobal)}</strong>
+              </div>
+              <div className="glass-panel rounded-2xl p-5 border border-emerald-500/20 bg-emerald-950/20">
+                <span className="text-xs text-emerald-400 uppercase font-bold block">Total Recaudado / Pagado</span>
+                <strong className="text-2xl font-black text-emerald-300 mt-1 block">{formatearMonedaCOP(totalRecaudadoGlobal)}</strong>
+              </div>
+              <div className="glass-panel rounded-2xl p-5 border border-amber-500/20 bg-amber-950/20">
+                <span className="text-xs text-amber-400 uppercase font-bold block">Saldo Pendiente de Cobro</span>
+                <strong className="text-2xl font-black text-amber-300 mt-1 block">{formatearMonedaCOP(saldoCarteraPendienteGlobal)}</strong>
+              </div>
+            </div>
+
+            {/* Estado de Cartera por Contrato */}
+            <div className="glass-panel rounded-2xl p-5 space-y-4">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Estado de Cartera por Contrato:</span>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-900/80 text-slate-400 uppercase text-[10px]">
+                    <tr>
+                      <th className="p-3">Contrato</th>
+                      <th className="p-3">Cliente</th>
+                      <th className="p-3 text-right">Total Facturado</th>
+                      <th className="p-3 text-right">Abonos</th>
+                      <th className="p-3 text-right">Saldo Pendiente</th>
+                      <th className="p-3 text-center">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {contratos.map((c) => {
+                      const saldo = Math.max(0, c.total - (c.totalPagado || 0));
+                      return (
+                        <tr key={c.id} className="hover:bg-slate-900/40">
+                          <td className="p-3 font-bold text-sky-400">ALQ-{c.consecutivo}</td>
+                          <td className="p-3 text-white font-medium">{c.clienteNombre}</td>
+                          <td className="p-3 text-right font-bold text-slate-200">{formatearMonedaCOP(c.total)}</td>
+                          <td className="p-3 text-right font-bold text-emerald-400">{formatearMonedaCOP(c.totalPagado || 0)}</td>
+                          <td className="p-3 text-right font-black text-amber-300">{formatearMonedaCOP(saldo)}</td>
+                          <td className="p-3 text-center">
+                            {saldo > 0 ? (
+                              <button
+                                onClick={() => handleOpenRegistrarPago(c)}
+                                className="px-3 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-200 font-bold text-[11px] border border-emerald-500/30"
+                              >
+                                Registrar Pago
+                              </button>
+                            ) : (
+                              <span className="text-emerald-400 font-bold text-[11px] px-2 py-0.5 rounded bg-emerald-500/10">PAZ Y SALVO</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Historial de Pagos / Recibos */}
+            <div className="glass-panel rounded-2xl p-5 space-y-3">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Historial de Recibos de Caja ({pagos.length}):</span>
+              {pagos.length === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-4">No se han registrado abonos o pagos todavía.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {pagos.map((p) => (
+                    <div key={p.id} className="p-3.5 rounded-xl bg-slate-900/60 border border-white/5 text-xs space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-emerald-400">RECIBO #{p.consecutivo}</span>
+                        <span className="text-[10px] text-slate-500">{p.fecha}</span>
+                      </div>
+                      <div className="text-white font-bold">{p.clienteNombre}</div>
+                      <div className="flex justify-between text-slate-300 text-[11px]">
+                        <span>Abono ALQ-{p.consecutivoAlquiler} ({p.metodoPago}):</span>
+                        <strong className="text-emerald-300">{formatearMonedaCOP(p.monto)}</strong>
+                      </div>
+                      {p.referencia && <div className="text-[10px] text-slate-400">Ref: {p.referencia}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* PESTAÑA 7: CLIENTES */}
         {activeTab === "clientes" && (
           <div className="space-y-6 animate-fadeIn">
             <div className="flex items-center justify-between">
@@ -1073,9 +1265,231 @@ export default function HomePage() {
           </div>
         )}
 
+        {/* PESTAÑA 8: CONFIGURACIÓN DE LA EMPRESA & BRANDING */}
+        {activeTab === "configuracion" && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-black text-white">Información General de la Empresa & Branding</h1>
+                <p className="text-xs text-slate-400">Carga de Logo Corporativo, Datos Fiscales y Comentarios Bancarios/Legales para PDFs</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* PANEL DE CARGA DE LOGO */}
+              <div className="glass-panel rounded-3xl p-6 space-y-4 border border-white/10 flex flex-col items-center text-center">
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Logo de la Empresa</span>
+                
+                <div className="w-full h-44 rounded-2xl bg-slate-900/80 border-2 border-dashed border-white/20 flex flex-col items-center justify-center p-4 relative overflow-hidden group">
+                  {logoPreview ? (
+                    <img src={logoPreview} alt="Logo" className="max-h-full max-w-full object-contain" />
+                  ) : (
+                    <div className="text-slate-500 space-y-2 flex flex-col items-center">
+                      <ImageIcon className="h-10 w-10 text-slate-600" />
+                      <span className="text-xs">No hay logo cargado</span>
+                    </div>
+                  )}
+                </div>
+
+                <label className="w-full py-2.5 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 text-xs font-bold flex items-center justify-center space-x-2 cursor-pointer transition-all">
+                  <Upload className="h-4 w-4" />
+                  <span>Cargar Imagen de Logo</span>
+                  <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                </label>
+                {logoPreview && (
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setLogoPreview("");
+                      setEmpresaConfig(prev => ({ ...prev, logoBase64: "" }));
+                    }}
+                    className="text-xs text-rose-400 hover:text-rose-300"
+                  >
+                    Eliminar Logo
+                  </button>
+                )}
+                <p className="text-[11px] text-slate-400">Este logo se incrustará automáticamente en la cabecera de todas las Cotizaciones, Contratos y Cuentas de Cobro en tamaño Carta.</p>
+              </div>
+
+              {/* FORMULARIO DE DATOS FISCALES & NOTAS DE FACTURA */}
+              <div className="glass-panel rounded-3xl p-6 lg:col-span-2 space-y-4 border border-white/10">
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Datos Fiscales & Parámetros Documentales:</span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="text-slate-300 font-bold block">Razón Social de la Empresa</label>
+                    <input
+                      type="text"
+                      value={empresaConfig.razonSocial}
+                      onChange={(e) => setEmpresaConfig({ ...empresaConfig, razonSocial: e.target.value })}
+                      className="w-full p-2 mt-1 bg-slate-900 border border-white/10 rounded-xl text-slate-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-300 font-bold block">NIT / Cédula Fiscal</label>
+                    <input
+                      type="text"
+                      value={empresaConfig.nit}
+                      onChange={(e) => setEmpresaConfig({ ...empresaConfig, nit: e.target.value })}
+                      className="w-full p-2 mt-1 bg-slate-900 border border-white/10 rounded-xl text-slate-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-300 font-bold block">Teléfonos de Contacto</label>
+                    <input
+                      type="text"
+                      value={empresaConfig.telefono}
+                      onChange={(e) => setEmpresaConfig({ ...empresaConfig, telefono: e.target.value })}
+                      className="w-full p-2 mt-1 bg-slate-900 border border-white/10 rounded-xl text-slate-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-300 font-bold block">Correo Electrónico Oficial</label>
+                    <input
+                      type="email"
+                      value={empresaConfig.email}
+                      onChange={(e) => setEmpresaConfig({ ...empresaConfig, email: e.target.value })}
+                      className="w-full p-2 mt-1 bg-slate-900 border border-white/10 rounded-xl text-slate-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-300 font-bold block">Dirección Principal</label>
+                    <input
+                      type="text"
+                      value={empresaConfig.direccion}
+                      onChange={(e) => setEmpresaConfig({ ...empresaConfig, direccion: e.target.value })}
+                      className="w-full p-2 mt-1 bg-slate-900 border border-white/10 rounded-xl text-slate-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-300 font-bold block">Ciudad / País</label>
+                    <input
+                      type="text"
+                      value={empresaConfig.ciudad}
+                      onChange={(e) => setEmpresaConfig({ ...empresaConfig, ciudad: e.target.value })}
+                      className="w-full p-2 mt-1 bg-slate-900 border border-white/10 rounded-xl text-slate-100"
+                    />
+                  </div>
+                </div>
+
+                {/* Comentarios Bancarios para los PDFs */}
+                <div className="space-y-1 text-xs">
+                  <label className="text-slate-300 font-bold block">Instrucciones Bancarias (Cuentas para Transferencias en PDFs):</label>
+                  <textarea
+                    rows={2}
+                    value={empresaConfig.cuentaBancariaInfo}
+                    onChange={(e) => setEmpresaConfig({ ...empresaConfig, cuentaBancariaInfo: e.target.value })}
+                    placeholder="Ej: Cuenta de Ahorros Bancolombia No. 123-456789-01..."
+                    className="w-full p-2 bg-slate-900 border border-white/10 rounded-xl text-slate-100 text-xs"
+                  />
+                </div>
+
+                {/* Términos y Condiciones */}
+                <div className="space-y-1 text-xs">
+                  <label className="text-slate-300 font-bold block">Términos, Horario de Corte y Comentarios Legales en PDFs:</label>
+                  <textarea
+                    rows={2}
+                    value={empresaConfig.notasFacturaPDF}
+                    onChange={(e) => setEmpresaConfig({ ...empresaConfig, notasFacturaPDF: e.target.value })}
+                    className="w-full p-2 bg-slate-900 border border-white/10 rounded-xl text-slate-100 text-xs"
+                  />
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button 
+                    type="button" 
+                    onClick={() => alert("¡Configuración de Empresa y Branding guardados exitosamente!")}
+                    className="glass-button-primary px-6 py-2.5 rounded-xl text-xs font-bold text-white flex items-center space-x-2 shadow-lg shadow-sky-500/20"
+                  >
+                    <Check className="h-4 w-4" />
+                    <span>Guardar Configuración de Empresa</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
       </main>
 
-      {/* MODAL CREAR CONTRATO / COTIZACIÓN CON FECHAS INDIVIDUALES & CÁLCULO AUTOMÁTICO DE DÍAS */}
+      {/* MODAL REGISTRAR ABONO / PAGO EN CARTERA */}
+      {showPagoModal && contratoParaPago && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+          <div className="glass-panel w-full max-w-lg rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ALQ-{contratoParaPago.consecutivo}</span>
+                <h2 className="text-lg font-black text-white mt-1">Registrar Recaudo / Abono</h2>
+              </div>
+              <button onClick={() => setShowPagoModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+            </div>
+
+            <form onSubmit={handleConfirmarPago} className="space-y-4">
+              <div className="bg-slate-900/60 p-3 rounded-2xl border border-white/5 space-y-1 text-xs">
+                <div className="text-slate-400">Cliente: <strong className="text-white">{contratoParaPago.clienteNombre}</strong></div>
+                <div className="flex justify-between text-slate-300">
+                  <span>Total Contrato: <strong>{formatearMonedaCOP(contratoParaPago.total)}</strong></span>
+                  <span>Saldo Pendiente: <strong className="text-amber-300">{formatearMonedaCOP(Math.max(0, contratoParaPago.total - (contratoParaPago.totalPagado || 0)))}</strong></span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-300 block">Monto a Abonar (COP)*</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={Math.max(0, contratoParaPago.total - (contratoParaPago.totalPagado || 0))}
+                  value={pagoMonto}
+                  onChange={(e) => setPagoMonto(parseFloat(e.target.value) || 0)}
+                  className="w-full p-2.5 mt-1 bg-slate-900 border border-white/10 rounded-xl text-sm font-bold text-emerald-300"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="text-slate-300 font-bold block">Método de Pago</label>
+                  <select
+                    value={pagoMetodo}
+                    onChange={(e) => setPagoMetodo(e.target.value as any)}
+                    className="w-full p-2 mt-1 bg-slate-900 border border-white/10 rounded-xl text-slate-100"
+                  >
+                    <option value="TRANSFERENCIA">Transferencia Bancaria</option>
+                    <option value="EFECTIVO">Efectivo</option>
+                    <option value="NEQUI">Nequi</option>
+                    <option value="DAVIPLATA">Daviplata</option>
+                    <option value="CHEQUE">Cheque</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-slate-300 font-bold block">No. Comprobante / Ref.</label>
+                  <input
+                    type="text"
+                    value={pagoReferencia}
+                    onChange={(e) => setPagoReferencia(e.target.value)}
+                    placeholder="Ej: Aprobación #8844"
+                    className="w-full p-2 mt-1 bg-slate-900 border border-white/10 rounded-xl text-slate-100"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-3 border-t border-white/10">
+                <button type="button" onClick={() => setShowPagoModal(false)} className="px-4 py-2 bg-slate-900 text-xs font-bold rounded-xl">Cancelar</button>
+                <button type="submit" className="glass-button-primary px-5 py-2 text-xs font-bold text-white rounded-xl">Confirmar Recaudo</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CREAR CONTRATO / COTIZACIÓN */}
       {showMultiAlquilerModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn overflow-y-auto">
           <div className="glass-panel w-full max-w-4xl rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative my-8">
@@ -1096,7 +1510,7 @@ export default function HomePage() {
 
             <form onSubmit={handleGuardarContrato} className="space-y-5">
               
-              {/* ENCABEZADO: CLIENTE, FECHA GENERAL Y TIPO */}
+              {/* ENCABEZADO */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="relative sm:col-span-1">
                   <label className="text-xs font-bold text-slate-300 flex items-center space-x-1">
@@ -1181,7 +1595,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* LISTA MULTI-ITEM DE EQUIPOS CON FECHAS INDIVIDUALES & CÁLCULO DE DÍAS */}
+              {/* LISTA MULTI-ITEM DE EQUIPOS */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
@@ -1228,7 +1642,6 @@ export default function HomePage() {
                           )}
                         </div>
 
-                        {/* SELECTORES DE FECHA INDIVIDUAL & CÁLCULO DE DÍAS */}
                         <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-xs">
                           <div>
                             <span className="text-[10px] text-slate-400 block">Cant. (u.)</span>
@@ -1292,7 +1705,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* CAMPOS DE LOGÍSTICA: FLETES Y DETALLES DE DESPACHO */}
+              {/* FLETES */}
               <div className="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-500/20 space-y-3">
                 <span className="text-xs font-bold text-indigo-300 uppercase flex items-center space-x-1.5">
                   <Truck className="h-4 w-4" />
@@ -1326,7 +1739,7 @@ export default function HomePage() {
                 <div>
                   <label className="text-[11px] font-bold text-slate-300 flex items-center space-x-1">
                     <Car className="h-3.5 w-3.5 text-indigo-400" />
-                    <span>Detalles Logísticos de Transporte (Conductor, Placa, Instrucciones)</span>
+                    <span>Detalles Logísticos de Transporte</span>
                   </label>
                   <input
                     type="text"
@@ -1369,24 +1782,12 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* RESUMEN FINANCIERO INTEGRAL CON MONEDA FORMATEADA */}
+              {/* RESUMEN */}
               <div className="p-4 rounded-2xl bg-slate-900/80 border border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                <div>
-                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Subtotal Equipos</span>
-                  <strong className="text-sm font-black text-white">{formatearMonedaCOP(subtotalEquipos)}</strong>
-                </div>
-                <div>
-                  <span className="text-[10px] text-indigo-400 block uppercase font-bold">+ Total Fletes</span>
-                  <strong className="text-sm font-black text-indigo-300">{formatearMonedaCOP(totalFletes)}</strong>
-                </div>
-                <div>
-                  <span className="text-[10px] text-emerald-400 block uppercase font-bold">- Depósito</span>
-                  <strong className="text-sm font-black text-emerald-400">{formatearMonedaCOP(nuevoAlquilerDeposito || 0)}</strong>
-                </div>
-                <div>
-                  <span className="text-[10px] text-sky-400 block uppercase font-bold">Saldo a Cobrar</span>
-                  <strong className="text-base font-black text-sky-300">{formatearMonedaCOP(totalContrato)}</strong>
-                </div>
+                <div><span className="text-[10px] text-slate-400 block uppercase font-bold">Subtotal Equipos</span><strong className="text-sm font-black text-white">{formatearMonedaCOP(subtotalEquipos)}</strong></div>
+                <div><span className="text-[10px] text-indigo-400 block uppercase font-bold">+ Total Fletes</span><strong className="text-sm font-black text-indigo-300">{formatearMonedaCOP(totalFletes)}</strong></div>
+                <div><span className="text-[10px] text-emerald-400 block uppercase font-bold">- Depósito</span><strong className="text-sm font-black text-emerald-400">{formatearMonedaCOP(nuevoAlquilerDeposito || 0)}</strong></div>
+                <div><span className="text-[10px] text-sky-400 block uppercase font-bold">Saldo a Cobrar</span><strong className="text-base font-black text-sky-300">{formatearMonedaCOP(totalContrato)}</strong></div>
               </div>
 
               <div className="flex justify-end space-x-3 pt-2 border-t border-white/10">
@@ -1400,7 +1801,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* MODAL DEVOLUCIÓN & INSPECCIÓN */}
+      {/* MODAL DEVOLUCIÓN */}
       {showDevolucionModal && contratoParaDevolucion && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
           <div className="glass-panel w-full max-w-2xl rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative">
@@ -1460,7 +1861,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* MODAL FACTURACIÓN / CUENTA DE COBRO */}
+      {/* MODAL FACTURACIÓN */}
       {showFacturaModal && contratoParaFacturar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
           <div className="glass-panel w-full max-w-2xl rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative">
@@ -1473,7 +1874,7 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-3">
-              <span className="text-xs font-bold text-slate-300 uppercase">Detalle Completo (100% de Renglones & Fletes):</span>
+              <span className="text-xs font-bold text-slate-300 uppercase">Detalle Completo (100% de Renglones):</span>
               <div className="space-y-1.5 bg-slate-900/60 p-3 rounded-2xl border border-white/5 text-xs">
                 {contratoParaFacturar.items.map((it, idx) => (
                   <div key={idx} className="flex justify-between text-slate-300">
@@ -1482,12 +1883,6 @@ export default function HomePage() {
                   </div>
                 ))}
               </div>
-
-              <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Subtotal General</span><strong>{formatearMonedaCOP(contratoParaFacturar.subtotalGeneral)}</strong></div>
-                <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Depósito</span><strong className="text-emerald-400">- {formatearMonedaCOP(contratoParaFacturar.deposito)}</strong></div>
-                <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Total a Pagar</span><strong className="text-sky-400">{formatearMonedaCOP(contratoParaFacturar.total)}</strong></div>
-              </div>
             </div>
 
             <div className="flex justify-end space-x-3 pt-3 border-t border-white/10">
@@ -1495,58 +1890,6 @@ export default function HomePage() {
               <button onClick={handleEmitirFactura} className="glass-button-primary px-5 py-2 text-xs font-bold text-white rounded-xl flex items-center space-x-2">
                 <Printer className="h-4 w-4" />
                 <span>Emitir Cuenta de Cobro & Generar PDF</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL DETALLE DE CONTRATO */}
-      {selectedContratoDetalle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
-          <div className="glass-panel w-full max-w-2xl rounded-3xl p-6 sm:p-8 space-y-6 border border-white/10 shadow-2xl relative">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
-                  {selectedContratoDetalle.estado === 'COTIZACION' ? `COT-${selectedContratoDetalle.consecutivo}` : `ALQ-${selectedContratoDetalle.consecutivo}`}
-                </span>
-                <h2 className="text-lg font-black text-white mt-1">{selectedContratoDetalle.clienteNombre}</h2>
-              </div>
-              <button onClick={() => setSelectedContratoDetalle(null)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
-            </div>
-
-            <div className="space-y-3">
-              <span className="text-xs font-bold text-slate-300 uppercase">Equipos en este Documento:</span>
-              <div className="space-y-2">
-                {selectedContratoDetalle.items.map((it, idx) => (
-                  <div key={idx} className="p-3 rounded-xl bg-slate-900/60 border border-white/5 flex justify-between items-center text-xs">
-                    <div>
-                      <strong className="text-white block">{it.cantidad}x {it.nombre}</strong>
-                      <span className="text-slate-400">{it.dias} días ({it.fechaInicio} al {it.fechaFin}) a {formatearMonedaCOP(it.tarifaDiaria)}/día</span>
-                    </div>
-                    <span className="font-extrabold text-sky-300">{formatearMonedaCOP(it.subtotal)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center pt-2 border-t border-white/10">
-              <button 
-                onClick={() => handleAbrirVisorPDFCarta(selectedContratoDetalle, selectedContratoDetalle.estado === 'COTIZACION' ? 'COTIZACION' : 'CONTRATO')}
-                className="px-4 py-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/30 text-xs font-bold flex items-center space-x-1.5"
-              >
-                <Printer className="h-4 w-4 text-indigo-400" />
-                <span>Generar PDF Carta</span>
-              </button>
-              <button 
-                onClick={() => {
-                  const c = selectedContratoDetalle;
-                  setSelectedContratoDetalle(null);
-                  handleOpenFacturacion(c);
-                }}
-                className="glass-button-primary px-5 py-2 rounded-xl text-xs font-bold text-white"
-              >
-                Liquidar / Facturar
               </button>
             </div>
           </div>
