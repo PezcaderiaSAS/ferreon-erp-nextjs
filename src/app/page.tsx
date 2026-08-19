@@ -33,14 +33,17 @@ import {
   PackagePlus, 
   FileSpreadsheet, 
   Trash2, 
-  Calendar,
-  DollarSign,
-  Scale,
-  Eye,
-  FileDown,
-  ArrowRight,
-  Printer,
-  CheckCircle
+  Calendar, 
+  DollarSign, 
+  Scale, 
+  Eye, 
+  FileDown, 
+  ArrowRight, 
+  Printer, 
+  Truck, 
+  Car, 
+  FileEdit,
+  UserCheck
 } from "lucide-react";
 
 type TabType = "dashboard" | "alquileres" | "bodega" | "devoluciones" | "facturacion" | "clientes";
@@ -83,7 +86,10 @@ interface ContratoAlquiler {
   clienteId: string;
   clienteNombre: string;
   estado: "COTIZACION" | "ACTIVO" | "FINALIZADO" | "CANCELADO";
-  subtotal: number;
+  subtotalEquipos: number;
+  fleteEntrega: number;
+  fleteRecogida: number;
+  subtotalGeneral: number;
   total: number;
   deposito: number;
   garantiaMonto: number;
@@ -91,6 +97,7 @@ interface ContratoAlquiler {
   garantiaEstado: string;
   pesoTotalKilos: number;
   observaciones?: string;
+  detallesLogistica?: string;
   fechaInicio: string;
   items: Array<{
     equipoId: string;
@@ -118,7 +125,7 @@ interface FacturaEmitida {
   costosDano: number;
   depositoAplicado: number;
   totalPagar: number;
-  estadoPago: "PAGADA" | "PENDIENTE";
+  estadoPago: "EMITIDA" | "PAGADA";
   createdAt: string;
 }
 
@@ -158,21 +165,25 @@ export default function HomePage() {
     { id: "EQ-006", codigo: "PLA-06", nombre: "PLANTA ELÉCTRICA 6.5 KW (DIÉSEL MONOFÁSICA)", categoria: "GENERACIÓN", tarifaDiaria: 75000, pesoKilos: 95.0, stockTotal: 6, stockDisponible: 6, stockEnObra: 0, activo: true },
   ]);
 
-  // Contratos de Alquiler
+  // Contratos de Alquiler y Facturas
   const [contratos, setContratos] = useState<ContratoAlquiler[]>([]);
-
-  // Facturas Emitidas
   const [facturas, setFacturas] = useState<FacturaEmitida[]>([]);
 
-  // Modales y Filtros de Alquiler
+  // Filtros y Búsquedas
   const [alquilerEstadoFilter, setAlquilerEstadoFilter] = useState<AlquilerEstadoFilter>("TODOS");
   const [alquilerSearchFilter, setAlquilerSearchFilter] = useState<string>("");
   const [selectedContratoDetalle, setSelectedContratoDetalle] = useState<ContratoAlquiler | null>(null);
 
-  // Modal Crear Alquiler Multi-Ítem
+  // Estados Modal Crear Alquiler Multi-Ítem con Fletes y Buscador Inteligente
   const [showMultiAlquilerModal, setShowMultiAlquilerModal] = useState<boolean>(false);
   const [nuevoAlquilerClienteId, setNuevoAlquilerClienteId] = useState<string>("");
+  const [clienteSearchQuery, setClienteSearchQuery] = useState<string>("");
+  const [showClienteSuggestions, setShowClienteSuggestions] = useState<boolean>(false);
+
   const [nuevoAlquilerEstado, setNuevoAlquilerEstado] = useState<"ACTIVO" | "COTIZACION">("ACTIVO");
+  const [nuevoAlquilerFleteEntrega, setNuevoAlquilerFleteEntrega] = useState<number>(30000);
+  const [nuevoAlquilerFleteRecogida, setNuevoAlquilerFleteRecogida] = useState<number>(30000);
+  const [nuevoAlquilerDetallesLogistica, setNuevoAlquilerDetallesLogistica] = useState<string>("");
   const [nuevoAlquilerDeposito, setNuevoAlquilerDeposito] = useState<number>(50000);
   const [nuevoAlquilerGarantiaMonto, setNuevoAlquilerGarantiaMonto] = useState<number>(300000);
   const [nuevoAlquilerGarantiaTipo, setNuevoAlquilerGarantiaTipo] = useState<string>("Efectivo");
@@ -182,17 +193,13 @@ export default function HomePage() {
   ]);
   const [multiAlquilerError, setMultiAlquilerError] = useState<string | null>(null);
 
-  // Modal Devolución de Equipos
+  // Modales adicionales
   const [showDevolucionModal, setShowDevolucionModal] = useState<boolean>(false);
   const [contratoParaDevolucion, setContratoParaDevolucion] = useState<ContratoAlquiler | null>(null);
   const [devolucionCantidades, setDevolucionCantidades] = useState<{ [equipoId: string]: number }>({});
   const [devolucionDanos, setDevolucionDanos] = useState<{ [equipoId: string]: number }>({});
-
-  // Modal Liquidación / Facturación
   const [showFacturaModal, setShowFacturaModal] = useState<boolean>(false);
   const [contratoParaFacturar, setContratoParaFacturar] = useState<ContratoAlquiler | null>(null);
-
-  // Modal Clientes y Bodega
   const [showClienteModal, setShowClienteModal] = useState<boolean>(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [clientFormData, setClientFormData] = useState({ nitCedula: "", nombre: "", telefono: "", email: "", direccion: "" });
@@ -228,9 +235,15 @@ export default function HomePage() {
     }
     const defaultEqId = preselectedEquipoId || (equipos[0] ? equipos[0].id : "EQ-001");
     const eqObj = equipos.find((e) => e.id === defaultEqId) || equipos[0];
+    const initialCliente = clientes.find((c) => c.id === preselectedClienteId) || clientes[0];
 
-    setNuevoAlquilerClienteId(preselectedClienteId || clientes[0].id);
+    setNuevoAlquilerClienteId(initialCliente.id);
+    setClienteSearchQuery(`${initialCliente.nitCedula} — ${initialCliente.nombre}`);
+    setShowClienteSuggestions(false);
     setNuevoAlquilerEstado("ACTIVO");
+    setNuevoAlquilerFleteEntrega(30000);
+    setNuevoAlquilerFleteRecogida(30000);
+    setNuevoAlquilerDetallesLogistica("Lleva Don Carlos Cárdenas en Camión NPR");
     setNuevoAlquilerDeposito(50000);
     setNuevoAlquilerGarantiaMonto(300000);
     setNuevoAlquilerGarantiaTipo("Efectivo");
@@ -248,7 +261,7 @@ export default function HomePage() {
     setShowMultiAlquilerModal(true);
   };
 
-  // Agregar fila de equipo al contrato
+  // Agregar fila de equipo
   const handleAddLineaEquipo = () => {
     const primerEquipoDisp = equipos.find((e) => e.activo && e.stockDisponible > 0) || equipos[0];
     if (!primerEquipoDisp) return;
@@ -291,15 +304,19 @@ export default function HomePage() {
     );
   };
 
-  const subtotalContrato = nuevoAlquilerLineas.reduce((acc, l) => acc + (l.cantidad * l.tarifaDiaria * l.dias), 0);
-  const totalContrato = Math.max(0, subtotalContrato - nuevoAlquilerDeposito);
+  // Cálculos Financieros
+  const subtotalEquipos = nuevoAlquilerLineas.reduce((acc, l) => acc + (l.cantidad * l.tarifaDiaria * l.dias), 0);
+  const totalFletes = (nuevoAlquilerFleteEntrega || 0) + (nuevoAlquilerFleteRecogida || 0);
+  const subtotalGeneral = subtotalEquipos + totalFletes;
+  const totalContrato = Math.max(0, subtotalGeneral - (nuevoAlquilerDeposito || 0));
   const pesoTotalContratoKilos = nuevoAlquilerLineas.reduce((acc, l) => acc + (l.cantidad * l.pesoKilos), 0);
 
+  // Guardar y despachar contrato
   const handleGuardarContrato = (e: React.FormEvent) => {
     e.preventDefault();
     const clienteObj = clientes.find((c) => c.id === nuevoAlquilerClienteId);
     if (!clienteObj) {
-      setMultiAlquilerError("Seleccione un cliente válido.");
+      setMultiAlquilerError("Seleccione un cliente válido de la búsqueda asistida.");
       return;
     }
 
@@ -333,14 +350,18 @@ export default function HomePage() {
       clienteId: clienteObj.id,
       clienteNombre: clienteObj.nombre,
       estado: nuevoAlquilerEstado,
-      subtotal: subtotalContrato,
+      subtotalEquipos,
+      fleteEntrega: nuevoAlquilerFleteEntrega || 0,
+      fleteRecogida: nuevoAlquilerFleteRecogida || 0,
+      subtotalGeneral,
       total: totalContrato,
-      deposito: nuevoAlquilerDeposito,
-      garantiaMonto: nuevoAlquilerGarantiaMonto,
+      deposito: nuevoAlquilerDeposito || 0,
+      garantiaMonto: nuevoAlquilerGarantiaMonto || 0,
       garantiaTipo: nuevoAlquilerGarantiaTipo,
       garantiaEstado: "Activa",
       pesoTotalKilos: pesoTotalContratoKilos,
       observaciones: nuevoAlquilerObservaciones,
+      detallesLogistica: nuevoAlquilerDetallesLogistica,
       fechaInicio: new Date().toISOString(),
       items: nuevoAlquilerLineas.map((l) => {
         const eq = equipos.find((e) => e.id === l.equipoId)!;
@@ -365,7 +386,14 @@ export default function HomePage() {
     setShowMultiAlquilerModal(false);
   };
 
-  // Abrir Modal de Devolución
+  // Clientes sugeridos en la búsqueda asistida
+  const clientesSugeridos = clientes.filter(
+    (c) =>
+      c.nombre.toLowerCase().includes(clienteSearchQuery.toLowerCase()) ||
+      c.nitCedula.toLowerCase().includes(clienteSearchQuery.toLowerCase())
+  );
+
+  // Devolución
   const handleOpenDevolucion = (contrato: ContratoAlquiler) => {
     setContratoParaDevolucion(contrato);
     const initialCantidades: { [eqId: string]: number } = {};
@@ -380,14 +408,11 @@ export default function HomePage() {
     setShowDevolucionModal(true);
   };
 
-  // Procesar Devolución e Inspección
   const handleConfirmarDevolucion = (e: React.FormEvent) => {
     e.preventDefault();
     if (!contratoParaDevolucion) return;
 
     let todosDevueltos = true;
-
-    // Actualizar contrato
     const contratoActualizado: ContratoAlquiler = {
       ...contratoParaDevolucion,
       items: contratoParaDevolucion.items.map((it) => {
@@ -396,11 +421,8 @@ export default function HomePage() {
         const costoDano = devolucionDanos[it.equipoId] || 0;
         const estaDevuelto = totalDev >= it.cantidad;
 
-        if (!estaDevuelto) {
-          todosDevueltos = false;
-        }
+        if (!estaDevuelto) todosDevueltos = false;
 
-        // Reingresar stock disponible a la bodega
         if (cantDevueltasHoy > 0) {
           setEquipos((prev) =>
             prev.map((eq) =>
@@ -437,18 +459,17 @@ export default function HomePage() {
     alert("¡Devolución registrada exitosamente! Equipos reingresados a la bodega en tiempo real.");
   };
 
-  // Abrir Modal de Liquidación / Factura
+  // Factura
   const handleOpenFacturacion = (contrato: ContratoAlquiler) => {
     setContratoParaFacturar(contrato);
     setShowFacturaModal(true);
   };
 
-  // Emitir Factura / Cuenta de Cobro
   const handleEmitirFactura = () => {
     if (!contratoParaFacturar) return;
 
     const totalDanos = contratoParaFacturar.items.reduce((acc, it) => acc + (it.costoDano || 0), 0);
-    const totalPagar = Math.max(0, contratoParaFacturar.subtotal + totalDanos - contratoParaFacturar.deposito);
+    const totalPagar = Math.max(0, contratoParaFacturar.subtotalGeneral + totalDanos - contratoParaFacturar.deposito);
 
     const nuevaFac: FacturaEmitida = {
       id: "FAC-" + Date.now(),
@@ -456,17 +477,17 @@ export default function HomePage() {
       alquilerId: contratoParaFacturar.id,
       consecutivoAlquiler: contratoParaFacturar.consecutivo,
       clienteNombre: contratoParaFacturar.clienteNombre,
-      subtotal: contratoParaFacturar.subtotal,
+      subtotal: contratoParaFacturar.subtotalGeneral,
       costosDano: totalDanos,
       depositoAplicado: contratoParaFacturar.deposito,
       totalPagar,
-      estadoPago: "EMITIDA" as any,
+      estadoPago: "EMITIDA",
       createdAt: new Date().toISOString(),
     };
 
     setFacturas((prev) => [nuevaFac, ...prev]);
     setShowFacturaModal(false);
-    alert(`¡Cuenta de Cobro #CC-${nuevaFac.numeroConsecutivo} generada exitosamente con el 100% de renglones incluidos!`);
+    alert(`¡Cuenta de Cobro #CC-${nuevaFac.numeroConsecutivo} generada con 100% de renglones y fletes incluidos!`);
     navigateToTab("facturacion");
   };
 
@@ -573,7 +594,7 @@ export default function HomePage() {
                 </h1>
                 <p className="text-slate-300 text-sm sm:text-base leading-relaxed font-normal">
                   Módulo desacoplado bajo Arquitectura Hexagonal. Moneda oficial COP, 
-                  control estricto de peso en gramos enteros (`peso_gramos BIGINT`) e inventario en bodega en tiempo real.
+                  control estricto de peso en gramos enteros (`peso_gramos BIGINT`), fletes logísticos e inventario en tiempo real.
                 </p>
               </div>
             </section>
@@ -641,7 +662,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-black text-white">Gestión de Alquileres & Contratos</h1>
-                <p className="text-xs text-slate-400">Cotizaciones, Despachos Multi-Equipo, Control de Depósitos y Garantías</p>
+                <p className="text-xs text-slate-400">Despachos Multi-Equipo, Control de Fletes (Entrega y Recogida) y Búsqueda Inteligente</p>
               </div>
               <button 
                 onClick={() => handleOpenNuevoAlquiler()}
@@ -721,19 +742,33 @@ export default function HomePage() {
                           </li>
                         ))}
                       </ul>
+                      {(contrato.fleteEntrega > 0 || contrato.fleteRecogida > 0) && (
+                        <div className="border-t border-white/5 pt-1.5 flex justify-between text-indigo-300 text-[11px]">
+                          <span className="flex items-center space-x-1">
+                            <Truck className="h-3 w-3" />
+                            <span>Fletes (Llevar + Recoger):</span>
+                          </span>
+                          <strong>$ {(contrato.fleteEntrega + contrato.fleteRecogida).toLocaleString("es-CO")},00</strong>
+                        </div>
+                      )}
+                      {contrato.detallesLogistica && (
+                        <div className="text-[11px] text-slate-400 italic">
+                          "{contrato.detallesLogistica}"
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 text-center text-xs">
                       <div className="p-2 rounded-xl bg-slate-900/40 border border-white/5">
-                        <span className="text-[10px] text-slate-500 block">Subtotal</span>
-                        <strong className="text-white">$ {contrato.subtotal.toLocaleString("es-CO")}</strong>
+                        <span className="text-[10px] text-slate-500 block">Subtotal Total</span>
+                        <strong className="text-white">$ {contrato.subtotalGeneral.toLocaleString("es-CO")}</strong>
                       </div>
                       <div className="p-2 rounded-xl bg-slate-900/40 border border-white/5">
                         <span className="text-[10px] text-slate-500 block">Depósito</span>
                         <strong className="text-emerald-400">$ {contrato.deposito.toLocaleString("es-CO")}</strong>
                       </div>
                       <div className="p-2 rounded-xl bg-slate-900/40 border border-white/5">
-                        <span className="text-[10px] text-slate-500 block">Saldo</span>
+                        <span className="text-[10px] text-slate-500 block">Saldo a Cobrar</span>
                         <strong className="text-sky-400">$ {contrato.total.toLocaleString("es-CO")}</strong>
                       </div>
                     </div>
@@ -813,10 +848,10 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* PESTAÑA 4: DEVOLUCIONES (RECEPCIÓN & REINGRESO AUTOMÁTICO A BODEGA) */}
+        {/* PESTAÑA 4: DEVOLUCIONES */}
         {activeTab === "devoluciones" && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-black text-white">Recepción de Devoluciones & Registro de Daños</h1>
                 <p className="text-xs text-slate-400">Reingreso a Bodega e Inspección Física de Equipos (Corte 5:00 PM `America/Bogota`)</p>
@@ -867,13 +902,13 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* PESTAÑA 5: FACTURACIÓN & CUENTAS DE COBRO (100% RENGLONES) */}
+        {/* PESTAÑA 5: FACTURACIÓN & PDF */}
         {activeTab === "facturacion" && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-black text-white">Facturación, Cuentas de Cobro & PDFs</h1>
-                <p className="text-xs text-slate-400">Liquidación en COP `NUMERIC(12, 2)` con 100% de renglones contratados</p>
+                <p className="text-xs text-slate-400">Liquidación en COP `NUMERIC(12, 2)` con 100% de renglones y fletes</p>
               </div>
             </div>
 
@@ -972,7 +1007,7 @@ export default function HomePage() {
 
       </main>
 
-      {/* MODAL CREAR CONTRATO DE ALQUILER MULTI-ITEM */}
+      {/* MODAL CREAR CONTRATO DE ALQUILER CON BUSCADOR ASISTIDO, FLETES Y NOTAS LOGÍSTICAS */}
       {showMultiAlquilerModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn overflow-y-auto">
           <div className="glass-panel w-full max-w-3xl rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative my-8">
@@ -992,25 +1027,82 @@ export default function HomePage() {
             )}
 
             <form onSubmit={handleGuardarContrato} className="space-y-5">
+              
+              {/* BUSCADOR INTELIGENTE ASISTIDO DE CLIENTE */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-300">Cliente Contratante*</label>
-                  <select 
-                    value={nuevoAlquilerClienteId} 
-                    onChange={(e) => setNuevoAlquilerClienteId(e.target.value)}
-                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none"
-                  >
-                    {clientes.map((c) => (
-                      <option key={c.id} value={c.id}>{c.nitCedula} — {c.nombre}</option>
-                    ))}
-                  </select>
+                <div className="relative">
+                  <label className="text-xs font-bold text-slate-300 flex items-center space-x-1">
+                    <Search className="h-3.5 w-3.5 text-sky-400" />
+                    <span>Búsqueda Asistida de Cliente (NIT o Nombre)*</span>
+                  </label>
+                  <div className="relative mt-1">
+                    <input 
+                      type="text"
+                      value={clienteSearchQuery}
+                      onChange={(e) => {
+                        setClienteSearchQuery(e.target.value);
+                        setShowClienteSuggestions(true);
+                      }}
+                      onFocus={() => setShowClienteSuggestions(true)}
+                      placeholder="Escriba NIT o Nombre para buscar..."
+                      className="w-full pl-3.5 pr-8 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+                      required
+                    />
+                    {clienteSearchQuery && (
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setClienteSearchQuery("");
+                          setNuevoAlquilerClienteId("");
+                          setShowClienteSuggestions(true);
+                        }} 
+                        className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Sugerencias Dinámicas Asistidas */}
+                  {showClienteSuggestions && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 bg-slate-900 border border-white/15 rounded-2xl shadow-2xl z-30 max-h-48 overflow-y-auto p-1.5 space-y-1 backdrop-blur-xl">
+                      {clientesSugeridos.length === 0 ? (
+                        <div className="p-3 text-center text-xs text-slate-400">
+                          No hay clientes que coincidan.
+                        </div>
+                      ) : (
+                        clientesSugeridos.map((c) => (
+                          <div
+                            key={c.id}
+                            onClick={() => {
+                              setNuevoAlquilerClienteId(c.id);
+                              setClienteSearchQuery(`${c.nitCedula} — ${c.nombre}`);
+                              setShowClienteSuggestions(false);
+                            }}
+                            className={`p-2.5 rounded-xl text-xs cursor-pointer flex justify-between items-center transition-all ${
+                              nuevoAlquilerClienteId === c.id
+                                ? "bg-sky-600/30 text-sky-200 border border-sky-500/40"
+                                : "hover:bg-slate-800 text-slate-300"
+                            }`}
+                          >
+                            <div>
+                              <strong className="text-white block">{c.nombre}</strong>
+                              <span className="text-sky-400 font-mono text-[10px]">{c.nitCedula}</span>
+                            </div>
+                            {nuevoAlquilerClienteId === c.id && <UserCheck className="h-4 w-4 text-sky-400" />}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
+
                 <div>
                   <label className="text-xs font-bold text-slate-300">Tipo de Documento</label>
                   <select 
                     value={nuevoAlquilerEstado} 
                     onChange={(e) => setNuevoAlquilerEstado(e.target.value as any)}
-                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none"
+                    className="w-full p-2.5 mt-1 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none"
                   >
                     <option value="ACTIVO">Contrato Despachado (Descuenta Stock Bodega)</option>
                     <option value="COTIZACION">Cotización Preliminar (No Descuenta Stock)</option>
@@ -1018,10 +1110,13 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* LISTA MULTI-ITEM DE EQUIPOS */}
+              {/* LISTA MULTI-ITEM DE EQUIPOS CON SELECTOR INTELIGENTE */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Equipos a Incluir en Contrato</span>
+                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+                    <Package className="h-3.5 w-3.5 text-sky-400" />
+                    <span>Equipos a Incluir en Contrato</span>
+                  </span>
                   <button 
                     type="button" 
                     onClick={handleAddLineaEquipo}
@@ -1046,7 +1141,7 @@ export default function HomePage() {
                             >
                               {equipos.filter(e => e.activo).map((eq) => (
                                 <option key={eq.id} value={eq.id}>
-                                  {eq.codigo} — {eq.nombre} ({eq.stockDisponible} u. disp.)
+                                  {eq.codigo} — {eq.nombre} ({eq.stockDisponible} u. disponibles • {eq.pesoKilos} Kg)
                                 </option>
                               ))}
                             </select>
@@ -1106,6 +1201,54 @@ export default function HomePage() {
                 </div>
               </div>
 
+              {/* CAMPOS DE LOGÍSTICA: FLETES Y DETALLES DE DESPACHO */}
+              <div className="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-500/20 space-y-3">
+                <span className="text-xs font-bold text-indigo-300 uppercase flex items-center space-x-1.5">
+                  <Truck className="h-4 w-4" />
+                  <span>Costos de Transporte & Logística</span>
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-300">Valor por Llevar Items (Flete Entrega COP)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={nuevoAlquilerFleteEntrega}
+                      onChange={(e) => setNuevoAlquilerFleteEntrega(parseFloat(e.target.value) || 0)}
+                      placeholder="Ej: 30000"
+                      className="w-full p-2.5 mt-1 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-300">Valor por Recoger Items (Flete Recogida COP)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={nuevoAlquilerFleteRecogida}
+                      onChange={(e) => setNuevoAlquilerFleteRecogida(parseFloat(e.target.value) || 0)}
+                      placeholder="Ej: 30000"
+                      className="w-full p-2.5 mt-1 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-300 flex items-center space-x-1">
+                    <Car className="h-3.5 w-3.5 text-indigo-400" />
+                    <span>Detalles Logísticos de Transporte (Conductor, Placa, Instrucciones)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={nuevoAlquilerDetallesLogistica}
+                    onChange={(e) => setNuevoAlquilerDetallesLogistica(e.target.value)}
+                    placeholder="Ej: Lleva Don Carlos Cárdenas en Camión NPR Placa ABC-123"
+                    className="w-full p-2.5 mt-1 bg-slate-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
               {/* Depósitos & Garantías */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
@@ -1137,19 +1280,23 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* RESUMEN FINANCIERO */}
-              <div className="p-4 rounded-2xl bg-slate-900/80 border border-white/10 grid grid-cols-3 gap-3 text-center">
+              {/* RESUMEN FINANCIERO INTEGRAL CON FLETES */}
+              <div className="p-4 rounded-2xl bg-slate-900/80 border border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div>
                   <span className="text-[10px] text-slate-400 block uppercase font-bold">Subtotal Equipos</span>
-                  <strong className="text-lg font-black text-white">$ {subtotalContrato.toLocaleString("es-CO")},00</strong>
+                  <strong className="text-sm font-black text-white">$ {subtotalEquipos.toLocaleString("es-CO")}</strong>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Peso Total Carga</span>
-                  <strong className="text-lg font-black text-indigo-400">{pesoTotalContratoKilos.toFixed(3)} Kg</strong>
+                  <span className="text-[10px] text-indigo-400 block uppercase font-bold">+ Total Fletes</span>
+                  <strong className="text-sm font-black text-indigo-300">$ {totalFletes.toLocaleString("es-CO")}</strong>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Saldo a Cobrar</span>
-                  <strong className="text-lg font-black text-sky-400">$ {totalContrato.toLocaleString("es-CO")},00</strong>
+                  <span className="text-[10px] text-emerald-400 block uppercase font-bold">- Depósito</span>
+                  <strong className="text-sm font-black text-emerald-400">$ {(nuevoAlquilerDeposito || 0).toLocaleString("es-CO")}</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-sky-400 block uppercase font-bold">Saldo a Cobrar</span>
+                  <strong className="text-base font-black text-sky-300">$ {totalContrato.toLocaleString("es-CO")}</strong>
                 </div>
               </div>
 
@@ -1216,7 +1363,7 @@ export default function HomePage() {
               </div>
 
               <div className="flex justify-end space-x-3 pt-3 border-t border-white/10">
-                <button type="button" onClick={() => setShowDevolucionModal(false)} className="px-4 py-2.5 bg-slate-900 text-xs font-bold rounded-xl">Cancelar</button>
+                <button type="button" onClick={() => setShowDevolucionModal(false)} className="px-4 py-2.5 bg-slate-900 text-slate-300 text-xs font-bold rounded-xl">Cancelar</button>
                 <button type="submit" className="glass-button-primary px-5 py-2.5 text-xs font-bold text-white rounded-xl">Confirmar Reingreso a Bodega</button>
               </div>
             </form>
@@ -1237,7 +1384,7 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-3">
-              <span className="text-xs font-bold text-slate-300 uppercase">Detalle Completo (100% de Renglones):</span>
+              <span className="text-xs font-bold text-slate-300 uppercase">Detalle Completo (100% de Renglones & Fletes):</span>
               <div className="space-y-1.5 bg-slate-900/60 p-3 rounded-2xl border border-white/5 text-xs">
                 {contratoParaFacturar.items.map((it, idx) => (
                   <div key={idx} className="flex justify-between text-slate-300">
@@ -1245,10 +1392,16 @@ export default function HomePage() {
                     <span className="font-bold text-sky-300">$ {it.subtotal.toLocaleString("es-CO")},00</span>
                   </div>
                 ))}
+                {(contratoParaFacturar.fleteEntrega > 0 || contratoParaFacturar.fleteRecogida > 0) && (
+                  <div className="flex justify-between text-indigo-300 border-t border-white/5 pt-1">
+                    <span>Transporte y Fletes (Llevar + Recoger):</span>
+                    <strong>$ {(contratoParaFacturar.fleteEntrega + contratoParaFacturar.fleteRecogida).toLocaleString("es-CO")},00</strong>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Subtotal</span><strong>$ {contratoParaFacturar.subtotal.toLocaleString("es-CO")}</strong></div>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Subtotal General</span><strong>$ {contratoParaFacturar.subtotalGeneral.toLocaleString("es-CO")}</strong></div>
                 <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Depósito</span><strong className="text-emerald-400">- $ {contratoParaFacturar.deposito.toLocaleString("es-CO")}</strong></div>
                 <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Total a Pagar</span><strong className="text-sky-400">$ {contratoParaFacturar.total.toLocaleString("es-CO")}</strong></div>
               </div>
@@ -1292,12 +1445,24 @@ export default function HomePage() {
                   </div>
                 ))}
               </div>
+
+              {(selectedContratoDetalle.fleteEntrega > 0 || selectedContratoDetalle.fleteRecogida > 0) && (
+                <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-xs space-y-1">
+                  <div className="flex justify-between text-indigo-300 font-bold">
+                    <span>Flete Entrega: $ {selectedContratoDetalle.fleteEntrega.toLocaleString("es-CO")}</span>
+                    <span>Flete Recogida: $ {selectedContratoDetalle.fleteRecogida.toLocaleString("es-CO")}</span>
+                  </div>
+                  {selectedContratoDetalle.detallesLogistica && (
+                    <p className="text-slate-400 italic text-[11px]">"{selectedContratoDetalle.detallesLogistica}"</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-3 text-center text-xs bg-slate-900/50 p-3 rounded-2xl border border-white/5">
-              <div><span className="text-slate-500 block">Subtotal</span><strong className="text-white">$ {selectedContratoDetalle.subtotal.toLocaleString("es-CO")}</strong></div>
+              <div><span className="text-slate-500 block">Subtotal Total</span><strong className="text-white">$ {selectedContratoDetalle.subtotalGeneral.toLocaleString("es-CO")}</strong></div>
               <div><span className="text-slate-500 block">Depósito</span><strong className="text-emerald-400">$ {selectedContratoDetalle.deposito.toLocaleString("es-CO")}</strong></div>
-              <div><span className="text-slate-500 block">Saldo</span><strong className="text-sky-400">$ {selectedContratoDetalle.total.toLocaleString("es-CO")}</strong></div>
+              <div><span className="text-slate-500 block">Saldo a Cobrar</span><strong className="text-sky-400">$ {selectedContratoDetalle.total.toLocaleString("es-CO")}</strong></div>
             </div>
 
             <div className="flex justify-between items-center pt-2 border-t border-white/10">

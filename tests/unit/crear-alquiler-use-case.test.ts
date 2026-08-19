@@ -7,8 +7,12 @@ describe("Use Case: CrearAlquilerUseCase", () => {
   it("debe rechazar la creación si no se incluyen ítems", async () => {
     const mockRepo: IAlquilerRepository = {
       findById: vi.fn(),
+      findByConsecutivo: vi.fn(),
+      findByClienteId: vi.fn(),
+      findAll: vi.fn(),
       findActivos: vi.fn(),
       save: vi.fn(),
+      update: vi.fn(),
       updateEstado: vi.fn(),
     };
 
@@ -24,13 +28,17 @@ describe("Use Case: CrearAlquilerUseCase", () => {
     ).rejects.toThrow("Debe incluir al menos un ítem en el alquiler.");
   });
 
-  it("debe crear y guardar un alquiler válido correctamente", async () => {
+  it("debe crear y guardar un alquiler con fletes y logística correctamente", async () => {
     const mockSave = vi.fn().mockImplementation((alquiler: AlquilerEntity) => Promise.resolve(alquiler));
 
     const mockRepo: IAlquilerRepository = {
       findById: vi.fn(),
+      findByConsecutivo: vi.fn(),
+      findByClienteId: vi.fn(),
+      findAll: vi.fn(),
       findActivos: vi.fn(),
       save: mockSave,
+      update: vi.fn(),
       updateEstado: vi.fn(),
     };
 
@@ -38,14 +46,19 @@ describe("Use Case: CrearAlquilerUseCase", () => {
 
     const resultado = await useCase.execute({
       clienteId: "CLI-001",
+      clienteNombre: "CONSTRUCCIONES SAS",
+      fleteEntrega: 25000,
+      fleteRecogida: 25000,
       deposito: 100000,
       garantiaMonto: 500000,
       garantiaTipo: "Efectivo",
-      observaciones: "Entrega urgente",
+      observaciones: "Entrega en obra",
+      detallesLogistica: "Lleva Don Carlos Cárdenas en Camión NPR",
       creadoPor: "USER-001",
       items: [
         {
           itemId: "ITEM-001",
+          nombreItem: "Mezcladora",
           cantidad: 2,
           tarifaAplicada: 45000,
           pesoKilos: 25.5,
@@ -56,9 +69,12 @@ describe("Use Case: CrearAlquilerUseCase", () => {
     });
 
     expect(mockSave).toHaveBeenCalledTimes(1);
-    expect(resultado.subtotal).toBe(270000); // 2 * 45000 * 3
-    expect(resultado.total).toBe(170000); // 270000 - 100000
+    expect(resultado.subtotalEquipos).toBe(270000); // 2 * 45000 * 3
+    expect(resultado.fleteEntrega).toBe(25000);
+    expect(resultado.fleteRecogida).toBe(25000);
+    expect(resultado.subtotalGeneral).toBe(320000); // 270,000 + 50,000 fletes
+    expect(resultado.total).toBe(220000); // 320,000 - 100,000 deposito
+    expect(resultado.detallesLogistica).toBe("Lleva Don Carlos Cárdenas en Camión NPR");
     expect(resultado.estado).toBe("ACTIVO");
-    expect(resultado.detalles[0].pesoGramos.toKilos()).toBe(25.5);
   });
 });

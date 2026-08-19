@@ -17,10 +17,13 @@ export interface CrearAlquilerDTO {
   clienteId: string;
   clienteNombre?: string;
   estado?: AlquilerEstado;
+  fleteEntrega?: number;
+  fleteRecogida?: number;
   deposito: number;
   garantiaMonto: number;
   garantiaTipo?: string;
   observaciones?: string;
+  detallesLogistica?: string;
   creadoPor?: string;
   items: ItemCrearAlquilerDTO[];
 }
@@ -60,12 +63,16 @@ export class CrearAlquilerUseCase {
       dto.clienteNombre,
       dto.estado || 'ACTIVO',
       0,
+      dto.fleteEntrega || 0,
+      dto.fleteRecogida || 0,
+      0,
       0,
       dto.deposito || 0,
       dto.garantiaMonto || 0,
       dto.garantiaTipo || 'Efectivo',
       'Activa',
       dto.observaciones,
+      dto.detallesLogistica,
       dto.creadoPor,
       detalles
     );

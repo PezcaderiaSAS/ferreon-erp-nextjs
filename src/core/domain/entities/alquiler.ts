@@ -25,27 +25,35 @@ export class AlquilerEntity {
     public readonly clienteId: string,
     public clienteNombre: string | undefined,
     public estado: AlquilerEstado,
-    public subtotal: number,
+    public subtotalEquipos: number,
+    public fleteEntrega: number,
+    public fleteRecogida: number,
+    public subtotalGeneral: number,
     public total: number,
     public deposito: number,
     public garantiaMonto: number,
     public garantiaTipo: string,
     public garantiaEstado: string,
     public observacionesGenerales: string | undefined,
+    public detallesLogistica: string | undefined,
     public creadoPor: string | undefined,
-    public readonly detalles: ItemAlquilerDetalle[],
+    public readonly detalles: ItemAlquilerDetalle[] = [],
     public readonly createdAt?: Date
   ) {
     this.calcularTotales();
   }
 
   calcularTotales(): void {
-    this.subtotal = this.detalles.reduce((acc, item) => acc + item.subtotalLinea, 0);
-    this.total = Math.max(0, this.subtotal - this.deposito);
+    const items = this.detalles || [];
+    this.subtotalEquipos = items.reduce((acc, item) => acc + item.subtotalLinea, 0);
+    const totalFletes = (this.fleteEntrega || 0) + (this.fleteRecogida || 0);
+    this.subtotalGeneral = this.subtotalEquipos + totalFletes;
+    this.total = Math.max(0, this.subtotalGeneral - (this.deposito || 0));
   }
 
   calcularPesoTotalGramos(): bigint {
-    return this.detalles.reduce((acc, item) => acc + (item.pesoGramos.gramos * BigInt(item.cantidad)), BigInt(0));
+    const items = this.detalles || [];
+    return items.reduce((acc, item) => acc + (item.pesoGramos.gramos * BigInt(item.cantidad)), BigInt(0));
   }
 
   calcularPesoTotalKilos(): number {

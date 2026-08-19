@@ -8,18 +8,21 @@ const ItemAlquilerSchema = z.object({
   tarifaAplicada: z.number().min(0, "La tarifa debe ser mayor o igual a cero"),
   pesoKilos: z.number().min(0),
   diasContratados: z.number().int().min(1, "Los días contratados deben ser al menos 1"),
-  fechaInicio: z.string().datetime().optional().or(z.string()),
-  fechaFin: z.string().datetime().optional().or(z.string()),
+  fechaInicio: z.string().optional(),
+  fechaFin: z.string().optional(),
 });
 
 const CrearAlquilerSchema = z.object({
   clienteId: z.string().min(1, "El cliente es obligatorio"),
   clienteNombre: z.string().optional(),
   estado: z.enum(["COTIZACION", "ACTIVO", "FINALIZADO", "CANCELADO"]).default("ACTIVO"),
+  fleteEntrega: z.number().min(0).default(0),
+  fleteRecogida: z.number().min(0).default(0),
   deposito: z.number().min(0).default(0),
   garantiaMonto: z.number().min(0).default(0),
   garantiaTipo: z.string().default("Efectivo"),
   observaciones: z.string().optional(),
+  detallesLogistica: z.string().optional(),
   items: z.array(ItemAlquilerSchema).min(1, "Debe incluir al menos un equipo en el contrato"),
 });
 
@@ -36,11 +39,13 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = CrearAlquilerSchema.parse(body);
 
-    const subtotal = validatedData.items.reduce(
+    const subtotalEquipos = validatedData.items.reduce(
       (acc, item) => acc + item.cantidad * item.tarifaAplicada * item.diasContratados,
       0
     );
-    const total = Math.max(0, subtotal - validatedData.deposito);
+    const totalFletes = validatedData.fleteEntrega + validatedData.fleteRecogida;
+    const subtotalGeneral = subtotalEquipos + totalFletes;
+    const total = Math.max(0, subtotalGeneral - validatedData.deposito);
     const totalPesoKilos = validatedData.items.reduce(
       (acc, item) => acc + item.cantidad * item.pesoKilos,
       0
@@ -52,7 +57,10 @@ export async function POST(request: Request) {
       clienteId: validatedData.clienteId,
       clienteNombre: validatedData.clienteNombre,
       estado: validatedData.estado,
-      subtotal,
+      subtotalEquipos,
+      fleteEntrega: validatedData.fleteEntrega,
+      fleteRecogida: validatedData.fleteRecogida,
+      subtotalGeneral,
       total,
       deposito: validatedData.deposito,
       garantiaMonto: validatedData.garantiaMonto,
@@ -60,6 +68,7 @@ export async function POST(request: Request) {
       garantiaEstado: "Activa",
       totalPesoKilos,
       observaciones: validatedData.observaciones,
+      detallesLogistica: validatedData.detallesLogistica,
       detalles: validatedData.items.map((item, idx) => ({
         id: "DET-" + (Date.now() + idx),
         itemId: item.itemId,

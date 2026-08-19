@@ -3,7 +3,7 @@ import { AlquilerEntity } from "../../src/core/domain/entities/alquiler";
 import { PesoGramos } from "../../src/core/domain/value-objects/peso-gramos";
 
 describe("AlquilerEntity Domain Tests", () => {
-  it("debe calcular subtotal, total con depósito y peso total correctamente", () => {
+  it("debe calcular subtotal con fletes de entrega y recogida, total con depósito y peso total correctamente", () => {
     const item1 = {
       itemId: "EQ-01",
       nombreItem: "Mezcladora",
@@ -33,18 +33,30 @@ describe("AlquilerEntity Domain Tests", () => {
       "CONSTRUCCIONES SAS",
       "ACTIVO",
       0,
+      30000, // Flete Entrega
+      30000, // Flete Recogida
+      0,
       0,
       50000, // Depósito
       200000,
       "Efectivo",
       "Activa",
       "Sin observaciones",
+      "Lleva Don Carlos Cárdenas en Camión NPR",
       "admin",
       [item1, item2]
     );
 
-    expect(alquiler.subtotal).toBe(345000);
-    expect(alquiler.total).toBe(295000); // 345,000 - 50,000
+    // subtotalEquipos = 345,000
+    // totalFletes = 60,000
+    // subtotalGeneral = 405,000
+    // total = 405,000 - 50,000 = 355,000
+    expect(alquiler.subtotalEquipos).toBe(345000);
+    expect(alquiler.fleteEntrega).toBe(30000);
+    expect(alquiler.fleteRecogida).toBe(30000);
+    expect(alquiler.subtotalGeneral).toBe(405000);
+    expect(alquiler.total).toBe(355000);
+    expect(alquiler.detallesLogistica).toBe("Lleva Don Carlos Cárdenas en Camión NPR");
     expect(alquiler.calcularPesoTotalKilos()).toBe(515); // (2*250) + (1*15) = 515 Kg
   });
 
@@ -56,11 +68,15 @@ describe("AlquilerEntity Domain Tests", () => {
       "CLIENTE PRUEBA",
       "COTIZACION",
       100000,
+      0,
+      0,
+      100000,
       100000,
       0,
       0,
       "Efectivo",
       "Pendiente",
+      undefined,
       undefined,
       undefined,
       []

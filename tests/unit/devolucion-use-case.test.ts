@@ -29,11 +29,15 @@ describe("Use Case: DevolverEquipoUseCase", () => {
       "CLIENTE SAS",
       "ACTIVO",
       270000,
+      0, // fleteEntrega
+      0, // fleteRecogida
       270000,
-      0,
-      0,
+      270000,
+      0, // deposito
+      0, // garantiaMonto
       "Efectivo",
       "Activa",
+      undefined,
       undefined,
       undefined,
       [itemDetalle]
