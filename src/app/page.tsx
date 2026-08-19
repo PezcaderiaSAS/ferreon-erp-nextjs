@@ -38,7 +38,9 @@ import {
   Scale,
   Eye,
   FileDown,
-  ArrowRight
+  ArrowRight,
+  Printer,
+  CheckCircle
 } from "lucide-react";
 
 type TabType = "dashboard" | "alquileres" | "bodega" | "devoluciones" | "facturacion" | "clientes";
@@ -100,7 +102,23 @@ interface ContratoAlquiler {
     subtotal: number;
     pesoKilos: number;
     devuelto: boolean;
+    cantidadDevuelta?: number;
+    costoDano?: number;
   }>;
+  createdAt: string;
+}
+
+interface FacturaEmitida {
+  id: string;
+  numeroConsecutivo: number;
+  alquilerId: string;
+  consecutivoAlquiler: number;
+  clienteNombre: string;
+  subtotal: number;
+  costosDano: number;
+  depositoAplicado: number;
+  totalPagar: number;
+  estadoPago: "PAGADA" | "PENDIENTE";
   createdAt: string;
 }
 
@@ -140,20 +158,23 @@ export default function HomePage() {
     { id: "EQ-006", codigo: "PLA-06", nombre: "PLANTA ELÉCTRICA 6.5 KW (DIÉSEL MONOFÁSICA)", categoria: "GENERACIÓN", tarifaDiaria: 75000, pesoKilos: 95.0, stockTotal: 6, stockDisponible: 6, stockEnObra: 0, activo: true },
   ]);
 
-  // Lista de Contratos de Alquiler
+  // Contratos de Alquiler
   const [contratos, setContratos] = useState<ContratoAlquiler[]>([]);
 
-  // Estados de Modales y Filtros
+  // Facturas Emitidas
+  const [facturas, setFacturas] = useState<FacturaEmitida[]>([]);
+
+  // Modales y Filtros de Alquiler
   const [alquilerEstadoFilter, setAlquilerEstadoFilter] = useState<AlquilerEstadoFilter>("TODOS");
   const [alquilerSearchFilter, setAlquilerSearchFilter] = useState<string>("");
   const [selectedContratoDetalle, setSelectedContratoDetalle] = useState<ContratoAlquiler | null>(null);
 
-  // Estados para Crear Alquiler Multi-Ítem
+  // Modal Crear Alquiler Multi-Ítem
   const [showMultiAlquilerModal, setShowMultiAlquilerModal] = useState<boolean>(false);
   const [nuevoAlquilerClienteId, setNuevoAlquilerClienteId] = useState<string>("");
   const [nuevoAlquilerEstado, setNuevoAlquilerEstado] = useState<"ACTIVO" | "COTIZACION">("ACTIVO");
-  const [nuevoAlquilerDeposito, setNuevoAlquilerDeposito] = useState<number>(100000);
-  const [nuevoAlquilerGarantiaMonto, setNuevoAlquilerGarantiaMonto] = useState<number>(500000);
+  const [nuevoAlquilerDeposito, setNuevoAlquilerDeposito] = useState<number>(50000);
+  const [nuevoAlquilerGarantiaMonto, setNuevoAlquilerGarantiaMonto] = useState<number>(300000);
   const [nuevoAlquilerGarantiaTipo, setNuevoAlquilerGarantiaTipo] = useState<string>("Efectivo");
   const [nuevoAlquilerObservaciones, setNuevoAlquilerObservaciones] = useState<string>("");
   const [nuevoAlquilerLineas, setNuevoAlquilerLineas] = useState<ItemContratoLinea[]>([
@@ -161,22 +182,26 @@ export default function HomePage() {
   ]);
   const [multiAlquilerError, setMultiAlquilerError] = useState<string | null>(null);
 
-  // Estados para Clientes y Bodega Modales
+  // Modal Devolución de Equipos
+  const [showDevolucionModal, setShowDevolucionModal] = useState<boolean>(false);
+  const [contratoParaDevolucion, setContratoParaDevolucion] = useState<ContratoAlquiler | null>(null);
+  const [devolucionCantidades, setDevolucionCantidades] = useState<{ [equipoId: string]: number }>({});
+  const [devolucionDanos, setDevolucionDanos] = useState<{ [equipoId: string]: number }>({});
+
+  // Modal Liquidación / Facturación
+  const [showFacturaModal, setShowFacturaModal] = useState<boolean>(false);
+  const [contratoParaFacturar, setContratoParaFacturar] = useState<ContratoAlquiler | null>(null);
+
+  // Modal Clientes y Bodega
   const [showClienteModal, setShowClienteModal] = useState<boolean>(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
-  const [showHistorialModal, setShowHistorialModal] = useState<boolean>(false);
-  const [selectedClienteHistorial, setSelectedClienteHistorial] = useState<Cliente | null>(null);
-  const [historialSubTab, setHistorialSubTab] = useState<"alquileres" | "pagos" | "cartera">("alquileres");
-  const [showEquipoModal, setShowEquipoModal] = useState<boolean>(false);
-  const [editingEquipo, setEditingEquipo] = useState<Equipo | null>(null);
-  const [showBulkModal, setShowBulkModal] = useState<boolean>(false);
-  const [bulkText, setBulkText] = useState<string>("");
   const [clientFormData, setClientFormData] = useState({ nitCedula: "", nombre: "", telefono: "", email: "", direccion: "" });
   const [clientFormError, setClientFormError] = useState<string | null>(null);
-  const [clientSearchFilter, setClientSearchFilter] = useState<string>("");
+  const [showEquipoModal, setShowEquipoModal] = useState<boolean>(false);
+  const [showBulkModal, setShowBulkModal] = useState<boolean>(false);
+  const [bulkText, setBulkText] = useState<string>("");
   const [equipoFormData, setEquipoFormData] = useState({ codigo: "", nombre: "", categoria: "MAQUINARIA", tarifaDiaria: 30000, pesoKilos: 10, stockTotal: 5 });
   const [equipoFormError, setEquipoFormError] = useState<string | null>(null);
-  const [equipoSearchFilter, setEquipoSearchFilter] = useState<string>("");
 
   // Navegación bidireccional
   const navigateToTab = (targetTab: TabType) => {
@@ -240,7 +265,6 @@ export default function HomePage() {
     ]);
   };
 
-  // Eliminar fila de equipo
   const handleRemoveLineaEquipo = (index: number) => {
     if (nuevoAlquilerLineas.length <= 1) {
       setMultiAlquilerError("El contrato debe incluir al menos un equipo.");
@@ -249,7 +273,6 @@ export default function HomePage() {
     setNuevoAlquilerLineas((prev) => prev.filter((_, idx) => idx !== index));
   };
 
-  // Modificar línea de equipo
   const handleUpdateLineaEquipo = (index: number, field: keyof ItemContratoLinea, value: any) => {
     setNuevoAlquilerLineas((prev) =>
       prev.map((linea, idx) => {
@@ -268,12 +291,10 @@ export default function HomePage() {
     );
   };
 
-  // Cálculos financieros del contrato
   const subtotalContrato = nuevoAlquilerLineas.reduce((acc, l) => acc + (l.cantidad * l.tarifaDiaria * l.dias), 0);
   const totalContrato = Math.max(0, subtotalContrato - nuevoAlquilerDeposito);
   const pesoTotalContratoKilos = nuevoAlquilerLineas.reduce((acc, l) => acc + (l.cantidad * l.pesoKilos), 0);
 
-  // Guardar y despachar contrato
   const handleGuardarContrato = (e: React.FormEvent) => {
     e.preventDefault();
     const clienteObj = clientes.find((c) => c.id === nuevoAlquilerClienteId);
@@ -282,21 +303,15 @@ export default function HomePage() {
       return;
     }
 
-    // Validar disponibilidad de stock para cada equipo si es ACTIVO
     if (nuevoAlquilerEstado === "ACTIVO") {
       for (const linea of nuevoAlquilerLineas) {
         const eq = equipos.find((e) => e.id === linea.equipoId);
-        if (!eq) {
-          setMultiAlquilerError("Uno de los equipos seleccionados no existe.");
-          return;
-        }
-        if (linea.cantidad > eq.stockDisponible) {
-          setMultiAlquilerError(`Stock insuficiente para '${eq.nombre}'. Disponible: ${eq.stockDisponible} u., Solicitado: ${linea.cantidad} u.`);
+        if (!eq || linea.cantidad > eq.stockDisponible) {
+          setMultiAlquilerError(`Stock insuficiente para '${eq ? eq.nombre : "Equipo"}'. Disponible: ${eq ? eq.stockDisponible : 0} u.`);
           return;
         }
       }
 
-      // Descontar del stock disponible en bodega
       setEquipos((prev) =>
         prev.map((eq) => {
           const linea = nuevoAlquilerLineas.find((l) => l.equipoId === eq.id);
@@ -339,6 +354,8 @@ export default function HomePage() {
           subtotal: l.cantidad * l.tarifaDiaria * l.dias,
           pesoKilos: l.pesoKilos,
           devuelto: false,
+          cantidadDevuelta: 0,
+          costoDano: 0,
         };
       }),
       createdAt: new Date().toISOString(),
@@ -348,13 +365,117 @@ export default function HomePage() {
     setShowMultiAlquilerModal(false);
   };
 
+  // Abrir Modal de Devolución
+  const handleOpenDevolucion = (contrato: ContratoAlquiler) => {
+    setContratoParaDevolucion(contrato);
+    const initialCantidades: { [eqId: string]: number } = {};
+    const initialDanos: { [eqId: string]: number } = {};
+    contrato.items.forEach((it) => {
+      const pendientes = it.cantidad - (it.cantidadDevuelta || 0);
+      initialCantidades[it.equipoId] = pendientes;
+      initialDanos[it.equipoId] = 0;
+    });
+    setDevolucionCantidades(initialCantidades);
+    setDevolucionDanos(initialDanos);
+    setShowDevolucionModal(true);
+  };
+
+  // Procesar Devolución e Inspección
+  const handleConfirmarDevolucion = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contratoParaDevolucion) return;
+
+    let todosDevueltos = true;
+
+    // Actualizar contrato
+    const contratoActualizado: ContratoAlquiler = {
+      ...contratoParaDevolucion,
+      items: contratoParaDevolucion.items.map((it) => {
+        const cantDevueltasHoy = devolucionCantidades[it.equipoId] || 0;
+        const totalDev = (it.cantidadDevuelta || 0) + cantDevueltasHoy;
+        const costoDano = devolucionDanos[it.equipoId] || 0;
+        const estaDevuelto = totalDev >= it.cantidad;
+
+        if (!estaDevuelto) {
+          todosDevueltos = false;
+        }
+
+        // Reingresar stock disponible a la bodega
+        if (cantDevueltasHoy > 0) {
+          setEquipos((prev) =>
+            prev.map((eq) =>
+              eq.id === it.equipoId
+                ? {
+                    ...eq,
+                    stockDisponible: eq.stockDisponible + cantDevueltasHoy,
+                    stockEnObra: Math.max(0, eq.stockEnObra - cantDevueltasHoy),
+                  }
+                : eq
+            )
+          );
+        }
+
+        return {
+          ...it,
+          cantidadDevuelta: totalDev,
+          devuelto: estaDevuelto,
+          costoDano: (it.costoDano || 0) + costoDano,
+        };
+      }),
+    };
+
+    if (todosDevueltos) {
+      contratoActualizado.estado = "FINALIZADO";
+      contratoActualizado.garantiaEstado = "Liberada";
+    }
+
+    setContratos((prev) =>
+      prev.map((c) => (c.id === contratoActualizado.id ? contratoActualizado : c))
+    );
+
+    setShowDevolucionModal(false);
+    alert("¡Devolución registrada exitosamente! Equipos reingresados a la bodega en tiempo real.");
+  };
+
+  // Abrir Modal de Liquidación / Factura
+  const handleOpenFacturacion = (contrato: ContratoAlquiler) => {
+    setContratoParaFacturar(contrato);
+    setShowFacturaModal(true);
+  };
+
+  // Emitir Factura / Cuenta de Cobro
+  const handleEmitirFactura = () => {
+    if (!contratoParaFacturar) return;
+
+    const totalDanos = contratoParaFacturar.items.reduce((acc, it) => acc + (it.costoDano || 0), 0);
+    const totalPagar = Math.max(0, contratoParaFacturar.subtotal + totalDanos - contratoParaFacturar.deposito);
+
+    const nuevaFac: FacturaEmitida = {
+      id: "FAC-" + Date.now(),
+      numeroConsecutivo: facturas.length + 1001,
+      alquilerId: contratoParaFacturar.id,
+      consecutivoAlquiler: contratoParaFacturar.consecutivo,
+      clienteNombre: contratoParaFacturar.clienteNombre,
+      subtotal: contratoParaFacturar.subtotal,
+      costosDano: totalDanos,
+      depositoAplicado: contratoParaFacturar.deposito,
+      totalPagar,
+      estadoPago: "EMITIDA" as any,
+      createdAt: new Date().toISOString(),
+    };
+
+    setFacturas((prev) => [nuevaFac, ...prev]);
+    setShowFacturaModal(false);
+    alert(`¡Cuenta de Cobro #CC-${nuevaFac.numeroConsecutivo} generada exitosamente con el 100% de renglones incluidos!`);
+    navigateToTab("facturacion");
+  };
+
   // Contratos filtrados
   const contratosFiltrados = contratos.filter((c) => {
     const matchEstado = alquilerEstadoFilter === "TODOS" || c.estado === alquilerEstadoFilter;
     const matchSearch =
       c.clienteNombre.toLowerCase().includes(alquilerSearchFilter.toLowerCase()) ||
-      `ALQ-${c.consecutivo}`.toLowerCase().includes(alquilerSearchFilter.toLowerCase()) ||
-      c.items.some((i) => i.nombre.toLowerCase().includes(alquilerSearchFilter.toLowerCase()));
+      `ALQ-${c.consecutivo}`.toLowerCase().includes(alquilerSearchFilter.toLowerCase());
     return matchEstado && matchSearch;
   });
 
@@ -410,7 +531,7 @@ export default function HomePage() {
             { id: "alquileres", label: `Alquileres (${contratos.filter(c => c.estado === 'ACTIVO').length})`, icon: FileText },
             { id: "bodega", label: "Bodega e Inventario", icon: Package },
             { id: "devoluciones", label: "Devoluciones", icon: RotateCcw },
-            { id: "facturacion", label: "Facturación & PDF", icon: Receipt },
+            { id: "facturacion", label: `Facturación (${facturas.length})`, icon: Receipt },
             { id: "clientes", label: "Clientes & Terceros", icon: Users },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -487,13 +608,13 @@ export default function HomePage() {
 
               <div onClick={() => navigateToTab("devoluciones")} className="glass-panel glass-panel-hover rounded-2xl p-6 cursor-pointer">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Devoluciones Hoy</span>
+                  <span className="text-slate-400 text-xs font-bold tracking-wider uppercase">Devoluciones Pendientes</span>
                   <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
                     <RotateCcw className="h-5 w-5" />
                   </div>
                 </div>
                 <div className="mt-5">
-                  <span className="text-4xl font-extrabold text-white">0</span>
+                  <span className="text-4xl font-extrabold text-white">{contratos.filter(c => c.estado === 'ACTIVO').length}</span>
                   <span className="text-xs text-amber-300 ml-2 font-medium">corte 5:00 PM</span>
                 </div>
               </div>
@@ -514,7 +635,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* PESTAÑA 2: CONTRATOS DE ALQUILER (CICLO DE VIDA COMPLETO MULTI-ITEM) */}
+        {/* PESTAÑA 2: ALQUILERES */}
         {activeTab === "alquileres" && (
           <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -637,7 +758,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* PESTAÑA 3: BODEGA E INVENTARIO */}
+        {/* PESTAÑA 3: BODEGA */}
         {activeTab === "bodega" && (
           <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -692,47 +813,127 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* PESTAÑA 4: DEVOLUCIONES */}
+        {/* PESTAÑA 4: DEVOLUCIONES (RECEPCIÓN & REINGRESO AUTOMÁTICO A BODEGA) */}
         {activeTab === "devoluciones" && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-black text-white">Recepción de Devoluciones & Registro de Daños</h1>
                 <p className="text-xs text-slate-400">Reingreso a Bodega e Inspección Física de Equipos (Corte 5:00 PM `America/Bogota`)</p>
               </div>
-              <button onClick={() => navigateToTab("alquileres")} className="text-xs text-sky-400 hover:underline font-semibold">
-                <span>Ver Contratos Activos</span>
-              </button>
             </div>
 
-            <div className="glass-panel rounded-3xl p-8 space-y-4 text-center">
-              <RotateCcw className="h-10 w-10 mx-auto text-amber-400/70" />
-              <p className="text-slate-300 text-sm font-medium">Seleccione un contrato de alquiler activo para registrar la devolución parcial o total de los equipos.</p>
+            <div className="space-y-4">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Contratos Activos con Equipos en Obra:</span>
+              
+              {contratos.filter(c => c.estado === 'ACTIVO').length === 0 ? (
+                <div className="glass-panel rounded-3xl p-12 text-center text-slate-400 space-y-3">
+                  <RotateCcw className="h-10 w-10 mx-auto text-amber-400/70" />
+                  <p className="text-sm font-medium">No hay contratos activos con devoluciones pendientes de equipos.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {contratos.filter(c => c.estado === 'ACTIVO').map((contrato) => (
+                    <div key={contrato.id} className="glass-panel rounded-2xl p-5 space-y-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] font-bold">ALQ-{contrato.consecutivo}</span>
+                          <h3 className="font-extrabold text-white text-sm mt-1">{contrato.clienteNombre}</h3>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">EN OBRA</span>
+                      </div>
+
+                      <div className="bg-slate-900/50 p-3 rounded-xl border border-white/5 space-y-1 text-xs">
+                        {contrato.items.map((it, idx) => (
+                          <div key={idx} className="flex justify-between text-slate-300">
+                            <span>{it.nombre}</span>
+                            <span className="font-bold text-amber-300">{it.cantidad - (it.cantidadDevuelta || 0)} u. por devolver</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button 
+                        onClick={() => handleOpenDevolucion(contrato)}
+                        className="w-full py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center justify-center space-x-2"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        <span>Registrar Retorno / Inspección</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* PESTAÑA 5: FACTURACIÓN & PDF */}
+        {/* PESTAÑA 5: FACTURACIÓN & CUENTAS DE COBRO (100% RENGLONES) */}
         {activeTab === "facturacion" && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-black text-white">Facturación, Cuentas de Cobro & PDFs</h1>
                 <p className="text-xs text-slate-400">Liquidación en COP `NUMERIC(12, 2)` con 100% de renglones contratados</p>
               </div>
-              <button onClick={() => navigateToTab("alquileres")} className="text-xs text-sky-400 hover:underline font-semibold">
-                <span>Ir a Alquileres</span>
-              </button>
             </div>
 
-            <div className="glass-panel rounded-3xl p-8 space-y-4 text-center">
-              <Receipt className="h-10 w-10 mx-auto text-indigo-400/70" />
-              <p className="text-slate-300 text-sm font-medium">Módulo de emisión de Cuentas de Cobro con descarga serverless de PDF.</p>
+            {/* Contratos Listos para Liquidar */}
+            <div className="space-y-4">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Contratos Listos para Liquidación:</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {contratos.map((contrato) => (
+                  <div key={contrato.id} className="glass-panel rounded-2xl p-5 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] font-bold">ALQ-{contrato.consecutivo}</span>
+                        <h3 className="font-extrabold text-white text-sm mt-1">{contrato.clienteNombre}</h3>
+                      </div>
+                      <span className="text-xs font-extrabold text-sky-400">$ {contrato.total.toLocaleString("es-CO")},00</span>
+                    </div>
+
+                    <button 
+                      onClick={() => handleOpenFacturacion(contrato)}
+                      className="w-full py-2.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/30 text-xs font-bold flex items-center justify-center space-x-2"
+                    >
+                      <Receipt className="h-4 w-4 text-indigo-400" />
+                      <span>Liquidar & Emitir Cuenta de Cobro (PDF)</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Facturas Emitidas */}
+            <div className="space-y-4 pt-4 border-t border-white/10">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Historial de Cuentas de Cobro Emitidas ({facturas.length}):</span>
+              {facturas.length === 0 ? (
+                <div className="glass-panel rounded-2xl p-8 text-center text-slate-400 text-xs">
+                  No hay cuentas de cobro generadas todavía.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {facturas.map((fac) => (
+                    <div key={fac.id} className="glass-panel rounded-2xl p-5 space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">CC-{fac.numeroConsecutivo}</span>
+                          <h4 className="font-bold text-white text-sm mt-1">{fac.clienteNombre}</h4>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">EMITIDA</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-slate-300 border-t border-white/5 pt-2">
+                        <span>Total Liquidado:</span>
+                        <strong className="text-sky-300 font-extrabold">$ {fac.totalPagar.toLocaleString("es-CO")},00</strong>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* PESTAÑA 6: CLIENTES & TERCEROS */}
+        {/* PESTAÑA 6: CLIENTES */}
         {activeTab === "clientes" && (
           <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -963,6 +1164,107 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* MODAL DEVOLUCIÓN & INSPECCIÓN */}
+      {showDevolucionModal && contratoParaDevolucion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+          <div className="glass-panel w-full max-w-2xl rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">ALQ-{contratoParaDevolucion.consecutivo}</span>
+                <h2 className="text-lg font-black text-white mt-1">Recepción de Equipos & Registro de Daños</h2>
+              </div>
+              <button onClick={() => setShowDevolucionModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+            </div>
+
+            <form onSubmit={handleConfirmarDevolucion} className="space-y-4">
+              <div className="space-y-3">
+                {contratoParaDevolucion.items.map((it) => {
+                  const pendientes = it.cantidad - (it.cantidadDevuelta || 0);
+                  return (
+                    <div key={it.equipoId} className="p-3.5 rounded-2xl bg-slate-900/60 border border-white/10 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <strong className="text-white">{it.nombre}</strong>
+                        <span className="text-amber-400 font-bold">Pendientes: {pendientes} u.</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <label className="text-[10px] text-slate-400 block">Cant. a Devolver Hoy:</label>
+                          <input 
+                            type="number" 
+                            min={0} 
+                            max={pendientes}
+                            value={devolucionCantidades[it.equipoId] || 0}
+                            onChange={(e) => setDevolucionCantidades({ ...devolucionCantidades, [it.equipoId]: parseInt(e.target.value, 10) || 0 })}
+                            className="w-full p-2 bg-slate-950 border border-white/10 rounded-xl text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-slate-400 block">Costo Daño/Avería (COP):</label>
+                          <input 
+                            type="number" 
+                            min={0}
+                            value={devolucionDanos[it.equipoId] || 0}
+                            onChange={(e) => setDevolucionDanos({ ...devolucionDanos, [it.equipoId]: parseFloat(e.target.value) || 0 })}
+                            className="w-full p-2 bg-slate-950 border border-white/10 rounded-xl text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-3 border-t border-white/10">
+                <button type="button" onClick={() => setShowDevolucionModal(false)} className="px-4 py-2.5 bg-slate-900 text-xs font-bold rounded-xl">Cancelar</button>
+                <button type="submit" className="glass-button-primary px-5 py-2.5 text-xs font-bold text-white rounded-xl">Confirmar Reingreso a Bodega</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL FACTURACIÓN / CUENTA DE COBRO */}
+      {showFacturaModal && contratoParaFacturar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+          <div className="glass-panel w-full max-w-2xl rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">ALQ-{contratoParaFacturar.consecutivo}</span>
+                <h2 className="text-lg font-black text-white mt-1">Liquidación & Cuenta de Cobro Oficial</h2>
+              </div>
+              <button onClick={() => setShowFacturaModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+            </div>
+
+            <div className="space-y-3">
+              <span className="text-xs font-bold text-slate-300 uppercase">Detalle Completo (100% de Renglones):</span>
+              <div className="space-y-1.5 bg-slate-900/60 p-3 rounded-2xl border border-white/5 text-xs">
+                {contratoParaFacturar.items.map((it, idx) => (
+                  <div key={idx} className="flex justify-between text-slate-300">
+                    <span>{it.cantidad}x {it.nombre} ({it.dias} días)</span>
+                    <span className="font-bold text-sky-300">$ {it.subtotal.toLocaleString("es-CO")},00</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Subtotal</span><strong>$ {contratoParaFacturar.subtotal.toLocaleString("es-CO")}</strong></div>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Depósito</span><strong className="text-emerald-400">- $ {contratoParaFacturar.deposito.toLocaleString("es-CO")}</strong></div>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Total a Pagar</span><strong className="text-sky-400">$ {contratoParaFacturar.total.toLocaleString("es-CO")}</strong></div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-3 border-t border-white/10">
+              <button type="button" onClick={() => setShowFacturaModal(false)} className="px-4 py-2 bg-slate-900 text-xs font-bold rounded-xl">Cerrar</button>
+              <button onClick={handleEmitirFactura} className="glass-button-primary px-5 py-2 text-xs font-bold text-white rounded-xl flex items-center space-x-2">
+                <Printer className="h-4 w-4" />
+                <span>Emitir Cuenta de Cobro & PDF</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL DETALLE DE CONTRATO */}
       {selectedContratoDetalle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
@@ -1001,8 +1303,9 @@ export default function HomePage() {
             <div className="flex justify-between items-center pt-2 border-t border-white/10">
               <button 
                 onClick={() => {
+                  const c = selectedContratoDetalle;
                   setSelectedContratoDetalle(null);
-                  navigateToTab("devoluciones");
+                  handleOpenDevolucion(c);
                 }}
                 className="px-4 py-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold"
               >
@@ -1010,8 +1313,9 @@ export default function HomePage() {
               </button>
               <button 
                 onClick={() => {
+                  const c = selectedContratoDetalle;
                   setSelectedContratoDetalle(null);
-                  navigateToTab("facturacion");
+                  handleOpenFacturacion(c);
                 }}
                 className="glass-button-primary px-5 py-2 rounded-xl text-xs font-bold text-white"
               >
