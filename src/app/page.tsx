@@ -46,6 +46,7 @@ import {
   UserCheck
 } from "lucide-react";
 import { EnterprisePDFService, DocumentoPDFPayload } from "../core/services/pdf-factura-generator.service";
+import { formatearMonedaCOP } from "../core/utils/numero-a-letras";
 
 type TabType = "dashboard" | "alquileres" | "bodega" | "devoluciones" | "facturacion" | "clientes";
 type AlquilerEstadoFilter = "TODOS" | "ACTIVO" | "COTIZACION" | "FINALIZADO";
@@ -420,8 +421,8 @@ export default function HomePage() {
       c.nitCedula.toLowerCase().includes(clienteSearchQuery.toLowerCase())
   );
 
-  // Función para Imprimir / Exportar PDF Empresarial
-  const handleImprimirDocumentoPDF = (contrato: ContratoAlquiler, tipo: "COTIZACION" | "CONTRATO" | "CUENTA_COBRO") => {
+  // Función para Abrir Visor PDF Tamaño Carta en limpio
+  const handleAbrirVisorPDFCarta = (contrato: ContratoAlquiler, tipo: "COTIZACION" | "CONTRATO" | "CUENTA_COBRO") => {
     const clienteObj = clientes.find((c) => c.id === contrato.clienteId);
     
     const payload: DocumentoPDFPayload = {
@@ -459,14 +460,10 @@ export default function HomePage() {
     };
 
     const html = EnterprisePDFService.generarHTMLDocumento(payload);
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => {
-        printWindow.print();
-      }, 400);
+    const viewerWindow = window.open("", "_blank");
+    if (viewerWindow) {
+      viewerWindow.document.write(html);
+      viewerWindow.document.close();
     }
   };
 
@@ -564,7 +561,7 @@ export default function HomePage() {
 
     setFacturas((prev) => [nuevaFac, ...prev]);
     setShowFacturaModal(false);
-    handleImprimirDocumentoPDF(contratoParaFacturar, "CUENTA_COBRO");
+    handleAbrirVisorPDFCarta(contratoParaFacturar, "CUENTA_COBRO");
     navigateToTab("facturacion");
   };
 
@@ -670,8 +667,8 @@ export default function HomePage() {
                   Gestión Inteligente de Alquileres de Maquinaria
                 </h1>
                 <p className="text-slate-300 text-sm sm:text-base leading-relaxed font-normal">
-                  Cálculo automático de días de alquiler por fechas individuales de ítem, generación de PDFs empresariales A4,
-                  control estricto de peso (`peso_gramos BIGINT`) e inventario en tiempo real.
+                  Cálculo automático de días de alquiler por fechas individuales de ítem, generación de PDFs en tamaño Carta (Letter),
+                  formato de moneda colombiano ($40.000) e inventario en tiempo real.
                 </p>
               </div>
             </section>
@@ -725,7 +722,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="mt-5">
-                  <span className="text-xl font-bold text-emerald-400 block">PDF A4 Ready</span>
+                  <span className="text-xl font-bold text-emerald-400 block">Formato Carta</span>
                   <span className="text-xs text-slate-400 font-medium">Cotizaciones y Contratos</span>
                 </div>
               </div>
@@ -739,7 +736,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-black text-white">Gestión de Alquileres & Contratos</h1>
-                <p className="text-xs text-slate-400">Fechas Individuales por Ítem, Días Calculados Automáticamente y Generación de PDF Empresarial</p>
+                <p className="text-xs text-slate-400">Fechas Individuales por Ítem, Días Calculados Automáticamente y Generador de PDF en Tamaño Carta</p>
               </div>
               <button 
                 onClick={() => handleOpenNuevoAlquiler()}
@@ -815,7 +812,7 @@ export default function HomePage() {
                         {contrato.items.map((it, idx) => (
                           <li key={idx} className="flex justify-between text-slate-300">
                             <span>• {it.cantidad}x {it.nombre} ({it.dias} días: {it.fechaInicio} al {it.fechaFin})</span>
-                            <span className="font-bold text-sky-300">$ {it.subtotal.toLocaleString("es-CO")},00</span>
+                            <span className="font-bold text-sky-300">{formatearMonedaCOP(it.subtotal)}</span>
                           </li>
                         ))}
                       </ul>
@@ -825,7 +822,7 @@ export default function HomePage() {
                             <Truck className="h-3 w-3" />
                             <span>Fletes (Llevar + Recoger):</span>
                           </span>
-                          <strong>$ {(contrato.fleteEntrega + contrato.fleteRecogida).toLocaleString("es-CO")},00</strong>
+                          <strong>{formatearMonedaCOP(contrato.fleteEntrega + contrato.fleteRecogida)}</strong>
                         </div>
                       )}
                     </div>
@@ -833,25 +830,25 @@ export default function HomePage() {
                     <div className="grid grid-cols-3 gap-2 text-center text-xs">
                       <div className="p-2 rounded-xl bg-slate-900/40 border border-white/5">
                         <span className="text-[10px] text-slate-500 block">Subtotal Total</span>
-                        <strong className="text-white">$ {contrato.subtotalGeneral.toLocaleString("es-CO")}</strong>
+                        <strong className="text-white">{formatearMonedaCOP(contrato.subtotalGeneral)}</strong>
                       </div>
                       <div className="p-2 rounded-xl bg-slate-900/40 border border-white/5">
                         <span className="text-[10px] text-slate-500 block">Depósito</span>
-                        <strong className="text-emerald-400">$ {contrato.deposito.toLocaleString("es-CO")}</strong>
+                        <strong className="text-emerald-400">{formatearMonedaCOP(contrato.deposito)}</strong>
                       </div>
                       <div className="p-2 rounded-xl bg-slate-900/40 border border-white/5">
                         <span className="text-[10px] text-slate-500 block">Saldo a Cobrar</span>
-                        <strong className="text-sky-400">$ {contrato.total.toLocaleString("es-CO")}</strong>
+                        <strong className="text-sky-400">{formatearMonedaCOP(contrato.total)}</strong>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs gap-2">
                       <button 
-                        onClick={() => handleImprimirDocumentoPDF(contrato, contrato.estado === 'COTIZACION' ? 'COTIZACION' : 'CONTRATO')}
+                        onClick={() => handleAbrirVisorPDFCarta(contrato, contrato.estado === 'COTIZACION' ? 'COTIZACION' : 'CONTRATO')}
                         className="px-3 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 font-semibold border border-indigo-500/30 flex items-center space-x-1.5"
                       >
                         <Printer className="h-3.5 w-3.5 text-indigo-400" />
-                        <span>Imprimir PDF A4</span>
+                        <span>Generar PDF Carta</span>
                       </button>
                       <button 
                         onClick={() => setSelectedContratoDetalle(contrato)}
@@ -971,7 +968,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-black text-white">Facturación, Cuentas de Cobro & PDFs</h1>
-                <p className="text-xs text-slate-400">Liquidación en COP `NUMERIC(12, 2)` con 100% de renglones y fletes</p>
+                <p className="text-xs text-slate-400">Liquidación en COP con formato de moneda $40.000 y totales en letras</p>
               </div>
             </div>
 
@@ -986,7 +983,7 @@ export default function HomePage() {
                         <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] font-bold">ALQ-{contrato.consecutivo}</span>
                         <h3 className="font-extrabold text-white text-sm mt-1">{contrato.clienteNombre}</h3>
                       </div>
-                      <span className="text-xs font-extrabold text-sky-400">$ {contrato.total.toLocaleString("es-CO")},00</span>
+                      <span className="text-xs font-extrabold text-sky-400">{formatearMonedaCOP(contrato.total)}</span>
                     </div>
 
                     <button 
@@ -1023,15 +1020,15 @@ export default function HomePage() {
                         </div>
                         <div className="flex justify-between items-center text-xs text-slate-300 border-t border-white/5 pt-2">
                           <span>Total Liquidado:</span>
-                          <strong className="text-sky-300 font-extrabold">$ {fac.totalPagar.toLocaleString("es-CO")},00</strong>
+                          <strong className="text-sky-300 font-extrabold">{formatearMonedaCOP(fac.totalPagar)}</strong>
                         </div>
                         {cMatch && (
                           <button 
-                            onClick={() => handleImprimirDocumentoPDF(cMatch, "CUENTA_COBRO")}
+                            onClick={() => handleAbrirVisorPDFCarta(cMatch, "CUENTA_COBRO")}
                             className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/10 text-xs font-semibold text-sky-400 flex items-center justify-center space-x-1.5"
                           >
                             <Printer className="h-3.5 w-3.5" />
-                            <span>Reimprimir Cuenta de Cobro PDF</span>
+                            <span>Generar PDF Carta</span>
                           </button>
                         )}
                       </div>
@@ -1129,7 +1126,7 @@ export default function HomePage() {
                         }} 
                         className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white"
                       >
-                        <X className="h-3.5 w-3.5" />
+                        <X className="h-4 w-4" />
                       </button>
                     )}
                   </div>
@@ -1285,7 +1282,7 @@ export default function HomePage() {
                           <div>
                             <span className="text-[10px] text-slate-400 block">Subtotal</span>
                             <div className="p-1.5 text-sky-300 font-extrabold text-xs text-right">
-                              $ {(linea.cantidad * linea.tarifaDiaria * linea.dias).toLocaleString("es-CO")}
+                              {formatearMonedaCOP(linea.cantidad * linea.tarifaDiaria * linea.dias)}
                             </div>
                           </div>
                         </div>
@@ -1372,23 +1369,23 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* RESUMEN FINANCIERO INTEGRAL */}
+              {/* RESUMEN FINANCIERO INTEGRAL CON MONEDA FORMATEADA */}
               <div className="p-4 rounded-2xl bg-slate-900/80 border border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div>
                   <span className="text-[10px] text-slate-400 block uppercase font-bold">Subtotal Equipos</span>
-                  <strong className="text-sm font-black text-white">$ {subtotalEquipos.toLocaleString("es-CO")}</strong>
+                  <strong className="text-sm font-black text-white">{formatearMonedaCOP(subtotalEquipos)}</strong>
                 </div>
                 <div>
                   <span className="text-[10px] text-indigo-400 block uppercase font-bold">+ Total Fletes</span>
-                  <strong className="text-sm font-black text-indigo-300">$ {totalFletes.toLocaleString("es-CO")}</strong>
+                  <strong className="text-sm font-black text-indigo-300">{formatearMonedaCOP(totalFletes)}</strong>
                 </div>
                 <div>
                   <span className="text-[10px] text-emerald-400 block uppercase font-bold">- Depósito</span>
-                  <strong className="text-sm font-black text-emerald-400">$ {(nuevoAlquilerDeposito || 0).toLocaleString("es-CO")}</strong>
+                  <strong className="text-sm font-black text-emerald-400">{formatearMonedaCOP(nuevoAlquilerDeposito || 0)}</strong>
                 </div>
                 <div>
                   <span className="text-[10px] text-sky-400 block uppercase font-bold">Saldo a Cobrar</span>
-                  <strong className="text-base font-black text-sky-300">$ {totalContrato.toLocaleString("es-CO")}</strong>
+                  <strong className="text-base font-black text-sky-300">{formatearMonedaCOP(totalContrato)}</strong>
                 </div>
               </div>
 
@@ -1481,15 +1478,15 @@ export default function HomePage() {
                 {contratoParaFacturar.items.map((it, idx) => (
                   <div key={idx} className="flex justify-between text-slate-300">
                     <span>{it.cantidad}x {it.nombre} ({it.dias} días: {it.fechaInicio} al {it.fechaFin})</span>
-                    <span className="font-bold text-sky-300">$ {it.subtotal.toLocaleString("es-CO")},00</span>
+                    <span className="font-bold text-sky-300">{formatearMonedaCOP(it.subtotal)}</span>
                   </div>
                 ))}
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Subtotal General</span><strong>$ {contratoParaFacturar.subtotalGeneral.toLocaleString("es-CO")}</strong></div>
-                <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Depósito</span><strong className="text-emerald-400">- $ {contratoParaFacturar.deposito.toLocaleString("es-CO")}</strong></div>
-                <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Total a Pagar</span><strong className="text-sky-400">$ {contratoParaFacturar.total.toLocaleString("es-CO")}</strong></div>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Subtotal General</span><strong>{formatearMonedaCOP(contratoParaFacturar.subtotalGeneral)}</strong></div>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Depósito</span><strong className="text-emerald-400">- {formatearMonedaCOP(contratoParaFacturar.deposito)}</strong></div>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5"><span className="text-[10px] text-slate-500 block">Total a Pagar</span><strong className="text-sky-400">{formatearMonedaCOP(contratoParaFacturar.total)}</strong></div>
               </div>
             </div>
 
@@ -1497,7 +1494,7 @@ export default function HomePage() {
               <button type="button" onClick={() => setShowFacturaModal(false)} className="px-4 py-2 bg-slate-900 text-xs font-bold rounded-xl">Cerrar</button>
               <button onClick={handleEmitirFactura} className="glass-button-primary px-5 py-2 text-xs font-bold text-white rounded-xl flex items-center space-x-2">
                 <Printer className="h-4 w-4" />
-                <span>Emitir Cuenta de Cobro & Imprimir PDF</span>
+                <span>Emitir Cuenta de Cobro & Generar PDF</span>
               </button>
             </div>
           </div>
@@ -1525,9 +1522,9 @@ export default function HomePage() {
                   <div key={idx} className="p-3 rounded-xl bg-slate-900/60 border border-white/5 flex justify-between items-center text-xs">
                     <div>
                       <strong className="text-white block">{it.cantidad}x {it.nombre}</strong>
-                      <span className="text-slate-400">{it.dias} días ({it.fechaInicio} al {it.fechaFin}) a $ {it.tarifaDiaria.toLocaleString("es-CO")}/día</span>
+                      <span className="text-slate-400">{it.dias} días ({it.fechaInicio} al {it.fechaFin}) a {formatearMonedaCOP(it.tarifaDiaria)}/día</span>
                     </div>
-                    <span className="font-extrabold text-sky-300">$ {it.subtotal.toLocaleString("es-CO")},00</span>
+                    <span className="font-extrabold text-sky-300">{formatearMonedaCOP(it.subtotal)}</span>
                   </div>
                 ))}
               </div>
@@ -1535,11 +1532,11 @@ export default function HomePage() {
 
             <div className="flex justify-between items-center pt-2 border-t border-white/10">
               <button 
-                onClick={() => handleImprimirDocumentoPDF(selectedContratoDetalle, selectedContratoDetalle.estado === 'COTIZACION' ? 'COTIZACION' : 'CONTRATO')}
+                onClick={() => handleAbrirVisorPDFCarta(selectedContratoDetalle, selectedContratoDetalle.estado === 'COTIZACION' ? 'COTIZACION' : 'CONTRATO')}
                 className="px-4 py-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/30 text-xs font-bold flex items-center space-x-1.5"
               >
                 <Printer className="h-4 w-4 text-indigo-400" />
-                <span>Imprimir PDF A4 Oficial</span>
+                <span>Generar PDF Carta</span>
               </button>
               <button 
                 onClick={() => {
