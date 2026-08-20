@@ -3,153 +3,24 @@
 @tailwind utilities;
 
 :root {
-  /* 1. Tech "Dark Mode" de Alto Contraste */
-  --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 14, 14, 14;
-  --background-end-rgb: 8, 8, 8;
-  --theme-brand-400: 74, 222, 128; /* green-400 */
-  --theme-brand-500: 34, 197, 94;  /* green-500 */
-  --theme-brand-600: 22, 163, 74;  /* green-600 */
-
-  /* Paleta Estructural Tech Dark */
-  --theme-bg-body: 14, 14, 14;     /* #0E0E0E */
-  --theme-bg-surface: 23, 23, 23;  /* #171717 */
-  --theme-bg-surface-hover: 38, 38, 38; /* #262626 */
-  --theme-text-primary: 255, 255, 255; /* #FFFFFF */
-  --theme-text-muted: 163, 163, 163; /* #A3A3A3 */
-  --theme-border: 64, 64, 64; /* #404040 */
-}
-
-[data-theme='earth'] {
-  /* 2. Digital Earth */
-  --background-start-rgb: 35, 28, 24;
-  --background-end-rgb: 22, 17, 14;
-  --theme-brand-400: 234, 146, 118;
-  --theme-brand-500: 217, 119, 87;
-  --theme-brand-600: 191, 93, 62;
-
-  /* Paleta Estructural Earth */
-  --theme-bg-body: 35, 28, 24;    /* #231C18 */
-  --theme-bg-surface: 49, 35, 30; /* #31231E */
-  --theme-bg-surface-hover: 68, 48, 41;
-  --theme-text-primary: 240, 237, 233; /* #F0EDE9 */
-  --theme-text-muted: 166, 156, 151; /* #A69C97 */
-  --theme-border: 89, 70, 62;
-}
-
-[data-theme='emerald-gold'] {
-  /* 3. Emerald & Gold */
-  --background-start-rgb: 6, 24, 16;
-  --background-end-rgb: 3, 12, 8;
-  --theme-brand-400: 234, 203, 97; /* Lighter Gold */
-  --theme-brand-500: 212, 175, 55; /* Gold #D4AF37 */
-  --theme-brand-600: 170, 137, 34; /* Darker Gold */
-
-  /* Paleta Estructural Emerald Gold */
-  --theme-bg-body: 6, 24, 16;     /* #061810 */
-  --theme-bg-surface: 12, 41, 27; /* #0C291B */
-  --theme-bg-surface-hover: 18, 59, 39;
-  --theme-text-primary: 248, 250, 249; /* #F8FAF9 */
-  --theme-text-muted: 110, 231, 183;   /* #6EE7B7 */
-  --theme-border: 24, 82, 53;
+  --background: 248, 250, 252; /* #f8fafc */
+  --foreground: 15, 23, 42; /* #0f172a */
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: radial-gradient(
-      circle at 50% 0%,
-      rgba(var(--theme-brand-500), 0.15),
-      transparent 70%
-    ),
-    radial-gradient(
-      circle at 80% 50%,
-      rgba(var(--theme-brand-400), 0.1),
-      transparent 50%
-    ),
-    linear-gradient(
-      to bottom,
-      rgb(var(--background-start-rgb)),
-      rgb(var(--background-end-rgb))
-    );
+  color: rgb(var(--foreground));
+  background: rgb(var(--background));
   min-height: 100vh;
 }
 
-/* Bento Grid Utilities */
-.bento-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
-  gap: 1.5rem;
-}
-
-/* Glassmorphism Design System Utilities */
-.glass-panel {
-  background: rgba(var(--theme-bg-surface), 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: var(--tw-shadow-glass);
-  border-radius: var(--tw-border-radius-bento);
-}
-
-.glass-panel-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.glass-panel-hover:hover {
-  background: rgba(var(--theme-bg-surface-hover), 0.8);
-  border-color: rgba(var(--theme-brand-400), 0.3);
-  box-shadow: 0 25px 60px rgba(var(--theme-brand-500), 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
-}
-
-.glass-button-primary {
-  background: linear-gradient(135deg, rgba(var(--theme-brand-500), 0.9) 0%, rgba(var(--theme-brand-600), 0.9) 100%);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 8px 25px rgba(var(--theme-brand-500), 0.4);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.glass-button-primary:hover {
-  background: linear-gradient(135deg, rgba(var(--theme-brand-400), 1) 0%, rgba(var(--theme-brand-500), 1) 100%);
-  box-shadow: 0 12px 35px rgba(var(--theme-brand-400), 0.5);
-  transform: translateY(-2px);
-}
-
-.glass-header {
-  background: rgba(var(--theme-bg-body), 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(var(--theme-border), 0.5);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
+@layer utilities {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
   }
 }
-
-.animate-fadeIn {
-  animation: fadeIn 0.2s ease-out forwards;
-}
-
-/* Custom Scrollbar for Navigation Drawer */
-.scrollbar-thin::-webkit-scrollbar {
-  width: 5px;
-}
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent;
-}
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 9999px;
-}
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(56, 189, 248, 0.35);
-}
-

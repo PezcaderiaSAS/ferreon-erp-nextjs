@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Facturación - FerreOn ERP</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-variant": "#e0e3e5",
+                        "surface-container-high": "#e6e8ea",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "on-error": "#ffffff",
+                        "secondary": "#565e74",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#f7f9fb",
+                        "on-tertiary-fixed-variant": "#005048",
+                        "tertiary-fixed": "#68f9e6",
+                        "inverse-surface": "#2d3133",
+                        "surface-container-low": "#f2f4f6",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#ffb59e",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-secondary-container": "#5c647a",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed": "#3a0b00",
+                        "tertiary-container": "#00bfae",
+                        "on-primary-container": "#752305",
+                        "primary-container": "#ff8a65",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed": "#ffdbd0",
+                        "outline": "#89726b",
+                        "secondary-fixed": "#dae2fd",
+                        "tertiary-fixed-dim": "#44dcca",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-fixed": "#131b2e",
+                        "on-surface-variant": "#56423c",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-primary": "#ffffff",
+                        "surface": "#f7f9fb",
+                        "error": "#ba1a1a",
+                        "tertiary": "#006a60",
+                        "on-tertiary-container": "#004740",
+                        "inverse-primary": "#ffb59e",
+                        "on-surface": "#191c1e",
+                        "primary": "#9f4122",
+                        "surface-tint": "#9f4122",
+                        "on-background": "#191c1e",
+                        "outline-variant": "#ddc0b8",
+                        "on-primary-fixed-variant": "#7f2a0d",
+                        "on-tertiary-fixed": "#00201c",
+                        "background": "#f7f9fb",
+                        "surface-container": "#eceef0",
+                        "secondary-container": "#dae2fd"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "3xl": "64px",
+                        "container-max": "1440px",
+                        "base": "4px",
+                        "xs": "4px",
+                        "margin-mobile": "16px",
+                        "xl": "32px",
+                        "gutter": "24px",
+                        "md": "16px",
+                        "lg": "24px",
+                        "2xl": "48px",
+                        "margin-desktop": "32px",
+                        "sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Outfit"],
+                        "title-lg": ["Outfit"],
+                        "label-md": ["Outfit"],
+                        "display-lg": ["Outfit"],
+                        "body-md": ["Outfit"],
+                        "title-md": ["Outfit"],
+                        "headline-md": ["Outfit"],
+                        "label-sm": ["Outfit"],
+                        "headline-lg": ["Outfit"],
+                        "body-sm": ["Outfit"],
+                        "headline-lg-mobile": ["Outfit"],
+                        "display-lg-mobile": ["Outfit"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "title-lg": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "title-md": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Outfit', sans-serif; background-color: #F8FAFC; color: #0F172A; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .shadow-level-1 { box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05); }
+    </style>
+</head>
+<body class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="hidden md:flex h-screen w-64 fixed left-0 top-0 bg-surface-container-lowest border-r border-outline-variant shadow-sm flex flex-col p-md gap-sm z-50">
+<div class="flex items-center gap-sm mb-lg px-sm">
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">build</span>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">FerreOn</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant">ERP System</p>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-sm px-sm py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors duration-200 font-body-md text-body-md active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors duration-200 font-body-md text-body-md active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span>Alquileres</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors duration-200 font-body-md text-body-md active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span>Bodega</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors duration-200 font-body-md text-body-md active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="assignment_return">assignment_return</span>
+<span>Devoluciones</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-2 bg-primary-container text-on-primary-container rounded-lg font-title-md text-title-md active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span>Facturación</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors duration-200 font-body-md text-body-md active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span>Clientes</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col md:ml-64 w-full">
+<!-- TopNavBar -->
+<header class="h-16 sticky top-0 z-40 bg-surface border-b border-outline-variant shadow-sm flex items-center justify-between px-lg focus-within:ring-2 focus-within:ring-primary">
+<div class="flex items-center gap-sm w-full max-w-md">
+<span class="material-symbols-outlined text-on-surface-variant">search</span>
+<input class="w-full bg-transparent border-none focus:ring-0 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant" placeholder="Buscar por cliente o factura..." type="text"/>
+</div>
+<div class="flex items-center gap-md">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<img alt="User profile photo" class="w-8 h-8 rounded-full object-cover border border-outline-variant" data-alt="A small, circular profile picture of an office worker against a light grey background, representing a generic user avatar in a modern ERP dashboard." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCD9q5lsx-GcNfyihIAL8ehuZnGdYhzol-NfiJM9OIGHJuPnAVLDq8jvz7Th1AX9DVh3yLU1Tm1TFryyhZC-FjuAt5g4HrBFuveqIiJTM3Tn_SBUCVpenqhr6gxI-kx3ZuVRn3Zm0k_cRgDF1Wj7x0G4qPmNG34b_uMpjK3-pL-wEsgqflogYZc1DeVrMzGxq6BdEy-rCg2GjCM7C0FLHfHM10-7LjKZM8HUNQWwqEW1-NrN7bbq2zpeAv6rAVgR8ATxOlz1popXBw"/>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 p-margin-mobile md:p-margin-desktop overflow-x-hidden">
+<div class="max-w-container-max mx-auto space-y-lg">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-md">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Facturación y Cobros</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Gestiona tus ingresos, facturas emitidas y estado de pagos.</p>
+</div>
+<button class="flex items-center gap-sm bg-primary-container text-on-primary hover:bg-[#E76E4A] transition-colors px-lg py-3 rounded-lg font-title-md text-title-md shadow-sm active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+                        Generar Factura
+                    </button>
+</div>
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+<!-- Ingresos -->
+<div class="bg-surface-container-lowest p-lg rounded-xl shadow-level-1 border border-outline-variant flex flex-col gap-sm">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="font-label-md text-label-md">Ingresos del Mes</span>
+<span class="material-symbols-outlined text-primary">trending_up</span>
+</div>
+<span class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface">$45,230.00</span>
+<div class="flex items-center gap-xs text-tertiary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-sm">arrow_upward</span>
+<span>+12% vs mes anterior</span>
+</div>
+</div>
+<!-- Por Cobrar -->
+<div class="bg-surface-container-lowest p-lg rounded-xl shadow-level-1 border border-outline-variant flex flex-col gap-sm">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="font-label-md text-label-md">Por Cobrar</span>
+<span class="material-symbols-outlined text-secondary">pending_actions</span>
+</div>
+<span class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface">$12,400.50</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">15 facturas pendientes</p>
+</div>
+<!-- Vencido -->
+<div class="bg-surface-container-lowest p-lg rounded-xl shadow-level-1 border border-error-container bg-error-container/10 flex flex-col gap-sm">
+<div class="flex items-center justify-between text-on-error-container">
+<span class="font-label-md text-label-md">Vencido</span>
+<span class="material-symbols-outlined text-error">warning</span>
+</div>
+<span class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-error">$3,150.00</span>
+<p class="font-body-sm text-body-sm text-error">5 facturas fuera de plazo</p>
+</div>
+</div>
+<!-- Filters & Search -->
+<div class="flex flex-col sm:flex-row justify-between gap-md bg-surface-container-lowest p-sm rounded-lg shadow-level-1 border border-outline-variant">
+<div class="flex gap-xs overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
+<button class="px-md py-1.5 rounded-md bg-[#F1F5F9] text-[#0F172A] font-label-md text-label-md hover:bg-[#E2E8F0] transition-colors border border-outline-variant">Todas</button>
+<button class="px-md py-1.5 rounded-md text-on-surface-variant hover:bg-surface-container font-label-md text-label-md transition-colors">Pagadas</button>
+<button class="px-md py-1.5 rounded-md text-on-surface-variant hover:bg-surface-container font-label-md text-label-md transition-colors">Pendientes</button>
+<button class="px-md py-1.5 rounded-md text-on-surface-variant hover:bg-surface-container font-label-md text-label-md transition-colors">Vencidas</button>
+</div>
+<div class="flex items-center gap-sm px-sm bg-surface rounded-md border border-outline-variant focus-within:border-primary focus-within:ring-1 focus-within:ring-primary w-full sm:w-64">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">search</span>
+<input class="w-full bg-transparent border-none focus:ring-0 py-1.5 font-body-sm text-body-sm" placeholder="N° Factura..." type="text"/>
+</div>
+</div>
+<!-- Data Table -->
+<div class="bg-surface-container-lowest rounded-xl shadow-level-1 border border-outline-variant overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface border-b border-outline-variant text-[#0F172A] font-label-sm text-label-sm uppercase tracking-wider">
+<th class="p-md font-medium">N° Factura</th>
+<th class="p-md font-medium">Cliente</th>
+<th class="p-md font-medium">Fecha Emisión</th>
+<th class="p-md font-medium">Vencimiento</th>
+<th class="p-md font-medium text-right">Total</th>
+<th class="p-md font-medium text-center">Estado</th>
+<th class="p-md font-medium text-center">Acciones</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant font-body-sm text-body-sm text-on-surface">
+<tr class="hover:bg-surface transition-colors group">
+<td class="p-md font-title-sm text-primary">#FAC-001</td>
+<td class="p-md font-medium">Constructora Omega S.A.</td>
+<td class="p-md text-on-surface-variant">12 Oct 2023</td>
+<td class="p-md text-on-surface-variant">27 Oct 2023</td>
+<td class="p-md text-right font-medium">$1,250.00</td>
+<td class="p-md text-center">
+<span class="inline-flex items-center px-2 py-1 rounded-full bg-[#D1FAE5] text-[#065F46] font-label-sm text-label-sm">Pagada</span>
+</td>
+<td class="p-md text-center">
+<div class="flex items-center justify-center gap-xs opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-sm">picture_as_pdf</span></button>
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-sm">mail</span></button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface transition-colors group">
+<td class="p-md font-title-sm text-primary">#FAC-002</td>
+<td class="p-md font-medium">Taller Los Hermanos</td>
+<td class="p-md text-on-surface-variant">14 Oct 2023</td>
+<td class="p-md text-on-surface-variant">29 Oct 2023</td>
+<td class="p-md text-right font-medium">$850.50</td>
+<td class="p-md text-center">
+<span class="inline-flex items-center px-2 py-1 rounded-full bg-[#E2E8F0] text-[#0F172A] font-label-sm text-label-sm">Pendiente</span>
+</td>
+<td class="p-md text-center">
+<div class="flex items-center justify-center gap-xs opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-sm">picture_as_pdf</span></button>
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-sm">mail</span></button>
+<button class="p-1 text-on-surface-variant hover:text-tertiary transition-colors"><span class="material-symbols-outlined text-sm">payments</span></button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface transition-colors group bg-error-container/5">
+<td class="p-md font-title-sm text-primary">#FAC-003</td>
+<td class="p-md font-medium">Mantenimiento Industrial Corp</td>
+<td class="p-md text-on-surface-variant">01 Oct 2023</td>
+<td class="p-md text-error font-medium">16 Oct 2023</td>
+<td class="p-md text-right font-medium">$3,150.00</td>
+<td class="p-md text-center">
+<span class="inline-flex items-center px-2 py-1 rounded-full bg-[#FEE2E2] text-[#991B1B] font-label-sm text-label-sm">Vencida</span>
+</td>
+<td class="p-md text-center">
+<div class="flex items-center justify-center gap-xs opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-sm">picture_as_pdf</span></button>
+<button class="p-1 text-error hover:text-primary transition-colors"><span class="material-symbols-outlined text-sm">warning</span></button>
+<button class="p-1 text-on-surface-variant hover:text-tertiary transition-colors"><span class="material-symbols-outlined text-sm">payments</span></button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination (Static) -->
+<div class="p-md border-t border-outline-variant flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm">
+<span>Mostrando 1 - 3 de 15</span>
+<div class="flex gap-sm">
+<button class="p-1 hover:bg-surface-container rounded transition-colors disabled:opacity-50"><span class="material-symbols-outlined text-sm">chevron_left</span></button>
+<button class="p-1 hover:bg-surface-container rounded transition-colors"><span class="material-symbols-outlined text-sm">chevron_right</span></button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</body></html>

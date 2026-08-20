@@ -16,6 +16,7 @@
     "supabase:gen-types": "supabase gen types typescript --local > src/infrastructure/persistence/supabase/database.types.ts"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@react-pdf/renderer": "^3.4.0",
     "@supabase/ssr": "^0.4.0",
     "@supabase/supabase-js": "^2.45.0",
@@ -25,8 +26,10 @@
     "next": "^14.2.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-hook-form": "^7.85.0",
     "tailwind-merge": "^2.5.2",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@playwright/test": "^1.46.0",

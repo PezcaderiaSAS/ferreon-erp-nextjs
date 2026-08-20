@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Bodega - Inventario de Equipos | FerreOn ERP</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "background": "#fff8f6",
+                      "on-secondary-fixed": "#131b2e",
+                      "surface": "#fff8f6",
+                      "on-tertiary-fixed": "#191c1e",
+                      "on-surface-variant": "#56423c",
+                      "surface-dim": "#e9d6d1",
+                      "error": "#ba1a1a",
+                      "surface-tint": "#9f4122",
+                      "on-primary-fixed-variant": "#7f2a0d",
+                      "on-tertiary-container": "#3c4041",
+                      "secondary-fixed-dim": "#bec6e0",
+                      "surface-container-high": "#f8e4df",
+                      "secondary-container": "#dae2fd",
+                      "surface-container-low": "#fff1ed",
+                      "primary": "#9f4122",
+                      "surface-container-highest": "#f2ded9",
+                      "secondary-fixed": "#dae2fd",
+                      "on-primary-container": "#752305",
+                      "primary-fixed-dim": "#ffb59e",
+                      "error-container": "#ffdad6",
+                      "outline-variant": "#ddc0b8",
+                      "surface-bright": "#fff8f6",
+                      "outline": "#89726b",
+                      "inverse-surface": "#392e2b",
+                      "surface-container": "#feeae4",
+                      "on-secondary-container": "#5c647a",
+                      "on-primary": "#ffffff",
+                      "primary-fixed": "#ffdbd0",
+                      "tertiary-fixed": "#e0e3e5",
+                      "tertiary-container": "#a8abad",
+                      "tertiary": "#5c5f61",
+                      "on-error": "#ffffff",
+                      "secondary": "#565e74",
+                      "inverse-on-surface": "#ffede8",
+                      "tertiary-fixed-dim": "#c4c7c9",
+                      "inverse-primary": "#ffb59e",
+                      "on-primary-fixed": "#3a0b00",
+                      "on-surface": "#231916",
+                      "on-secondary": "#ffffff",
+                      "on-secondary-fixed-variant": "#3f465c",
+                      "surface-variant": "#f2ded9",
+                      "primary-container": "#ff8a65",
+                      "on-tertiary-fixed-variant": "#444749",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "on-error-container": "#93000a",
+                      "on-background": "#231916"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "24px",
+                      "xl": "32px",
+                      "xs": "4px",
+                      "unit": "4px",
+                      "margin-desktop": "40px",
+                      "md": "16px",
+                      "lg": "24px",
+                      "sm": "8px",
+                      "margin-mobile": "16px"
+              },
+              "fontFamily": {
+                      "headline-xl": [
+                              "Outfit"
+                      ],
+                      "headline-lg": [
+                              "Outfit"
+                      ],
+                      "label-sm": [
+                              "Outfit"
+                      ],
+                      "body-sm": [
+                              "Outfit"
+                      ],
+                      "headline-md": [
+                              "Outfit"
+                      ],
+                      "label-md": [
+                              "Outfit"
+                      ],
+                      "body-lg": [
+                              "Outfit"
+                      ],
+                      "body-md": [
+                              "Outfit"
+                      ],
+                      "headline-sm": [
+                              "Outfit"
+                      ],
+                      "headline-lg-mobile": [
+                              "Outfit"
+                      ]
+              },
+              "fontSize": {
+                      "headline-xl": [
+                              "40px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #F8FAFC;
+        }
+        .shadow-level-1 {
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+        .table-row-hover:hover {
+            background-color: rgba(0,0,0,0.02);
+        }
+        .input-focus-ring:focus-within {
+            border-color: #FF8A65;
+            box-shadow: 0 0 0 2px rgba(255, 138, 101, 0.1);
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md text-on-surface antialiased bg-[#F8FAFC]">
+<!-- Shell Layout -->
+<div class="flex h-screen overflow-hidden">
+<!-- SideNavBar (Hidden on Mobile, Flex on MD) -->
+<nav aria-label="Sidebar" class="hidden md:flex flex-col py-lg px-md gap-sm bg-surface-container-low border-r border-outline-variant h-screen w-64 fixed left-0 top-0 z-40">
+<!-- Brand -->
+<div class="flex items-center gap-md px-md pb-lg mb-lg border-b border-outline-variant">
+<div class="w-10 h-10 rounded bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">warehouse</span>
+</div>
+<div>
+<h1 class="font-headline-sm text-headline-sm font-black text-primary">FerreOn</h1>
+<p class="font-label-sm text-label-sm text-secondary">Warehouse Terminal</p>
+</div>
+</div>
+<!-- Tabs -->
+<div class="flex flex-col gap-xs flex-1">
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-secondary hover:bg-surface-container-high hover:bg-primary-fixed transition-all active:scale-95 duration-150 group" href="#">
+<span class="material-symbols-outlined text-secondary group-hover:text-on-primary-fixed-variant" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-secondary hover:bg-surface-container-high hover:bg-primary-fixed transition-all active:scale-95 duration-150 group" href="#">
+<span class="material-symbols-outlined text-secondary group-hover:text-on-primary-fixed-variant" data-icon="calendar_today">calendar_today</span>
+<span class="font-label-md text-label-md">Alquileres</span>
+</a>
+<!-- Active Tab: Bodega -->
+<a class="flex items-center gap-md px-md py-sm bg-primary-container text-on-primary-container font-bold rounded-lg transition-all active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span class="font-label-md text-label-md">Bodega</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-secondary hover:bg-surface-container-high hover:bg-primary-fixed transition-all active:scale-95 duration-150 group" href="#">
+<span class="material-symbols-outlined text-secondary group-hover:text-on-primary-fixed-variant" data-icon="settings_backup_restore">settings_backup_restore</span>
+<span class="font-label-md text-label-md">Devoluciones</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-secondary hover:bg-surface-container-high hover:bg-primary-fixed transition-all active:scale-95 duration-150 group" href="#">
+<span class="material-symbols-outlined text-secondary group-hover:text-on-primary-fixed-variant" data-icon="receipt_long">receipt_long</span>
+<span class="font-label-md text-label-md">Facturación</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-secondary hover:bg-surface-container-high hover:bg-primary-fixed transition-all active:scale-95 duration-150 group" href="#">
+<span class="material-symbols-outlined text-secondary group-hover:text-on-primary-fixed-variant" data-icon="group">group</span>
+<span class="font-label-md text-label-md">Clientes</span>
+</a>
+</div>
+<!-- CTA -->
+<div class="mt-auto pt-lg">
+<button class="w-full flex items-center justify-center gap-sm py-sm px-md rounded border border-[#E2E8F0] text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md">
+<span class="material-symbols-outlined text-[18px]">report</span>
+                    Report Issue
+                </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col md:ml-64 w-full h-full relative">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center h-16 px-gutter w-full sticky top-0 z-30 bg-surface border-b border-outline-variant shadow-sm transition-colors">
+<!-- Search -->
+<div class="flex-1 max-w-md hidden sm:block">
+<div class="relative flex items-center w-full h-10 rounded bg-white border border-[#E2E8F0] px-sm input-focus-ring transition-all">
+<span class="material-symbols-outlined text-secondary mr-sm">search</span>
+<input class="w-full h-full bg-transparent border-none focus:ring-0 text-body-sm font-body-sm text-on-surface placeholder:text-secondary p-0 outline-none" placeholder="Buscar equipo, SKU..." type="text"/>
+</div>
+</div>
+<!-- Mobile Menu & Title (Visible only on mobile) -->
+<div class="flex items-center gap-sm md:hidden">
+<button class="p-sm rounded hover:bg-surface-container-high text-on-surface-variant transition-colors active:opacity-80">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary">FerreOn ERP</h1>
+</div>
+<!-- Actions & Profile -->
+<div class="flex items-center gap-sm ml-auto">
+<button class="p-sm rounded hover:bg-surface-container-high text-on-surface-variant transition-colors cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-sm rounded hover:bg-surface-container-high text-on-surface-variant transition-colors cursor-pointer active:opacity-80 hidden sm:block">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+<div class="w-8 h-8 rounded-full ml-sm overflow-hidden border border-outline-variant cursor-pointer">
+<img alt="Warehouse Manager Profile" class="w-full h-full object-cover" data-alt="A close up portrait of a professional warehouse manager in a well lit modern office setting. The lighting is soft and bright, casting subtle shadows. Professional photography, sharp focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvvuiADs7hnuZ8p-SLjhECTQllT1ee9546uwrojg9Xt-VwEEj0WuKBReqpAhXWEtXUiHfGenaJq_bt9hHjDRHYPpXSyxS5C-8uh1NpthcgTlEp_0DZDeW9aUd0O95ajSjZrPrSLpImve1Aj0HWwix3yFZTrQ9IOlm2shMRXuY9je3F1u8KUxX4H__Za25Goook4ua6aVk2nMZOomvpxc85SMrDxfGC1pQFgJ-8v5yZA_GTsH9PCk0EA4hQNnfonPUPxk5syQxETds"/>
+</div>
+</div>
+</header>
+<!-- Page Canvas -->
+<div class="flex-1 overflow-y-auto p-margin-mobile md:p-margin-desktop bg-[#F8FAFC]">
+<div class="max-w-[1440px] mx-auto flex flex-col gap-lg">
+<!-- Page Header -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-md mb-md">
+<div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Inventario de Equipos</h2>
+<p class="font-body-md text-body-md text-secondary mt-xs">Gestiona el stock, disponibilidad y estado del equipamiento.</p>
+</div>
+<button class="flex items-center justify-center gap-sm bg-[#FF8A65] hover:bg-[#E57350] text-white px-lg py-sm rounded transition-colors shadow-sm w-full sm:w-auto font-label-md text-label-md">
+<span class="material-symbols-outlined text-[18px]">add_box</span>
+                            Añadir Equipo
+                        </button>
+</div>
+<!-- Filters -->
+<div class="flex flex-wrap items-center gap-sm mb-sm border-b border-[#E2E8F0] pb-sm">
+<button class="px-md py-xs rounded-full bg-[#E2E8F0] text-on-surface font-label-sm text-label-sm border border-transparent transition-colors">Todos</button>
+<button class="px-md py-xs rounded-full bg-white text-secondary font-label-sm text-label-sm border border-[#E2E8F0] hover:bg-surface-container-high transition-colors">Disponibles</button>
+<button class="px-md py-xs rounded-full bg-white text-secondary font-label-sm text-label-sm border border-[#E2E8F0] hover:bg-surface-container-high transition-colors">En Alquiler</button>
+<button class="px-md py-xs rounded-full bg-white text-secondary font-label-sm text-label-sm border border-[#E2E8F0] hover:bg-surface-container-high transition-colors">Mantenimiento</button>
+</div>
+<!-- KPI Summary -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+<!-- KPI 1 -->
+<div class="bg-white rounded-xl p-md shadow-level-1 border border-transparent flex flex-col justify-center">
+<div class="flex items-center gap-sm mb-xs text-secondary">
+<span class="material-symbols-outlined text-[20px]">inventory_2</span>
+<h3 class="font-label-md text-label-md">Total Equipos</h3>
+</div>
+<div class="font-headline-lg text-headline-lg text-on-surface">842</div>
+</div>
+<!-- KPI 2 -->
+<div class="bg-white rounded-xl p-md shadow-level-1 border border-transparent flex flex-col justify-center">
+<div class="flex items-center gap-sm mb-xs text-secondary">
+<span class="material-symbols-outlined text-[20px]">handshake</span>
+<h3 class="font-label-md text-label-md">En Alquiler</h3>
+</div>
+<div class="font-headline-lg text-headline-lg text-on-surface">156</div>
+</div>
+<!-- KPI 3 -->
+<div class="bg-white rounded-xl p-md shadow-level-1 border border-amber-200 bg-amber-50 flex flex-col justify-center">
+<div class="flex items-center gap-sm mb-xs text-amber-700">
+<span class="material-symbols-outlined text-[20px]">build</span>
+<h3 class="font-label-md text-label-md">Requieren Mantenimiento</h3>
+</div>
+<div class="font-headline-lg text-headline-lg text-amber-900">12</div>
+</div>
+</div>
+<!-- Main Content (DataTable) -->
+<div class="bg-white rounded-xl shadow-level-1 overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-[#F8FAFC] border-b border-[#F1F5F9]">
+<th class="py-sm px-md font-label-sm text-label-sm text-secondary font-semibold uppercase tracking-wider">Código (SKU)</th>
+<th class="py-sm px-md font-label-sm text-label-sm text-secondary font-semibold uppercase tracking-wider">Nombre</th>
+<th class="py-sm px-md font-label-sm text-label-sm text-secondary font-semibold uppercase tracking-wider">Categoría</th>
+<th class="py-sm px-md font-label-sm text-label-sm text-secondary font-semibold uppercase tracking-wider text-right">Stock Total</th>
+<th class="py-sm px-md font-label-sm text-label-sm text-secondary font-semibold uppercase tracking-wider text-right">Stock Disp.</th>
+<th class="py-sm px-md font-label-sm text-label-sm text-secondary font-semibold uppercase tracking-wider">Estado</th>
+<th class="py-sm px-md font-label-sm text-label-sm text-secondary font-semibold uppercase tracking-wider text-right">Acciones</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-surface">
+<!-- Row 1 -->
+<tr class="border-b border-[#F1F5F9] table-row-hover transition-colors">
+<td class="py-md px-md font-mono text-secondary">#EQ-9012</td>
+<td class="py-md px-md font-medium">Andamio Tubular (x4)</td>
+<td class="py-md px-md">
+<span class="bg-[#F1F5F9] text-secondary px-2 py-1 rounded text-[12px]">Construcción</span>
+</td>
+<td class="py-md px-md text-right">50</td>
+<td class="py-md px-md text-right font-medium">32</td>
+<td class="py-md px-md">
+<span class="inline-flex items-center px-2 py-1 rounded bg-emerald-100 text-emerald-800 text-[12px] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                                                Disponible
+                                            </span>
+</td>
+<td class="py-md px-md text-right">
+<button class="p-xs text-secondary hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">more_vert</span></button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="border-b border-[#F1F5F9] table-row-hover transition-colors">
+<td class="py-md px-md font-mono text-secondary">#EQ-4421</td>
+<td class="py-md px-md font-medium">Martillo Demoledor</td>
+<td class="py-md px-md">
+<span class="bg-[#F1F5F9] text-secondary px-2 py-1 rounded text-[12px]">Herramienta Eléctrica</span>
+</td>
+<td class="py-md px-md text-right">15</td>
+<td class="py-md px-md text-right font-medium text-amber-600">2</td>
+<td class="py-md px-md">
+<span class="inline-flex items-center px-2 py-1 rounded bg-amber-100 text-amber-800 text-[12px] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
+                                                Bajo Stock
+                                            </span>
+</td>
+<td class="py-md px-md text-right">
+<button class="p-xs text-secondary hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">more_vert</span></button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="border-b border-[#F1F5F9] table-row-hover transition-colors">
+<td class="py-md px-md font-mono text-secondary">#EQ-1099</td>
+<td class="py-md px-md font-medium">Generador 50kVA</td>
+<td class="py-md px-md">
+<span class="bg-[#F1F5F9] text-secondary px-2 py-1 rounded text-[12px]">Maquinaria Pesada</span>
+</td>
+<td class="py-md px-md text-right">4</td>
+<td class="py-md px-md text-right font-medium text-red-600">0</td>
+<td class="py-md px-md">
+<span class="inline-flex items-center px-2 py-1 rounded bg-red-100 text-red-800 text-[12px] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5"></span>
+                                                Agotado
+                                            </span>
+</td>
+<td class="py-md px-md text-right">
+<button class="p-xs text-secondary hover:text-primary transition-colors"><span class="material-symbols-outlined text-[18px]">more_vert</span></button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="flex items-center justify-between px-md py-sm bg-white border-t border-[#F1F5F9]">
+<span class="font-body-sm text-body-sm text-secondary">Mostrando 1-3 de 842</span>
+<div class="flex items-center gap-xs">
+<button class="p-xs rounded border border-[#E2E8F0] text-secondary hover:bg-[#F8FAFC] disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<button class="px-sm py-xs rounded bg-[#FF8A65] text-white font-label-sm text-label-sm">1</button>
+<button class="px-sm py-xs rounded border border-[#E2E8F0] text-secondary hover:bg-[#F8FAFC] font-label-sm text-label-sm">2</button>
+<button class="px-sm py-xs rounded border border-[#E2E8F0] text-secondary hover:bg-[#F8FAFC] font-label-sm text-label-sm">3</button>
+<span class="text-secondary mx-xs">...</span>
+<button class="p-xs rounded border border-[#E2E8F0] text-secondary hover:bg-[#F8FAFC]">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

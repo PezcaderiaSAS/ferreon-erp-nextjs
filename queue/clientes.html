@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Directorio de Clientes - FerreOn</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "error-container": "#ffdad6",
+                      "secondary": "#565e74",
+                      "outline-variant": "#ddc0b8",
+                      "on-error-container": "#93000a",
+                      "error": "#ba1a1a",
+                      "tertiary": "#5c5f61",
+                      "on-tertiary": "#ffffff",
+                      "surface-dim": "#e9d6d1",
+                      "on-secondary-fixed": "#131b2e",
+                      "on-primary-fixed-variant": "#7f2a0d",
+                      "surface-container-highest": "#f2ded9",
+                      "surface-container-high": "#f8e4df",
+                      "surface-container": "#feeae4",
+                      "outline": "#89726b",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary-fixed-variant": "#444749",
+                      "primary": "#9f4122",
+                      "on-secondary-fixed-variant": "#3f465c",
+                      "inverse-surface": "#392e2b",
+                      "surface-variant": "#f2ded9",
+                      "tertiary-container": "#a8abad",
+                      "background": "#fff8f6",
+                      "on-primary-fixed": "#3a0b00",
+                      "on-background": "#231916",
+                      "inverse-on-surface": "#ffede8",
+                      "on-surface-variant": "#56423c",
+                      "on-secondary-container": "#5c647a",
+                      "on-tertiary-container": "#3c4041",
+                      "on-primary": "#ffffff",
+                      "surface-bright": "#fff8f6",
+                      "on-error": "#ffffff",
+                      "primary-fixed": "#ffdbd0",
+                      "inverse-primary": "#ffb59e",
+                      "tertiary-fixed-dim": "#c4c7c9",
+                      "tertiary-fixed": "#e0e3e5",
+                      "secondary-fixed-dim": "#bec6e0",
+                      "on-secondary": "#ffffff",
+                      "secondary-container": "#dae2fd",
+                      "secondary-fixed": "#dae2fd",
+                      "on-primary-container": "#752305",
+                      "surface-container-low": "#fff1ed",
+                      "on-tertiary-fixed": "#191c1e",
+                      "primary-fixed-dim": "#ffb59e",
+                      "on-surface": "#231916",
+                      "surface-tint": "#9f4122",
+                      "surface": "#fff8f6",
+                      "primary-container": "#ff8a65"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "lg": "24px",
+                      "xs": "4px",
+                      "unit": "4px",
+                      "md": "16px",
+                      "margin-desktop": "40px",
+                      "margin-mobile": "16px",
+                      "sm": "8px",
+                      "xl": "32px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Outfit"
+                      ],
+                      "label-sm": [
+                              "Outfit"
+                      ],
+                      "headline-md": [
+                              "Outfit"
+                      ],
+                      "body-lg": [
+                              "Outfit"
+                      ],
+                      "body-md": [
+                              "Outfit"
+                      ],
+                      "headline-lg": [
+                              "Outfit"
+                      ],
+                      "headline-xl": [
+                              "Outfit"
+                      ],
+                      "body-sm": [
+                              "Outfit"
+                      ],
+                      "headline-sm": [
+                              "Outfit"
+                      ],
+                      "label-md": [
+                              "Outfit"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-xl": [
+                              "40px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-[#F8FAFC] text-on-surface font-body-md text-body-md antialiased flex">
+<!-- SideNavBar (Shared Component) -->
+<aside class="hidden md:flex bg-surface-container-low dark:bg-surface-container text-primary dark:text-primary-fixed-dim border-r border-outline-variant h-screen w-64 fixed left-0 top-0 flex-col py-lg px-md space-y-sm z-50">
+<div class="mb-lg">
+<h1 class="font-headline-md text-headline-md font-black text-primary dark:text-primary-fixed">FerreOn</h1>
+<p class="font-label-sm text-label-sm text-secondary">Rental Management</p>
+</div>
+<button class="w-full bg-primary-container text-on-primary-container font-label-md text-label-md py-sm px-md rounded-lg mb-md hover:bg-[#E57350] transition-colors duration-200 flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">add</span>
+            Nuevo Alquiler
+        </button>
+<nav class="flex-1 space-y-xs">
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-variant rounded-lg font-label-md text-label-md transition-all active:opacity-80 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-variant rounded-lg font-label-md text-label-md transition-all active:opacity-80 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+                Alquileres
+            </a>
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-variant rounded-lg font-label-md text-label-md transition-all active:opacity-80 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+                Bodega
+            </a>
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-variant rounded-lg font-label-md text-label-md transition-all active:opacity-80 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="assignment_return">assignment_return</span>
+                Devoluciones
+            </a>
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-variant rounded-lg font-label-md text-label-md transition-all active:opacity-80 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+                Facturación
+            </a>
+<a class="flex items-center gap-md px-md py-sm bg-primary-container text-on-primary-container rounded-lg font-bold font-label-md text-label-md transition-all active:opacity-80 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+                Clientes
+            </a>
+</nav>
+<div class="mt-auto space-y-xs border-t border-outline-variant pt-sm">
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-variant rounded-lg font-label-md text-label-md transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                Soporte
+            </a>
+<a class="flex items-center gap-md px-md py-sm text-secondary hover:bg-surface-variant rounded-lg font-label-md text-label-md transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                Cerrar Sesión
+            </a>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="flex-1 md:ml-64 flex flex-col min-h-screen">
+<!-- TopNavBar (Shared Component Mobile Variant / Top Bar) -->
+<header class="bg-surface-container-lowest shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] w-full h-16 flex justify-between items-center px-margin-mobile md:px-margin-desktop sticky top-0 z-40">
+<div class="flex items-center gap-sm md:hidden">
+<span class="material-symbols-outlined text-primary cursor-pointer" style="font-variation-settings: 'FILL' 0;">menu</span>
+<span class="font-headline-md text-headline-md font-bold text-primary">FerreOn</span>
+</div>
+<div class="hidden md:flex flex-1 max-w-md ml-lg">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary" style="font-variation-settings: 'FILL' 0;">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-[#F1F5F9] border-none rounded-full font-body-sm text-body-sm focus:ring-2 focus:ring-primary-container focus:outline-none text-on-surface" placeholder="Buscar..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md text-secondary">
+<span class="material-symbols-outlined cursor-pointer hover:bg-surface-container-low transition-colors duration-200 rounded-full p-1" data-icon="notifications">notifications</span>
+<img alt="User profile" class="w-8 h-8 rounded-full object-cover border border-outline-variant cursor-pointer" data-alt="A small, circular avatar portrait of a professional manager with short hair, wearing a dark gray business casual shirt, set against a bright, modern white office background with soft lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSR31ICbbpAq5tf9bNUMsbOAXthUv2HH1Cus2aghZeuva9-qijpJv9J92Ldo1olxcnj7yKh3qp4q0O2OMfK20Hs3EYzaxci6Zj0l5Ll0d8-PqjSp16NOcTsCBYWv4k8f-3YujSeEg2SylslCTCtkNrwvtrtQohbSEu6WqOp8182y8m5mMVN-uoUiUyLDiiuoccX0WhW1fYa3wyixcpShfshgNYNWJpY3k93ZgBGs4oJ4r9anV1vYPDWkiiUhsU8nnZ0kwshpj-xbI"/>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 p-margin-mobile md:p-margin-desktop max-w-[1440px] mx-auto w-full space-y-xl">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-md">
+<div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Directorio de Clientes</h2>
+<p class="font-body-sm text-body-sm text-secondary mt-1">Gestiona la información de tus clientes y su historial de alquileres.</p>
+</div>
+<button class="bg-primary-container text-white hover:bg-[#E57350] transition-colors duration-200 font-label-md text-label-md py-2 px-4 rounded-lg flex items-center gap-2 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">person_add</span>
+                    Añadir Cliente
+                </button>
+</div>
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-lg">
+<div class="bg-white p-md rounded-xl shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] border border-[#E2E8F0]">
+<div class="flex items-center justify-between mb-sm">
+<h3 class="font-label-md text-label-md text-secondary">Total Clientes</h3>
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 0;">group</span>
+</div>
+<p class="font-headline-xl text-headline-xl text-on-surface">1,240</p>
+</div>
+<div class="bg-white p-md rounded-xl shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] border border-[#E2E8F0]">
+<div class="flex items-center justify-between mb-sm">
+<h3 class="font-label-md text-label-md text-secondary">Nuevos este mes</h3>
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 0;">trending_up</span>
+</div>
+<div class="flex items-end gap-sm">
+<p class="font-headline-xl text-headline-xl text-on-surface">24</p>
+<span class="font-label-sm text-label-sm text-[#10B981] bg-[#D1FAE5] px-2 py-1 rounded-full mb-1">+12%</span>
+</div>
+</div>
+<div class="bg-white p-md rounded-xl shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] border border-error-container">
+<div class="flex items-center justify-between mb-sm">
+<h3 class="font-label-md text-label-md text-error">Clientes en Mora</h3>
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 0;">warning</span>
+</div>
+<p class="font-headline-xl text-headline-xl text-error">8</p>
+</div>
+</div>
+<!-- Filters & Search -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-md bg-white p-sm rounded-xl shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] border border-[#E2E8F0]">
+<div class="relative w-full md:w-96">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary" style="font-variation-settings: 'FILL' 0;">search</span>
+<input class="w-full pl-10 pr-4 py-2 border border-[#E2E8F0] rounded-lg font-body-sm text-body-sm focus:ring-2 focus:ring-primary-container focus:border-primary-container transition-all text-on-surface" placeholder="Buscar por nombre, NIT o contacto..." type="text"/>
+</div>
+<div class="flex gap-sm overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+<button class="px-4 py-1.5 bg-[#F1F5F9] text-secondary border border-[#E2E8F0] rounded-full font-label-sm text-label-sm whitespace-nowrap hover:bg-[#E2E8F0] transition-colors">Todos</button>
+<button class="px-4 py-1.5 bg-surface-container-low text-primary border border-primary-container rounded-full font-label-sm text-label-sm whitespace-nowrap">Activos</button>
+<button class="px-4 py-1.5 bg-[#F1F5F9] text-secondary border border-[#E2E8F0] rounded-full font-label-sm text-label-sm whitespace-nowrap hover:bg-[#E2E8F0] transition-colors">Inactivos</button>
+<button class="px-4 py-1.5 bg-error-container text-on-error-container border border-error rounded-full font-label-sm text-label-sm whitespace-nowrap">Con Deuda</button>
+</div>
+</div>
+<!-- Data Table -->
+<div class="bg-white rounded-xl shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] border border-[#E2E8F0] overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-[#F8FAFC] border-b border-[#F1F5F9]">
+<th class="p-md font-label-md text-label-md text-secondary">Nombre/Empresa</th>
+<th class="p-md font-label-md text-label-md text-secondary">NIT/Doc</th>
+<th class="p-md font-label-md text-label-md text-secondary">Contacto</th>
+<th class="p-md font-label-md text-label-md text-secondary">Último Alquiler</th>
+<th class="p-md font-label-md text-label-md text-secondary">Nivel de Riesgo</th>
+<th class="p-md font-label-md text-label-md text-secondary text-right">Acciones</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm">
+<tr class="border-b border-[#F1F5F9] hover:bg-surface-bright transition-colors group">
+<td class="p-md font-medium text-on-surface flex items-center gap-sm">
+<div class="w-8 h-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs">CO</div>
+                                    Constructora Omega S.A.
+                                </td>
+<td class="p-md text-secondary">900.123.456-1</td>
+<td class="p-md text-secondary">555-0102</td>
+<td class="p-md text-secondary">12 Oct 2023</td>
+<td class="p-md">
+<span class="inline-flex items-center gap-1 bg-[#D1FAE5] text-[#065F46] px-2 py-1 rounded font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span> Bajo
+                                    </span>
+</td>
+<td class="p-md text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-secondary hover:text-primary transition-colors" title="Ver Perfil"><span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 0;">visibility</span></button>
+<button class="p-1 text-secondary hover:text-primary transition-colors" title="Editar"><span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 0;">edit</span></button>
+<button class="p-1 text-secondary hover:text-primary transition-colors" title="Historial"><span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 0;">history</span></button>
+</div>
+</td>
+</tr>
+<tr class="border-b border-[#F1F5F9] hover:bg-surface-bright transition-colors group">
+<td class="p-md font-medium text-on-surface flex items-center gap-sm">
+<div class="w-8 h-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs">TL</div>
+                                    Taller Los Hermanos
+                                </td>
+<td class="p-md text-secondary">800.987.654-0</td>
+<td class="p-md text-secondary">555-0304</td>
+<td class="p-md text-secondary">14 Oct 2023</td>
+<td class="p-md">
+<span class="inline-flex items-center gap-1 bg-[#FEF3C7] text-[#92400E] px-2 py-1 rounded font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-[#F59E0B]"></span> Medio
+                                    </span>
+</td>
+<td class="p-md text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-secondary hover:text-primary transition-colors" title="Ver Perfil"><span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 0;">visibility</span></button>
+<button class="p-1 text-secondary hover:text-primary transition-colors" title="Editar"><span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 0;">edit</span></button>
+<button class="p-1 text-secondary hover:text-primary transition-colors" title="Historial"><span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 0;">history</span></button>
+</div>
+</td>
+</tr>
+<tr class="border-b border-[#F1F5F9] hover:bg-surface-bright transition-colors group bg-error-container/10">
+<td class="p-md font-medium text-on-surface flex items-center gap-sm">
+<div class="w-8 h-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs">MI</div>
+                                    Mantenimiento Industrial Corp
+                                </td>
+<td class="p-md text-secondary">900.555.444-2</td>
+<td class="p-md text-secondary">555-0506</td>
+<td class="p-md text-secondary">01 Oct 2023</td>
+<td class="p-md">
+<span class="inline-flex items-center gap-1 bg-[#FEE2E2] text-[#991B1B] px-2 py-1 rounded font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-[#EF4444]"></span> Alto
+                                    </span>
+</td>
+<td class="p-md text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 text-secondary hover:text-primary transition-colors" title="Ver Perfil"><span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 0;">visibility</span></button>
+<button class="p-1 text-secondary hover:text-primary transition-colors" title="Editar"><span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 0;">edit</span></button>
+<button class="p-1 text-secondary hover:text-primary transition-colors" title="Historial"><span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 0;">history</span></button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</main>
+</div>
+</body></html>
