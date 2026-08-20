@@ -13,7 +13,6 @@ describe("Use Case: DevolverEquipoUseCase", () => {
       nombreItem: "Mezcladora",
       cantidad: 2,
       tarifaAplicada: 45000,
-      pesoGramos: PesoGramos.fromKilos(250),
       diasContratados: 3,
       subtotalLinea: 270000,
       fechaInicio: new Date(),
@@ -49,7 +48,7 @@ describe("Use Case: DevolverEquipoUseCase", () => {
       "MEZCLADORA",
       "MAQUINARIA",
       45000,
-      PesoGramos.fromKilos(250),
+      
       10,
       8, // 8 disponibles
       2  // 2 en obra

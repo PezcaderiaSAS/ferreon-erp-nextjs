@@ -1,5 +1,4 @@
 import { EquipoEntity } from "../../domain/entities/equipo";
-import { PesoGramos } from "../../domain/value-objects/peso-gramos";
 import { IEquipoRepository } from "../../domain/repositories/equipo-repository.interface";
 
 export interface CrearEquipoDTO {
@@ -8,7 +7,6 @@ export interface CrearEquipoDTO {
   categoria: string;
   subcategoria?: string;
   tarifaDiaria: number;
-  pesoKilos?: number;
   stockTotal: number;
 }
 
@@ -23,7 +21,6 @@ export interface EditarEquipoDTO {
   categoria: string;
   subcategoria?: string;
   tarifaDiaria: number;
-  pesoKilos?: number;
   stockTotal: number;
   activo?: boolean;
 }
@@ -44,7 +41,6 @@ export class CrearEquipoUseCase {
       dto.nombre,
       dto.categoria,
       dto.tarifaDiaria,
-      dto.pesoKilos ? PesoGramos.fromKilos(dto.pesoKilos) : undefined,
       dto.stockTotal,
       dto.stockTotal, // Stock disponible inicialmente igual al total
       0,
@@ -80,7 +76,6 @@ export class CargaMasivaEquiposUseCase {
         item.nombre,
         item.categoria,
         item.tarifaDiaria,
-        item.pesoKilos ? PesoGramos.fromKilos(item.pesoKilos) : undefined,
         item.stockTotal,
         item.stockTotal,
         0,
@@ -126,9 +121,6 @@ export class EditarEquipoUseCase {
       equipo.subcategoria = dto.subcategoria;
     }
     equipo.tarifaDiaria = dto.tarifaDiaria;
-    if (dto.pesoKilos !== undefined) {
-      equipo.pesoGramos = PesoGramos.fromKilos(dto.pesoKilos);
-    }
     equipo.stockTotal = dto.stockTotal;
     equipo.stockDisponible = nuevoDisponible;
     if (dto.activo !== undefined) {

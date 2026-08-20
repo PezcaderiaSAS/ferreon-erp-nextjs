@@ -1,16 +1,12 @@
-import { PesoGramos } from "../value-objects/peso-gramos";
 import { BaseAuditableEntity } from "./base-auditable.entity";
 
 export class EquipoEntity extends BaseAuditableEntity {
-  public pesoGramos: PesoGramos;
-
   constructor(
     public readonly id: string | undefined,
     public codigo: string,
     public nombre: string,
     public categoria: string,
     public tarifaDiaria: number,
-    pesoGramos?: PesoGramos,
     public stockTotal: number = 0,
     public stockDisponible: number = 0,
     public stockEnObra: number = 0,
@@ -23,7 +19,6 @@ export class EquipoEntity extends BaseAuditableEntity {
     deletedBy?: string | null
   ) {
     super(createdAt, updatedAt, deletedAt, deletedBy);
-    this.pesoGramos = pesoGramos || PesoGramos.fromKilos(0);
     this.sanitizar();
     this.validarBalanceStock();
   }
@@ -53,10 +48,6 @@ export class EquipoEntity extends BaseAuditableEntity {
 
   validarInvariantes(): void {
     this.validarBalanceStock();
-  }
-
-  get pesoKilos(): number {
-    return this.pesoGramos.toKilos();
   }
 
   alquilar(cantidad: number): void {
@@ -101,5 +92,12 @@ export class EquipoEntity extends BaseAuditableEntity {
   }
 }
 
-export interface Equipo { id: string; sku: string; nombre: string; categoria: string; estado: 'Disponible' | 'En Alquiler' | 'Mantenimiento'; peso_gramos: number; creado_en: Date; }
-
+export interface Equipo {
+  id: string;
+  sku: string;
+  nombre: string;
+  categoria: string;
+  tarifaDiaria: number;
+  estado: 'Disponible' | 'En Alquiler' | 'Mantenimiento';
+  creado_en: Date;
+}

@@ -10,8 +10,7 @@ import { SupabaseEquipoRepository } from '../../infrastructure/adapters/Supabase
 const equipoSchema = z.object({
   sku: z.string().min(1, 'El SKU es requerido'),
   nombre: z.string().min(1, 'El nombre es requerido'),
-  categoria: z.string().min(1, 'La categoría es requerida'),
-  peso_kilos: z.number({ invalid_type_error: "Debe ser un número" }).min(0.1, 'El peso debe ser mayor a 0')
+  categoria: z.string().min(1, 'La categoría es requerida')
 });
 
 type EquipoFormValues = z.infer<typeof equipoSchema>;
@@ -34,8 +33,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
       await useCase.execute({
         sku: data.sku,
         nombre: data.nombre,
-        categoria: data.categoria,
-        peso_kilos: data.peso_kilos,
+        categoria: data.categoria
       });
 
       onSuccess();
@@ -80,17 +78,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
         {errors.categoria && <span className="text-xs text-red-500">{errors.categoria.message}</span>}
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-slate-700">Peso (Kilogramos)</label>
-        <input 
-          type="number"
-          step="0.1"
-          {...register('peso_kilos', { valueAsNumber: true })}
-          className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-900"
-          placeholder="Ej: 2.5"
-        />
-        {errors.peso_kilos && <span className="text-xs text-red-500">{errors.peso_kilos.message}</span>}
-      </div>
+
 
       <div className="flex justify-end gap-2 mt-4">
         <button 

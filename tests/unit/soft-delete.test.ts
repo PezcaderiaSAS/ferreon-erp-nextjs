@@ -39,7 +39,7 @@ describe("Data Architecture: Soft Delete & Audit Tests", () => {
       "VIBRADOR INDUSTRIAL",
       "MAQUINARIA",
       35000,
-      PesoGramos.fromKilos(18),
+      
       5,
       3,
       2 // 2 unidades en obra

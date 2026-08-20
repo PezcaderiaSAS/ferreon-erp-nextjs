@@ -16,7 +16,7 @@ describe("Domain Entity & Use Cases: Equipo / Inventario", () => {
       " mezcladora de concreto ",
       " Maquinaria ",
       45000,
-      PesoGramos.fromKilos(250),
+      
       10,
       10,
       0
@@ -34,7 +34,7 @@ describe("Domain Entity & Use Cases: Equipo / Inventario", () => {
       "MEZCLADORA DE CONCRETO",
       "MAQUINARIA",
       45000,
-      PesoGramos.fromKilos(250),
+      
       10,
       10,
       0
@@ -52,7 +52,7 @@ describe("Domain Entity & Use Cases: Equipo / Inventario", () => {
       "MEZCLADORA",
       "MAQUINARIA",
       45000,
-      PesoGramos.fromKilos(250),
+      
       5,
       5,
       0
@@ -119,7 +119,7 @@ describe("Domain Entity & Use Cases: Equipo / Inventario", () => {
       "ANDAMIO ESTANDAR",
       "ESTRUCTURAS",
       12000,
-      PesoGramos.fromKilos(45),
+      
       20,
       15,
       5 // 5 en obra
@@ -159,7 +159,7 @@ describe("Domain Entity & Use Cases: Equipo / Inventario", () => {
       "TALADRO SDS PLUS",
       "HERRAMIENTAS",
       25000,
-      PesoGramos.fromKilos(0),
+      
       10,
       10,
       0,

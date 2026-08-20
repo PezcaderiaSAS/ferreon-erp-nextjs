@@ -28,7 +28,6 @@ export class SupabaseEquipoRepository implements EquipoRepository {
           nombre: equipo.nombre,
           categoria: equipo.categoria,
           estado: equipo.estado,
-          peso_gramos: equipo.peso_gramos,
         }
       ])
       .select()

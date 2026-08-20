@@ -69,7 +69,6 @@ export default function BodegaPage() {
                 <th className="py-3 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Código (SKU)</th>
                 <th className="py-3 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Nombre</th>
                 <th className="py-3 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Categoría</th>
-                <th className="py-3 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider text-right">Peso (Gramos)</th>
                 <th className="py-3 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Estado</th>
               </tr>
             </thead>
@@ -81,7 +80,6 @@ export default function BodegaPage() {
                   <td className="py-4 px-4">
                     <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-[12px]">{equipo.categoria}</span>
                   </td>
-                  <td className="py-4 px-4 text-right">{equipo.peso_gramos}g</td>
                   <td className="py-4 px-4">
                     <span className="inline-flex items-center px-2 py-1 rounded bg-emerald-50 text-emerald-700 text-[12px] font-medium">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
@@ -92,7 +90,7 @@ export default function BodegaPage() {
               ))}
               {equipos.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-500">
+                  <td colSpan={4} className="py-8 text-center text-slate-500">
                     No hay equipos registrados.
                   </td>
                 </tr>

@@ -15,7 +15,7 @@ export const useBodegaStore = create<BodegaState>((set) => ({
       nombre: 'Taladro Percutor 800W',
       categoria: 'Herramientas Eléctricas',
       estado: 'Disponible',
-      peso_gramos: 2500,
+      tarifaDiaria: 45000,
       creado_en: new Date()
     },
     {
@@ -24,7 +24,7 @@ export const useBodegaStore = create<BodegaState>((set) => ({
       nombre: 'Andamio Tubular 2x2m',
       categoria: 'Construcción',
       estado: 'En Alquiler',
-      peso_gramos: 18000,
+      tarifaDiaria: 12000,
       creado_en: new Date()
     }
   ],
