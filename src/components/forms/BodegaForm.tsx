@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { CrearEquipoUseCase } from '../../core/application/use-cases/bodega/CrearEquipo';
-import { ZustandEquipoRepository } from '../../infrastructure/adapters/ZustandEquipoRepository';
+import { SupabaseEquipoRepository } from '../../infrastructure/adapters/SupabaseEquipoRepository';
 
 const equipoSchema = z.object({
   sku: z.string().min(1, 'El SKU es requerido'),
@@ -28,7 +28,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
 
   const onSubmit = async (data: EquipoFormValues) => {
     try {
-      const repository = new ZustandEquipoRepository();
+      const repository = new SupabaseEquipoRepository();
       const useCase = new CrearEquipoUseCase(repository);
       
       await useCase.execute({

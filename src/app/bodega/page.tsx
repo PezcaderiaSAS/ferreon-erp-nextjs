@@ -1,13 +1,36 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { BodegaForm } from '../../components/forms/BodegaForm';
+import { SupabaseEquipoRepository } from '../../infrastructure/adapters/SupabaseEquipoRepository';
+import { Equipo } from '../../core/domain/entities/Equipo';
 
 export default function BodegaPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const equipos = useBodegaStore((state) => state.equipos);
+  const [equipos, setEquipos] = useState<Equipo[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchEquipos = async () => {
+    try {
+      const repo = new SupabaseEquipoRepository();
+      const data = await repo.obtenerTodos();
+      setEquipos(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEquipos();
+  }, []);
+
+  const handleSuccess = () => {
+    setIsModalOpen(false);
+    fetchEquipos(); // Refresh list after adding
+  };
 
   return (
     <div className="flex flex-col gap-8 h-full">
@@ -85,7 +108,7 @@ export default function BodegaPage() {
         title="Añadir Nuevo Equipo"
       >
         <BodegaForm 
-          onSuccess={() => setIsModalOpen(false)}
+          onSuccess={handleSuccess}
           onCancel={() => setIsModalOpen(false)}
         />
       </Modal>
