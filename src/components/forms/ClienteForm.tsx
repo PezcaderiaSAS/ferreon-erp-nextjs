@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useClienteStore } from '../../infrastructure/state/clienteStore';
-import { Cliente } from '../../core/domain/entities/Cliente';
+import { Cliente } from '../../core/domain/entities/cliente';
 
 const clienteSchema = z.object({
   nit: z.string().min(1, 'El NIT es requerido'),

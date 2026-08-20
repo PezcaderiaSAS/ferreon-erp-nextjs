@@ -1,4 +1,4 @@
-import { Equipo } from '../entities/Equipo';
+import { Equipo } from '../entities/equipo';
 
 export interface EquipoRepository {
   obtenerTodos(): Promise<Equipo[]>;

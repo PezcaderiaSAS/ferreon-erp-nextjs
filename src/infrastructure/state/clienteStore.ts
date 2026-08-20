@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Cliente } from '../../core/domain/entities/Cliente';
+import { Cliente } from '../../core/domain/entities/cliente';
 
 interface ClienteState {
   clientes: Cliente[];

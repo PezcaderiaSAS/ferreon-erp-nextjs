@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Equipo } from '../../core/domain/entities/Equipo';
+import { Equipo } from '../../core/domain/entities/equipo';
 
 interface BodegaState {
   equipos: Equipo[];

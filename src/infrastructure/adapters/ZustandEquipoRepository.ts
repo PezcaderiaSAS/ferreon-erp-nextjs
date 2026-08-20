@@ -1,4 +1,4 @@
-import { Equipo } from '../../core/domain/entities/Equipo';
+import { Equipo } from '../../core/domain/entities/equipo';
 import { EquipoRepository } from '../../core/domain/repositories/EquipoRepository';
 import { useBodegaStore } from '../state/bodegaStore';
 

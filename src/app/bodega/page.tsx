@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { BodegaForm } from '../../components/forms/BodegaForm';
 import { SupabaseEquipoRepository } from '../../infrastructure/adapters/SupabaseEquipoRepository';
-import { Equipo } from '../../core/domain/entities/Equipo';
+import { Equipo } from '../../core/domain/entities/equipo';
 
 export default function BodegaPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
