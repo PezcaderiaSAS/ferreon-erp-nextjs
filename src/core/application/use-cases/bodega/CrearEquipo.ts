@@ -1,5 +1,5 @@
-import { Equipo } from '../../domain/entities/equipo';
-import { EquipoRepository } from '../../domain/repositories/EquipoRepository';
+import { Equipo } from '../../../domain/entities/equipo';
+import { EquipoRepository } from '../../../domain/repositories/EquipoRepository';
 
 export class CrearEquipoUseCase {
   constructor(private readonly equipoRepository: EquipoRepository) {}
