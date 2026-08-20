@@ -1,5 +1,12 @@
 "use client";
 
+import { DevolucionEntity } from '../core/domain/entities/devolucion';
+import { PagoEntity } from '../core/domain/entities/pago';
+import { RegistrarDevolucionModal } from './components/devoluciones/RegistrarDevolucionModal';
+import { HistorialDevolucionesModal } from './components/devoluciones/HistorialDevolucionesModal';
+import { RegistrarPagoModal } from './components/cartera/RegistrarPagoModal';
+import { HistorialPagosModal } from './components/cartera/HistorialPagosModal';
+
 import React, { useState, useEffect } from "react";
 import { 
   Building2, 
@@ -471,8 +478,8 @@ export default function Home() {
   // Modales adicionales
   const [showDevolucionModal, setShowDevolucionModal] = useState<boolean>(false);
   const [contratoParaDevolucion, setContratoParaDevolucion] = useState<ContratoAlquiler | null>(null);
-  const [devolucionCantidades, setDevolucionCantidades] = useState<{ [equipoId: string]: number }>({});
-  const [devolucionDanos, setDevolucionDanos] = useState<{ [equipoId: string]: number }>({});
+  const [devoluciones, setDevoluciones] = useState<DevolucionEntity[]>([]);
+  const [showHistorialDevolucionesModal, setShowHistorialDevolucionesModal] = useState<boolean>(false);
   
   const [showFacturaModal, setShowFacturaModal] = useState<boolean>(false);
   const [contratoParaFacturar, setContratoParaFacturar] = useState<ContratoAlquiler | null>(null);
@@ -1340,35 +1347,47 @@ export default function Home() {
     }
   };
 
-  // Devolución
   const handleOpenDevolucion = (contrato: ContratoAlquiler) => {
     setContratoParaDevolucion(contrato);
-    const initialCantidades: { [eqId: string]: number } = {};
-    const initialDanos: { [eqId: string]: number } = {};
-    contrato.items.forEach((it) => {
-      const pendientes = it.cantidad - (it.cantidadDevuelta || 0);
-      initialCantidades[it.equipoId] = pendientes;
-      initialDanos[it.equipoId] = 0;
-    });
-    setDevolucionCantidades(initialCantidades);
-    setDevolucionDanos(initialDanos);
     setShowDevolucionModal(true);
   };
+  
+  const handleOpenHistorialDevoluciones = (contrato: ContratoAlquiler) => {
+    setContratoParaDevolucion(contrato);
+    setShowHistorialDevolucionesModal(true);
+  };
 
-  const handleConfirmarDevolucion = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!contratoParaDevolucion) return;
+  const handleConfirmarDevolucion = (
+    cantidades: { [equipoId: string]: number },
+    danos: { [equipoId: string]: number },
+    pagoDanos: { monto: number; metodo: string; referencia: string } | null
+  ) => {
+    if (!contratoParaDevolucion || !currentUser) return;
 
     let todosDevueltos = true;
+    let costoTotalCobrado = 0;
+    const detallesDevolucion: any[] = [];
+
     const contratoActualizado: ContratoAlquiler = {
       ...contratoParaDevolucion,
       items: contratoParaDevolucion.items.map((it) => {
-        const cantDevueltasHoy = devolucionCantidades[it.equipoId] || 0;
+        const cantDevueltasHoy = cantidades[it.equipoId] || 0;
         const totalDev = (it.cantidadDevuelta || 0) + cantDevueltasHoy;
-        const costoDano = devolucionDanos[it.equipoId] || 0;
+        const costoDano = danos[it.equipoId] || 0;
         const estaDevuelto = totalDev >= it.cantidad;
 
         if (!estaDevuelto) todosDevueltos = false;
+
+        if (cantDevueltasHoy > 0 || costoDano > 0) {
+          detallesDevolucion.push({
+            equipoId: it.equipoId,
+            nombreEquipo: it.nombre,
+            cantidadDevuelta: cantDevueltasHoy,
+            cantidadDanada: costoDano > 0 ? cantDevueltasHoy : 0, 
+            costoCobrado: costoDano,
+          });
+          costoTotalCobrado += costoDano;
+        }
 
         if (cantDevueltasHoy > 0) {
           setEquipos((prev) =>
@@ -1402,14 +1421,54 @@ export default function Home() {
       prev.map((c) => (c.id === contratoActualizado.id ? contratoActualizado : c))
     );
 
-    const totalDanosAplicados = Object.values(devolucionDanos).reduce((a, b) => a + b, 0);
+    // Registrar historial de devolución
+    if (detallesDevolucion.length > 0) {
+      const nuevaDevolucion = new DevolucionEntity(
+        `DEV-${Date.now()}`,
+        Date.now() % 10000,
+        contratoParaDevolucion.id!,
+        new Date(),
+        currentUser.id,
+        currentUser.nombre,
+        detallesDevolucion,
+        "",
+        costoTotalCobrado
+      );
+      setDevoluciones((prev) => [nuevaDevolucion, ...prev]);
+    }
+
     registrarEventoAuditoria(
       "DEVOLUCIONES",
       "PROCESAR_DEVOLUCION",
       `Reingreso de maquinaria y liquidación de devolución para contrato ALQ-${contratoParaDevolucion.consecutivo}`,
       `ALQ-${contratoParaDevolucion.consecutivo}`,
-      { metadata: { finalizado: todosDevueltos, totalDanos: totalDanosAplicados } }
+      { metadata: { finalizado: todosDevueltos, totalDanos: costoTotalCobrado } }
     );
+
+    // Registrar pago por daños si aplica
+    if (pagoDanos) {
+      const nuevoPago = {
+        id: `PAG-${Date.now()}`,
+        consecutivo: Math.floor(Math.random() * 90000) + 10000,
+        alquilerId: contratoParaDevolucion.id!,
+        consecutivoAlquiler: contratoParaDevolucion.consecutivo,
+        clienteNombre: contratoParaDevolucion.clienteNombre!,
+        monto: pagoDanos.monto,
+        metodoPago: pagoDanos.metodo as any,
+        referencia: pagoDanos.referencia,
+        fecha: new Date().toISOString().split('T')[0],
+        tipoPago: "PAGO_DANOS"
+      };
+      // @ts-ignore: Para evitar error si ReciboPago no tiene tipoPago todavía
+      setPagos((prev) => [nuevoPago, ...prev]);
+      
+      registrarEventoAuditoria(
+        "CARTERA",
+        "REGISTRAR_PAGO",
+        `Recaudo por DAÑOS: $${pagoDanos.monto} - ALQ-${contratoParaDevolucion.consecutivo}`,
+        nuevoPago.id
+      );
+    }
 
     setShowDevolucionModal(false);
     alert("¡Devolución registrada exitosamente! Equipos reingresados a la bodega en tiempo real.");
@@ -3549,64 +3608,20 @@ export default function Home() {
       )}
 
       {/* MODAL DEVOLUCIÓN */}
-      {showDevolucionModal && contratoParaDevolucion && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
-          <div className="glass-panel w-full max-w-2xl rounded-3xl p-6 sm:p-8 space-y-5 border border-white/10 shadow-2xl relative">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">ALQ-{contratoParaDevolucion.consecutivo}</span>
-                <h2 className="text-lg font-black text-white mt-1">Recepción de Equipos & Registro de Daños</h2>
-              </div>
-              <button onClick={() => setShowDevolucionModal(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
-            </div>
+      
 
-            <form onSubmit={handleConfirmarDevolucion} className="space-y-4">
-              <div className="space-y-3">
-                {contratoParaDevolucion.items.map((it) => {
-                  const pendientes = it.cantidad - (it.cantidadDevuelta || 0);
-                  return (
-                    <div key={it.equipoId} className="p-3.5 rounded-2xl bg-slate-900/60 border border-white/10 space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        <strong className="text-white">{it.nombre}</strong>
-                        <span className="text-amber-400 font-bold">Pendientes: {pendientes} u.</span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3 text-xs">
-                        <div>
-                          <label className="text-[10px] text-slate-400 block">Cant. a Devolver Hoy:</label>
-                          <input 
-                            type="number" 
-                            min={0} 
-                            max={pendientes}
-                            value={devolucionCantidades[it.equipoId] || 0}
-                            onChange={(e) => setDevolucionCantidades({ ...devolucionCantidades, [it.equipoId]: parseInt(e.target.value, 10) || 0 })}
-                            className="w-full p-2 bg-slate-950 border border-white/10 rounded-xl text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-slate-400 block">Costo Daño/Avería (COP):</label>
-                          <input 
-                            type="number" 
-                            min={0}
-                            value={devolucionDanos[it.equipoId] || 0}
-                            onChange={(e) => setDevolucionDanos({ ...devolucionDanos, [it.equipoId]: parseFloat(e.target.value) || 0 })}
-                            className="w-full p-2 bg-slate-950 border border-white/10 rounded-xl text-xs"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-3 border-t border-white/10">
-                <button type="button" onClick={() => setShowDevolucionModal(false)} className="px-4 py-2.5 bg-slate-900 text-xs font-bold rounded-xl">Cancelar</button>
-                <button type="submit" className="glass-button-primary px-5 py-2.5 text-xs font-bold text-white rounded-xl">Confirmar Reingreso a Bodega</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <RegistrarDevolucionModal
+        isOpen={showDevolucionModal}
+        onClose={() => setShowDevolucionModal(false)}
+        contratoParaDevolucion={contratoParaDevolucion}
+        onConfirmarDevolucion={handleConfirmarDevolucion}
+      />
+      <HistorialDevolucionesModal
+        isOpen={showHistorialDevolucionesModal}
+        onClose={() => setShowHistorialDevolucionesModal(false)}
+        contratoParaDevolucion={contratoParaDevolucion}
+        devoluciones={devoluciones.filter(d => d.alquilerId === contratoParaDevolucion?.id)}
+      />
 
       {/* MODAL FACTURACIÓN */}
       {showFacturaModal && contratoParaFacturar && (

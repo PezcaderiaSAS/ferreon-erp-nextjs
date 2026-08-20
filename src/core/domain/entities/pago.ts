@@ -1,6 +1,7 @@
 import { BaseAuditableEntity } from "./base-auditable.entity";
 
 export type MetodoPago = "EFECTIVO" | "TRANSFERENCIA" | "NEQUI" | "DAVIPLATA" | "CHEQUE";
+export type TipoPago = "ABONO_ALQUILER" | "PAGO_DANOS" | "OTROS";
 
 export class PagoEntity extends BaseAuditableEntity {
   constructor(
@@ -11,6 +12,7 @@ export class PagoEntity extends BaseAuditableEntity {
     public readonly clienteNombre: string,
     public monto: number,
     public metodoPago: MetodoPago,
+    public tipoPago: TipoPago = "ABONO_ALQUILER",
     public comprobanteReferencia?: string,
     public notas?: string,
     createdAt?: Date,
