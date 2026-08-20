@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, beforeEach, it, expect, vi, Mocked } from 'vitest';
 import { EditarAlquilerUseCase, EditarAlquilerDTO } from "../../src/core/application/use-cases/editar-alquiler.use-case";
 import { IAlquilerRepository } from "../../src/core/domain/repositories/alquiler-repository.interface";
 import { AlquilerEntity } from "../../src/core/domain/entities/alquiler";
 
 describe('EditarAlquilerUseCase', () => {
-  let mockRepo: any;
+  let mockRepo: Mocked<IAlquilerRepository>;
   let useCase: EditarAlquilerUseCase;
 
   beforeEach(() => {
@@ -12,8 +12,7 @@ describe('EditarAlquilerUseCase', () => {
       findById: vi.fn(),
       save: vi.fn(),
       findAll: vi.fn(),
-      findByEstado: vi.fn(),
-    };
+    } as any;
     useCase = new EditarAlquilerUseCase(mockRepo);
   });
 
