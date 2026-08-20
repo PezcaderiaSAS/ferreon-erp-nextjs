@@ -13,6 +13,7 @@ export function Sidebar() {
     { href: '/devoluciones', icon: 'assignment_return', label: 'Devoluciones' },
     { href: '/facturacion', icon: 'receipt_long', label: 'Facturación' },
     { href: '/clientes', icon: 'group', label: 'Clientes' },
+    { href: '/configuracion', icon: 'settings', label: 'Configuración' },
   ];
 
   return (

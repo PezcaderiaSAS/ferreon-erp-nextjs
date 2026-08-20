@@ -30,6 +30,8 @@ export class DevolverEquipoUseCase {
       throw new Error(`No se pueden registrar devoluciones en un contrato ${alquiler.estado}.`);
     }
 
+    const devolucionDate = new Date(dto.fechaDevolucion);
+
     for (const itemDev of dto.items) {
       const detalle = alquiler.detalles.find((d) => d.itemId === itemDev.itemId);
       if (!detalle) {
@@ -47,6 +49,19 @@ export class DevolverEquipoUseCase {
       if (detalle.cantidadDevuelta === detalle.cantidad) {
         detalle.devuelto = true;
       }
+      
+      // Calculate actual days elapsed between fechaInicio and fechaDevolucion
+      const start = new Date(detalle.fechaInicio);
+      const msDiff = devolucionDate.getTime() - start.getTime();
+      let diasReales = Math.ceil(msDiff / (1000 * 60 * 60 * 24));
+      if (diasReales <= 0) diasReales = 1;
+
+      // Update actual return date
+      detalle.fechaDevolucionReal = devolucionDate;
+
+      // NOTE: In a full billing system, we would log the 'diasReales' and generate an invoice.
+      // We could store the final calculated subtotal directly if needed.
+
       if (itemDev.costoDano && itemDev.costoDano > 0) {
         detalle.costoDano = (detalle.costoDano || 0) + itemDev.costoDano;
       }

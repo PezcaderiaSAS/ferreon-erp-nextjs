@@ -61,19 +61,18 @@ describe("Use Case: CrearAlquilerUseCase", () => {
           nombreItem: "Mezcladora",
           cantidad: 2,
           tarifaAplicada: 45000,
-          pesoKilos: 25.5,
-          diasContratados: 3,
+          fechaFinEstimada: new Date().toISOString(),
           fechaInicio: "2026-08-18T08:00:00.000Z",
         },
       ],
     });
 
     expect(mockSave).toHaveBeenCalledTimes(1);
-    expect(resultado.subtotalEquipos).toBe(270000); // 2 * 45000 * 3
+    expect(resultado.subtotalEquiposEstimado).toBe(270000); // 2 * 45000 * 3
     expect(resultado.fleteEntrega).toBe(25000);
     expect(resultado.fleteRecogida).toBe(25000);
-    expect(resultado.subtotalGeneral).toBe(320000); // 270,000 + 50,000 fletes
-    expect(resultado.total).toBe(220000); // 320,000 - 100,000 deposito
+    expect(resultado.subtotalGeneralEstimado).toBe(320000); // 270,000 + 50,000 fletes
+    expect(resultado.totalEstimado).toBe(220000); // 320,000 - 100,000 deposito
     expect(resultado.detallesLogistica).toBe("Lleva Don Carlos Cárdenas en Camión NPR");
     expect(resultado.estado).toBe("ACTIVO");
   });

@@ -23,6 +23,12 @@ Este repositorio contiene la evolución desacoplada de **FerreOn ERP** migrado a
    - El script de migración ETL debe respetar la asignación física de columnas históricas de Google Sheets documentada en `.agents/skills/frios-pezca-doc-compliance/SKILL.md`:
      - Columna 14 (`deposito`), Columna 15 (`observaciones_generales`), Columna 16 (`creado_por`), Columna 21 (`garantia`), Columna 27 (`Garantia_Tipo`), Columna 28 (`Garantia_Monto`), Columna 29 (`Garantia_Estado`).
 
+5. **PRESERVACIÓN DE ESTADO EN REDISEÑOS UI (STITCH/TAILWIND):**
+   - **NUNCA** reemplaces mapeos dinámicos (`Zustand`, `map` de arrays, Modales) con datos estáticos (mockups) al aplicar rediseños estéticos. El embellecimiento UI debe ser un envoltorio de la lógica de negocio existente, **no un reemplazo**.
+   - Todo botón de "acción rápida" o Dashboard debe usar estrictamente `next/link` (`<Link href="...">`) en lugar de `<button>` huérfanos.
+   - Formularios complejos (ej. `AlquilerForm`): Usa `flex-wrap` con anchos mínimos (`min-w`) en lugar de grillas estrictas (`grid-cols`) para evitar que inputs como `date` o `select` queden ilegibles en modales.
+   - **Idempotencia Obligatoria**: Todo botón de envío en modales transaccionales (pagos, devoluciones, creación) DEBE estar protegido por un estado `isSubmitting` y `disabled={isSubmitting}` para prevenir latencia o doble clic.
+
 ---
 
 ## 2. Convención de Archivos y Cobertura de Pruebas

@@ -359,6 +359,11 @@ export class EnterprisePDFService {
       <strong>🚚 Registro de Despacho & Transporte:</strong> ${payload.detallesLogistica}
     </div>` : ''}
 
+    ${payload.observaciones ? `
+    <div class="logistica-box" style="background: #fffbeb; border-left-color: #d97706;">
+      <strong>📝 Observaciones Generales:</strong> ${payload.observaciones}
+    </div>` : ''}
+
     <table>
       <thead>
         <tr>

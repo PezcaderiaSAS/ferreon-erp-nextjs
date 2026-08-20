@@ -1,21 +1,19 @@
 import { AlquilerEntity, AlquilerEstado } from "../../domain/entities/alquiler";
 import { IAlquilerRepository } from "../../domain/repositories/alquiler-repository.interface";
-import { PesoGramos } from "../../domain/value-objects/peso-gramos";
 
 export interface ItemCrearAlquilerDTO {
   itemId: string;
   nombreItem?: string;
   cantidad: number;
   tarifaAplicada: number;
-  pesoKilos: number;
-  diasContratados: number;
   fechaInicio: string;
-  fechaFin?: string;
+  fechaFinEstimada: string;
 }
 
 export interface CrearAlquilerDTO {
   clienteId: string;
   clienteNombre?: string;
+  fechaRegistro?: string; // Optional manual override of creation date
   estado?: AlquilerEstado;
   fleteEntrega?: number;
   fleteRecogida?: number;
@@ -37,22 +35,27 @@ export class CrearAlquilerUseCase {
     }
 
     const detalles = dto.items.map((item) => {
-      const pesoGramos = PesoGramos.fromKilos(item.pesoKilos);
-      const subtotalLinea = item.cantidad * item.tarifaAplicada * item.diasContratados;
+      const start = new Date(item.fechaInicio);
+      const end = new Date(item.fechaFinEstimada);
+      
+      // Calculate estimated days, min 1 day
+      const msDiff = end.getTime() - start.getTime();
+      let diasEstimados = Math.ceil(msDiff / (1000 * 60 * 60 * 24));
+      if (diasEstimados <= 0) diasEstimados = 1;
+
+      const subtotalLineaEstimado = item.cantidad * item.tarifaAplicada * diasEstimados;
 
       return {
         itemId: item.itemId,
         nombreItem: item.nombreItem,
         cantidad: item.cantidad,
         tarifaAplicada: item.tarifaAplicada,
-        pesoGramos,
-        diasContratados: item.diasContratados,
-        subtotalLinea,
+        fechaInicio: start,
+        fechaFinEstimada: end,
+        subtotalLineaEstimado,
         costoDano: 0,
         devuelto: false,
         cantidadDevuelta: 0,
-        fechaInicio: new Date(item.fechaInicio),
-        fechaFin: item.fechaFin ? new Date(item.fechaFin) : undefined,
       };
     });
 
@@ -74,7 +77,8 @@ export class CrearAlquilerUseCase {
       dto.observaciones,
       dto.detallesLogistica,
       dto.creadoPor,
-      detalles
+      detalles,
+      dto.fechaRegistro ? new Date(dto.fechaRegistro) : new Date()
     );
 
     return await this.alquilerRepo.save(alquiler);

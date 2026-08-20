@@ -1,4 +1,3 @@
-import { PesoGramos } from "../value-objects/peso-gramos";
 import { BaseAuditableEntity } from "./base-auditable.entity";
 
 export type AlquilerEstado = 'COTIZACION' | 'ACTIVO' | 'FINALIZADO' | 'CANCELADO';
@@ -9,14 +8,13 @@ export interface ItemAlquilerDetalle {
   nombreItem?: string;
   cantidad: number;
   tarifaAplicada: number;
-  pesoGramos: PesoGramos;
-  diasContratados: number;
-  subtotalLinea: number;
+  fechaInicio: Date;
+  fechaFinEstimada: Date; // Usada para estimación al crear contrato
+  fechaDevolucionReal?: Date; // Se setea al devolver
+  subtotalLineaEstimado: number; // tarifaAplicada * diasEstimados * cantidad
   costoDano?: number;
   devuelto?: boolean;
   cantidadDevuelta?: number;
-  fechaInicio: Date;
-  fechaFin?: Date;
 }
 
 export class AlquilerEntity extends BaseAuditableEntity {
@@ -26,11 +24,11 @@ export class AlquilerEntity extends BaseAuditableEntity {
     public readonly clienteId: string,
     public clienteNombre: string | undefined,
     public estado: AlquilerEstado,
-    public subtotalEquipos: number,
+    public subtotalEquiposEstimado: number,
     public fleteEntrega: number,
     public fleteRecogida: number,
-    public subtotalGeneral: number,
-    public total: number,
+    public subtotalGeneralEstimado: number,
+    public totalEstimado: number,
     public deposito: number,
     public garantiaMonto: number,
     public garantiaTipo: string,
@@ -45,25 +43,15 @@ export class AlquilerEntity extends BaseAuditableEntity {
     deletedBy?: string | null
   ) {
     super(createdAt, updatedAt, deletedAt, deletedBy);
-    this.calcularTotales();
+    this.calcularTotalesEstimados();
   }
 
-  calcularTotales(): void {
+  calcularTotalesEstimados(): void {
     const items = this.detalles || [];
-    this.subtotalEquipos = items.reduce((acc, item) => acc + item.subtotalLinea, 0);
+    this.subtotalEquiposEstimado = items.reduce((acc, item) => acc + (item.subtotalLineaEstimado || 0), 0);
     const totalFletes = (this.fleteEntrega || 0) + (this.fleteRecogida || 0);
-    this.subtotalGeneral = this.subtotalEquipos + totalFletes;
-    this.total = Math.max(0, this.subtotalGeneral - (this.deposito || 0));
-  }
-
-  calcularPesoTotalGramos(): bigint {
-    const items = this.detalles || [];
-    return items.reduce((acc, item) => acc + (item.pesoGramos.gramos * BigInt(item.cantidad)), BigInt(0));
-  }
-
-  calcularPesoTotalKilos(): number {
-    const totalGramos = this.calcularPesoTotalGramos();
-    return Number(totalGramos) / 1000;
+    this.subtotalGeneralEstimado = this.subtotalEquiposEstimado + totalFletes;
+    this.totalEstimado = Math.max(0, this.subtotalGeneralEstimado - (this.deposito || 0));
   }
 
   activar(): void {
@@ -110,7 +98,7 @@ export class AlquilerEntity extends BaseAuditableEntity {
     this.detallesLogistica = detallesLogistica;
     this.updatedAt = new Date();
 
-    this.calcularTotales();
+    this.calcularTotalesEstimados();
   }
 
   override softDelete(userId: string = "sistema"): void {

@@ -17,6 +17,7 @@ export function RegistrarPagoModal({
   const [pagoMonto, setPagoMonto] = useState<number | "">("");
   const [pagoMetodo, setPagoMetodo] = useState("TRANSFERENCIA");
   const [pagoReferencia, setPagoReferencia] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen && contratoParaPago) {
@@ -27,10 +28,17 @@ export function RegistrarPagoModal({
     }
   }, [isOpen, contratoParaPago]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    
     if (typeof pagoMonto === 'number' && pagoMonto > 0) {
-      onConfirmarPago(pagoMonto, pagoMetodo, pagoReferencia);
+      setIsSubmitting(true);
+      try {
+        await onConfirmarPago(pagoMonto, pagoMetodo, pagoReferencia);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -120,9 +128,10 @@ export function RegistrarPagoModal({
             </button>
             <button 
               type="submit" 
-              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors"
+              disabled={isSubmitting}
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Confirmar Recaudo
+              {isSubmitting ? 'Procesando...' : 'Confirmar Recaudo'}
             </button>
           </div>
         </form>

@@ -24,6 +24,7 @@ export function RegistrarDevolucionModal({
   const [generarPago, setGenerarPago] = useState<boolean>(false);
   const [metodoPago, setMetodoPago] = useState<string>('TRANSFERENCIA');
   const [referencia, setReferencia] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Sincronizar estado inicial cuando cambia el contrato
   React.useEffect(() => {
@@ -46,13 +47,20 @@ export function RegistrarDevolucionModal({
 
   const totalDanos = Object.values(danos).reduce((acc, curr) => acc + (curr || 0), 0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     const pagoDanosInfo = generarPago && totalDanos > 0 
       ? { monto: totalDanos, metodo: metodoPago, referencia }
       : null;
 
-    onConfirmarDevolucion(cantidades, danos, pagoDanosInfo);
+    setIsSubmitting(true);
+    try {
+      await onConfirmarDevolucion(cantidades, danos, pagoDanosInfo);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -175,9 +183,10 @@ export function RegistrarDevolucionModal({
             </button>
             <button 
               type="submit" 
-              className="px-6 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-sky-600/20"
+              disabled={isSubmitting}
+              className="px-6 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-sky-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Confirmar Reingreso
+              {isSubmitting ? 'Procesando...' : 'Confirmar Reingreso'}
             </button>
           </div>
         </form>

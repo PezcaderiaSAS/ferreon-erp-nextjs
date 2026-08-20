@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-8">
@@ -51,15 +53,15 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <button className="bg-brand-salmonLight text-brand-salmonDark rounded-xl shadow-card p-6 flex items-center justify-center gap-4 hover:bg-brand-salmon hover:text-white transition-colors duration-200 group border border-transparent">
+        <Link href="/alquileres" className="bg-brand-salmonLight text-brand-salmonDark rounded-xl shadow-card p-6 flex items-center justify-center gap-4 hover:bg-brand-salmon hover:text-white transition-colors duration-200 group border border-transparent">
           <span className="material-symbols-outlined text-[32px] group-hover:scale-110 transition-transform">add_circle</span>
-          <span className="text-xl font-semibold">Crear Primer Alquiler</span>
-        </button>
+          <span className="text-xl font-semibold">Ir al Módulo de Alquileres</span>
+        </Link>
         
-        <button className="bg-white text-slate-900 border border-slate-200 rounded-xl shadow-card p-6 flex items-center justify-center gap-4 hover:bg-slate-50 transition-colors duration-200 group">
+        <Link href="/alquileres" className="bg-white text-slate-900 border border-slate-200 rounded-xl shadow-card p-6 flex items-center justify-center gap-4 hover:bg-slate-50 transition-colors duration-200 group">
           <span className="material-symbols-outlined text-[32px] text-brand-salmon group-hover:-translate-y-1 transition-transform">keyboard_return</span>
-          <span className="text-xl font-semibold">Recibir Devolución</span>
-        </button>
+          <span className="text-xl font-semibold">Gestionar Devoluciones</span>
+        </Link>
       </div>
 
       {/* Recent Activity Table */}

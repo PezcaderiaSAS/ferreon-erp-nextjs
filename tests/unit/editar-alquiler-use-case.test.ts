@@ -16,7 +16,7 @@ describe('EditarAlquilerUseCase', () => {
     useCase = new EditarAlquilerUseCase(mockRepo);
   });
 
-  it('debe reconstruir los totales y el subtotal con valores precisos (sin decimales)', async () => {
+  it('debe reconstruir los totalEstimadoes y el subtotalEstimado con valores precisos (sin decimales)', async () => {
     const alquilerMock = new AlquilerEntity(
       'ALQ-123',
       101,
@@ -39,8 +39,8 @@ describe('EditarAlquilerUseCase', () => {
           itemId: 'EQ-001',
           cantidad: 2,
           tarifaAplicada: 45000,
-          pesoKilos: 250,
-          diasContratados: 3,
+          
+          fechaFinEstimada: new Date().toISOString(),
           fechaInicio: '2026-08-19',
           fechaFin: '2026-08-22'
         }
@@ -49,18 +49,18 @@ describe('EditarAlquilerUseCase', () => {
 
     const result = await useCase.execute(dto);
 
-    // subtotal línea: 2 * 45000 * 3 = 270000
-    expect(result.subtotalEquipos).toBe(270000);
+    // subtotalEstimado línea: 2 * 45000 * 3 = 270000
+    expect(result.subtotalEquiposEstimado).toBe(270000);
     // fletes = 70000
-    // subtotal general = 340000
-    expect(result.subtotalGeneral).toBe(340000);
-    // total (restando deposito) = 340000 - 50000 = 290000
-    expect(result.total).toBe(290000);
+    // subtotalEstimado general = 340000
+    expect(result.subtotalGeneralEstimado).toBe(340000);
+    // totalEstimado (restando deposito) = 340000 - 50000 = 290000
+    expect(result.totalEstimado).toBe(290000);
 
     // No decimals check
-    expect(Number.isInteger(result.subtotalEquipos)).toBe(true);
-    expect(Number.isInteger(result.subtotalGeneral)).toBe(true);
-    expect(Number.isInteger(result.total)).toBe(true);
+    expect(Number.isInteger(result.subtotalEquiposEstimado)).toBe(true);
+    expect(Number.isInteger(result.subtotalGeneralEstimado)).toBe(true);
+    expect(Number.isInteger(result.totalEstimado)).toBe(true);
   });
 
   it('debe arrojar error si se edita en estado FINALIZADO', async () => {
@@ -83,8 +83,8 @@ describe('EditarAlquilerUseCase', () => {
           itemId: 'EQ-001',
           cantidad: 1,
           tarifaAplicada: 45000,
-          pesoKilos: 250,
-          diasContratados: 3,
+          
+          fechaFinEstimada: new Date().toISOString(),
           fechaInicio: '2026-08-19'
         }
       ]
