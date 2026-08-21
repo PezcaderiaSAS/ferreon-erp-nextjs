@@ -6,8 +6,10 @@ interface BodegaState {
   equipos: Equipo[];
   idempotencyKeys: string[];
   setEquipos: (equipos: Equipo[]) => void;
+  generarSiguienteSKU: () => string;
   agregarEquipo: (equipo: Equipo, idempotencyKey?: string) => boolean;
   updateEquipo: (equipo: Equipo, idempotencyKey?: string) => boolean;
+  ajustarStock: (equipoId: string, nuevoStockDisponible: number, motivo?: string) => boolean;
   descontarStock: (equipoId: string, cantidad: number) => boolean;
   incrementarStock: (equipoId: string, cantidad: number) => boolean;
   restoreSnapshot: (previousEquipos: Equipo[]) => void;
@@ -23,6 +25,9 @@ const EQUIPOS_INICIALES: Equipo[] = [
     categoria: 'Herramientas Eléctricas',
     estado: 'Disponible',
     tarifaDiaria: 45000,
+    stockTotal: 10,
+    stockDisponible: 8,
+    stockEnObra: 2,
     creado_en: new Date()
   },
   {
@@ -32,6 +37,9 @@ const EQUIPOS_INICIALES: Equipo[] = [
     categoria: 'Construcción',
     estado: 'En Alquiler',
     tarifaDiaria: 12000,
+    stockTotal: 25,
+    stockDisponible: 5,
+    stockEnObra: 20,
     creado_en: new Date()
   }
 ];
@@ -43,6 +51,25 @@ export const useBodegaStore = create<BodegaState>()(
       idempotencyKeys: [],
 
       setEquipos: (equipos) => set({ equipos }),
+
+      generarSiguienteSKU: () => {
+        const state = get();
+        if (!state.equipos || state.equipos.length === 0) {
+          return 'EQ-001';
+        }
+        let maxNum = 0;
+        state.equipos.forEach((e) => {
+          const match = (e.sku || '').match(/(\d+)$/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (!isNaN(num) && num > maxNum) {
+              maxNum = num;
+            }
+          }
+        });
+        const nextNum = maxNum + 1;
+        return `EQ-${String(nextNum).padStart(3, '0')}`;
+      },
 
       agregarEquipo: (equipo, idempotencyKey) => {
         const state = get();
@@ -80,13 +107,42 @@ export const useBodegaStore = create<BodegaState>()(
         return true;
       },
 
+      ajustarStock: (equipoId, nuevoStockDisponible, motivo) => {
+        if (nuevoStockDisponible < 0) return false;
+        set((state) => ({
+          equipos: state.equipos.map((e) => {
+            if (e.id === equipoId) {
+              const enObra = e.stockEnObra || 0;
+              const total = nuevoStockDisponible + enObra;
+              const estado = nuevoStockDisponible > 0 ? ('Disponible' as const) : (enObra > 0 ? ('En Alquiler' as const) : ('Mantenimiento' as const));
+              return {
+                ...e,
+                stockDisponible: nuevoStockDisponible,
+                stockTotal: total,
+                estado
+              };
+            }
+            return e;
+          })
+        }));
+        if (motivo) {
+          console.info(`[BodegaStore] Stock ajustado para equipo ${equipoId}: disponible=${nuevoStockDisponible}. Motivo: ${motivo}`);
+        }
+        return true;
+      },
+
       descontarStock: (equipoId, cantidad) => {
         set((state) => ({
           equipos: state.equipos.map((e) => {
             if (e.id === equipoId) {
+              const disponible = Math.max(0, (e.stockDisponible || 0) - cantidad);
+              const enObra = (e.stockEnObra || 0) + cantidad;
+              const estado = disponible > 0 ? ('Disponible' as const) : ('En Alquiler' as const);
               return {
                 ...e,
-                estado: 'En Alquiler'
+                stockDisponible: disponible,
+                stockEnObra: enObra,
+                estado
               };
             }
             return e;
@@ -99,9 +155,14 @@ export const useBodegaStore = create<BodegaState>()(
         set((state) => ({
           equipos: state.equipos.map((e) => {
             if (e.id === equipoId) {
+              const enObra = Math.max(0, (e.stockEnObra || 0) - cantidad);
+              const disponible = (e.stockDisponible || 0) + cantidad;
+              const estado = disponible > 0 ? ('Disponible' as const) : (enObra > 0 ? ('En Alquiler' as const) : ('Mantenimiento' as const));
               return {
                 ...e,
-                estado: 'Disponible'
+                stockDisponible: disponible,
+                stockEnObra: enObra,
+                estado
               };
             }
             return e;

@@ -98,6 +98,9 @@ export interface Equipo {
   nombre: string;
   categoria: string;
   tarifaDiaria: number;
+  stockTotal: number;
+  stockDisponible: number;
+  stockEnObra: number;
   estado: 'Disponible' | 'En Alquiler' | 'Mantenimiento';
   creado_en: Date;
 }
