@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useClienteStore } from '../../infrastructure/state/clienteStore';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
@@ -25,12 +23,20 @@ const alquilerSchema = z.object({
   items: z.array(z.object({
     itemId: z.string().min(1, 'Seleccione un equipo'),
     cantidad: z.number().min(1, 'Cantidad mínima 1'),
+    precioDiario: z.number().min(0, 'El precio no puede ser negativo'),
     fechaInicio: z.string().min(1, 'Fecha inicio requerida'),
     fechaFinEstimada: z.string().min(1, 'Fecha fin estimada requerida'),
   })).min(1, 'Debe agregar al menos un equipo')
 });
 
-type AlquilerFormValues = z.infer<typeof alquilerSchema>;
+interface ItemRow {
+  id: string;
+  itemId: string;
+  cantidad: number;
+  precioDiario: number;
+  fechaInicio: string;
+  fechaFinEstimada: string;
+}
 
 interface Props {
   initialData?: any;
@@ -50,52 +56,55 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
 
   const todayStr = new Date().toISOString().split("T")[0];
 
-  const { register, control, handleSubmit, setValue, watch, trigger, formState: { errors } } = useForm<AlquilerFormValues>({
-    resolver: zodResolver(alquilerSchema),
-    defaultValues: initialData ? {
-      clienteId: initialData.clienteId,
-      fechaRegistro: initialData.createdAt ? new Date(initialData.createdAt).toISOString().split('T')[0] : todayStr,
-      fleteEntrega: initialData.fleteEntrega || 0,
-      fleteRecogida: initialData.fleteRecogida || 0,
-      deposito: initialData.deposito || 0,
-      garantiaMonto: initialData.garantiaMonto || 0,
-      garantiaTipo: initialData.garantiaTipo || 'Efectivo',
-      observaciones: initialData.observacionesGenerales || '',
-      detallesLogistica: initialData.detallesLogistica || '',
-      items: initialData.detalles?.map((d: any) => ({
+  // Form State
+  const [clienteId, setClienteId] = useState<string>(initialData?.clienteId || '');
+  const [fechaRegistro, setFechaRegistro] = useState<string>(
+    initialData?.createdAt ? new Date(initialData.createdAt).toISOString().split('T')[0] : todayStr
+  );
+  const [fleteEntrega, setFleteEntrega] = useState<number>(initialData ? (initialData.fleteEntrega || 0) : 30000);
+  const [fleteRecogida, setFleteRecogida] = useState<number>(initialData ? (initialData.fleteRecogida || 0) : 30000);
+  const [deposito, setDeposito] = useState<number>(initialData ? (initialData.deposito || 0) : 50000);
+  const [garantiaMonto, setGarantiaMonto] = useState<number>(initialData ? (initialData.garantiaMonto || 0) : 300000);
+  const [garantiaTipo, setGarantiaTipo] = useState<string>(initialData?.garantiaTipo || 'Efectivo');
+  const [observaciones, setObservaciones] = useState<string>(initialData?.observacionesGenerales || '');
+  const [detallesLogistica, setDetallesLogistica] = useState<string>(initialData?.detallesLogistica || '');
+
+  const [items, setItems] = useState<ItemRow[]>(() => {
+    if (initialData?.detalles && initialData.detalles.length > 0) {
+      return initialData.detalles.map((d: any, idx: number) => ({
+        id: `init_${idx}_${Date.now()}`,
         itemId: d.itemId,
         cantidad: d.cantidad,
+        precioDiario: d.valorUnitario || d.tarifaDiaria || 0,
         fechaInicio: d.fechaInicio ? new Date(d.fechaInicio).toISOString().split('T')[0] : todayStr,
         fechaFinEstimada: d.fechaFinEstimada ? new Date(d.fechaFinEstimada).toISOString().split('T')[0] : todayStr,
-      })) || [{ itemId: '', cantidad: 1, fechaInicio: todayStr, fechaFinEstimada: todayStr }]
-    } : {
-      fechaRegistro: todayStr,
-      fleteEntrega: 30000,
-      fleteRecogida: 30000,
-      deposito: 50000,
-      garantiaMonto: 300000,
-      garantiaTipo: 'Efectivo',
-      items: [{ itemId: '', cantidad: 1, fechaInicio: todayStr, fechaFinEstimada: todayStr }]
+      }));
     }
+    return [{ id: `row_0_${Date.now()}`, itemId: '', cantidad: 1, precioDiario: 0, fechaInicio: todayStr, fechaFinEstimada: todayStr }];
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'items'
-  });
+  const addItemRow = () => {
+    setItems(prev => [
+      ...prev,
+      { id: `row_${Date.now()}_${Math.random()}`, itemId: '', cantidad: 1, precioDiario: 0, fechaInicio: todayStr, fechaFinEstimada: todayStr }
+    ]);
+  };
 
-  const selectedClienteId = watch('clienteId');
-  const watchedItems = watch('items');
-  const fleteEntrega = watch('fleteEntrega') || 0;
-  const fleteRecogida = watch('fleteRecogida') || 0;
-  const deposito = watch('deposito') || 0;
-  const garantiaMonto = watch('garantiaMonto') || 0;
-  const garantiaTipo = watch('garantiaTipo') || 'Efectivo';
+  const removeItemRow = (index: number) => {
+    if (items.length <= 1) return;
+    setItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateItemRow = (index: number, field: keyof ItemRow, value: any) => {
+    setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
+  };
 
   const filteredClientes = useMemo(() => {
     return clientes.filter(c => 
@@ -104,41 +113,54 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
     );
   }, [clientes, clientSearchTerm]);
 
-  const selectedCliente = clientes.find(c => c.id === selectedClienteId);
+  const selectedCliente = clientes.find(c => c.id === clienteId);
 
   // Subtotal de equipos
   const subtotalEquipos = useMemo(() => {
-    return watchedItems.reduce((acc, item) => {
+    return items.reduce((acc, item) => {
       if (!item.itemId || !item.fechaInicio || !item.fechaFinEstimada) return acc;
-      const equipo = equipos.find(e => e.id === item.itemId);
-      if (!equipo) return acc;
       
       const start = new Date(item.fechaInicio);
       const end = new Date(item.fechaFinEstimada);
       let dias = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
       if (dias <= 0) dias = 1;
 
-      return acc + (equipo.tarifaDiaria * item.cantidad * dias);
+      return acc + ((item.precioDiario || 0) * item.cantidad * dias);
     }, 0);
-  }, [watchedItems, equipos]);
+  }, [items]);
 
-  const totalFletes = fleteEntrega + fleteRecogida;
+  const totalFletes = (fleteEntrega || 0) + (fleteRecogida || 0);
   const totalGeneral = subtotalEquipos + totalFletes;
-  const totalEstimado = Math.max(0, totalGeneral - deposito);
+  const totalEstimado = Math.max(0, totalGeneral - (deposito || 0));
 
   const formatearCOP = (valor: number) => {
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(valor);
   };
 
-  const handleNextStep = async () => {
-    setErrorMsg(null);
+  const validateCurrentStep = (): boolean => {
+    setFormErrors({});
     if (currentStep === 1) {
-      const isValid = await trigger(['clienteId', 'fechaRegistro', 'garantiaTipo', 'garantiaMonto', 'deposito']);
-      if (!isValid) return;
+      if (!clienteId) {
+        setFormErrors(prev => ({ ...prev, clienteId: 'Debe seleccionar un cliente' }));
+        return false;
+      }
+      if (!fechaRegistro) {
+        setFormErrors(prev => ({ ...prev, fechaRegistro: 'La fecha de registro es requerida' }));
+        return false;
+      }
     } else if (currentStep === 2) {
-      const isValid = await trigger(['items', 'fleteEntrega', 'fleteRecogida']);
-      if (!isValid) return;
+      const hasEmptyItem = items.some(it => !it.itemId);
+      if (hasEmptyItem) {
+        setFormErrors(prev => ({ ...prev, items: 'Seleccione un equipo para cada fila' }));
+        return false;
+      }
     }
+    return true;
+  };
+
+  const handleNextStep = () => {
+    setErrorMsg(null);
+    if (!validateCurrentStep()) return;
     setCurrentStep((prev) => Math.min(3, prev + 1));
   };
 
@@ -147,22 +169,55 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
     setCurrentStep((prev) => Math.max(1, prev - 1));
   };
 
-  const onSubmit = async (data: AlquilerFormValues) => {
-    setIsSubmitting(true);
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setErrorMsg(null);
+    setFormErrors({});
+
+    const validation = alquilerSchema.safeParse({
+      clienteId,
+      fechaRegistro,
+      fleteEntrega: Number(fleteEntrega) || 0,
+      fleteRecogida: Number(fleteRecogida) || 0,
+      deposito: Number(deposito) || 0,
+      garantiaMonto: Number(garantiaMonto) || 0,
+      garantiaTipo,
+      observaciones,
+      detallesLogistica,
+      items: items.map(it => ({
+        itemId: it.itemId,
+        cantidad: Number(it.cantidad) || 1,
+        precioDiario: Number(it.precioDiario) || 0,
+        fechaInicio: it.fechaInicio,
+        fechaFinEstimada: it.fechaFinEstimada
+      }))
+    });
+
+    if (!validation.success) {
+      const errMap: { [key: string]: string } = {};
+      validation.error.issues.forEach(iss => {
+        const path = iss.path.join('.');
+        errMap[path] = iss.message;
+      });
+      setFormErrors(errMap);
+      setErrorMsg('Por favor verifique los campos requeridos en el formulario.');
+      return;
+    }
+
+    setIsSubmitting(true);
     const idempotencyKey = generateIdempotencyKey('alq');
     try {
       const repo = new ZustandAlquilerRepository();
-      const cliente = clientes.find(c => c.id === data.clienteId);
+      const cliente = clientes.find(c => c.id === validation.data.clienteId);
       
-      const itemsConDetalles = data.items.map(item => {
+      const itemsConDetalles = validation.data.items.map(item => {
         const equipo = equipos.find(e => e.id === item.itemId);
         if (!equipo) throw new Error("Equipo no encontrado");
         return {
           itemId: item.itemId,
           nombreItem: equipo.nombre,
           cantidad: item.cantidad,
-          tarifaAplicada: equipo.tarifaDiaria,
+          tarifaAplicada: item.precioDiario,
           fechaInicio: item.fechaInicio,
           fechaFinEstimada: item.fechaFinEstimada
         };
@@ -172,28 +227,28 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
         const useCase = new EditarAlquilerUseCase(repo);
         await useCase.execute({
           alquilerId: initialData.id,
-          fleteEntrega: data.fleteEntrega,
-          fleteRecogida: data.fleteRecogida,
-          deposito: data.deposito,
-          garantiaMonto: data.garantiaMonto,
-          garantiaTipo: data.garantiaTipo,
-          observaciones: data.observaciones,
-          detallesLogistica: data.detallesLogistica,
+          fleteEntrega: validation.data.fleteEntrega,
+          fleteRecogida: validation.data.fleteRecogida,
+          deposito: validation.data.deposito,
+          garantiaMonto: validation.data.garantiaMonto,
+          garantiaTipo: validation.data.garantiaTipo,
+          observaciones: validation.data.observaciones,
+          detallesLogistica: validation.data.detallesLogistica,
           items: itemsConDetalles
         });
       } else {
         const useCase = new CrearAlquilerUseCase(repo);
         await useCase.execute({
-          clienteId: data.clienteId,
+          clienteId: validation.data.clienteId,
           clienteNombre: cliente?.nombre,
-          fechaRegistro: data.fechaRegistro,
-          fleteEntrega: data.fleteEntrega,
-          fleteRecogida: data.fleteRecogida,
-          deposito: data.deposito,
-          garantiaMonto: data.garantiaMonto,
-          garantiaTipo: data.garantiaTipo,
-          observaciones: data.observaciones,
-          detallesLogistica: data.detallesLogistica,
+          fechaRegistro: validation.data.fechaRegistro,
+          fleteEntrega: validation.data.fleteEntrega,
+          fleteRecogida: validation.data.fleteRecogida,
+          deposito: validation.data.deposito,
+          garantiaMonto: validation.data.garantiaMonto,
+          garantiaTipo: validation.data.garantiaTipo,
+          observaciones: validation.data.observaciones,
+          detallesLogistica: validation.data.detallesLogistica,
           items: itemsConDetalles
         });
       }
@@ -207,7 +262,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full space-y-6">
+    <form onSubmit={onSubmit} className="flex flex-col h-full space-y-6">
       {/* Wizard Progress Stepper */}
       <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 sm:p-4">
         <div className="grid grid-cols-3 gap-2">
@@ -287,7 +342,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                           key={c.id} 
                           className="px-3.5 py-2.5 text-xs text-slate-700 hover:bg-slate-50 cursor-pointer flex justify-between items-center transition-colors"
                           onClick={() => {
-                            setValue('clienteId', c.id);
+                            setClienteId(c.id);
                             setClientSearchTerm('');
                             setIsClientDropdownOpen(false);
                           }}
@@ -302,8 +357,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                     </div>
                   )}
                 </div>
-                <input type="hidden" {...register('clienteId')} />
-                {errors.clienteId && <span className="text-[11px] text-red-500 font-semibold">{errors.clienteId.message}</span>}
+                {formErrors.clienteId && <span className="text-[11px] text-red-500 font-semibold">{formErrors.clienteId}</span>}
               </div>
 
               {/* Fecha de Registro */}
@@ -311,10 +365,11 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                 <label className="text-xs font-bold text-slate-700">Fecha de Creación del Contrato *</label>
                 <input 
                   type="date" 
-                  {...register('fechaRegistro')} 
+                  value={fechaRegistro}
+                  onChange={(e) => setFechaRegistro(e.target.value)}
                   className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none transition-all" 
                 />
-                {errors.fechaRegistro && <span className="text-[11px] text-red-500 font-semibold">{errors.fechaRegistro.message}</span>}
+                {formErrors.fechaRegistro && <span className="text-[11px] text-red-500 font-semibold">{formErrors.fechaRegistro}</span>}
               </div>
             </div>
           </div>
@@ -330,7 +385,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-700">Tipo de Respaldo</label>
                 <select 
-                  {...register('garantiaTipo')}
+                  value={garantiaTipo}
+                  onChange={(e) => setGarantiaTipo(e.target.value)}
                   className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none transition-all"
                 >
                   <option value="Efectivo">Efectivo en Custodia</option>
@@ -345,7 +401,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                 <input 
                   type="number" 
                   min={0}
-                  {...register('garantiaMonto', { valueAsNumber: true })} 
+                  value={garantiaMonto}
+                  onChange={(e) => setGarantiaMonto(parseFloat(e.target.value) || 0)}
                   className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none transition-all" 
                 />
               </div>
@@ -355,7 +412,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                 <input 
                   type="number" 
                   min={0}
-                  {...register('deposito', { valueAsNumber: true })} 
+                  value={deposito}
+                  onChange={(e) => setDeposito(parseFloat(e.target.value) || 0)}
                   className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none transition-all" 
                 />
               </div>
@@ -375,7 +433,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
               </div>
               <button 
                 type="button" 
-                onClick={() => append({ itemId: '', cantidad: 1, fechaInicio: todayStr, fechaFinEstimada: todayStr })} 
+                onClick={addItemRow} 
                 className="px-3 py-1.5 bg-brand-salmon/10 text-brand-salmon hover:bg-brand-salmon/20 font-bold rounded-xl text-xs transition-colors flex items-center space-x-1.5"
               >
                 <span>+ Agregar Maquinaria</span>
@@ -383,19 +441,47 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
             </div>
 
             <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
-              {fields.map((field, index) => (
+              {items.map((field, index) => (
                 <div key={field.id} className="p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200 flex flex-col md:flex-row items-stretch md:items-center gap-3">
-                  <div className="flex-1 min-w-[200px] flex flex-col gap-1">
+                  <div className="flex-1 min-w-[180px] flex flex-col gap-1">
                     <label className="text-[11px] font-bold text-slate-600">Equipo *</label>
                     <select 
-                      {...register(`items.${index}.itemId` as const)} 
+                      value={field.itemId}
+                      onChange={(e) => {
+                        const eqId = e.target.value;
+                        const equipo = equipos.find(eq => eq.id === eqId);
+                        const newItems = [...items];
+                        newItems[index] = { 
+                          ...newItems[index], 
+                          itemId: eqId, 
+                          precioDiario: equipo ? equipo.tarifaDiaria : 0 
+                        };
+                        setItems(newItems);
+                      }}
                       className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none"
                     >
                       <option value="">Seleccione equipo...</option>
-                      {equipos.map(e => (
-                        <option key={e.id} value={e.id}>{e.sku} — {e.nombre} ({formatearCOP(e.tarifaDiaria)}/día)</option>
-                      ))}
+                      {equipos.map(e => {
+                        const isAvailable = e.stockDisponible > 0;
+                        const stockText = isAvailable ? `(${e.stockDisponible} disp.)` : `(Sin stock)`;
+                        return (
+                          <option key={e.id} value={e.id} disabled={!isAvailable}>
+                            {e.nombre} {stockText}
+                          </option>
+                        );
+                      })}
                     </select>
+                  </div>
+
+                  <div className="w-28 flex flex-col gap-1">
+                    <label className="text-[11px] font-bold text-slate-600">Valor Diario</label>
+                    <input 
+                      type="number" 
+                      min={0} 
+                      value={field.precioDiario}
+                      onChange={(e) => updateItemRow(index, 'precioDiario', parseFloat(e.target.value) || 0)}
+                      className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none text-right font-semibold" 
+                    />
                   </div>
 
                   <div className="w-20 flex flex-col gap-1">
@@ -403,7 +489,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                     <input 
                       type="number" 
                       min={1} 
-                      {...register(`items.${index}.cantidad` as const, { valueAsNumber: true })} 
+                      value={field.cantidad}
+                      onChange={(e) => updateItemRow(index, 'cantidad', parseInt(e.target.value, 10) || 1)}
                       className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none text-center" 
                     />
                   </div>
@@ -412,7 +499,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                     <label className="text-[11px] font-bold text-slate-600">Fecha Inicio</label>
                     <input 
                       type="date" 
-                      {...register(`items.${index}.fechaInicio` as const)} 
+                      value={field.fechaInicio}
+                      onChange={(e) => updateItemRow(index, 'fechaInicio', e.target.value)}
                       className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none" 
                     />
                   </div>
@@ -421,16 +509,17 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                     <label className="text-[11px] font-bold text-slate-600">Fin Estimado</label>
                     <input 
                       type="date" 
-                      {...register(`items.${index}.fechaFinEstimada` as const)} 
+                      value={field.fechaFinEstimada}
+                      onChange={(e) => updateItemRow(index, 'fechaFinEstimada', e.target.value)}
                       className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none" 
                     />
                   </div>
 
-                  {fields.length > 1 && (
+                  {items.length > 1 && (
                     <div className="flex items-end pt-5 md:pt-0">
                       <button 
                         type="button" 
-                        onClick={() => remove(index)} 
+                        onClick={() => removeItemRow(index)} 
                         className="p-2 text-red-500 hover:bg-red-50 rounded-xl text-xs transition-colors"
                         title="Eliminar fila"
                       >
@@ -441,7 +530,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                 </div>
               ))}
             </div>
-            {errors.items && <span className="text-[11px] text-red-500 font-semibold">{errors.items.message}</span>}
+            {formErrors.items && <span className="text-[11px] text-red-500 font-semibold">{formErrors.items}</span>}
           </div>
 
           {/* Fletes y Logística */}
@@ -457,7 +546,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                 <input 
                   type="number" 
                   min={0}
-                  {...register('fleteEntrega', { valueAsNumber: true })} 
+                  value={fleteEntrega}
+                  onChange={(e) => setFleteEntrega(parseFloat(e.target.value) || 0)}
                   className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none transition-all" 
                 />
               </div>
@@ -467,7 +557,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                 <input 
                   type="number" 
                   min={0}
-                  {...register('fleteRecogida', { valueAsNumber: true })} 
+                  value={fleteRecogida}
+                  onChange={(e) => setFleteRecogida(parseFloat(e.target.value) || 0)}
                   className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none transition-all" 
                 />
               </div>
@@ -486,13 +577,15 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
               <textarea 
                 rows={3}
                 placeholder="Ingrese detalles sobre el estado del equipo, sitio de obra o acuerdos especiales..."
-                {...register('observaciones')} 
+                value={observaciones}
+                onChange={(e) => setObservaciones(e.target.value)}
                 className="w-full flex-1 p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none transition-all"
               />
               <textarea 
                 rows={2}
                 placeholder="Dirección exacta de obra y persona encargada de recibir..."
-                {...register('detallesLogistica')} 
+                value={detallesLogistica}
+                onChange={(e) => setDetallesLogistica(e.target.value)}
                 className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none transition-all"
               />
             </div>
@@ -533,7 +626,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
       )}
 
       {/* STICKY RESPONSIVE ACTION FOOTER (Siempre visible, con botón Guardar prominente) */}
-      <div className="sticky bottom-0 bg-white/95 backdrop-blur-md pt-4 pb-1 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 z-10">
+      <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 px-4 sm:px-6 py-4 bg-white/95 backdrop-blur-md border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 z-20 mt-6 rounded-b-2xl sm:rounded-b-3xl">
         <button 
           type="button" 
           onClick={onCancel} 

@@ -2,6 +2,14 @@
 
 import React, { useRef, useState } from 'react';
 import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
+import { MonedaConfig } from '../../core/domain/entities/empresa-config';
+
+const OPCIONES_MONEDA: MonedaConfig[] = [
+  { codigo: 'COP', locale: 'es-CO', simbolo: '$' },
+  { codigo: 'USD', locale: 'en-US', simbolo: '$' },
+  { codigo: 'EUR', locale: 'es-ES', simbolo: '€' },
+  { codigo: 'MXN', locale: 'es-MX', simbolo: '$' },
+];
 
 export default function ConfiguracionPage() {
   const { config, actualizarConfig } = useEmpresaStore();
@@ -10,9 +18,17 @@ export default function ConfiguracionPage() {
   const [formData, setFormData] = useState(config);
   const [isSaved, setIsSaved] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setIsSaved(false);
+  };
+
+  const handleMonedaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selected = OPCIONES_MONEDA.find(m => m.codigo === e.target.value);
+    if (selected) {
+      setFormData({ ...formData, moneda: selected });
+      setIsSaved(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,7 +54,7 @@ export default function ConfiguracionPage() {
     <div className="flex flex-col gap-8 max-w-4xl mx-auto">
       <div>
         <h1 className="text-3xl font-semibold text-slate-900 mb-1">Configuración de la Empresa</h1>
-        <p className="text-base text-slate-600">Actualice la información corporativa y el logo para los documentos generados.</p>
+        <p className="text-base text-slate-600">Actualice la información corporativa, el logo y la moneda para los documentos generados.</p>
       </div>
 
       <form onSubmit={handleSave} className="bg-white rounded-xl shadow-card border border-slate-200 p-6 flex flex-col gap-6">
@@ -109,7 +125,21 @@ export default function ConfiguracionPage() {
         <div className="flex flex-col gap-4">
           <h3 className="text-lg font-semibold text-slate-800">Parámetros de Documentos (PDF)</h3>
           
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 md:w-1/2">
+            <label className="text-sm font-medium text-slate-700">Moneda del Sistema</label>
+            <select 
+              value={formData.moneda?.codigo || 'COP'} 
+              onChange={handleMonedaChange} 
+              className="px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-salmon/50"
+            >
+              {OPCIONES_MONEDA.map(m => (
+                <option key={m.codigo} value={m.codigo}>{m.codigo} - {m.simbolo}</option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500 mt-1">Todos los montos se formatearán en base a la moneda seleccionada.</p>
+          </div>
+
+          <div className="flex flex-col gap-1 mt-2">
             <label className="text-sm font-medium text-slate-700">Términos y Condiciones / Notas (Contratos)</label>
             <textarea name="notasFacturaPDF" value={formData.notasFacturaPDF} onChange={handleChange} rows={3} className="px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-salmon/50"></textarea>
           </div>

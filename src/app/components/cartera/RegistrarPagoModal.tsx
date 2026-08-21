@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { generateIdempotencyKey } from '../../../lib/utils/idempotency';
+import { useCurrencyFormatter } from '../../../lib/hooks/useCurrencyFormatter';
 
 export interface RegistrarPagoModalProps {
   isOpen: boolean;
@@ -20,6 +21,8 @@ export function RegistrarPagoModal({
   const [pagoMetodo, setPagoMetodo] = useState("TRANSFERENCIA");
   const [pagoReferencia, setPagoReferencia] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { formatearMoneda, monedaConfig } = useCurrencyFormatter();
 
   useEffect(() => {
     if (isOpen && contratoParaPago) {
@@ -42,15 +45,6 @@ export function RegistrarPagoModal({
         setIsSubmitting(false);
       }
     }
-  };
-
-  const formatearMonedaCOP = (valor: number) => {
-    return new Intl.NumberFormat("es-CO", {
-      style: "currency",
-      currency: "COP",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(valor);
   };
 
   if (!isOpen || !contratoParaPago) return null;
@@ -76,13 +70,13 @@ export function RegistrarPagoModal({
           <div className="bg-[#F8FAFC] p-3 rounded-2xl border border-slate-100 space-y-1 text-xs">
             <div className="text-slate-500">Cliente: <strong className="text-[#1E293B]">{contratoParaPago.clienteNombre}</strong></div>
             <div className="flex justify-between text-[#1E293B]">
-              <span>Total Contrato: <strong>{formatearMonedaCOP(contratoParaPago.total)}</strong></span>
-              <span>Saldo Pendiente: <strong className="text-amber-500">{formatearMonedaCOP(saldoPendiente)}</strong></span>
+              <span>Total Contrato: <strong>{formatearMoneda(contratoParaPago.total)}</strong></span>
+              <span>Saldo Pendiente: <strong className="text-amber-500">{formatearMoneda(saldoPendiente)}</strong></span>
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-bold text-[#1E293B] block">Monto a Abonar (COP)*</label>
+            <label className="text-xs font-bold text-[#1E293B] block">Monto a Abonar ({monedaConfig.codigo})*</label>
             <input
               type="number"
               min={1}

@@ -311,7 +311,7 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-100">
+          <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 px-4 sm:px-6 py-4 bg-white/95 backdrop-blur-md flex justify-end gap-2 mt-4 pt-3 border-t border-slate-200 z-20 rounded-b-2xl sm:rounded-b-3xl shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
             <button
               type="button"
               onClick={onClose}
