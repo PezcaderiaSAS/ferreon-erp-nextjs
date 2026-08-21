@@ -1,8 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import React, { useState, useEffect } from 'react';
 import * as z from 'zod';
 import { CrearEquipoUseCase } from '../../core/application/use-cases/bodega/CrearEquipo';
 import { SupabaseEquipoRepository } from '../../infrastructure/adapters/SupabaseEquipoRepository';
@@ -14,11 +12,9 @@ const equipoSchema = z.object({
   sku: z.string().min(1, 'El SKU es requerido'),
   nombre: z.string().min(1, 'El nombre es requerido'),
   categoria: z.string().min(1, 'La categoría es requerida'),
-  tarifaDiaria: z.coerce.number().min(0, 'La tarifa debe ser mayor o igual a 0'),
-  stockInicial: z.coerce.number().int().min(1, 'El stock inicial debe ser al menos 1')
+  tarifaDiaria: z.number().min(0, 'La tarifa debe ser mayor o igual a 0'),
+  stockInicial: z.number().int().min(1, 'El stock inicial debe ser al menos 1')
 });
-
-type EquipoFormValues = z.infer<typeof equipoSchema>;
 
 interface BodegaFormProps {
   onSuccess: () => void;
@@ -28,34 +24,54 @@ interface BodegaFormProps {
 export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
   const { generarSiguienteSKU, agregarEquipo } = useBodegaStore();
   
-  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<EquipoFormValues>({
-    resolver: zodResolver(equipoSchema),
-    defaultValues: {
-      sku: '',
-      nombre: '',
-      categoria: 'Construcción',
-      tarifaDiaria: 35000,
-      stockInicial: 1
-    }
-  });
+  const [sku, setSku] = useState('');
+  const [nombre, setNombre] = useState('');
+  const [categoria, setCategoria] = useState('Construcción');
+  const [tarifaDiaria, setTarifaDiaria] = useState<number>(35000);
+  const [stockInicial, setStockInicial] = useState<number>(1);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const nextSku = generarSiguienteSKU();
-    setValue('sku', nextSku);
-  }, [generarSiguienteSKU, setValue]);
+    setSku(nextSku);
+  }, [generarSiguienteSKU]);
 
-  const onSubmit = async (data: EquipoFormValues) => {
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormErrors({});
+
+    const validation = equipoSchema.safeParse({
+      sku,
+      nombre,
+      categoria,
+      tarifaDiaria,
+      stockInicial
+    });
+
+    if (!validation.success) {
+      const formattedErrors: { [key: string]: string } = {};
+      validation.error.issues.forEach((err) => {
+        if (err.path[0]) {
+          formattedErrors[err.path[0].toString()] = err.message;
+        }
+      });
+      setFormErrors(formattedErrors);
+      return;
+    }
+
+    setIsSubmitting(true);
     const idempotencyKey = generateIdempotencyKey('eq');
     try {
       // 1. Optimistic local update in Zustand store with stock
       const newEquipo = {
         id: crypto.randomUUID ? crypto.randomUUID() : `temp_${Date.now()}`,
-        sku: data.sku,
-        nombre: data.nombre,
-        categoria: data.categoria,
-        tarifaDiaria: data.tarifaDiaria,
-        stockTotal: data.stockInicial,
-        stockDisponible: data.stockInicial,
+        sku: validation.data.sku,
+        nombre: validation.data.nombre,
+        categoria: validation.data.categoria,
+        tarifaDiaria: validation.data.tarifaDiaria,
+        stockTotal: validation.data.stockInicial,
+        stockDisponible: validation.data.stockInicial,
         stockEnObra: 0,
         estado: 'Disponible' as const,
         creado_en: new Date()
@@ -67,9 +83,9 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
         const repository = new SupabaseEquipoRepository();
         const useCase = new CrearEquipoUseCase(repository);
         await useCase.execute({
-          sku: data.sku,
-          nombre: data.nombre,
-          categoria: data.categoria
+          sku: validation.data.sku,
+          nombre: validation.data.nombre,
+          categoria: validation.data.categoria
         });
       } catch (repoErr) {
         console.warn('[BodegaForm] Supabase fallback/offline mode active:', repoErr);
@@ -78,11 +94,13 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
       onSuccess();
     } catch (error) {
       console.error('Error al crear equipo:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
           <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
@@ -90,17 +108,20 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
             <span className="text-[10px] bg-brand-salmonLight text-brand-salmonDark px-1.5 py-0.5 rounded font-normal">Autogenerado</span>
           </label>
           <input 
-            {...register('sku')}
+            type="text"
+            value={sku}
+            onChange={(e) => setSku(e.target.value)}
             className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-900 font-mono bg-slate-50 font-bold"
             placeholder="Ej: EQ-001"
           />
-          {errors.sku && <span className="text-xs text-red-500">{errors.sku.message}</span>}
+          {formErrors.sku && <span className="text-xs text-red-500">{formErrors.sku}</span>}
         </div>
 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Categoría</label>
           <select 
-            {...register('categoria')}
+            value={categoria}
+            onChange={(e) => setCategoria(e.target.value)}
             className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-900 bg-white"
           >
             <option value="Construcción">Construcción</option>
@@ -109,18 +130,20 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
             <option value="Andamios & Estructuras">Andamios & Estructuras</option>
             <option value="Equipos de Medición">Equipos de Medición</option>
           </select>
-          {errors.categoria && <span className="text-xs text-red-500">{errors.categoria.message}</span>}
+          {formErrors.categoria && <span className="text-xs text-red-500">{formErrors.categoria}</span>}
         </div>
       </div>
 
       <div className="flex flex-col gap-1">
         <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Nombre del Equipo</label>
         <input 
-          {...register('nombre')}
+          type="text"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
           className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-900"
           placeholder="Ej: Mezcladora de Concreto 2 Bultos"
         />
-        {errors.nombre && <span className="text-xs text-red-500">{errors.nombre.message}</span>}
+        {formErrors.nombre && <span className="text-xs text-red-500">{formErrors.nombre}</span>}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -128,11 +151,13 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
           <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Tarifa Diaria ($ COP)</label>
           <input 
             type="number"
-            {...register('tarifaDiaria')}
+            min="0"
+            value={tarifaDiaria}
+            onChange={(e) => setTarifaDiaria(parseFloat(e.target.value) || 0)}
             className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-900 font-semibold"
             placeholder="35000"
           />
-          {errors.tarifaDiaria && <span className="text-xs text-red-500">{errors.tarifaDiaria.message}</span>}
+          {formErrors.tarifaDiaria && <span className="text-xs text-red-500">{formErrors.tarifaDiaria}</span>}
         </div>
 
         <div className="flex flex-col gap-1">
@@ -142,11 +167,13 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
           </label>
           <input 
             type="number"
-            {...register('stockInicial')}
+            min="1"
+            value={stockInicial}
+            onChange={(e) => setStockInicial(parseInt(e.target.value, 10) || 1)}
             className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-900 font-bold text-emerald-700 bg-emerald-50/30"
             placeholder="1"
           />
-          {errors.stockInicial && <span className="text-xs text-red-500">{errors.stockInicial.message}</span>}
+          {formErrors.stockInicial && <span className="text-xs text-red-500">{formErrors.stockInicial}</span>}
         </div>
       </div>
 
@@ -169,3 +196,4 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
     </form>
   );
 }
+
