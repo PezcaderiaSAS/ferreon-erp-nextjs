@@ -1,23 +1,25 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { BodegaForm } from '../../components/forms/BodegaForm';
 import { SupabaseEquipoRepository } from '../../infrastructure/adapters/SupabaseEquipoRepository';
-import { Equipo } from '../../core/domain/entities/equipo';
+import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 
 export default function BodegaPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [equipos, setEquipos] = useState<Equipo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { equipos, setEquipos } = useBodegaStore();
+  const [loading, setLoading] = useState(false);
 
   const fetchEquipos = async () => {
     try {
       const repo = new SupabaseEquipoRepository();
       const data = await repo.obtenerTodos();
-      setEquipos(data);
+      if (data && data.length > 0) {
+        setEquipos(data);
+      }
     } catch (e) {
-      console.error(e);
+      console.warn('[BodegaPage] Usando almacenamiento local persistido (modo offline):', e);
     } finally {
       setLoading(false);
     }
@@ -29,7 +31,6 @@ export default function BodegaPage() {
 
   const handleSuccess = () => {
     setIsModalOpen(false);
-    fetchEquipos(); // Refresh list after adding
   };
 
   return (

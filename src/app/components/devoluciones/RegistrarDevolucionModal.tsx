@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
+import { Button } from '../../../components/ui/Button';
+import { generateIdempotencyKey } from '../../../lib/utils/idempotency';
 
 
 export interface RegistrarDevolucionModalProps {
@@ -181,13 +183,13 @@ export function RegistrarDevolucionModal({
             >
               Cancelar
             </button>
-            <button 
+            <Button 
               type="submit" 
-              disabled={isSubmitting}
-              className="px-6 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-sky-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              isLoading={isSubmitting}
+              className="min-w-[170px]"
             >
-              {isSubmitting ? 'Procesando...' : 'Confirmar Reingreso'}
-            </button>
+              Confirmar Reingreso
+            </Button>
           </div>
         </form>
       </div>

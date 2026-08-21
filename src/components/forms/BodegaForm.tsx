@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React from 'react';
 import { useForm } from 'react-hook-form';
@@ -6,6 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { CrearEquipoUseCase } from '../../core/application/use-cases/bodega/CrearEquipo';
 import { SupabaseEquipoRepository } from '../../infrastructure/adapters/SupabaseEquipoRepository';
+import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
+import { Button } from '../ui/Button';
+import { generateIdempotencyKey } from '../../lib/utils/idempotency';
 
 const equipoSchema = z.object({
   sku: z.string().min(1, 'El SKU es requerido'),
@@ -24,17 +27,35 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<EquipoFormValues>({
     resolver: zodResolver(equipoSchema),
   });
+  const agregarEquipo = useBodegaStore((state) => state.agregarEquipo);
 
   const onSubmit = async (data: EquipoFormValues) => {
+    const idempotencyKey = generateIdempotencyKey('eq');
     try {
-      const repository = new SupabaseEquipoRepository();
-      const useCase = new CrearEquipoUseCase(repository);
-      
-      await useCase.execute({
+      // 1. Optimistic local update in Zustand store
+      const newEquipo = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `temp_${Date.now()}`,
         sku: data.sku,
         nombre: data.nombre,
-        categoria: data.categoria
-      });
+        categoria: data.categoria,
+        tarifaDiaria: 35000,
+        estado: 'Disponible' as const,
+        creado_en: new Date()
+      };
+      agregarEquipo(newEquipo, idempotencyKey);
+
+      // 2. Persist to Supabase in background
+      try {
+        const repository = new SupabaseEquipoRepository();
+        const useCase = new CrearEquipoUseCase(repository);
+        await useCase.execute({
+          sku: data.sku,
+          nombre: data.nombre,
+          categoria: data.categoria
+        });
+      } catch (repoErr) {
+        console.warn('[BodegaForm] Supabase fallback/offline mode active:', repoErr);
+      }
 
       onSuccess();
     } catch (error) {
@@ -78,8 +99,6 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
         {errors.categoria && <span className="text-xs text-red-500">{errors.categoria.message}</span>}
       </div>
 
-
-
       <div className="flex justify-end gap-2 mt-4">
         <button 
           type="button" 
@@ -88,13 +107,13 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
         >
           Cancelar
         </button>
-        <button 
+        <Button 
           type="submit" 
-          disabled={isSubmitting}
-          className="px-4 py-2 text-sm font-semibold bg-brand-salmon hover:bg-brand-salmonDark text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+          isLoading={isSubmitting}
+          className="min-w-[130px]"
         >
-          {isSubmitting ? 'Guardando...' : 'Guardar Equipo'}
-        </button>
+          Guardar Equipo
+        </Button>
       </div>
     </form>
   );

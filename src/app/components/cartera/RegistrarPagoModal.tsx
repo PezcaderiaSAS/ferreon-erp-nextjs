@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { Button } from '../../../components/ui/Button';
+import { generateIdempotencyKey } from '../../../lib/utils/idempotency';
 
 export interface RegistrarPagoModalProps {
   isOpen: boolean;
@@ -126,13 +128,13 @@ export function RegistrarPagoModal({
             >
               Cancelar
             </button>
-            <button 
+            <Button 
               type="submit" 
-              disabled={isSubmitting}
-              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              isLoading={isSubmitting}
+              className="min-w-[150px]"
             >
-              {isSubmitting ? 'Procesando...' : 'Confirmar Recaudo'}
-            </button>
+              Confirmar Recaudo
+            </Button>
           </div>
         </form>
       </div>

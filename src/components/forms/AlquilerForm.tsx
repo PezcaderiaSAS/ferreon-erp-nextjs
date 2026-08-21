@@ -10,6 +10,8 @@ import { CrearAlquilerUseCase } from '../../core/application/use-cases/crear-alq
 import { EditarAlquilerUseCase } from '../../core/application/use-cases/editar-alquiler.use-case';
 import { ZustandAlquilerRepository } from '../../infrastructure/adapters/ZustandAlquilerRepository';
 import { AlquilerEntity } from '../../core/domain/entities/alquiler';
+import { Button } from '../ui/Button';
+import { generateIdempotencyKey } from '../../lib/utils/idempotency';
 
 const alquilerSchema = z.object({
   clienteId: z.string().min(1, 'Debe seleccionar un cliente'),
@@ -114,6 +116,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
   const onSubmit = async (data: AlquilerFormValues) => {
     setIsSubmitting(true);
     setErrorMsg(null);
+    const idempotencyKey = generateIdempotencyKey('alq');
     try {
       const repo = new ZustandAlquilerRepository();
       const cliente = clientes.find(c => c.id === data.clienteId);
@@ -310,9 +313,9 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
         <button type="button" onClick={onCancel} className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium text-sm">
           Cancelar
         </button>
-        <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-brand-salmon text-white rounded-lg hover:bg-brand-salmonDark transition-colors font-medium text-sm flex items-center justify-center min-w-[120px]">
-          {isSubmitting ? "Guardando..." : (initialData ? "Guardar Cambios" : "Crear Contrato")}
-        </button>
+        <Button type="submit" isLoading={isSubmitting} className="min-w-[140px]">
+          {initialData ? "Guardar Cambios" : "Crear Contrato"}
+        </Button>
       </div>
     </form>
   );
