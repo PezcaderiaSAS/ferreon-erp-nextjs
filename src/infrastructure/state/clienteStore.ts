@@ -1,5 +1,4 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create, persist } from '../../lib/zustand';
 import { Cliente } from '../../core/domain/entities/cliente';
 
 interface ClienteState {

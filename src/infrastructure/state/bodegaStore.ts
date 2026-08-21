@@ -1,5 +1,4 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create, persist } from '../../lib/zustand';
 import { Equipo } from '../../core/domain/entities/equipo';
 
 interface BodegaState {

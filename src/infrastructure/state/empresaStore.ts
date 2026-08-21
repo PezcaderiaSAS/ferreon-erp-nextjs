@@ -1,5 +1,4 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { create, persist, createJSONStorage } from '../../lib/zustand';
 import { EmpresaConfig, DEFAULT_EMPRESA_CONFIG } from '../../core/domain/entities/empresa-config';
 
 interface EmpresaState {
