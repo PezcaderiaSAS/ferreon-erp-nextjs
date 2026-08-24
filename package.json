@@ -1,8 +1,8 @@
 {
-  "name": "ferreon-erp-nextjs",
+  "name": "alquileres-erp-nextjs",
   "version": "1.0.0",
   "private": true,
-  "description": "FerreOn ERP - Sistema de Gestión de Alquileres, Facturación y Equipos de Construcción (Next.js + Supabase + Vercel)",
+  "description": "Alquileres ERP - Sistema de Gestión de Alquileres, Facturación y Equipos de Construcción (Next.js + Supabase + Vercel)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

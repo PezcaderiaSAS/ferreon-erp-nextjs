@@ -1,4 +1,4 @@
-# FerreOn ERP — `alquileres_app` (Next.js + Supabase + Vercel)
+# Alquileres ERP — `alquileres_app` (Next.js + Supabase + Vercel)
 
 ![License](https://img.shields.io/badge/License-Proprietary-blue.svg)
 ![Stack](https://img.shields.io/badge/Stack-Next.js%2014%20%7C%20Supabase%20%7C%20Vercel-black.svg)

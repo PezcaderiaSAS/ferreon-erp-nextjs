@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export function TopNav() {
   return (
     <header className="bg-white text-slate-900 font-sans h-16 sticky top-0 z-40 border-b border-slate-200 shadow-sm flex items-center justify-between px-6">
@@ -13,9 +15,9 @@ export function TopNav() {
         <button className="text-slate-500 hover:text-brand-salmon transition-colors p-2 rounded-full hover:bg-slate-100">
           <span className="material-symbols-outlined">notifications</span>
         </button>
-        <button className="text-slate-500 hover:text-brand-salmon transition-colors p-2 rounded-full hover:bg-slate-100">
+        <Link href="/configuracion" className="text-slate-500 hover:text-brand-salmon transition-colors p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
           <span className="material-symbols-outlined">settings</span>
-        </button>
+        </Link>
         <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-slate-300 ml-2 cursor-pointer">
           <img 
             alt="User profile photo" 
