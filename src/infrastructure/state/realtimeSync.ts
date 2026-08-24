@@ -34,6 +34,9 @@ export function setupRealtimeSubscriptions() {
             nombre: newRecord.nombre,
             categoria: newRecord.categoria,
             tarifaDiaria: Number(newRecord.tarifa_diaria || newRecord.tarifaDiaria || 0),
+            stockTotal: Number(newRecord.stock_total || newRecord.stockTotal || 0),
+            stockDisponible: Number(newRecord.stock_disponible || newRecord.stockDisponible || 0),
+            stockEnObra: Number(newRecord.stock_en_obra || newRecord.stockEnObra || 0),
             estado: (newRecord.estado as any) || 'Disponible',
             creado_en: new Date(newRecord.created_at || Date.now()),
           };
@@ -48,6 +51,9 @@ export function setupRealtimeSubscriptions() {
             nombre: newRecord.nombre,
             categoria: newRecord.categoria,
             tarifaDiaria: Number(newRecord.tarifa_diaria || newRecord.tarifaDiaria || 0),
+            stockTotal: Number(newRecord.stock_total || newRecord.stockTotal || 0),
+            stockDisponible: Number(newRecord.stock_disponible || newRecord.stockDisponible || 0),
+            stockEnObra: Number(newRecord.stock_en_obra || newRecord.stockEnObra || 0),
             estado: (newRecord.estado as any) || 'Disponible',
             creado_en: new Date(newRecord.created_at || Date.now()),
           };

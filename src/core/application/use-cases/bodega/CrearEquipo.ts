@@ -15,6 +15,9 @@ export class CrearEquipoUseCase {
       nombre: dto.nombre,
       categoria: dto.categoria,
       tarifaDiaria: 45000,
+      stockTotal: 0,
+      stockDisponible: 0,
+      stockEnObra: 0,
       estado: 'Disponible'
     });
   }
