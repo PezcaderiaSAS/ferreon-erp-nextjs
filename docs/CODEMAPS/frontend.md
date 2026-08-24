@@ -8,7 +8,9 @@
 - `/devoluciones` → `src/app/devoluciones/page.tsx` (Retornos, Daños, Sincronización automática de stock devuelto a Bodega)
 - `/clientes` → `src/app/clientes/page.tsx` (Directorio, KPIs de riesgo, Click a `DetalleClienteModal 360°` en 3 pestañas)
 - `/facturacion` → `src/app/facturacion/page.tsx` (Cartera, Liquidación, Recaudos)
-- `/configuracion` → `src/app/configuracion/page.tsx` (Branding, Datos de Empresa)
+- `/configuracion` → `src/app/configuracion/page.tsx` (Tabs: Datos de Empresa y Usuarios)
+- `/auth/login` → `src/app/auth/login/page.tsx` (Pantalla de Google OAuth)
+- `/unauthorized` → `src/app/unauthorized/page.tsx` (Mensaje de error por falta de privilegios)
 
 ## Modals & Specialized Components
 - `src/app/components/alquileres/DetalleAlquilerModal.tsx` (Inspección 360° de contrato, liquidación y botón de transición a edición)
@@ -20,6 +22,7 @@
 - `src/components/forms/AlquilerForm.tsx` (Wizard responsivo de 3 pasos)
 - `src/components/forms/BodegaForm.tsx` (Formulario con SKU autoincremental `EQ-XXX` y stock inicial)
 - `src/components/forms/ClienteForm.tsx` (Formulario de gestión de clientes)
+- `src/app/configuracion/UsuariosTab.tsx` (Listado y creación de usuarios con RBAC y Avatares)
 
 ## State Stores (Zustand + Persist)
 - `src/infrastructure/state/alquilerStore.ts` (Contratos, Idempotency, Snapshots)

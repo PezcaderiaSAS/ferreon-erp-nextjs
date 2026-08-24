@@ -3,10 +3,13 @@
 
 ```mermaid
 graph TD
-    Client[Next.js App Router Frontend] -->|Zustand State & Optimistic UI| Store[Local Persistent Stores]
+    Client[Next.js App Router Frontend] -->|JWT Session (Middleware)| Middleware[Edge Middleware]
+    Middleware -->|Rewrite on fail| AuthErr[Unauthorized View]
+    Client -->|Zustand State & Optimistic UI| Store[Local Persistent Stores]
     Store -->|Background Sync| Supabase[(Supabase PostgreSQL)]
     Supabase -->|postgres_changes WebSockets| Realtime[RealtimeProvider]
     Realtime -->|Event Dispatches| Store
+    Client -->|Google OAuth| SupabaseAuth[Supabase Auth]
 ```
 
 ## Service Boundaries & Layer Mapping
@@ -25,7 +28,12 @@ graph TD
   - `CrearAlquilerUseCase`, `EditarAlquilerUseCase`, `CrearEquipoUseCase`, `ProcesarDevolucionUseCase`
 
 - **Infrastructure & State (`src/infrastructure/`)**:
-  - `state/`: `alquilerStore.ts`, `bodegaStore.ts`, `clienteStore.ts`, `realtimeSync.ts`
+  - `state/`: `alquilerStore.ts`, `bodegaStore.ts`, `clienteStore.ts`, `realtimeSync.ts`, `empresaStore.ts`
   - `persistence/supabase/`: `client.ts` (Browser SSR Client)
   - `adapters/`: `ZustandAlquilerRepository.ts`, `SupabaseEquipoRepository.ts`
 
+- **Auth & API Layer (`src/app/api/`, `src/middleware.ts`)**:
+  - `middleware.ts`: Verificación JWT SSR, `NextResponse.rewrite('/unauthorized')`
+  - `api/usuarios/route.ts`: Uso de `SUPABASE_SERVICE_ROLE_KEY` para creación (`supabase.auth.admin.createUser`)
+  - `api/auth/callback/route.ts`: Intercambio de código OAuth de Google
+  - `app/auth/login/page.tsx`: Punto de entrada OAuth
