@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { RegistrarDevolucionModal } from '../components/devoluciones/RegistrarDevolucionModal';
-import { AlquilerEntity } from '../../core/domain/entities/alquiler';
+import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
 
 export default function DevolucionesPage() {
   const { alquileres, updateAlquiler } = useAlquilerStore();
@@ -85,7 +85,7 @@ export default function DevolucionesPage() {
       }
     });
 
-    // 2. Si es una entidad AlquilerEntity viva, actualizarla
+    // 2. Si es una entidad AlquilerUI viva, actualizarla
     if (contratoActivo.rawAlquiler) {
       const raw = contratoActivo.rawAlquiler;
       const contratoActualizado = Object.assign(Object.create(Object.getPrototypeOf(raw)), raw);

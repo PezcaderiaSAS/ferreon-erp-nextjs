@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import * as z from 'zod';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
-import { Cliente } from '../../../core/domain/entities/cliente';
+import { ClienteUI } from '../../../infrastructure/state/clienteStore';
 import { useClienteStore } from '../../../infrastructure/state/clienteStore';
 import { useAlquilerStore } from '../../../infrastructure/state/alquilerStore';
 
@@ -20,7 +20,7 @@ const clienteEditSchema = z.object({
 interface DetalleClienteModalProps {
   isOpen: boolean;
   onClose: () => void;
-  cliente: Cliente | null;
+  cliente: ClienteUI | null;
 }
 
 export function DetalleClienteModal({

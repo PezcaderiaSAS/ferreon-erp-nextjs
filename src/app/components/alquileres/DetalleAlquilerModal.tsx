@@ -3,13 +3,13 @@
 import React from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
-import { AlquilerEntity } from '../../../core/domain/entities/alquiler';
+import { AlquilerUI } from '../../../infrastructure/state/alquilerStore';
 
 interface DetalleAlquilerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  alquiler: AlquilerEntity | null;
-  onEdit: (alquiler: AlquilerEntity) => void;
+  alquiler: AlquilerUI | null;
+  onEdit: (alquiler: AlquilerUI) => void;
 }
 
 export function DetalleAlquilerModal({
@@ -22,7 +22,7 @@ export function DetalleAlquilerModal({
 
   const consecutivoFormatted = `#CTR-${String(alquiler.consecutivo || 1).padStart(4, '0')}`;
   const totalEquipos = (alquiler.detalles || []).reduce((acc, d) => acc + (d.cantidad || 0), 0);
-  const totalFletes = (alquiler.fleteEntrega || 0) + (alquiler.fleteRecogida || 0);
+  const totalFletes = (alquiler.flete_entrega || 0) + (alquiler.flete_recogida || 0);
 
   return (
     <Modal
@@ -51,16 +51,16 @@ export function DetalleAlquilerModal({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Contrato registrado el {alquiler.createdAt ? new Date(alquiler.createdAt).toLocaleDateString('es-CO') : 'Reciente'}
+                Contrato registrado el {alquiler.created_at ? new Date(alquiler.created_at).toLocaleDateString('es-CO') : 'Reciente'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="text-right px-4 py-2 bg-slate-800/80 rounded-xl border border-slate-700">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Garantía ({alquiler.garantiaTipo || 'Depósito'})</span>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Garantía ({alquiler.garantia_tipo || 'Depósito'})</span>
               <span className="text-sm font-bold text-emerald-400">
-                ${(alquiler.garantiaMonto || 0).toLocaleString('es-CO')}
+                ${(alquiler.garantia_monto || 0).toLocaleString('es-CO')}
               </span>
             </div>
           </div>
@@ -129,18 +129,18 @@ export function DetalleAlquilerModal({
                 Detalles Logísticos y Entrega
               </span>
               <p className="text-xs text-slate-700 leading-relaxed">
-                {alquiler.detallesLogistica || 'Sin instrucciones de transporte especiales registradas.'}
+                {alquiler.detalles_logistica || 'Sin instrucciones de transporte especiales registradas.'}
               </p>
             </div>
 
-            {alquiler.observacionesGenerales && (
+            {alquiler.observaciones && (
               <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[16px] text-slate-400">notes</span>
                   Observaciones Generales
                 </span>
-                <p className="text-xs text-slate-700 leading-relaxed">
-                  {alquiler.observacionesGenerales}
+                <p className="text-xs text-slate-700 leading-relaxed italic">
+                  "{alquiler.observaciones}"
                 </p>
               </div>
             )}
@@ -155,7 +155,7 @@ export function DetalleAlquilerModal({
             <div className="flex flex-col gap-2 text-xs">
               <div className="flex justify-between text-slate-300">
                 <span>Subtotal Equipos</span>
-                <span className="font-semibold">${(alquiler.subtotalEquiposEstimado || 0).toLocaleString('es-CO')}</span>
+                <span className="font-semibold">${(alquiler.subtotal_equipos || 0).toLocaleString('es-CO')}</span>
               </div>
               <div className="flex justify-between text-slate-300">
                 <span>Fletes (Entrega + Recogida)</span>
@@ -170,7 +170,7 @@ export function DetalleAlquilerModal({
             <div className="pt-3 border-t border-slate-800 flex justify-between items-baseline">
               <span className="text-xs font-bold text-slate-300">Saldo Estimado a Cobrar</span>
               <span className="text-2xl font-bold text-white tracking-tight">
-                ${(alquiler.totalEstimado || 0).toLocaleString('es-CO')} <span className="text-xs font-normal text-slate-400">COP</span>
+                ${(alquiler.total || 0).toLocaleString('es-CO')} <span className="text-xs font-normal text-slate-400">COP</span>
               </span>
             </div>
           </div>

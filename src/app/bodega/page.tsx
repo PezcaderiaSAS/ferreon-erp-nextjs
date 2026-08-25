@@ -41,7 +41,7 @@ export default function BodegaPage() {
     return <div className="p-8 text-center text-slate-500">Cargando inventario...</div>;
   }
 
-  const handleOpenEdit = (equipo: Equipo) => {
+  const handleOpenEdit = (equipo: EquipoUI) => {
     setSelectedEquipo(equipo);
     setIsEditModalOpen(true);
   };

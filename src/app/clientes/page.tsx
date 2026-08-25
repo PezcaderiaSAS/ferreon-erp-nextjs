@@ -5,17 +5,17 @@ import { useClienteStore } from '../../infrastructure/state/clienteStore';
 import { Modal } from '../../components/ui/Modal';
 import { ClienteForm } from '../../components/forms/ClienteForm';
 import { DetalleClienteModal } from '../components/clientes/DetalleClienteModal';
-import { Cliente } from '../../core/domain/entities/cliente';
+import { ClienteUI } from '../../infrastructure/state/clienteStore';
 
 export default function ClientesPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDetalleModalOpen, setIsDetalleModalOpen] = useState(false);
-  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+  const [selectedCliente, setSelectedCliente] = useState<ClienteUI | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
   const clientes = useClienteStore((state) => state.clientes);
 
-  const handleOpenDetalle = (cliente: Cliente) => {
+  const handleOpenDetalle = (cliente: ClienteUI) => {
     setSelectedCliente(cliente);
     setIsDetalleModalOpen(true);
   };
@@ -26,8 +26,8 @@ export default function ClientesPage() {
     return clientes.filter(
       (c) =>
         c.nombre.toLowerCase().includes(lower) ||
-        c.nit.toLowerCase().includes(lower) ||
-        c.contacto.toLowerCase().includes(lower) ||
+        (c.nit_cedula?.toLowerCase().includes(lower) || c.nit?.toLowerCase().includes(lower) || false) ||
+        (c.telefono?.toLowerCase().includes(lower) || c.contacto?.toLowerCase().includes(lower) || false) ||
         (c.email && c.email.toLowerCase().includes(lower))
     );
   }, [clientes, searchTerm]);

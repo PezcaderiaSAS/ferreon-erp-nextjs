@@ -10,7 +10,7 @@ import { HistorialDevolucionesModal } from '../components/devoluciones/Historial
 import { RegistrarPagoModal } from '../components/cartera/RegistrarPagoModal';
 import { HistorialPagosModal } from '../components/cartera/HistorialPagosModal';
 import { DetalleAlquilerModal } from '../components/alquileres/DetalleAlquilerModal';
-import { AlquilerEntity } from '../../core/domain/entities/alquiler';
+import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
 
 export default function AlquileresPage() {
   const { alquileres, updateAlquiler } = useAlquilerStore();
@@ -164,11 +164,11 @@ export default function AlquileresPage() {
     alert("Devolución procesada correctamente");
   };
 
-  const openAction = (contrato: AlquilerEntity, action: string) => {
+  const openAction = (contrato: AlquilerUI, action: string) => {
     // Adapter para compatibilidad temporal con modals viejos
     const adapter = {
       ...contrato,
-      total: contrato.totalEstimado, 
+      total: contrato.total, 
       items: contrato.detalles?.map((d: any) => ({
         ...d,
         equipoId: d.itemId,

@@ -42,9 +42,9 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
     if (equipo) {
       setNombre(equipo.nombre || '');
       setCategoria(equipo.categoria || 'Construcción');
-      setTarifaDiaria(equipo.tarifaDiaria || 0);
-      setEstado(equipo.estado || 'Disponible');
-      setNuevoStock(equipo.stockDisponible || 0);
+      setTarifaDiaria(equipo.tarifa_diaria || 0);
+      setEstado((equipo.estado as 'Disponible' | 'En Alquiler' | 'Mantenimiento') || 'Disponible');
+      setNuevoStock(equipo.stock_disponible || 0);
       setStockDelta(0);
       setFormErrors({});
       setFeedbackMsg(null);
@@ -56,13 +56,13 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
   const handleApplyDelta = (delta: number) => {
     const calculated = Math.max(0, (nuevoStock || 0) + delta);
     setNuevoStock(calculated);
-    setStockDelta(calculated - (equipo.stockDisponible || 0));
+    setStockDelta(calculated - (equipo.stock_disponible || 0));
   };
 
   const handleManualStockChange = (val: number) => {
     const positiveVal = Math.max(0, isNaN(val) ? 0 : val);
     setNuevoStock(positiveVal);
-    setStockDelta(positiveVal - (equipo.stockDisponible || 0));
+    setStockDelta(positiveVal - (equipo.stock_disponible || 0));
   };
 
   const handleConfirmStockAdjustment = () => {
