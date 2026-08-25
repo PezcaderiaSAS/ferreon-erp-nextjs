@@ -65,27 +65,28 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
   const todayStr = new Date().toISOString().split("T")[0];
 
   // Form State
-  const [clienteId, setClienteId] = useState<string>(initialData?.clienteId || '');
+  const [clienteId, setClienteId] = useState<string>(initialData?.cliente_id || initialData?.clienteId || '');
   const [fechaRegistro, setFechaRegistro] = useState<string>(
-    initialData?.createdAt ? new Date(initialData.createdAt).toISOString().split('T')[0] : todayStr
+    initialData?.created_at ? new Date(initialData.created_at).toISOString().split('T')[0] : 
+    (initialData?.createdAt ? new Date(initialData.createdAt).toISOString().split('T')[0] : todayStr)
   );
-  const [fleteEntrega, setFleteEntrega] = useState<number>(initialData ? (initialData.fleteEntrega || 0) : 30000);
-  const [fleteRecogida, setFleteRecogida] = useState<number>(initialData ? (initialData.fleteRecogida || 0) : 30000);
+  const [fleteEntrega, setFleteEntrega] = useState<number>(initialData ? (initialData.flete_entrega || initialData.fleteEntrega || 0) : 30000);
+  const [fleteRecogida, setFleteRecogida] = useState<number>(initialData ? (initialData.flete_recogida || initialData.fleteRecogida || 0) : 30000);
   const [deposito, setDeposito] = useState<number>(initialData ? (initialData.deposito || 0) : 50000);
-  const [garantiaMonto, setGarantiaMonto] = useState<number>(initialData ? (initialData.garantiaMonto || 0) : 300000);
-  const [garantiaTipo, setGarantiaTipo] = useState<string>(initialData?.garantiaTipo || 'Efectivo');
-  const [observaciones, setObservaciones] = useState<string>(initialData?.observacionesGenerales || '');
-  const [detallesLogistica, setDetallesLogistica] = useState<string>(initialData?.detallesLogistica || '');
+  const [garantiaMonto, setGarantiaMonto] = useState<number>(initialData ? (initialData.garantia_monto || initialData.garantiaMonto || 0) : 300000);
+  const [garantiaTipo, setGarantiaTipo] = useState<string>(initialData?.garantia_tipo || initialData?.garantiaTipo || 'Efectivo');
+  const [observaciones, setObservaciones] = useState<string>(initialData?.observaciones || initialData?.observacionesGenerales || '');
+  const [detallesLogistica, setDetallesLogistica] = useState<string>(initialData?.detalles_logistica || initialData?.detallesLogistica || '');
 
   const [items, setItems] = useState<ItemRow[]>(() => {
     if (initialData?.detalles && initialData.detalles.length > 0) {
       return initialData.detalles.map((d: any, idx: number) => ({
         id: `init_${idx}_${Date.now()}`,
-        itemId: d.itemId,
+        itemId: d.equipo_id || d.itemId,
         cantidad: d.cantidad,
-        precioDiario: d.valorUnitario || d.tarifaDiaria || 0,
-        fechaInicio: d.fechaInicio ? new Date(d.fechaInicio).toISOString().split('T')[0] : todayStr,
-        fechaFinEstimada: d.fechaFinEstimada ? new Date(d.fechaFinEstimada).toISOString().split('T')[0] : todayStr,
+        precioDiario: d.valor_unitario || d.tarifaDiaria || d.precioDiario || d.valorUnitario || 0,
+        fechaInicio: d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (d.fechaInicio ? new Date(d.fechaInicio).toISOString().split('T')[0] : todayStr),
+        fechaFinEstimada: d.fecha_fin_estimada ? new Date(d.fecha_fin_estimada).toISOString().split('T')[0] : (d.fechaFinEstimada ? new Date(d.fechaFinEstimada).toISOString().split('T')[0] : todayStr),
       }));
     }
     return [{ id: `row_0_${Date.now()}`, itemId: '', cantidad: 1, precioDiario: 0, fechaInicio: todayStr, fechaFinEstimada: todayStr }];

@@ -309,14 +309,14 @@ export default function AlquileresPage() {
                 >
                   <td className="py-3 px-4 text-sm text-slate-900 font-medium">
                     <span className="font-mono font-bold text-slate-800 bg-slate-100 group-hover:bg-slate-200 px-2 py-0.5 rounded transition-colors">
-                      #{alq.id || alq.consecutivo}
+                      #{alq.id}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-sm text-slate-900 font-semibold group-hover:text-brand-salmon transition-colors">
-                    {alq.clienteNombre || 'Sin Nombre'}
+                    {alq.cliente_nombre || 'Sin Nombre'}
                   </td>
-                  <td className="py-3 px-4 text-sm text-slate-600">{new Date(alq.createdAt || Date.now()).toLocaleDateString('es-CO')}</td>
-                  <td className="py-3 px-4 text-sm font-bold text-slate-800">{formatearMoneda(alq.totalEstimado || 0)}</td>
+                  <td className="py-3 px-4 text-sm text-slate-600">{new Date(alq.created_at || Date.now()).toLocaleDateString('es-CO')}</td>
+                  <td className="py-3 px-4 text-sm font-bold text-slate-800">{formatearMoneda(alq.total || 0)}</td>
                   <td className="py-3 px-4">
                     <div className="flex flex-wrap gap-1">
                       <span className="px-2 py-1 bg-slate-100 rounded text-[11px] font-medium text-slate-600">
