@@ -42,10 +42,12 @@ export default function AlquileresPage() {
     });
 
     return filtrados.sort((a, b) => {
-      const numA = parseInt(a.id?.replace(/\D/g, "") || "0", 10) || a.consecutivo || 0;
-      const numB = parseInt(b.id?.replace(/\D/g, "") || "0", 10) || b.consecutivo || 0;
+      const strA = String(a.id || "");
+      const strB = String(b.id || "");
+      const numA = parseInt(strA.replace(/\D/g, "") || "0", 10) || a.consecutivo || 0;
+      const numB = parseInt(strB.replace(/\D/g, "") || "0", 10) || b.consecutivo || 0;
       if (numA !== numB) return numB - numA;
-      return (b.id || "").localeCompare(a.id || "", undefined, { numeric: true });
+      return strB.localeCompare(strA, undefined, { numeric: true });
     });
   }, [alquileres, filtroEstado]);
 
@@ -185,7 +187,7 @@ export default function AlquileresPage() {
     try {
       const payload: any = {
         tipo: contrato.estado === 'COTIZACION' ? 'COTIZACION' : (contrato.estado === 'FINALIZADO' ? 'CUENTA_COBRO' : 'CONTRATO'),
-        consecutivo: contrato.consecutivo || parseInt(contrato.id?.replace(/\D/g, '') || "0") || Date.now() % 10000,
+        consecutivo: contrato.consecutivo || parseInt(String(contrato.id || "").replace(/\D/g, '') || "0") || Date.now() % 10000,
         fechaEmision: new Date().toLocaleDateString(),
         fechaInicioGeneral: new Date(contrato.createdAt || Date.now()).toLocaleDateString(),
         clienteNombre: contrato.clienteNombre || "Cliente General",

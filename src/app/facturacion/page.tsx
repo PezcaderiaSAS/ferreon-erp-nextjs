@@ -262,7 +262,7 @@ export default function FacturacionPage() {
           setFacturaSeleccionada(null);
         }}
         contratoParaPago={facturaSeleccionada ? {
-          consecutivo: facturaSeleccionada.id.replace('#FAC-', ''),
+          consecutivo: String(facturaSeleccionada.id || "").replace('#FAC-', ''),
           clienteNombre: facturaSeleccionada.cliente,
           total: facturaSeleccionada.total,
           totalPagado: 0
