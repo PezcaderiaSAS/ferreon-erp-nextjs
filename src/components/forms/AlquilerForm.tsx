@@ -353,7 +353,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                           key={c.id} 
                           className="px-3.5 py-2.5 text-xs text-slate-700 hover:bg-slate-50 cursor-pointer flex justify-between items-center transition-colors"
                           onClick={() => {
-                            setClienteId(c.id);
+                            setClienteId(String(c.id));
                             setClientSearchTerm('');
                             setIsClientDropdownOpen(false);
                           }}

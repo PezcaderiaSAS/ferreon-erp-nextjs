@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import * as z from 'zod';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
-import { Equipo } from '../../../core/domain/entities/equipo';
+import { EquipoUI } from '../../../infrastructure/state/bodegaStore';
 import { useBodegaStore } from '../../../infrastructure/state/bodegaStore';
 import { generateIdempotencyKey } from '../../../lib/utils/idempotency';
 
@@ -18,7 +18,7 @@ const editEquipoSchema = z.object({
 interface EditarEquipoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  equipo: Equipo | null;
+  equipo: EquipoUI | null;
 }
 
 export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModalProps) {
@@ -104,10 +104,11 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
     setIsSubmitting(true);
     try {
       const idempotencyKey = generateIdempotencyKey('edit_eq');
-      const updated: Equipo = {
+      const updated: EquipoUI = {
         ...equipo,
         nombre: validation.data.nombre,
         categoria: validation.data.categoria,
+        tarifa_diaria: validation.data.tarifaDiaria,
         tarifaDiaria: validation.data.tarifaDiaria,
         estado: validation.data.estado
       };

@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 import { supabaseClient } from '../persistence/supabase/client';
 import { useBodegaStore } from './bodegaStore';
 import { useAlquilerStore } from './alquilerStore';
-import { Equipo } from '../../core/domain/entities/equipo';
-import { AlquilerEntity } from '../../core/domain/entities/alquiler';
+import { EquipoUI } from './bodegaStore';
+import { AlquilerUI } from './alquilerStore';
 
 /**
  * Servicio de sincronización en tiempo real con Supabase Realtime (WebSockets)
@@ -28,34 +28,43 @@ export function setupRealtimeSubscriptions() {
         const bodegaState = useBodegaStore.getState();
 
         if (eventType === 'INSERT' && newRecord) {
-          const equipo: Equipo = {
+          const equipo: EquipoUI = {
             id: newRecord.id,
+            codigo: newRecord.sku || newRecord.codigo || 'EQ-NEW',
             sku: newRecord.sku || newRecord.codigo || 'EQ-NEW',
             nombre: newRecord.nombre,
             categoria: newRecord.categoria,
+            tarifa_diaria: Number(newRecord.tarifa_diaria || newRecord.tarifaDiaria || 0),
             tarifaDiaria: Number(newRecord.tarifa_diaria || newRecord.tarifaDiaria || 0),
+            stock_total: Number(newRecord.stock_total || newRecord.stockTotal || 0),
             stockTotal: Number(newRecord.stock_total || newRecord.stockTotal || 0),
+            stock_disponible: Number(newRecord.stock_disponible || newRecord.stockDisponible || 0),
             stockDisponible: Number(newRecord.stock_disponible || newRecord.stockDisponible || 0),
+            stock_en_obra: Number(newRecord.stock_en_obra || newRecord.stockEnObra || 0),
             stockEnObra: Number(newRecord.stock_en_obra || newRecord.stockEnObra || 0),
-            estado: (newRecord.estado as any) || 'Disponible',
-            creado_en: new Date(newRecord.created_at || Date.now()),
+            estado: (newRecord.estado as string) || 'Disponible',
+            created_at: newRecord.created_at || new Date().toISOString(),
           };
-          // Validar si ya existe localmente
           if (!bodegaState.equipos.some((e) => e.id === equipo.id)) {
             bodegaState.agregarEquipo(equipo);
           }
         } else if (eventType === 'UPDATE' && newRecord) {
-          const updatedEquipo: Equipo = {
+          const updatedEquipo: EquipoUI = {
             id: newRecord.id,
+            codigo: newRecord.sku || newRecord.codigo || 'EQ-UP',
             sku: newRecord.sku || newRecord.codigo || 'EQ-UP',
             nombre: newRecord.nombre,
             categoria: newRecord.categoria,
+            tarifa_diaria: Number(newRecord.tarifa_diaria || newRecord.tarifaDiaria || 0),
             tarifaDiaria: Number(newRecord.tarifa_diaria || newRecord.tarifaDiaria || 0),
+            stock_total: Number(newRecord.stock_total || newRecord.stockTotal || 0),
             stockTotal: Number(newRecord.stock_total || newRecord.stockTotal || 0),
+            stock_disponible: Number(newRecord.stock_disponible || newRecord.stockDisponible || 0),
             stockDisponible: Number(newRecord.stock_disponible || newRecord.stockDisponible || 0),
+            stock_en_obra: Number(newRecord.stock_en_obra || newRecord.stockEnObra || 0),
             stockEnObra: Number(newRecord.stock_en_obra || newRecord.stockEnObra || 0),
-            estado: (newRecord.estado as any) || 'Disponible',
-            creado_en: new Date(newRecord.created_at || Date.now()),
+            estado: (newRecord.estado as string) || 'Disponible',
+            created_at: newRecord.created_at || new Date().toISOString(),
           };
           bodegaState.updateEquipo(updatedEquipo);
         } else if (eventType === 'DELETE' && oldRecord) {
@@ -76,14 +85,13 @@ export function setupRealtimeSubscriptions() {
         const alquilerState = useAlquilerStore.getState();
 
         if (eventType === 'INSERT' && newRecord) {
-          // Si no existe, lo insertamos
           if (!alquilerState.alquileres.some((a) => a.id === newRecord.id)) {
-            alquilerState.addAlquiler(newRecord as AlquilerEntity);
+            alquilerState.addAlquiler(newRecord as AlquilerUI);
           }
         } else if (eventType === 'UPDATE' && newRecord) {
-          alquilerState.updateAlquiler(newRecord as AlquilerEntity);
+          alquilerState.updateAlquiler(newRecord as AlquilerUI);
         } else if (eventType === 'DELETE' && oldRecord) {
-          alquilerState.removeAlquiler(oldRecord.id);
+          alquilerState.eliminarAlquiler(oldRecord.id);
         }
       }
     )

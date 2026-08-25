@@ -71,15 +71,20 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
       // 1. Optimistic local update in Zustand store with stock
       const newEquipo = {
         id: crypto.randomUUID ? crypto.randomUUID() : `temp_${Date.now()}`,
+        codigo: validation.data.sku,
         sku: validation.data.sku,
         nombre: validation.data.nombre,
         categoria: validation.data.categoria,
+        tarifa_diaria: validation.data.tarifaDiaria,
         tarifaDiaria: validation.data.tarifaDiaria,
+        stock_total: validation.data.stockInicial,
         stockTotal: validation.data.stockInicial,
+        stock_disponible: validation.data.stockInicial,
         stockDisponible: validation.data.stockInicial,
+        stock_en_obra: 0,
         stockEnObra: 0,
         estado: 'Disponible' as const,
-        creado_en: new Date()
+        created_at: new Date().toISOString(),
       };
       agregarEquipo(newEquipo, idempotencyKey);
 

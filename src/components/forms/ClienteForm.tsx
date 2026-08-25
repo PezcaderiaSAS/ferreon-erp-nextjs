@@ -56,16 +56,21 @@ export function ClienteForm({ onSuccess, onCancel }: ClienteFormProps) {
 
     setIsSubmitting(true);
     try {
-      const nuevoCliente: Cliente = {
+      const nuevoCliente = {
         id: Math.random().toString(36).substr(2, 9),
+        nit_cedula: validation.data.nit,
         nit: validation.data.nit,
         nombre: validation.data.nombre,
+        telefono: validation.data.contacto,
         contacto: validation.data.contacto,
+        email: '',
+        direccion: '',
+        estado: 'Activo',
         nivel_riesgo: validation.data.nivel_riesgo,
-        creado_en: new Date()
+        created_at: new Date().toISOString(),
       };
       
-      useClienteStore.getState().agregarCliente(nuevoCliente);
+      useClienteStore.getState().agregarCliente(nuevoCliente as any);
       onSuccess();
     } catch (error) {
       idempotencyManager.removeKey(idempotencyKey);

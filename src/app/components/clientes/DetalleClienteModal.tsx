@@ -63,15 +63,15 @@ export function DetalleClienteModal({
   const alquileresDelCliente = useMemo(() => {
     if (!cliente) return [];
     return alquileres.filter(
-      (a) => a.clienteId === cliente.id || a.clienteNombre?.toLowerCase() === cliente.nombre.toLowerCase()
+      (a) => String(a.cliente_id) === String(cliente.id) || a.clienteNombre?.toLowerCase() === cliente.nombre.toLowerCase()
     );
   }, [alquileres, cliente]);
 
   // Resumen de Cartera Consolidada
   const resumenCartera = useMemo(() => {
-    const totalContratado = alquileresDelCliente.reduce((acc, a) => acc + (a.subtotalGeneralEstimado || a.totalEstimado || 0), 0);
+    const totalContratado = alquileresDelCliente.reduce((acc, a) => acc + (a.subtotal_general || a.total || 0), 0);
     const totalAnticipos = alquileresDelCliente.reduce((acc, a) => acc + (a.deposito || 0), 0);
-    const saldoPendiente = alquileresDelCliente.reduce((acc, a) => acc + (a.totalEstimado || 0), 0);
+    const saldoPendiente = alquileresDelCliente.reduce((acc, a) => acc + (a.total || 0), 0);
     
     return {
       totalContratado,
@@ -109,17 +109,19 @@ export function DetalleClienteModal({
 
     setIsSubmitting(true);
     try {
-      const updated: Cliente = {
+      const updated = {
         ...cliente,
         nombre: validation.data.nombre,
+        nit_cedula: validation.data.nit,
         nit: validation.data.nit,
+        telefono: validation.data.contacto,
         contacto: validation.data.contacto,
-        email: validation.data.email || undefined,
-        direccion: validation.data.direccion || undefined,
+        email: validation.data.email || '',
+        direccion: validation.data.direccion || '',
         nivel_riesgo: validation.data.nivel_riesgo
       };
 
-      updateCliente(updated);
+      updateCliente(updated as any);
       setFeedbackSuccess('✓ Datos del cliente actualizados correctamente.');
       setTimeout(() => setFeedbackSuccess(null), 3500);
     } finally {
@@ -342,7 +344,7 @@ export function DetalleClienteModal({
                         #{alq.id || alq.consecutivo}
                       </td>
                       <td className="py-3 px-3 text-slate-600">
-                        {alq.createdAt ? new Date(alq.createdAt).toLocaleDateString('es-CO') : 'Reciente'}
+                        {alq.created_at ? new Date(alq.created_at).toLocaleDateString('es-CO') : 'Reciente'}
                       </td>
                       <td className="py-3 px-3 text-center">
                         <span className="font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
@@ -350,7 +352,7 @@ export function DetalleClienteModal({
                         </span>
                       </td>
                       <td className="py-3 px-3 text-right font-bold text-slate-800">
-                        ${(alq.totalEstimado || 0).toLocaleString('es-CO')}
+                        ${(alq.total || 0).toLocaleString('es-CO')}
                       </td>
                       <td className="py-3 px-3 text-center">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
