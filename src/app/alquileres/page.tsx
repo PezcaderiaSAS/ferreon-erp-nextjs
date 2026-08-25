@@ -17,7 +17,7 @@ export default function AlquileresPage() {
   const { config: empresaConfig } = useEmpresaStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
-  const [selectedAlquilerForDetalle, setSelectedAlquilerForDetalle] = useState<AlquilerEntity | null>(null);
+  const [selectedAlquilerForDetalle, setSelectedAlquilerForDetalle] = useState<any | null>(null);
   const [filtroEstado, setFiltroEstado] = useState<string>('Todos');
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
