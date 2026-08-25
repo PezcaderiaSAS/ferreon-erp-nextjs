@@ -9,7 +9,7 @@ export class SupabaseEquipoRepository implements EquipoRepository {
     const { data, error } = await this.supabase
       .from('equipos')
       .select('*')
-      .order('creado_en', { ascending: false });
+      .order('id', { ascending: false });
 
     if (error) {
       console.error('Error fetching equipos:', error);
