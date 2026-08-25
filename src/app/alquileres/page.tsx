@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
 import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
 import { AlquilerForm } from '../../components/forms/AlquilerForm';
@@ -62,6 +62,12 @@ export default function AlquileresPage() {
   const formatearMoneda = (valor: number) => {
     return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(valor);
   };
+
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Handlers para Acciones
   const handleRegistrarPago = (monto: number, metodo: string, referencia: string) => {
@@ -229,6 +235,10 @@ export default function AlquileresPage() {
     }
   };
 
+  if (!isMounted) {
+    return <div className="p-8 text-center text-slate-500">Cargando alquileres...</div>;
+  }
+
   return (
     <div className="flex flex-col gap-8 h-full" onClick={() => setActiveDropdown(null)}>
       {/* Header Section */}
@@ -288,7 +298,7 @@ export default function AlquileresPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {alquileresFiltrados.map((alq) => (
+              {alquileresFiltrados.map((alq: any) => (
                 <tr 
                   key={alq.id} 
                   onClick={() => {

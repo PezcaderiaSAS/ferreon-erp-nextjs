@@ -15,6 +15,8 @@ export default function BodegaPage() {
   const { equipos, setEquipos } = useBodegaStore();
   const [loading, setLoading] = useState(false);
 
+  const [isMounted, setIsMounted] = useState(false);
+
   const fetchEquipos = async () => {
     try {
       const repo = new SupabaseEquipoRepository();
@@ -30,8 +32,13 @@ export default function BodegaPage() {
   };
 
   useEffect(() => {
+    setIsMounted(true);
     fetchEquipos();
   }, []);
+
+  if (!isMounted) {
+    return <div className="p-8 text-center text-slate-500">Cargando inventario...</div>;
+  }
 
   const handleOpenEdit = (equipo: Equipo) => {
     setSelectedEquipo(equipo);

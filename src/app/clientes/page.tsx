@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useClienteStore } from '../../infrastructure/state/clienteStore';
 import { Modal } from '../../components/ui/Modal';
 import { ClienteForm } from '../../components/forms/ClienteForm';
@@ -36,6 +36,16 @@ export default function ClientesPage() {
   const totalClientes = clientes.length;
   const clientesBajoRiesgo = clientes.filter(c => c.nivel_riesgo === 'Bajo').length;
   const clientesRiesgoAtencion = clientes.filter(c => c.nivel_riesgo === 'Medio' || c.nivel_riesgo === 'Alto').length;
+
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return <div className="p-8 text-center text-slate-500">Cargando directorio de clientes...</div>;
+  }
 
   return (
     <div className="flex flex-col gap-8 h-full">
