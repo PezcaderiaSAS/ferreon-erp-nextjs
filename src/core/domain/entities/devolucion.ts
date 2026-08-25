@@ -10,7 +10,7 @@ export interface ItemDevolucionDetalle {
 
 export class DevolucionEntity extends BaseAuditableEntity {
   constructor(
-    public readonly id: string,
+    public readonly id: string | number,
     public readonly consecutivo: number,
     public readonly alquilerId: string,
     public readonly fechaDevolucion: Date,

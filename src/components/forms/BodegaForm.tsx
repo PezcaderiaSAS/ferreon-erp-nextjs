@@ -6,7 +6,7 @@ import { CrearEquipoUseCase } from '../../core/application/use-cases/bodega/Crea
 import { SupabaseEquipoRepository } from '../../infrastructure/adapters/SupabaseEquipoRepository';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { Button } from '../ui/Button';
-import { generateIdempotencyKey } from '../../lib/utils/idempotency';
+import { idempotencyManager } from '../../lib/idempotency';
 
 const equipoSchema = z.object({
   sku: z.string().min(1, 'El SKU es requerido'),
@@ -31,6 +31,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
   const [stockInicial, setStockInicial] = useState<number>(1);
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [idempotencyKey] = useState(() => idempotencyManager.generateKey());
 
   useEffect(() => {
     const nextSku = generarSiguienteSKU();
@@ -60,8 +61,12 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
       return;
     }
 
+    if (!idempotencyManager.processKey(idempotencyKey)) {
+      console.warn("Transacción bloqueada por IdempotencyManager (doble clic detectado)");
+      return;
+    }
+
     setIsSubmitting(true);
-    const idempotencyKey = generateIdempotencyKey('eq');
     try {
       // 1. Optimistic local update in Zustand store with stock
       const newEquipo = {
@@ -93,6 +98,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
 
       onSuccess();
     } catch (error) {
+      idempotencyManager.removeKey(idempotencyKey);
       console.error('Error al crear equipo:', error);
     } finally {
       setIsSubmitting(false);

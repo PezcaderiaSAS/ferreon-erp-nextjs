@@ -8,7 +8,7 @@ import { CrearAlquilerUseCase } from '../../core/application/use-cases/crear-alq
 import { EditarAlquilerUseCase } from '../../core/application/use-cases/editar-alquiler.use-case';
 import { ZustandAlquilerRepository } from '../../infrastructure/adapters/ZustandAlquilerRepository';
 import { Button } from '../ui/Button';
-import { generateIdempotencyKey } from '../../lib/utils/idempotency';
+import { idempotencyManager } from '../../lib/idempotency';
 
 const alquilerSchema = z.object({
   clienteId: z.string().min(1, 'Debe seleccionar un cliente'),
@@ -60,6 +60,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
   
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
+  const [idempotencyKey] = useState(() => idempotencyManager.generateKey());
 
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -108,10 +109,15 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
 
   const filteredClientes = useMemo(() => {
     return clientes.filter(c => 
-      c.nombre.toLowerCase().includes(clientSearchTerm.toLowerCase()) || 
-      c.nit.includes(clientSearchTerm)
+      c.estado === 'Activo' &&
+      (c.nombre.toLowerCase().includes(clientSearchTerm.toLowerCase()) || 
+      (c.nit || '').includes(clientSearchTerm))
     );
   }, [clientes, clientSearchTerm]);
+
+  const equiposActivos = useMemo(() => {
+    return equipos.filter(e => e.estado !== 'Inactivo');
+  }, [equipos]);
 
   const selectedCliente = clientes.find(c => c.id === clienteId);
 
@@ -204,15 +210,19 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
       return;
     }
 
+    if (!idempotencyManager.processKey(idempotencyKey)) {
+      console.warn("Transacción bloqueada por IdempotencyManager (doble clic detectado)");
+      return;
+    }
+
     setIsSubmitting(true);
-    const idempotencyKey = generateIdempotencyKey('alq');
     try {
       const repo = new ZustandAlquilerRepository();
       const cliente = clientes.find(c => c.id === validation.data.clienteId);
       
       const itemsConDetalles = validation.data.items.map(item => {
-        const equipo = equipos.find(e => e.id === item.itemId);
-        if (!equipo) throw new Error("Equipo no encontrado");
+        const equipo = equiposActivos.find(e => e.id === item.itemId);
+        if (!equipo) throw new Error("Equipo no encontrado o inactivo");
         return {
           itemId: item.itemId,
           nombreItem: equipo.nombre,
@@ -255,6 +265,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
 
       onSuccess();
     } catch (err: any) {
+      idempotencyManager.removeKey(idempotencyKey);
       setErrorMsg(err.message || 'Error al guardar el contrato');
     } finally {
       setIsSubmitting(false);
@@ -449,7 +460,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                       value={field.itemId}
                       onChange={(e) => {
                         const eqId = e.target.value;
-                        const equipo = equipos.find(eq => eq.id === eqId);
+                        const equipo = equiposActivos.find(eq => eq.id === eqId);
                         const newItems = [...items];
                         newItems[index] = { 
                           ...newItems[index], 
@@ -461,7 +472,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                       className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none"
                     >
                       <option value="">Seleccione equipo...</option>
-                      {equipos.map(e => {
+                      {equiposActivos.map(e => {
                         const isAvailable = e.stockDisponible > 0;
                         const stockText = isAvailable ? `(${e.stockDisponible} disp.)` : `(Sin stock)`;
                         return (

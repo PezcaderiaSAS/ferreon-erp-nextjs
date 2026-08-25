@@ -5,7 +5,7 @@ export type TipoPago = "ABONO_ALQUILER" | "PAGO_DANOS" | "OTROS";
 
 export class PagoEntity extends BaseAuditableEntity {
   constructor(
-    public readonly id: string,
+    public readonly id: string | number,
     public readonly consecutivoRecibo: number,
     public readonly alquilerId: string,
     public readonly clienteId: string,

@@ -2,7 +2,7 @@ import { BaseAuditableEntity } from "./base-auditable.entity";
 
 export class EquipoEntity extends BaseAuditableEntity {
   constructor(
-    public readonly id: string | undefined,
+    public readonly id: string | number | undefined,
     public codigo: string,
     public nombre: string,
     public categoria: string,
@@ -93,7 +93,7 @@ export class EquipoEntity extends BaseAuditableEntity {
 }
 
 export interface Equipo {
-  id: string;
+  id: string | number;
   sku: string;
   nombre: string;
   categoria: string;

@@ -22,7 +22,7 @@ interface EditarEquipoModalProps {
 }
 
 export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModalProps) {
-  const { updateEquipo, ajustarStock } = useBodegaStore();
+  const { updateEquipo, ajustarStock, inactivarEquipo } = useBodegaStore();
   
   const [nombre, setNombre] = useState('');
   const [categoria, setCategoria] = useState('Construcción');
@@ -35,6 +35,7 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
   const [nuevoStock, setNuevoStock] = useState<number>(0);
   const [motivoAjuste, setMotivoAjuste] = useState<string>('Entrada por Compra / Adquisición');
   const [isAdjustingStock, setIsAdjustingStock] = useState(false);
+  const [isInactivating, setIsInactivating] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -114,6 +115,23 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
       onClose();
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleInactivar = async () => {
+    if (!equipo) return;
+    if (!window.confirm(`¿Estás seguro de que deseas inactivar el equipo ${equipo.nombre}? Esta acción lo ocultará de las listas activas.`)) {
+      return;
+    }
+    
+    setIsInactivating(true);
+    try {
+      await inactivarEquipo(equipo.id);
+      onClose();
+    } catch (error: any) {
+      alert("Error al inactivar el equipo. " + (error.message || "Se aplicó rollback."));
+    } finally {
+      setIsInactivating(false);
     }
   };
 
@@ -311,21 +329,34 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
             </div>
           </div>
 
-          <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 px-4 sm:px-6 py-4 bg-white/95 backdrop-blur-md flex justify-end gap-2 mt-4 pt-3 border-t border-slate-200 z-20 rounded-b-2xl sm:rounded-b-3xl shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              Cerrar
-            </button>
-            <Button
-              type="submit"
-              isLoading={isSubmitting}
-              className="min-w-[150px]"
-            >
-              Guardar Cambios
-            </Button>
+          <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 px-4 sm:px-6 py-4 bg-white/95 backdrop-blur-md flex justify-between gap-2 mt-4 pt-3 border-t border-slate-200 z-20 rounded-b-2xl sm:rounded-b-3xl shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
+            <div>
+              <button
+                type="button"
+                onClick={handleInactivar}
+                disabled={isInactivating}
+                className="px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
+              >
+                {isInactivating ? 'Inactivando...' : 'Inactivar Equipo'}
+              </button>
+            </div>
+            
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Cerrar
+              </button>
+              <Button
+                type="submit"
+                isLoading={isSubmitting}
+                className="min-w-[150px]"
+              >
+                Guardar Cambios
+              </Button>
+            </div>
           </div>
         </form>
       </div>

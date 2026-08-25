@@ -90,3 +90,54 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, nombre, rol, avatarUrl } = body;
+
+    if (!id || !nombre || !rol) {
+      return NextResponse.json({ error: 'ID, nombre y rol son obligatorios' }, { status: 400 });
+    }
+
+    const supabaseAdmin = getAdminClient();
+
+    // 1. Obtener la metadata actual para no sobreescribir otros datos accidentalmente
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(id);
+    
+    if (userError || !user) {
+      return NextResponse.json({ error: userError?.message || 'Usuario no encontrado' }, { status: 404 });
+    }
+
+    const currentMetadata = user.user_metadata || {};
+
+    // 2. Actualizar el usuario
+    const { data, error } = await supabaseAdmin.auth.admin.updateUserById(id, {
+      user_metadata: {
+        ...currentMetadata,
+        nombre,
+        rol,
+        avatarUrl: avatarUrl || currentMetadata.avatarUrl
+      }
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ 
+      mensaje: 'Usuario actualizado exitosamente',
+      usuario: {
+        id: data.user.id,
+        email: data.user.email,
+        nombre: data.user.user_metadata?.nombre,
+        rol: data.user.user_metadata?.rol,
+        avatarUrl: data.user.user_metadata?.avatarUrl,
+      }
+    }, { status: 200 });
+
+  } catch (error: any) {
+    console.error('Error updating user:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  }
+}

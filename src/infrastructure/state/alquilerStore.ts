@@ -1,23 +1,43 @@
 import { create, persist } from '../../lib/zustand';
-import { AlquilerEntity } from '../../core/domain/entities/alquiler';
+
+// Compatibilidad con DB y Front
+export interface AlquilerUI {
+  id: string | number;
+  consecutivo: number;
+  cliente_id: string | number;
+  clienteNombre?: string;
+  estado: string;
+  subtotal_equipos: number;
+  flete_entrega: number;
+  flete_recogida: number;
+  subtotal_general: number;
+  total: number;
+  deposito: number;
+  garantia_monto: number;
+  garantia_tipo: string;
+  garantia_estado: string;
+  observaciones?: string;
+  detalles_logistica?: string;
+  detalles: any[];
+  created_at: string;
+}
 
 interface AlquilerStore {
-  alquileres: AlquilerEntity[];
+  alquileres: AlquilerUI[];
   idempotencyKeys: string[];
-  setAlquileres: (alquileres: AlquilerEntity[]) => void;
-  addAlquiler: (alquiler: AlquilerEntity, idempotencyKey?: string) => boolean;
-  updateAlquiler: (alquiler: AlquilerEntity, idempotencyKey?: string) => boolean;
-  removeAlquiler: (id: string, idempotencyKey?: string) => boolean;
-  restoreSnapshot: (previousAlquileres: AlquilerEntity[]) => void;
+  setAlquileres: (alquileres: AlquilerUI[]) => void;
+  addAlquiler: (alquiler: AlquilerUI, idempotencyKey?: string) => boolean;
+  updateAlquiler: (alquiler: AlquilerUI, idempotencyKey?: string) => boolean;
+  eliminarAlquiler: (id: string | number) => Promise<void>;
+  restoreSnapshot: (previousAlquileres: AlquilerUI[]) => void;
 }
 
 const MAX_IDEMPOTENCY_KEYS = 50;
-const ALQUILERES_INICIALES: AlquilerEntity[] = [];
 
 export const useAlquilerStore = create<AlquilerStore>()(
   persist(
     (set, get) => ({
-      alquileres: ALQUILERES_INICIALES,
+      alquileres: [],
       idempotencyKeys: [],
 
       setAlquileres: (alquileres) => set({ alquileres }),
@@ -58,22 +78,24 @@ export const useAlquilerStore = create<AlquilerStore>()(
         return true;
       },
 
-      removeAlquiler: (id, idempotencyKey) => {
+      eliminarAlquiler: async (id: string | number) => {
         const state = get();
-        if (idempotencyKey && state.idempotencyKeys.includes(idempotencyKey)) {
-          console.warn(`[AlquilerStore] Transacción duplicada bloqueada por Idempotencia: ${idempotencyKey}`);
-          return false;
-        }
+        const previousAlquileres = state.alquileres;
 
-        const newKeys = idempotencyKey 
-          ? [...state.idempotencyKeys.slice(-MAX_IDEMPOTENCY_KEYS + 1), idempotencyKey]
-          : state.idempotencyKeys;
-
+        // Mutación Optimista: Asumimos éxito
         set({
           alquileres: state.alquileres.filter((a) => a.id !== id),
-          idempotencyKeys: newKeys,
         });
-        return true;
+
+        try {
+          const res = await fetch(`/api/alquileres/${id}`, { method: 'DELETE' });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || 'Error al cancelar alquiler');
+        } catch (error) {
+          console.error('Aplicando Rollback optimista tras fallo de API', error);
+          set({ alquileres: previousAlquileres });
+          throw error;
+        }
       },
 
       restoreSnapshot: (previousAlquileres) => {

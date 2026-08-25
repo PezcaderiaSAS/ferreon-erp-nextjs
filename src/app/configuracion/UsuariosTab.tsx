@@ -31,6 +31,7 @@ export function UsuariosTab() {
   const [usuarios, setUsuarios] = useState<UsuarioData[]>([]);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -64,24 +65,26 @@ export function UsuariosTab() {
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
-      const res = await fetch('/api/usuarios', {
-        method: 'POST',
+      const url = '/api/usuarios';
+      const method = editingUserId ? 'PUT' : 'POST';
+      const bodyPayload = editingUserId 
+        ? { id: editingUserId, nombre: formData.nombre, rol: formData.rol, avatarUrl: formData.avatarUrl }
+        : { email: formData.email, nombre: formData.nombre, rol: formData.rol, avatarUrl: formData.avatarUrl };
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          nombre: formData.nombre,
-          rol: formData.rol,
-          avatarUrl: formData.avatarUrl,
-        })
+        body: JSON.stringify(bodyPayload)
       });
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || 'Error al crear el usuario');
+        throw new Error(errorData.error || (editingUserId ? 'Error al actualizar el usuario' : 'Error al crear el usuario'));
       }
 
       await fetchUsuarios(); // Refrescar la lista de usuarios
       setIsCreating(false);
+      setEditingUserId(null);
       setFormData({ nombre: '', email: '', rol: 'ADMIN', avatarUrl: AVATARS[0] });
     } catch (err: any) {
       console.error(err);
@@ -89,6 +92,23 @@ export function UsuariosTab() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEditClick = (usuario: UsuarioData) => {
+    setEditingUserId(usuario.id);
+    setFormData({
+      nombre: usuario.nombre,
+      email: usuario.email,
+      rol: usuario.rol,
+      avatarUrl: usuario.avatarUrl
+    });
+    setIsCreating(true);
+  };
+
+  const handleCancelClick = () => {
+    setIsCreating(false);
+    setEditingUserId(null);
+    setFormData({ nombre: '', email: '', rol: 'ADMIN', avatarUrl: AVATARS[0] });
   };
 
   if (isInitializing) {
@@ -116,7 +136,11 @@ export function UsuariosTab() {
           <p className="text-sm text-slate-500">Administra el acceso y los permisos del sistema.</p>
         </div>
         <button 
-          onClick={() => setIsCreating(true)}
+          onClick={() => {
+            setEditingUserId(null);
+            setFormData({ nombre: '', email: '', rol: 'ADMIN', avatarUrl: AVATARS[0] });
+            setIsCreating(true);
+          }}
           className="px-4 py-2 bg-brand-salmon text-white rounded-lg text-sm font-medium hover:bg-brand-salmonDark transition-colors flex items-center gap-2"
         >
           <span className="material-symbols-outlined text-sm">add</span>
@@ -126,7 +150,7 @@ export function UsuariosTab() {
 
       {isCreating && (
         <form onSubmit={handleSubmit} className="bg-slate-50 rounded-xl border border-slate-200 p-6 flex flex-col gap-6">
-          <h3 className="text-lg font-semibold text-slate-800">Crear Nuevo Usuario</h3>
+          <h3 className="text-lg font-semibold text-slate-800">{editingUserId ? 'Editar Usuario' : 'Crear Nuevo Usuario'}</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
@@ -144,9 +168,10 @@ export function UsuariosTab() {
               <input 
                 type="email" 
                 required 
+                disabled={!!editingUserId}
                 value={formData.email}
                 onChange={e => setFormData({...formData, email: e.target.value})}
-                className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-salmon/50" 
+                className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-salmon/50 disabled:bg-slate-100 disabled:text-slate-500" 
               />
             </div>
             <div className="flex flex-col gap-1 md:col-span-2">
@@ -183,7 +208,7 @@ export function UsuariosTab() {
           <div className="flex justify-end gap-3 mt-4">
             <button 
               type="button" 
-              onClick={() => setIsCreating(false)}
+              onClick={handleCancelClick}
               disabled={isSubmitting}
               className="px-4 py-2 text-slate-600 bg-slate-200 hover:bg-slate-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
             >
@@ -195,7 +220,7 @@ export function UsuariosTab() {
               className="px-4 py-2 bg-brand-salmon text-white rounded-lg text-sm font-medium hover:bg-brand-salmonDark transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {isSubmitting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
-              Crear Usuario
+              {editingUserId ? 'Guardar Cambios' : 'Crear Usuario'}
             </button>
           </div>
         </form>
@@ -228,7 +253,10 @@ export function UsuariosTab() {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button className="text-slate-400 hover:text-brand-salmon transition-colors">
+                  <button 
+                    onClick={() => handleEditClick(u)}
+                    className="text-slate-400 hover:text-brand-salmon transition-colors"
+                  >
                     <span className="material-symbols-outlined text-xl">edit</span>
                   </button>
                 </td>

@@ -31,6 +31,7 @@ export function DetalleClienteModal({
   const [activeTab, setActiveTab] = useState<'info' | 'alquileres' | 'cartera'>('info');
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
   const updateCliente = useClienteStore((state) => state.updateCliente);
+  const inactivarCliente = useClienteStore((state) => state.inactivarCliente);
   const alquileres = useAlquilerStore((state) => state.alquileres);
 
   // Form State
@@ -42,6 +43,7 @@ export function DetalleClienteModal({
   const [nivelRiesgo, setNivelRiesgo] = useState<'Bajo' | 'Medio' | 'Alto'>('Bajo');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isInactivating, setIsInactivating] = useState(false);
 
   useEffect(() => {
     if (cliente) {
@@ -122,6 +124,23 @@ export function DetalleClienteModal({
       setTimeout(() => setFeedbackSuccess(null), 3500);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleInactivar = async () => {
+    if (!cliente) return;
+    if (!window.confirm(`¿Estás seguro de que deseas inactivar al cliente ${cliente.nombre}? Esta acción lo ocultará de las listas activas.`)) {
+      return;
+    }
+    
+    setIsInactivating(true);
+    try {
+      await inactivarCliente(cliente.id);
+      onClose();
+    } catch (error: any) {
+      alert("Error al inactivar el cliente. " + (error.message || "Se aplicó rollback."));
+    } finally {
+      setIsInactivating(false);
     }
   };
 
@@ -395,19 +414,34 @@ export function DetalleClienteModal({
           </div>
         )}
 
-          <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 px-4 sm:px-6 py-4 bg-white/95 backdrop-blur-md border-t border-slate-200 flex justify-end gap-2 mt-8 z-20 rounded-b-2xl sm:rounded-b-3xl shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
-            {activeTab === 'info' && (
-              <Button type="submit" isLoading={isSubmitting}>
-                Guardar Cambios
-              </Button>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              Cerrar Ficha
-            </button>
+          <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 px-4 sm:px-6 py-4 bg-white/95 backdrop-blur-md border-t border-slate-200 flex justify-between gap-2 mt-8 z-20 rounded-b-2xl sm:rounded-b-3xl shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
+            <div>
+              {activeTab === 'info' && (
+                <button
+                  type="button"
+                  onClick={handleInactivar}
+                  disabled={isInactivating}
+                  className="px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
+                >
+                  {isInactivating ? 'Inactivando...' : 'Inactivar Cliente'}
+                </button>
+              )}
+            </div>
+            
+            <div className="flex gap-2">
+              {activeTab === 'info' && (
+                <Button type="submit" isLoading={isSubmitting} onClick={onSubmitInfo}>
+                  Guardar Cambios
+                </Button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Cerrar Ficha
+              </button>
+            </div>
           </div>
       </div>
     </Modal>

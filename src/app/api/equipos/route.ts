@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { redis } from "@/lib/redis";
+import { createServerSupabaseClient } from "@/infrastructure/persistence/supabase/server";
 
 const CrearEquipoSchema = z.object({
   codigo: z.string().min(2, "El código debe tener al menos 2 caracteres"),
   nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
   categoria: z.string().default("GENERAL"),
-  subcategoria: z.string().optional(),
   tarifaDiaria: z.number().min(0, "La tarifa debe ser mayor o igual a 0"),
-  pesoKilos: z.number().min(0, "El peso debe ser mayor o igual a 0").optional(),
   stockTotal: z.number().int().min(1, "El stock total debe ser al menos 1"),
 });
 
@@ -15,66 +15,116 @@ const CargaMasivaSchema = z.object({
   equipos: z.array(CrearEquipoSchema).min(1, "Debe incluir al menos un equipo"),
 });
 
+const CACHE_KEY = "cache:equipos";
+
 export async function GET() {
-  return NextResponse.json({
-    success: true,
-    data: [],
-    message: "Catálogo de bodega e inventario obtenido correctamente",
-  });
+  try {
+    if (redis) {
+      const cached = await redis.get(CACHE_KEY);
+      if (cached) {
+        return NextResponse.json({
+          success: true,
+          data: typeof cached === "string" ? JSON.parse(cached) : cached,
+          message: "Catálogo de bodega obtenido desde caché",
+        });
+      }
+    }
+
+    const supabase = createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from("equipos")
+      .select("*")
+      .is("deleted_at", null)
+      .order("nombre", { ascending: true });
+
+    if (error) throw error;
+
+    if (redis && data) {
+      await redis.set(CACHE_KEY, JSON.stringify(data), { ex: 3600 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: data || [],
+      message: "Catálogo de bodega obtenido desde DB",
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message || "Error al obtener equipos" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const supabase = createServerSupabaseClient();
 
-    // Comprobar si es carga masiva o individual
     if (body.equipos && Array.isArray(body.equipos)) {
       const validatedData = CargaMasivaSchema.parse(body);
-      const procesados = validatedData.equipos.map((item, idx) => ({
-        id: "EQ-BULK-" + (Date.now() + idx),
+      
+      const insertData = validatedData.equipos.map(item => ({
         codigo: item.codigo.trim().toUpperCase(),
         nombre: item.nombre.trim().toUpperCase(),
         categoria: item.categoria.trim().toUpperCase(),
-        subcategoria: (item.subcategoria || "GENERAL").trim().toUpperCase(),
-        tarifaDiaria: item.tarifaDiaria,
-        pesoKilos: item.pesoKilos,
-        stockTotal: item.stockTotal,
-        stockDisponible: item.stockTotal,
-        stockEnObra: 0,
-        activo: true,
-        createdAt: new Date().toISOString(),
+        tarifa_diaria: item.tarifaDiaria,
+        stock_total: item.stockTotal,
+        stock_disponible: item.stockTotal,
+        stock_en_obra: 0,
+        stock_mantenimiento: 0,
+        estado: 'Activo'
       }));
+
+      const { data, error } = await supabase
+        .from("equipos")
+        .insert(insertData)
+        .select();
+
+      if (error) throw error;
+
+      if (redis) await redis.del(CACHE_KEY);
 
       return NextResponse.json(
         {
           success: true,
-          data: procesados,
-          message: `${procesados.length} equipos importados masivamente a bodega`,
+          data,
+          message: `${data.length} equipos importados masivamente a bodega`,
         },
         { status: 201 }
       );
     } else {
-      // Registro individual
       const validatedData = CrearEquipoSchema.parse(body);
-      const nuevoEquipo = {
-        id: "EQ-" + Date.now(),
-        codigo: validatedData.codigo.trim().toUpperCase(),
-        nombre: validatedData.nombre.trim().toUpperCase(),
-        categoria: validatedData.categoria.trim().toUpperCase(),
-        subcategoria: (validatedData.subcategoria || "GENERAL").trim().toUpperCase(),
-        tarifaDiaria: validatedData.tarifaDiaria,
-        pesoKilos: validatedData.pesoKilos,
-        stockTotal: validatedData.stockTotal,
-        stockDisponible: validatedData.stockTotal,
-        stockEnObra: 0,
-        activo: true,
-        createdAt: new Date().toISOString(),
-      };
+      
+      const { data, error } = await supabase
+        .from("equipos")
+        .insert([{
+          codigo: validatedData.codigo.trim().toUpperCase(),
+          nombre: validatedData.nombre.trim().toUpperCase(),
+          categoria: validatedData.categoria.trim().toUpperCase(),
+          tarifa_diaria: validatedData.tarifaDiaria,
+          stock_total: validatedData.stockTotal,
+          stock_disponible: validatedData.stockTotal,
+          stock_en_obra: 0,
+          stock_mantenimiento: 0,
+          estado: 'Activo'
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === "23505") {
+          throw new Error("Ya existe un equipo con este código");
+        }
+        throw error;
+      }
+
+      if (redis) await redis.del(CACHE_KEY);
 
       return NextResponse.json(
         {
           success: true,
-          data: nuevoEquipo,
+          data,
           message: "Equipo registrado en bodega exitosamente",
         },
         { status: 201 }

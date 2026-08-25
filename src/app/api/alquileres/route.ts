@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { redis } from "@/lib/redis";
+import { createServerSupabaseClient } from "@/infrastructure/persistence/supabase/server";
+
+const CACHE_KEY = "cache:alquileres";
 
 const ItemAlquilerSchema = z.object({
-  itemId: z.string().min(1, "El ID del equipo es obligatorio"),
-  nombreItem: z.string().optional(),
+  itemId: z.number().int().or(z.string()).transform(val => Number(val)),
   cantidad: z.number().int().min(1, "La cantidad debe ser mayor a cero"),
   tarifaAplicada: z.number().min(0, "La tarifa debe ser mayor o igual a cero"),
-  pesoKilos: z.number().min(0).optional(),
   diasContratados: z.number().int().min(1, "Los días contratados deben ser al menos 1"),
   fechaInicio: z.string().optional(),
   fechaFin: z.string().optional(),
 });
 
 const CrearAlquilerSchema = z.object({
-  clienteId: z.string().min(1, "El cliente es obligatorio"),
-  clienteNombre: z.string().optional(),
+  clienteId: z.number().int().or(z.string()).transform(val => Number(val)),
   estado: z.enum(["COTIZACION", "ACTIVO", "FINALIZADO", "CANCELADO"]).default("ACTIVO"),
   fleteEntrega: z.number().min(0).default(0),
   fleteRecogida: z.number().min(0).default(0),
@@ -27,11 +28,48 @@ const CrearAlquilerSchema = z.object({
 });
 
 export async function GET() {
-  return NextResponse.json({
-    success: true,
-    data: [],
-    message: "Listado de alquileres obtenido correctamente",
-  });
+  try {
+    if (redis) {
+      const cached = await redis.get(CACHE_KEY);
+      if (cached) {
+        return NextResponse.json({
+          success: true,
+          data: typeof cached === "string" ? JSON.parse(cached) : cached,
+          message: "Listado de alquileres obtenido desde caché",
+        });
+      }
+    }
+
+    const supabase = createServerSupabaseClient();
+    
+    // Para el catálogo, traemos alquileres y sus detalles (y los clientes para el nombre)
+    const { data, error } = await supabase
+      .from("alquileres")
+      .select(`
+        *,
+        clientes ( nombre, nit_cedula ),
+        alquiler_detalles ( * )
+      `)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    if (redis && data) {
+      await redis.set(CACHE_KEY, JSON.stringify(data), { ex: 3600 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: data || [],
+      message: "Listado de alquileres obtenido desde DB",
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message || "Error al obtener alquileres" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: Request) {
@@ -46,49 +84,82 @@ export async function POST(request: Request) {
     const totalFletes = validatedData.fleteEntrega + validatedData.fleteRecogida;
     const subtotalGeneral = subtotalEquipos + totalFletes;
     const total = Math.max(0, subtotalGeneral - validatedData.deposito);
-    const totalPesoKilos = validatedData.items.reduce(
-      (acc, item) => acc + item.cantidad * (item.pesoKilos || 0),
-      0
-    );
 
-    const nuevoAlquiler = {
-      id: "ALQ-" + Date.now(),
-      consecutivo: Math.floor(Math.random() * 900) + 100,
-      clienteId: validatedData.clienteId,
-      clienteNombre: validatedData.clienteNombre,
-      estado: validatedData.estado,
-      subtotalEquipos,
-      fleteEntrega: validatedData.fleteEntrega,
-      fleteRecogida: validatedData.fleteRecogida,
-      subtotalGeneral,
-      total,
-      deposito: validatedData.deposito,
-      garantiaMonto: validatedData.garantiaMonto,
-      garantiaTipo: validatedData.garantiaTipo,
-      garantiaEstado: "Activa",
-      totalPesoKilos,
-      observaciones: validatedData.observaciones,
-      detallesLogistica: validatedData.detallesLogistica,
-      detalles: validatedData.items.map((item, idx) => ({
-        id: "DET-" + (Date.now() + idx),
-        itemId: item.itemId,
-        nombreItem: item.nombreItem,
-        cantidad: item.cantidad,
-        tarifaAplicada: item.tarifaAplicada,
-        pesoKilos: item.pesoKilos,
-        diasContratados: item.diasContratados,
-        subtotalLinea: item.cantidad * item.tarifaAplicada * item.diasContratados,
-        costoDano: 0,
-        devuelto: false,
-        fechaInicio: item.fechaInicio || new Date().toISOString(),
-      })),
-      createdAt: new Date().toISOString(),
-    };
+    const supabase = createServerSupabaseClient();
+
+    // 1. Insertar Cabecera
+    const { data: cabecera, error: errorCabecera } = await supabase
+      .from("alquileres")
+      .insert([{
+        cliente_id: validatedData.clienteId,
+        estado: validatedData.estado,
+        subtotal_equipos: subtotalEquipos,
+        flete_entrega: validatedData.fleteEntrega,
+        flete_recogida: validatedData.fleteRecogida,
+        subtotal_general: subtotalGeneral,
+        total: total,
+        deposito: validatedData.deposito,
+        garantia_monto: validatedData.garantiaMonto,
+        garantia_tipo: validatedData.garantiaTipo,
+        garantia_estado: "Activa",
+        observaciones: validatedData.observaciones || null,
+        detalles_logistica: validatedData.detallesLogistica || null,
+      }])
+      .select()
+      .single();
+
+    if (errorCabecera) throw errorCabecera;
+
+    // 2. Insertar Detalles
+    const detallesToInsert = validatedData.items.map(item => ({
+      alquiler_id: cabecera.id,
+      equipo_id: item.itemId,
+      cantidad: item.cantidad,
+      tarifa_aplicada: item.tarifaAplicada,
+      dias_contratados: item.diasContratados,
+      subtotal_linea: item.cantidad * item.tarifaAplicada * item.diasContratados,
+      fecha_inicio: item.fechaInicio || new Date().toISOString(),
+      fecha_fin: item.fechaFin || null,
+      costo_dano: 0,
+      devuelto: false,
+      cantidad_devuelta: 0,
+    }));
+
+    const { error: errorDetalles } = await supabase
+      .from("alquiler_detalles")
+      .insert(detallesToInsert);
+
+    if (errorDetalles) {
+      // Intento de compensación (Rollback manual) si fallan los detalles
+      await supabase.from("alquileres").delete().eq("id", cabecera.id);
+      throw errorDetalles;
+    }
+
+    // 3. Actualizar stock en obra para cada equipo
+    for (const item of validatedData.items) {
+      // Como no tenemos RPC para transacciones atómicas desde JS puro, hacemos un update por equipo.
+      // Leemos el equipo primero o si confiamos en SQL, usamos un RPC.
+      // Usaremos una aproximación leyendo y actualizando (puede haber race conditions sin RLS/RPC estricto)
+      const { data: eq } = await supabase.from("equipos").select("stock_disponible, stock_en_obra").eq("id", item.itemId).single();
+      if (eq) {
+        await supabase.from("equipos")
+          .update({
+            stock_disponible: eq.stock_disponible - item.cantidad,
+            stock_en_obra: eq.stock_en_obra + item.cantidad,
+          })
+          .eq("id", item.itemId);
+      }
+    }
+
+    if (redis) {
+      await redis.del(CACHE_KEY);
+      await redis.del("cache:equipos"); // El stock cambió
+    }
 
     return NextResponse.json(
       {
         success: true,
-        data: nuevoAlquiler,
+        data: cabecera,
         message: "Contrato de alquiler registrado exitosamente",
       },
       { status: 201 }

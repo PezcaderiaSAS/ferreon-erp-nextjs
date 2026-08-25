@@ -32,7 +32,7 @@ export type Permission =
 
 export class UsuarioEntity extends BaseAuditableEntity {
   constructor(
-    public readonly id: string,
+    public readonly id: string | number,
     public nombre: string,
     public email: string,
     public rol: RoleType,

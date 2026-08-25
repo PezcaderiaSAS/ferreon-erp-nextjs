@@ -35,7 +35,7 @@ export interface AuditDetalleCambio {
 }
 
 export class AuditLogEntity {
-  public readonly id: string;
+  public readonly id: string | number;
   public readonly timestamp: Date;
   public readonly userId: string;
   public readonly userNombre: string;

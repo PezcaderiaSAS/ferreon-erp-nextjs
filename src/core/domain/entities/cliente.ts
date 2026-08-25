@@ -1,7 +1,7 @@
 import { BaseAuditableEntity } from "./base-auditable.entity";
 
 export interface HistorialAlquilerCliente {
-  id: string;
+  id: string | number;
   consecutivo: number;
   fechaInicio: Date;
   estado: string;
@@ -10,7 +10,7 @@ export interface HistorialAlquilerCliente {
 }
 
 export interface HistorialPagoCliente {
-  id: string;
+  id: string | number;
   consecutivoRecibo: number;
   alquilerId: string;
   fechaPago: Date;
@@ -28,7 +28,7 @@ export interface EstadoCarteraCliente {
 
 export class ClienteEntity extends BaseAuditableEntity {
   constructor(
-    public readonly id: string,
+    public readonly id: string | number,
     public nitCedula: string,
     public nombre: string,
     public telefono?: string,
@@ -68,7 +68,7 @@ export class ClienteEntity extends BaseAuditableEntity {
 }
 
 export interface Cliente { 
-  id: string; 
+  id: string | number; 
   nit: string; 
   nombre: string; 
   contacto: string; 

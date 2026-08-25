@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import * as z from 'zod';
 import { useClienteStore } from '../../infrastructure/state/clienteStore';
 import { Cliente } from '../../core/domain/entities/cliente';
+import { idempotencyManager } from '../../lib/idempotency';
 
 const clienteSchema = z.object({
   nit: z.string().min(1, 'El NIT es requerido'),
@@ -24,6 +25,7 @@ export function ClienteForm({ onSuccess, onCancel }: ClienteFormProps) {
   const [nivelRiesgo, setNivelRiesgo] = useState<'Bajo' | 'Medio' | 'Alto'>('Bajo');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [idempotencyKey] = useState(() => idempotencyManager.generateKey());
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +49,11 @@ export function ClienteForm({ onSuccess, onCancel }: ClienteFormProps) {
       return;
     }
 
+    if (!idempotencyManager.processKey(idempotencyKey)) {
+      console.warn("Transacción bloqueada por IdempotencyManager (doble clic detectado)");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const nuevoCliente: Cliente = {
@@ -61,6 +68,7 @@ export function ClienteForm({ onSuccess, onCancel }: ClienteFormProps) {
       useClienteStore.getState().agregarCliente(nuevoCliente);
       onSuccess();
     } catch (error) {
+      idempotencyManager.removeKey(idempotencyKey);
       console.error('Error al crear cliente:', error);
     } finally {
       setIsSubmitting(false);

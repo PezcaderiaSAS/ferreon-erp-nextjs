@@ -19,7 +19,7 @@ export interface ItemAlquilerDetalle {
 
 export class AlquilerEntity extends BaseAuditableEntity {
   constructor(
-    public readonly id: string | undefined,
+    public readonly id: string | number | undefined,
     public readonly consecutivo: number | undefined,
     public readonly clienteId: string,
     public clienteNombre: string | undefined,

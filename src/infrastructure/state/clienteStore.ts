@@ -1,55 +1,56 @@
 import { create, persist } from '../../lib/zustand';
-import { Cliente } from '../../core/domain/entities/cliente';
 
-interface ClienteState {
-  clientes: Cliente[];
-  setClientes: (clientes: Cliente[]) => void;
-  agregarCliente: (cliente: Cliente) => void;
-  updateCliente: (cliente: Cliente) => void;
+// Actualizamos la interfaz para que empate con la estructura de Supabase + estado
+export interface ClienteUI {
+  id: string | number;
+  nit_cedula: string;
+  nombre: string;
+  telefono: string;
+  email: string;
+  direccion: string;
+  estado: string; // 'Activo' | 'Inactivo'
+  created_at: string;
+  // Campos heredados por compatibilidad
+  nit?: string;
+  contacto?: string;
+  nivel_riesgo?: string;
 }
 
-const CLIENTES_INICIALES: Cliente[] = [
-  {
-    id: '1',
-    nit: '900.123.456-1',
-    nombre: 'Constructora Omega S.A.',
-    contacto: '555-0102',
-    email: 'contacto@constructoraomega.com',
-    direccion: 'Calle 100 # 15-20, Bogotá',
-    nivel_riesgo: 'Bajo',
-    creado_en: new Date()
-  },
-  {
-    id: '2',
-    nit: '800.987.654-3',
-    nombre: 'Ingeniería & Proyectos Andes',
-    contacto: '555-0899',
-    email: 'operaciones@andesing.com',
-    direccion: 'Av. El Dorado # 68C-51, Bogotá',
-    nivel_riesgo: 'Medio',
-    creado_en: new Date()
-  },
-  {
-    id: '3',
-    nit: '71.234.567',
-    nombre: 'Juan Carlos Rodríguez',
-    contacto: '310-555-4321',
-    email: 'jcrodriguez@gmail.com',
-    direccion: 'Carrera 7 # 45-12, Bogotá',
-    nivel_riesgo: 'Bajo',
-    creado_en: new Date()
-  }
-];
+interface ClienteState {
+  clientes: ClienteUI[];
+  setClientes: (clientes: ClienteUI[]) => void;
+  agregarCliente: (cliente: ClienteUI) => void;
+  updateCliente: (cliente: ClienteUI) => void;
+  inactivarCliente: (id: string | number) => Promise<void>;
+}
 
 export const useClienteStore = create<ClienteState>()(
   persist(
-    (set) => ({
-      clientes: CLIENTES_INICIALES,
+    (set, get) => ({
+      clientes: [],
       setClientes: (clientes) => set({ clientes }),
       agregarCliente: (cliente) => set((state) => ({ clientes: [...state.clientes, cliente] })),
       updateCliente: (cliente) => set((state) => ({
         clientes: state.clientes.map((c) => (c.id === cliente.id ? cliente : c))
-      }))
+      })),
+      inactivarCliente: async (id: string | number) => {
+        const state = get();
+        const previousClientes = state.clientes;
+
+        // Mutación Optimista: Asumimos que la API tendrá 200 OK
+        set({
+          clientes: state.clientes.filter((c) => c.id !== id), // Opcionalmente filtrar o marcar como Inactivo
+        });
+
+        try {
+          const res = await fetch(`/api/clientes/${id}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error('Error en Soft Delete');
+        } catch (error) {
+          console.error('Aplicando Rollback optimista tras fallo de API', error);
+          // Rollback: restauramos la lista previa si falló la API
+          set({ clientes: previousClientes });
+        }
+      }
     }),
     {
       name: 'cliente-storage',
