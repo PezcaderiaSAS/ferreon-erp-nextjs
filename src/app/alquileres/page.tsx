@@ -10,7 +10,9 @@ import { HistorialDevolucionesModal } from '../components/devoluciones/Historial
 import { RegistrarPagoModal } from '../components/cartera/RegistrarPagoModal';
 import { HistorialPagosModal } from '../components/cartera/HistorialPagosModal';
 import { DetalleAlquilerModal } from '../components/alquileres/DetalleAlquilerModal';
+import { TicketAlquilerModal } from '../components/alquileres/TicketAlquilerModal';
 import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
+import { AlquilerEntity } from '../../core/domain/entities/alquiler';
 
 export default function AlquileresPage() {
   const { alquileres, updateAlquiler } = useAlquilerStore();
@@ -27,6 +29,7 @@ export default function AlquileresPage() {
   const [showPagoModal, setShowPagoModal] = useState<boolean>(false);
   const [showHistorialPagosModal, setShowHistorialPagosModal] = useState<boolean>(false);
   const [contratoActivo, setContratoActivo] = useState<any | null>(null);
+  const [ticketReciente, setTicketReciente] = useState<any | null>(null);
 
   // Estados de Devoluciones y Pagos Mock (en el futuro deben ir en Zustand)
   const [devolucionesGlobal, setDevolucionesGlobal] = useState<any[]>([]);
@@ -104,44 +107,72 @@ export default function AlquileresPage() {
   ) => {
     if (!contratoActivo) return;
 
-    let todosDevueltos = true;
+    const original = alquileres.find(a => a.id === contratoActivo.id);
+    if (!original) return;
+
+    // Clonación profunda de la entidad para mutar de forma segura
+    const contratoActualizado = new AlquilerEntity(
+      original.id, original.consecutivo, original.clienteId, original.clienteNombre,
+      original.estado, original.subtotalEquiposEstimado, original.fleteEntrega,
+      original.fleteRecogida, original.subtotalGeneralEstimado, original.totalEstimado,
+      original.deposito, original.garantiaMonto, original.garantiaTipo, original.garantiaEstado,
+      original.observacionesGenerales, original.detallesLogistica, original.creadoPor,
+      JSON.parse(JSON.stringify(original.detalles)), original.totalReal,
+      original.subtotalEquiposReal, original.subtotalGeneralReal, original.diferencialMonetario,
+      original.createdAt, original.updatedAt, original.deletedAt, original.deletedBy
+    );
+    
     let costoTotalCobrado = 0;
     const detallesDevolucion: any[] = [];
 
-    const contratoActualizado = Object.assign(Object.create(Object.getPrototypeOf(contratoActivo)), contratoActivo);
-    
-    contratoActualizado.detalles = contratoActualizado.detalles.map((it: any) => {
-      const cantDevueltasHoy = cantidades[it.equipoId] || 0;
-      const totalDev = (it.cantidadDevuelta || 0) + cantDevueltasHoy;
-      const costoDano = danos[it.equipoId] || 0;
-      const estaDevuelto = totalDev >= it.cantidad;
-
-      if (!estaDevuelto) todosDevueltos = false;
-
-      if (cantDevueltasHoy > 0 || costoDano > 0) {
-        detallesDevolucion.push({
-          equipoId: it.equipoId,
-          nombreEquipo: it.nombreItem || it.nombre,
-          cantidadDevuelta: cantDevueltasHoy,
-          cantidadDanada: costoDano > 0 ? cantDevueltasHoy : 0, 
-          costoCobrado: costoDano,
-        });
-        costoTotalCobrado += costoDano;
+    Object.keys(cantidades).forEach(equipoId => {
+      const cantDevuelta = cantidades[equipoId] || 0;
+      const costoDano = danos[equipoId] || 0;
+      
+      if (cantDevuelta > 0 || costoDano > 0) {
+        const originalItem = contratoActualizado.detalles.find((i: any) => i.itemId === equipoId && !i.devuelto);
+        if (originalItem) {
+           detallesDevolucion.push({
+             equipoId,
+             nombreEquipo: originalItem.nombreItem,
+             cantidadDevuelta: cantDevuelta,
+             cantidadDanada: costoDano > 0 ? cantDevuelta : 0,
+             costoCobrado: costoDano
+           });
+           costoTotalCobrado += costoDano;
+           
+           if (cantDevuelta > 0) {
+             contratoActualizado.registrarDevolucion(equipoId, cantDevuelta, new Date(), costoDano);
+           } else {
+             originalItem.costoDano = (originalItem.costoDano || 0) + costoDano;
+           }
+        }
       }
-
-      return {
-        ...it,
-        cantidadDevuelta: totalDev,
-        devuelto: estaDevuelto,
-        costoDano: (it.costoDano || 0) + costoDano,
-        fechaDevolucionReal: cantDevueltasHoy > 0 ? new Date() : it.fechaDevolucionReal
-      };
     });
 
+    const todosDevueltos = contratoActualizado.detalles.every((i: any) => i.devuelto);
     if (todosDevueltos && contratoActualizado.estado !== 'CANCELADO') {
       contratoActualizado.finalizar();
-    } else {
-      contratoActualizado.calcularTotalesEstimados();
+    }
+
+    const diferencialMonetario = contratoActualizado.liquidarDevolucion(empresaConfig.diasMinimosAlquiler || 3);
+
+    // Si todo el contrato fue devuelto y hay diferencias, asentarlo en cartera.
+    if (todosDevueltos && diferencialMonetario !== 0) {
+       const tipo = diferencialMonetario > 0 ? "CARGO_EXTRA" : "SALDO_A_FAVOR";
+       const nuevoPagoDif = {
+         id: `PAG-${Date.now()}-DIF`,
+         consecutivo: Math.floor(Math.random() * 90000) + 10000,
+         alquilerId: contratoActivo.id,
+         consecutivoAlquiler: contratoActivo.consecutivo,
+         clienteNombre: contratoActivo.clienteNombre,
+         monto: Math.abs(diferencialMonetario),
+         metodoPago: "Ajuste Sistema",
+         referencia: "Liquidación por Devolución",
+         fecha: new Date().toISOString().split('T')[0],
+         tipoPago: tipo
+       };
+       setPagosGlobal(prev => [nuevoPagoDif, ...prev]);
     }
 
     if (detallesDevolucion.length > 0) {
@@ -385,10 +416,29 @@ export default function AlquileresPage() {
       >
         <AlquilerForm 
           initialData={contratoActivo}
-          onSuccess={() => { setIsModalOpen(false); setContratoActivo(null); }} 
+          onSuccess={(alquiler?: any) => { 
+            setIsModalOpen(false); 
+            if (alquiler && !contratoActivo) {
+              setTicketReciente(alquiler);
+            } else {
+              setContratoActivo(null); 
+            }
+          }} 
           onCancel={() => { setIsModalOpen(false); setContratoActivo(null); }} 
         />
       </Modal>
+
+      <TicketAlquilerModal
+        isOpen={ticketReciente !== null}
+        alquiler={ticketReciente}
+        empresa={empresaConfig}
+        onClose={() => setTicketReciente(null)}
+        onNuevoAlquiler={() => {
+          setTicketReciente(null);
+          setContratoActivo(null);
+          setIsModalOpen(true);
+        }}
+      />
 
       {/* Modal Resumen 360° */}
       <DetalleAlquilerModal

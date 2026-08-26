@@ -9,6 +9,9 @@ import { EditarAlquilerUseCase } from '../../core/application/use-cases/editar-a
 import { ZustandAlquilerRepository } from '../../infrastructure/adapters/ZustandAlquilerRepository';
 import { Button } from '../ui/Button';
 import { idempotencyManager } from '../../lib/idempotency';
+import { Modal } from '../ui/Modal';
+import { ClienteForm } from './ClienteForm';
+import { BodegaForm } from './BodegaForm';
 
 const alquilerSchema = z.object({
   clienteId: z.string().min(1, 'Debe seleccionar un cliente'),
@@ -40,7 +43,7 @@ interface ItemRow {
 
 interface Props {
   initialData?: any;
-  onSuccess: () => void;
+  onSuccess: (alquiler?: any) => void;
   onCancel: () => void;
 }
 
@@ -61,6 +64,9 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
   const [idempotencyKey] = useState(() => idempotencyManager.generateKey());
+  
+  const [isCreandoCliente, setIsCreandoCliente] = useState(false);
+  const [isCreandoEquipo, setIsCreandoEquipo] = useState(false);
 
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -247,9 +253,10 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
           detallesLogistica: validation.data.detallesLogistica,
           items: itemsConDetalles
         });
+        onSuccess();
       } else {
         const useCase = new CrearAlquilerUseCase(repo);
-        await useCase.execute({
+        const nuevoAlquiler = await useCase.execute({
           clienteId: validation.data.clienteId,
           clienteNombre: cliente?.nombre,
           fechaRegistro: validation.data.fechaRegistro,
@@ -262,9 +269,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
           detallesLogistica: validation.data.detallesLogistica,
           items: itemsConDetalles
         });
+        onSuccess(nuevoAlquiler);
       }
-
-      onSuccess();
     } catch (err: any) {
       idempotencyManager.removeKey(idempotencyKey);
       setErrorMsg(err.message || 'Error al guardar el contrato');
@@ -274,8 +280,9 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
   };
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col h-full space-y-6">
-      {/* Wizard Progress Stepper */}
+    <>
+      <form onSubmit={onSubmit} className="flex flex-col h-full space-y-6">
+        {/* Wizard Progress Stepper */}
       <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 sm:p-4">
         <div className="grid grid-cols-3 gap-2">
           {STEPS.map((step) => {
@@ -334,7 +341,10 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Buscador Asistido de Clientes */}
               <div className="flex flex-col gap-1.5 relative">
-                <label className="text-xs font-bold text-slate-700">Cliente / Razón Social *</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-slate-700">Cliente / Razón Social *</label>
+                  <button type="button" onClick={() => setIsCreandoCliente(true)} className="text-[10px] bg-brand-salmon/10 text-brand-salmon px-2 py-0.5 rounded-full font-bold hover:bg-brand-salmon/20 transition-colors flex items-center gap-1">+ Nuevo</button>
+                </div>
                 <div className="relative">
                   <input 
                     type="text"
@@ -443,13 +453,22 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                 <h3 className="text-sm font-bold text-slate-900">Maquinaria y Equipos Solicitados</h3>
                 <p className="text-[11px] text-slate-400">Asigne fechas de inicio y fin estimadas para cada máquina.</p>
               </div>
-              <button 
-                type="button" 
-                onClick={addItemRow} 
-                className="px-3 py-1.5 bg-brand-salmon/10 text-brand-salmon hover:bg-brand-salmon/20 font-bold rounded-xl text-xs transition-colors flex items-center space-x-1.5"
-              >
-                <span>+ Agregar Maquinaria</span>
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  type="button" 
+                  onClick={() => setIsCreandoEquipo(true)} 
+                  className="px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold rounded-xl text-xs transition-colors flex items-center space-x-1.5"
+                >
+                  <span>+ Nuevo Equipo</span>
+                </button>
+                <button 
+                  type="button" 
+                  onClick={addItemRow} 
+                  className="px-3 py-1.5 bg-brand-salmon/10 text-brand-salmon hover:bg-brand-salmon/20 font-bold rounded-xl text-xs transition-colors flex items-center space-x-1.5"
+                >
+                  <span>+ Agregar Maquinaria</span>
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
@@ -680,5 +699,48 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
         </div>
       </div>
     </form>
-  );
+
+    <Modal isOpen={isCreandoCliente} onClose={() => setIsCreandoCliente(false)} title="Crear Cliente" maxWidth="2xl">
+      <ClienteForm 
+        onSuccess={(nuevoCliente) => {
+          if (nuevoCliente && nuevoCliente.id) {
+            setClienteId(String(nuevoCliente.id));
+            setClientSearchTerm('');
+          }
+          setIsCreandoCliente(false);
+        }} 
+        onCancel={() => setIsCreandoCliente(false)} 
+      />
+    </Modal>
+
+    <Modal isOpen={isCreandoEquipo} onClose={() => setIsCreandoEquipo(false)} title="Crear Equipo" maxWidth="2xl">
+      <BodegaForm 
+        onSuccess={(nuevoEquipo) => {
+          if (nuevoEquipo && nuevoEquipo.id) {
+            const newItems = [...items];
+            if (newItems.length > 0 && !newItems[newItems.length - 1].itemId) {
+              newItems[newItems.length - 1] = { 
+                ...newItems[newItems.length - 1], 
+                itemId: String(nuevoEquipo.id), 
+                precioDiario: nuevoEquipo.tarifaDiaria || 0 
+              };
+            } else {
+              newItems.push({ 
+                id: Date.now().toString(), 
+                itemId: String(nuevoEquipo.id), 
+                cantidad: 1, 
+                precioDiario: nuevoEquipo.tarifaDiaria || 0, 
+                fechaInicio: todayStr, 
+                fechaFinEstimada: todayStr 
+              });
+            }
+            setItems(newItems);
+          }
+          setIsCreandoEquipo(false);
+        }} 
+        onCancel={() => setIsCreandoEquipo(false)} 
+      />
+    </Modal>
+  </>
+);
 }

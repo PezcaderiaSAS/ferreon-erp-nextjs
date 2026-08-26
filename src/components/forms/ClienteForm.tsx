@@ -14,7 +14,7 @@ const clienteSchema = z.object({
 });
 
 interface ClienteFormProps {
-  onSuccess: () => void;
+  onSuccess: (cliente?: Cliente) => void;
   onCancel: () => void;
 }
 
@@ -71,7 +71,7 @@ export function ClienteForm({ onSuccess, onCancel }: ClienteFormProps) {
       };
       
       useClienteStore.getState().agregarCliente(nuevoCliente as any);
-      onSuccess();
+      onSuccess(nuevoCliente);
     } catch (error) {
       idempotencyManager.removeKey(idempotencyKey);
       console.error('Error al crear cliente:', error);

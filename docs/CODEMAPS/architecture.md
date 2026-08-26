@@ -1,23 +1,14 @@
-<!-- Generated: 2026-08-25 | Files scanned: ~60 | Token estimate: ~600 -->
-# Arquitectura del Sistema (FerreOn ERP)
+<!-- Generated: 2026-08-26 | Files scanned: ~50 | Token estimate: ~300 -->
+# High-Level Architecture
 
-## Rutas API Principales
-POST /api/auth/callback → Exchange OAuth code for Supabase Session
-GET  /api/usuarios → Admin Client (Service Role) → listUsers()
-GET/POST/PUT/DELETE /api/clientes → Supabase + Upstash Redis Cache (Cache-Aside)
-GET/POST/PUT/DELETE /api/equipos → Supabase + Upstash Redis Cache (Cache-Aside)
-GET/POST/PUT/DELETE /api/alquileres → Supabase + Upstash Redis Cache (Cache-Aside)
+## Overview
+FerreOn-ERP is built using Next.js (App Router) combined with a Hexagonal Architecture pattern to decouple business rules from framework details.
 
-## Archivos Clave
-- `src/middleware.ts` (RBAC routing, Edge runtime)
-- `src/infrastructure/persistence/supabase/server.ts` (SSR Supabase Client)
-- `src/lib/redis.ts` (Upstash Redis Client)
-- `src/lib/idempotency.ts` (IdempotencyManager para evitar double-clicks en UI)
-- `src/infrastructure/state/*Store.ts` (Zustand Stores con Rollback Optimista 0ms)
+## High-Level Boundaries
+- **Domain Layer (`src/core/domain`)**: Core business logic and entities (`AlquilerEntity`, `Cliente`, `Equipo`, `EmpresaConfig`). Enforces critical rules like the *Split Line* technique for partial returns.
+- **Application Layer (`src/core/application`)**: Use cases orchestrating domain entities (e.g., `CrearEquipo`).
+- **Infrastructure Layer (`src/infrastructure`)**: Zustand state stores (`alquilerStore`, `clienteStore`, `bodegaStore`) and Adapters (e.g., Supabase repositories).
+- **Presentation Layer (`src/app`, `src/components`)**: Next.js App Router for views, modular React components for forms and nested modals (On-the-fly creation).
 
-## Dependencias y Servicios Externos
-- Supabase Auth (SSO, Magic Links, Users)
-- PostgreSQL via Supabase (Primary Datastore)
-- Upstash Redis (Serverless Caching)
-- Next.js App Router
-- Zustand (Global State Management)
+## Data Flow
+`User Action (UI)` → `Store (Zustand)` → `Entity (Domain math/rules)` → `Store (Update global state)` → `Adapter (Persistence)`

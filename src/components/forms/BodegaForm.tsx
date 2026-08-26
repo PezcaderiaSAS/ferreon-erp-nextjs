@@ -7,6 +7,7 @@ import { SupabaseEquipoRepository } from '../../infrastructure/adapters/Supabase
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { Button } from '../ui/Button';
 import { idempotencyManager } from '../../lib/idempotency';
+import { Equipo } from '../../core/domain/entities/equipo';
 
 const equipoSchema = z.object({
   sku: z.string().min(1, 'El SKU es requerido'),
@@ -17,7 +18,7 @@ const equipoSchema = z.object({
 });
 
 interface BodegaFormProps {
-  onSuccess: () => void;
+  onSuccess: (equipo?: Equipo) => void;
   onCancel: () => void;
 }
 
@@ -98,10 +99,9 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
           categoria: validation.data.categoria
         });
       } catch (repoErr) {
-        console.warn('[BodegaForm] Supabase fallback/offline mode active:', repoErr);
+        console.error("Error guardando en Supabase, pero el estado local se actualizó:", repoErr);
       }
-
-      onSuccess();
+      onSuccess(newEquipo);
     } catch (error) {
       idempotencyManager.removeKey(idempotencyKey);
       console.error('Error al crear equipo:', error);
