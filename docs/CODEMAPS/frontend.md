@@ -1,18 +1,17 @@
-<!-- Generated: 2026-08-26 | Files scanned: ~50 | Token estimate: ~400 -->
-# Frontend Architecture
+<!-- Generated: 2026-08-26 | Files scanned: 50 | Token estimate: ~800 -->
+# Frontend Architecture (FerreOn ERP)
 
-## Pages (App Router)
-- `src/app/alquileres/page.tsx`: Orchestrates rental contracts and return payments.
-- `src/app/devoluciones/page.tsx`: Specialized view for returns and history.
+## Page Tree (app/)
+- `alquileres/page.tsx` → Orquestación de pagos, facturación y estados de contratos.
+- `devoluciones/page.tsx` → Recepción de andamios y liquidaciones parciales/totales.
 
-## Key Components
-- `src/components/forms/AlquilerForm.tsx`: Complex form managing nested creation (On-the-fly) of Clients and Inventory items without losing state.
-- `src/components/forms/ClienteForm.tsx`: Client creation form.
-- `src/components/forms/BodegaForm.tsx`: Inventory item creation form.
-- `src/components/ui/Modal.tsx`: Reusable modal wrapper allowing nested layers.
+## Key Components (components/)
+- `alquileres/DetalleAlquilerModal.tsx` → UI de desglose financiero (Daños, Fletes, CxC).
+- `clientes/DetalleClienteModal.tsx` → UI de estado de cliente.
+- `bodega/EditarEquipoModal.tsx` → Inventario.
 
-## State Management
-- Zustand is used for global client-side state.
-- `src/infrastructure/state/alquilerStore.ts`: Manages rental contracts array.
-- `src/infrastructure/state/clienteStore.ts`: Manages clients array.
-- `src/infrastructure/state/bodegaStore.ts`: Manages inventory array.
+## Domain Core (core/)
+- `src/core/domain/entities/alquiler.ts` → Lógica de negocio (días calendario, cálculo de daños separados, liquidación de abonos).
+
+## State Management (infrastructure/state)
+- `alquilerStore.ts` (Zustand) → Estado global reactivo con estrategias `sanitizeStore` y clonación estricta sin `JSON.stringify()`.
