@@ -1,39 +1,32 @@
-# Contribuyendo a Alquileres ERP
+# Guía de Contribución para FerreOn ERP
 
-Bienvenido al repositorio de **Alquileres ERP**. Este documento contiene directivas generadas automáticamente sobre el entorno de desarrollo y scripts disponibles.
+Bienvenido a la guía de desarrollo del sistema FerreOn ERP. Siga estas instrucciones para levantar el proyecto localmente y aportar código.
 
-## Comandos Disponibles
+## Entorno de Desarrollo
 
-Extraídos automáticamente de `package.json`:
+1. Clona el repositorio.
+2. Copia el archivo `.env.example` a `.env.local` e inyecta tus credenciales.
+3. Instala dependencias: `npm install` (usar Node >= 18).
+4. Inicia el servidor de desarrollo: `npm run dev`.
 
-| Comando | Descripción (Auto-generada) |
+## Referencia de Scripts (Auto-generada)
+
+<!-- AUTO-GENERATED -->
+| Comando | Descripción (Inferencia) |
 |---------|-------------|
-| `npm run dev` | Inicia el servidor de desarrollo local de Next.js (`next dev`) |
-| `npm run build` | Compila la aplicación Next.js para producción (`next build`) |
-| `npm run start` | Inicia el servidor de producción compilado (`next start`) |
-| `npm run lint` | Ejecuta el linter integrado de Next.js (`next lint`) |
-| `npm run typecheck` | Ejecuta el chequeo estricto de tipos de TypeScript sin emitir archivos (`tsc --noEmit`) |
-| `npm run test` | Ejecuta la suite de pruebas unitarias usando Vitest (`vitest run`) |
-| `npm run test:watch` | Ejecuta Vitest en modo interactivo (`vitest`) |
-| `npm run test:coverage` | Calcula la cobertura de las pruebas con Vitest (`vitest run --coverage`) |
-| `npm run test:e2e` | Ejecuta pruebas End-to-End con Playwright (`playwright test`) |
-| `npm run supabase:gen-types` | Genera los tipos de la BD desde el backend local de Supabase a `database.types.ts` |
-
+| `npm run dev` | Inicia el servidor Next.js en modo desarrollo con recarga en vivo. |
+| `npm run build` | Compila la aplicación Next.js para producción. |
+| `npm run start` | Inicia el servidor de producción con los archivos compilados. |
+| `npm run lint` | Ejecuta ESLint para asegurar la calidad de código. |
+| `npm run typecheck` | Ejecuta TypeScript (`tsc`) sin emitir archivos, solo valida tipos. |
+| `npm run test` | Ejecuta la suite de pruebas unitarias con Vitest. |
+| `npm run test:watch` | Ejecuta Vitest en modo vigilancia para TDD. |
+| `npm run test:coverage`| Ejecuta Vitest generando reporte de cobertura de código. |
+| `npm run test:e2e` | Ejecuta pruebas End-to-End con Playwright. |
+| `npm run supabase:gen-types` | Genera los tipos TS locales conectándose al CLI de Supabase. |
 <!-- AUTO-GENERATED -->
 
-## Variables de Entorno
-
-Basado en la configuración actual del proyecto, se requieren estas variables de entorno en `.env.local`:
-
-| Variable | Requerida | Descripción | Ejemplo |
-|----------|----------|-------------|---------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Sí | URL de tu instancia de Supabase | `https://xxxx.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sí | Llave anónima para acceso del frontend | `eyJh...` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Sí | Llave de administración (Backend/API) | `eyJh...` |
-
-<!-- AUTO-GENERATED -->
-
-## Reglas de Arquitectura
-- **Inmutabilidad:** Evita mutar el estado de Zustand directamente.
-- **Autorización:** Todo acceso restringido debe verificarse en el Middleware a nivel del servidor (Edge).
-- **Tipado Estricto:** Usa Zod para validar entradas antes de guardar en Base de Datos.
+## Estilo de Código (ECC Standards)
+- **Inmutabilidad:** Jamás mutar el estado directamente (usar Zustand o retornar clones en Dominio).
+- **Control de Componentes:** No exceder las 400 líneas.
+- **Testing Obligatorio:** Escribir tests (Vitest) antes de integrar lógica compleja financiera.
