@@ -13,6 +13,7 @@ import { DetalleAlquilerModal } from '../components/alquileres/DetalleAlquilerMo
 import { TicketAlquilerModal } from '../components/alquileres/TicketAlquilerModal';
 import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
 import { AlquilerEntity } from '../../core/domain/entities/alquiler';
+import { alquilerUIToAlquilerEntity, alquilerEntityToAlquilerUI } from '../../lib/mappers';
 
 export default function AlquileresPage() {
   const { alquileres, updateAlquiler, sanitizeStore } = useAlquilerStore();
@@ -117,16 +118,7 @@ export default function AlquileresPage() {
     if (!original) return;
 
     // Clonación profunda de la entidad para mutar de forma segura
-    const contratoActualizado = new AlquilerEntity(
-      original.id, original.consecutivo, original.clienteId, original.clienteNombre,
-      original.estado, original.subtotalEquiposEstimado, original.fleteEntrega,
-      original.fleteRecogida, original.subtotalGeneralEstimado, original.totalEstimado,
-      original.deposito, original.garantiaMonto, original.garantiaTipo, original.garantiaEstado,
-      original.observacionesGenerales, original.detallesLogistica, original.creadoPor,
-      JSON.parse(JSON.stringify(original.detalles)), original.totalReal,
-      original.subtotalEquiposReal, original.subtotalGeneralReal, original.diferencialMonetario,
-      original.createdAt, original.updatedAt, original.deletedAt, original.deletedBy
-    );
+    const contratoActualizado = alquilerUIToAlquilerEntity(JSON.parse(JSON.stringify(original)));
     
     let costoTotalCobrado = 0;
     const detallesDevolucion: any[] = [];
@@ -196,7 +188,7 @@ export default function AlquileresPage() {
       handleRegistrarPago(pagoDanos.monto, pagoDanos.metodo, pagoDanos.referencia);
     }
 
-    updateAlquiler(contratoActualizado);
+    updateAlquiler(alquilerEntityToAlquilerUI(contratoActualizado));
     setShowDevolucionModal(false);
     alert("Devolución procesada correctamente");
   };

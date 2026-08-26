@@ -19,6 +19,7 @@ export interface AlquilerUI {
   observaciones?: string;
   detalles_logistica?: string;
   detalles: any[];
+  totalPagado?: number;
   created_at: string;
 }
 

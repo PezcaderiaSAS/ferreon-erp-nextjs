@@ -151,6 +151,10 @@ export function alquilerUIToAlquilerEntity(ui: AlquilerUI): AlquilerEntity {
     ui.detalles_logistica,
     undefined,
     ui.detalles ?? [],
+    undefined, // totalReal
+    undefined, // subtotalEquiposReal
+    undefined, // subtotalGeneralReal
+    undefined, // diferencialMonetario
     ui.created_at ? new Date(ui.created_at) : undefined
   );
 }

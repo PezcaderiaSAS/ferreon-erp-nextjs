@@ -71,7 +71,7 @@ export function ClienteForm({ onSuccess, onCancel }: ClienteFormProps) {
       };
       
       useClienteStore.getState().agregarCliente(nuevoCliente as any);
-      onSuccess(nuevoCliente);
+      onSuccess(nuevoCliente as any);
     } catch (error) {
       idempotencyManager.removeKey(idempotencyKey);
       console.error('Error al crear cliente:', error);

@@ -86,6 +86,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
         stockEnObra: 0,
         estado: 'Disponible' as const,
         created_at: new Date().toISOString(),
+        creado_en: new Date(),
       };
       agregarEquipo(newEquipo, idempotencyKey);
 
@@ -101,7 +102,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
       } catch (repoErr) {
         console.error("Error guardando en Supabase, pero el estado local se actualizó:", repoErr);
       }
-      onSuccess(newEquipo);
+      onSuccess(newEquipo as unknown as Equipo);
     } catch (error) {
       idempotencyManager.removeKey(idempotencyKey);
       console.error('Error al crear equipo:', error);
