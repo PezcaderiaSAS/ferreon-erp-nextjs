@@ -15,8 +15,12 @@ import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
 import { AlquilerEntity } from '../../core/domain/entities/alquiler';
 
 export default function AlquileresPage() {
-  const { alquileres, updateAlquiler } = useAlquilerStore();
+  const { alquileres, updateAlquiler, sanitizeStore } = useAlquilerStore();
   const { config: empresaConfig } = useEmpresaStore();
+
+  useEffect(() => {
+    sanitizeStore();
+  }, [sanitizeStore]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [selectedAlquilerForDetalle, setSelectedAlquilerForDetalle] = useState<any | null>(null);
@@ -90,10 +94,12 @@ export default function AlquileresPage() {
     
     setPagosGlobal(prev => [nuevoPago, ...prev]);
 
-    // Actualizar Alquiler (Simulando mutación)
+    // Actualizar Alquiler (Clon inmutable)
     const currentPagado = contratoActivo.totalPagado || 0;
-    const contratoActualizado = Object.assign(Object.create(Object.getPrototypeOf(contratoActivo)), contratoActivo);
-    contratoActualizado.totalPagado = currentPagado + monto;
+    const contratoActualizado = { 
+      ...contratoActivo, 
+      totalPagado: currentPagado + monto 
+    };
     
     updateAlquiler(contratoActualizado);
     setShowPagoModal(false);
@@ -229,15 +235,21 @@ export default function AlquileresPage() {
         fechaInicioGeneral: new Date(contrato.createdAt || Date.now()).toLocaleDateString(),
         clienteNombre: contrato.clienteNombre || "Cliente General",
         clienteNit: contrato.clienteDocumento || "222222222",
-        items: contrato.detalles.map((d: any) => ({
-          cantidad: d.cantidad,
-          nombre: d.nombreItem || d.nombre || "Equipo",
-          fechaInicio: new Date(d.fechaInicio || contrato.createdAt || Date.now()).toLocaleDateString(),
-          fechaFin: new Date(d.fechaFin || contrato.createdAt || Date.now()).toLocaleDateString(),
-          dias: d.diasAlquiler || 1,
-          tarifaDiaria: d.valorUnitario || d.tarifaDiaria || 0,
-          subtotal: d.subtotalEstimado || d.subtotal || 0,
-        })),
+        items: contrato.detalles.map((d: any) => {
+          const fInicio = new Date(d.fechaInicio || contrato.createdAt || Date.now()).getTime();
+          const fFin = new Date(d.fechaFinEstimada || d.fechaFin || contrato.createdAt || Date.now()).getTime();
+          const dias = Math.max(1, Math.ceil((fFin - fInicio) / 86400000));
+          const tarifaDiaria = d.tarifaAplicada || 0;
+          return {
+            cantidad: d.cantidad,
+            nombre: d.nombreItem || d.nombre || "Equipo",
+            fechaInicio: new Date(fInicio).toLocaleDateString(),
+            fechaFin: new Date(fFin).toLocaleDateString(),
+            dias: dias,
+            tarifaDiaria: tarifaDiaria,
+            subtotal: d.subtotalLineaReal || d.subtotalLineaEstimado || (tarifaDiaria * dias * d.cantidad) || 0,
+          };
+        }),
         subtotalEquipos: contrato.subtotalEquiposEstimado || contrato.subtotalEquipos || 0,
         fleteEntrega: contrato.costoEnvio || 0,
         fleteRecogida: contrato.costoRecoleccion || 0,
@@ -344,7 +356,7 @@ export default function AlquileresPage() {
                     </span>
                   </td>
                   <td className="py-3 px-4 text-sm text-slate-900 font-semibold group-hover:text-brand-salmon transition-colors">
-                    {alq.cliente_nombre || 'Sin Nombre'}
+                    {alq.clienteNombre || 'Sin Nombre'}
                   </td>
                   <td className="py-3 px-4 text-sm text-slate-600">{new Date(alq.created_at || Date.now()).toLocaleDateString('es-CO')}</td>
                   <td className="py-3 px-4 text-sm font-bold text-slate-800">{formatearMoneda(alq.total || 0)}</td>

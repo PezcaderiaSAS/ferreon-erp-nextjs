@@ -43,11 +43,12 @@ export function DetalleAlquilerModal({
                 <h3 className="text-lg font-bold text-white">{alquiler.clienteNombre || 'Cliente General'}</h3>
                 <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                   alquiler.estado === 'ACTIVO' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+                  alquiler.estado === 'FINALIZADO' && (alquiler.total || 0) - (alquiler.totalPagado || 0) > 0 ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' :
                   alquiler.estado === 'FINALIZADO' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
                   alquiler.estado === 'COTIZACION' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
                   'bg-red-500/20 text-red-300 border border-red-500/30'
                 }`}>
-                  {alquiler.estado}
+                  {alquiler.estado === 'FINALIZADO' && (alquiler.total || 0) - (alquiler.totalPagado || 0) > 0 ? 'FINALIZADO (CxC PENDIENTE)' : alquiler.estado}
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -161,6 +162,12 @@ export function DetalleAlquilerModal({
                 <span>Fletes (Entrega + Recogida)</span>
                 <span className="font-semibold">${totalFletes.toLocaleString('es-CO')}</span>
               </div>
+              {((alquiler as any).totalDanosCobrados || 0) > 0 && (
+                <div className="flex justify-between text-brand-salmon">
+                  <span>Cargos por Daños a Equipos</span>
+                  <span className="font-semibold">${((alquiler as any).totalDanosCobrados).toLocaleString('es-CO')}</span>
+                </div>
+              )}
               <div className="flex justify-between text-emerald-400">
                 <span>Anticipo / Depósito Pagado</span>
                 <span className="font-semibold">-${(alquiler.deposito || 0).toLocaleString('es-CO')}</span>

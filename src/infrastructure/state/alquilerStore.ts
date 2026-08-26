@@ -30,6 +30,7 @@ interface AlquilerStore {
   updateAlquiler: (alquiler: AlquilerUI, idempotencyKey?: string) => boolean;
   eliminarAlquiler: (id: string | number) => Promise<void>;
   restoreSnapshot: (previousAlquileres: AlquilerUI[]) => void;
+  sanitizeStore: () => void;
 }
 
 const MAX_IDEMPOTENCY_KEYS = 50;
@@ -101,6 +102,72 @@ export const useAlquilerStore = create<AlquilerStore>()(
       restoreSnapshot: (previousAlquileres) => {
         console.info('[AlquilerStore] Ejecutando Rollback Optimista...');
         set({ alquileres: previousAlquileres });
+      },
+
+      sanitizeStore: () => {
+        const state = get();
+        let modified = false;
+        
+        const sanitized = state.alquileres.map((alq) => {
+          let updated = false;
+          const clone = { ...alq };
+
+          if (!clone.id || String(clone.id) === 'ALQ-NaN' || String(clone.id).trim() === '') {
+            clone.id = `ALQ-${Math.floor(1000 + Math.random() * 9000)}`;
+            updated = true;
+          }
+
+          if (!clone.created_at || new Date(clone.created_at).toString() === 'Invalid Date') {
+            clone.created_at = new Date().toISOString();
+            updated = true;
+          }
+
+          if (clone.detalles && Array.isArray(clone.detalles)) {
+            let calcSubtotalEquipos = 0;
+            clone.detalles = clone.detalles.map((d: any) => {
+              const tarifa = d.tarifaAplicada || d.valorUnitario || d.precioDiario || d.tarifaDiaria || 0;
+              let fInicio = d.fechaInicio || clone.created_at;
+              let fFin = d.fechaFinEstimada || d.fechaFin || clone.created_at;
+              
+              const isValidDate = (dString: string) => !isNaN(new Date(dString).getTime());
+              const isoInicio = isValidDate(fInicio) ? new Date(fInicio).toISOString() : new Date().toISOString();
+              const isoFin = isValidDate(fFin) ? new Date(fFin).toISOString() : new Date().toISOString();
+
+              const dias = Math.max(1, Math.ceil((new Date(isoFin).getTime() - new Date(isoInicio).getTime()) / 86400000));
+              const sub = d.subtotalLineaReal || d.subtotalLineaEstimado || (tarifa * dias * (d.cantidad || 1)) || 0;
+              calcSubtotalEquipos += sub;
+
+              const needsUpdate = d.tarifaAplicada !== tarifa || d.fechaInicio !== isoInicio || d.fechaFinEstimada !== isoFin || d.subtotalLineaEstimado !== sub;
+              if (needsUpdate) updated = true;
+
+              return {
+                ...d,
+                tarifaAplicada: tarifa,
+                fechaInicio: isoInicio,
+                fechaFinEstimada: isoFin,
+                subtotalLineaEstimado: sub
+              };
+            });
+
+            const calcSubtotalGeneral = calcSubtotalEquipos + (clone.flete_entrega || 0) + (clone.flete_recogida || 0);
+            const calcTotal = Math.max(0, calcSubtotalGeneral - (clone.deposito || 0));
+
+            if (clone.subtotal_equipos !== calcSubtotalEquipos || clone.total !== calcTotal) {
+              clone.subtotal_equipos = calcSubtotalEquipos;
+              clone.subtotal_general = calcSubtotalGeneral;
+              clone.total = calcTotal;
+              updated = true;
+            }
+          }
+
+          if (updated) modified = true;
+          return clone;
+        });
+
+        if (modified) {
+          console.info('[AlquilerStore] Sanitando datos corruptos en el storage local...');
+          set({ alquileres: sanitized });
+        }
       }
     }),
     {

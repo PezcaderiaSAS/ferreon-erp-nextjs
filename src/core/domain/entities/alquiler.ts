@@ -20,6 +20,12 @@ export interface ItemAlquilerDetalle {
 }
 
 export class AlquilerEntity extends BaseAuditableEntity {
+  public totalDanosCobrados: number = 0;
+
+  private _truncarAMedianoche(fecha: Date): number {
+    return new Date(fecha.getTime()).setHours(0, 0, 0, 0);
+  }
+
   constructor(
     public readonly id: string | number | undefined,
     public readonly consecutivo: number | undefined,
@@ -157,28 +163,33 @@ export class AlquilerEntity extends BaseAuditableEntity {
 
   liquidarDevolucion(diasMinimosConfig: number): number {
     let subtotalEquiposReal = 0;
+    let totalDanosCobrados = 0;
     
     this.detalles.forEach(item => {
       let diasReales = diasMinimosConfig;
+      const fInicioMedianoche = this._truncarAMedianoche(item.fechaInicio);
+
       if (item.devuelto && item.fechaDevolucionReal) {
-        const msDiff = item.fechaDevolucionReal.getTime() - item.fechaInicio.getTime();
+        const msDiff = this._truncarAMedianoche(item.fechaDevolucionReal) - fInicioMedianoche;
         const diasCalculados = Math.max(1, Math.ceil(msDiff / (1000 * 3600 * 24)));
         diasReales = Math.max(diasMinimosConfig, diasCalculados);
       } else {
         // Aún no devuelto, usamos la fecha actual proyectada
-        const msDiff = new Date().getTime() - item.fechaInicio.getTime();
+        const msDiff = this._truncarAMedianoche(new Date()) - fInicioMedianoche;
         const diasCalculados = Math.max(1, Math.ceil(msDiff / (1000 * 3600 * 24)));
         diasReales = Math.max(diasMinimosConfig, diasCalculados);
       }
       
       item.diasReales = diasReales;
-      item.subtotalLineaReal = item.tarifaAplicada * item.cantidad * diasReales + (item.costoDano || 0);
+      item.subtotalLineaReal = item.tarifaAplicada * item.cantidad * diasReales;
       subtotalEquiposReal += item.subtotalLineaReal;
+      totalDanosCobrados += (item.costoDano || 0);
     });
 
+    this.totalDanosCobrados = totalDanosCobrados;
     this.subtotalEquiposReal = subtotalEquiposReal;
     const totalFletes = (this.fleteEntrega || 0) + (this.fleteRecogida || 0);
-    this.subtotalGeneralReal = this.subtotalEquiposReal + totalFletes;
+    this.subtotalGeneralReal = this.subtotalEquiposReal + totalFletes + this.totalDanosCobrados;
     this.totalReal = Math.max(0, this.subtotalGeneralReal - (this.deposito || 0));
     
     this.diferencialMonetario = this.totalReal - this.totalEstimado;

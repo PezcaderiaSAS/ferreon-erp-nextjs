@@ -78,7 +78,11 @@ export class CrearAlquilerUseCase {
       dto.detallesLogistica,
       dto.creadoPor,
       detalles,
-      dto.fechaRegistro ? new Date(dto.fechaRegistro) : new Date()
+      undefined, // totalReal
+      undefined, // subtotalEquiposReal
+      undefined, // subtotalGeneralReal
+      undefined, // diferencialMonetario
+      dto.fechaRegistro ? new Date(dto.fechaRegistro) : new Date() // createdAt
     );
 
     return await this.alquilerRepo.save(alquiler);
