@@ -34,13 +34,14 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
 
   if (error) {
     if (error.code === '23505') {
-      throw new Error(`Error de restricción única: Este SKU o llave ya fue registrada (Código: ${error.code})`);
+      return { success: false, error: `Error de restricción única: Este SKU o llave ya fue registrada (Código: ${error.code})` };
     }
-    throw new Error(`Error al guardar equipo en BD: ${error.message}`);
+    console.error('Error Supabase crearEquipoAction:', error);
+    return { success: false, error: `Error al guardar equipo en BD: ${error.message}` };
   }
 
   revalidatePath('/bodega');
-  return data;
+  return { success: true, data };
 }
 
 export interface EditarEquipoInput {
@@ -69,11 +70,12 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
     .single();
 
   if (error) {
-    throw new Error(`Error al editar equipo en BD: ${error.message}`);
+    console.error('Error Supabase editarEquipoAction:', error);
+    return { success: false, error: `Error al editar equipo en BD: ${error.message || JSON.stringify(error)}` };
   }
 
   revalidatePath('/bodega');
-  return data;
+  return { success: true, data };
 }
 
 export async function ajustarStockEquipoAction(equipoId: string, delta: number) {
@@ -90,7 +92,8 @@ export async function ajustarStockEquipoAction(equipoId: string, delta: number) 
     .single();
 
   if (errFetch || !equipo) {
-    throw new Error(`Error al leer equipo para ajustar stock: ${errFetch?.message}`);
+    console.error('Error Supabase ajustarStock (leer):', errFetch);
+    return { success: false, error: `Error al leer equipo para ajustar stock: ${errFetch?.message}` };
   }
 
   const nuevoDisponible = Math.max(0, (equipo.stock_disponible || 0) + delta);
@@ -109,9 +112,10 @@ export async function ajustarStockEquipoAction(equipoId: string, delta: number) 
     .single();
 
   if (error) {
-    throw new Error(`Error al ajustar stock en BD: ${error.message}`);
+    console.error('Error Supabase ajustarStock (update):', error);
+    return { success: false, error: `Error al ajustar stock en BD: ${error.message || JSON.stringify(error)}` };
   }
 
   revalidatePath('/bodega');
-  return data;
+  return { success: true, data };
 }

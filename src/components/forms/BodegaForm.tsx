@@ -97,7 +97,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
       store.agregarEquipo(newEquipo, idempotencyKey);
 
       // 2. Ejecutar Action (Server-Side)
-      const guardado = await crearEquipoAction({
+      const result = await crearEquipoAction({
         sku: validation.data.sku,
         nombre: validation.data.nombre,
         categoria: validation.data.categoria,
@@ -106,8 +106,12 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
         idempotency_key: idempotencyKey
       });
 
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
       // 3. Update real ID
-      const finalEquipo = { ...newEquipo, id: guardado.id };
+      const finalEquipo = { ...newEquipo, id: result.data.id };
       store.updateEquipo(finalEquipo);
       
       onSuccess(finalEquipo as unknown as Equipo);

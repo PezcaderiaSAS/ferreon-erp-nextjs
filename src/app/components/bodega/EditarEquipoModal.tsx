@@ -75,7 +75,11 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
       ajustarStock(equipo.id, nuevoStock, motivoAjuste);
       
       // 2. Base de datos
-      await ajustarStockEquipoAction(equipo.id.toString(), stockDelta);
+      const result = await ajustarStockEquipoAction(equipo.id.toString(), stockDelta);
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
       
       setFeedbackMsg(`✓ Stock ajustado con éxito a ${nuevoStock} unidades.`);
       setStockDelta(0);
@@ -129,14 +133,18 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
       updateEquipo(updated, idempotencyKey);
       
       // 2. Base de datos
-      await editarEquipoAction({
+      const result = await editarEquipoAction({
         id: equipo.id.toString(),
         nombre: validation.data.nombre,
         categoria: validation.data.categoria,
         tarifaDiaria: validation.data.tarifaDiaria,
         estado: validation.data.estado,
-        idempotency_key: idempotencyKey
+        idempotency_key: idempotencyKey,
       });
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
       
       onClose();
     } catch (e: any) {
