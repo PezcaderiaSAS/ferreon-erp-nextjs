@@ -26,8 +26,7 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
       stock_total: input.stockInicial,
       stock_disponible: input.stockInicial,
       stock_en_obra: 0,
-      estado: 'Disponible',
-      idempotency_key: input.idempotency_key
+      estado: 'Activo'
     }])
     .select()
     .single();
@@ -62,8 +61,7 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
       nombre: input.nombre,
       categoria: input.categoria,
       tarifa_diaria: input.tarifaDiaria,
-      estado: input.estado,
-      idempotency_key: input.idempotency_key
+      estado: input.estado === 'Mantenimiento' || input.estado === 'En Alquiler' ? 'Activo' : 'Activo', // El check constraint solo admite 'Activo' o 'Inactivo'
     })
     .eq('id', input.id)
     .select()
@@ -87,7 +85,7 @@ export async function ajustarStockEquipoAction(equipoId: string, delta: number) 
   // Obtenemos estado actual
   const { data: equipo, error: errFetch } = await supabase
     .from('equipos')
-    .select('stock_disponible, stock_en_obra')
+    .select('stock_disponible, stock_en_obra, stock_mantenimiento, estado')
     .eq('id', equipoId)
     .single();
 
@@ -97,15 +95,16 @@ export async function ajustarStockEquipoAction(equipoId: string, delta: number) 
   }
 
   const nuevoDisponible = Math.max(0, (equipo.stock_disponible || 0) + delta);
-  const total = nuevoDisponible + (equipo.stock_en_obra || 0);
-  const estadoUi = nuevoDisponible > 0 ? 'Disponible' : ((equipo.stock_en_obra || 0) > 0 ? 'En Alquiler' : 'Mantenimiento');
+  const total = nuevoDisponible + (equipo.stock_en_obra || 0) + (equipo.stock_mantenimiento || 0);
+  
+  // No tocamos el estado aquí porque la base de datos solo admite Activo/Inactivo.
+  // El store mapea el estado visual según los balances de stock.
 
   const { data, error } = await supabase
     .from('equipos')
     .update({
       stock_disponible: nuevoDisponible,
       stock_total: total,
-      estado: estadoUi
     })
     .eq('id', equipoId)
     .select()
