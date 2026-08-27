@@ -10,7 +10,7 @@ describe("AlquilerEntity Domain Tests", () => {
       cantidad: 2,
       tarifaAplicada: 45000,
       
-      fechaFinEstimada: new Date().toISOString(),
+      fechaFinEstimada: new Date(),
       subtotalLineaEstimado: 2 * 45000 * 3, // 270,000
       fechaInicio: new Date("2026-08-18"),
     };
@@ -21,7 +21,7 @@ describe("AlquilerEntity Domain Tests", () => {
       cantidad: 1,
       tarifaAplicada: 25000,
       
-      fechaFinEstimada: new Date().toISOString(),
+      fechaFinEstimada: new Date(),
       subtotalLineaEstimado: 1 * 25000 * 3, // 75,000
       fechaInicio: new Date("2026-08-18"),
     };

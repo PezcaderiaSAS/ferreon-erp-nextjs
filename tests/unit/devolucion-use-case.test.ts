@@ -39,7 +39,7 @@ describe("Use Case: DevolverEquipoUseCase", () => {
       undefined,
       undefined,
       undefined,
-      [itemDetalle]
+      [itemDetalle] as any
     );
 
     const equipo = new EquipoEntity(

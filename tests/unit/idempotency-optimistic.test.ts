@@ -14,7 +14,11 @@ describe('Verificación E2E: Idempotencia, Garbage Collection y Optimistic Rollb
           categoria: 'Construcción',
           estado: 'Disponible',
           tarifaDiaria: 50000,
-          creado_en: new Date(),
+          codigo: '',
+          tarifa_diaria: 50000,
+          stock_total: 1,
+          stock_disponible: 1,
+          stock_en_obra: 0
         },
       ],
       idempotencyKeys: [],
@@ -57,7 +61,11 @@ describe('Verificación E2E: Idempotencia, Garbage Collection y Optimistic Rollb
         categoria: 'Maquinaria',
         estado: 'Disponible' as const,
         tarifaDiaria: 80000,
-        creado_en: new Date(),
+        codigo: '',
+        tarifa_diaria: 80000,
+        stock_total: 1,
+        stock_disponible: 1,
+        stock_en_obra: 0
       };
 
       // Primer click -> Éxito
@@ -106,7 +114,11 @@ describe('Verificación E2E: Idempotencia, Garbage Collection y Optimistic Rollb
         categoria: 'Herramientas',
         estado: 'Disponible',
         tarifaDiaria: 20000,
-        creado_en: new Date(),
+        codigo: '',
+        tarifa_diaria: 20000,
+        stock_total: 1,
+        stock_disponible: 1,
+        stock_en_obra: 0
       });
 
       expect(useBodegaStore.getState().equipos.length).toBe(2);

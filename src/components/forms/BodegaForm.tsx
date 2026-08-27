@@ -2,8 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import * as z from 'zod';
-import { CrearEquipoUseCase } from '../../core/application/use-cases/bodega/CrearEquipo';
-import { SupabaseEquipoRepository } from '../../infrastructure/adapters/SupabaseEquipoRepository';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { Button } from '../ui/Button';
 import { idempotencyManager } from '../../lib/idempotency';
@@ -68,10 +66,16 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
     }
 
     setIsSubmitting(true);
+    
+    // Guardamos snapshot para rollback
+    const store = useBodegaStore.getState();
+    const previousEquipos = [...store.equipos];
+
     try {
       // 1. Optimistic local update in Zustand store with stock
+      const tempId = crypto.randomUUID ? crypto.randomUUID() : `temp_${Date.now()}`;
       const newEquipo = {
-        id: crypto.randomUUID ? crypto.randomUUID() : `temp_${Date.now()}`,
+        id: tempId,
         codigo: validation.data.sku,
         sku: validation.data.sku,
         nombre: validation.data.nombre,
@@ -88,24 +92,31 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
         created_at: new Date().toISOString(),
         creado_en: new Date(),
       };
-      agregarEquipo(newEquipo, idempotencyKey);
+      
+      store.agregarEquipo(newEquipo, idempotencyKey);
 
-      // 2. Persist to Supabase in background
-      try {
-        const repository = new SupabaseEquipoRepository();
-        const useCase = new CrearEquipoUseCase(repository);
-        await useCase.execute({
-          sku: validation.data.sku,
-          nombre: validation.data.nombre,
-          categoria: validation.data.categoria
-        });
-      } catch (repoErr) {
-        console.error("Error guardando en Supabase, pero el estado local se actualizó:", repoErr);
-      }
-      onSuccess(newEquipo as unknown as Equipo);
-    } catch (error) {
+      // 2. Persist to Supabase in background via Server Action
+      const { crearEquipoAction } = await import('../../app/actions/equipos');
+      const guardado = await crearEquipoAction({
+        sku: validation.data.sku,
+        nombre: validation.data.nombre,
+        categoria: validation.data.categoria,
+        tarifaDiaria: validation.data.tarifaDiaria,
+        stockInicial: validation.data.stockInicial,
+        idempotency_key: idempotencyKey
+      });
+
+      // 3. Update real ID
+      const finalEquipo = { ...newEquipo, id: guardado.id };
+      store.updateEquipo(finalEquipo);
+      
+      onSuccess(finalEquipo as unknown as Equipo);
+    } catch (error: any) {
+      // 4. Rollback Optimista
+      store.restoreSnapshot(previousEquipos);
       idempotencyManager.removeKey(idempotencyKey);
       console.error('Error al crear equipo:', error);
+      alert(`No se pudo guardar el equipo en Supabase: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }

@@ -25,7 +25,7 @@ describe("Domain & Application: Enterprise Audit Logging", () => {
     });
 
     expect(log.id).toBeDefined();
-    expect(log.id.startsWith("AUD-")).toBe(true);
+    expect(String(log.id).startsWith("AUD-")).toBe(true);
     expect(log.timestamp).toBeInstanceOf(Date);
     expect(log.userRol).toBe("OPERADOR_BODEGA");
     expect(log.modulo).toBe("BODEGA");

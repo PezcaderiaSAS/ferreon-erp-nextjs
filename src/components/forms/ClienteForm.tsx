@@ -55,9 +55,15 @@ export function ClienteForm({ onSuccess, onCancel }: ClienteFormProps) {
     }
 
     setIsSubmitting(true);
+    
+    // Almacenamos el snapshot previo para el Rollback Optimista
+    const store = useClienteStore.getState();
+    const previousClientes = [...store.clientes];
+    const optimisticId = `temp_${Date.now()}`;
+    
     try {
       const nuevoCliente = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: optimisticId,
         nit_cedula: validation.data.nit,
         nit: validation.data.nit,
         nombre: validation.data.nombre,
@@ -70,11 +76,31 @@ export function ClienteForm({ onSuccess, onCancel }: ClienteFormProps) {
         created_at: new Date().toISOString(),
       };
       
-      useClienteStore.getState().agregarCliente(nuevoCliente as any);
-      onSuccess(nuevoCliente as any);
-    } catch (error) {
+      // 1. Optimistic Update Local
+      store.agregarCliente(nuevoCliente as any);
+      
+      // 2. Network Persist via Server Action
+      const { crearClienteAction } = await import('../../app/actions/clientes');
+      
+      const clienteGuardado = await crearClienteAction({
+        nit_cedula: validation.data.nit,
+        nombre: validation.data.nombre,
+        telefono: validation.data.contacto,
+        nivel_riesgo: validation.data.nivel_riesgo,
+        idempotency_key: idempotencyKey
+      });
+
+      // 3. Update real ID
+      const clienteFinal = { ...nuevoCliente, id: clienteGuardado.id };
+      store.updateCliente(clienteFinal as any);
+
+      onSuccess(clienteFinal as any);
+    } catch (error: any) {
+      // 4. Rollback Optimista
+      store.setClientes(previousClientes);
       idempotencyManager.removeKey(idempotencyKey);
       console.error('Error al crear cliente:', error);
+      alert(`No se pudo guardar el cliente: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }

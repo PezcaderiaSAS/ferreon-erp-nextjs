@@ -42,7 +42,7 @@ describe('EditarAlquilerUseCase', () => {
           
           fechaFinEstimada: new Date().toISOString(),
           fechaInicio: '2026-08-19',
-          fechaFin: '2026-08-22'
+          // fechaFin: '2026-08-22'
         }
       ]
     };

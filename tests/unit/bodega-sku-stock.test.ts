@@ -18,7 +18,11 @@ describe('Suite de Pruebas Unitarias: Bodega, SKU Inteligente y Stock', () => {
           stockTotal: 10,
           stockDisponible: 8,
           stockEnObra: 2,
-          creado_en: new Date()
+          codigo: '',
+          tarifa_diaria: 45000,
+          stock_total: 10,
+          stock_disponible: 8,
+          stock_en_obra: 2
         },
         {
           id: '2',
@@ -30,7 +34,11 @@ describe('Suite de Pruebas Unitarias: Bodega, SKU Inteligente y Stock', () => {
           stockTotal: 25,
           stockDisponible: 5,
           stockEnObra: 20,
-          creado_en: new Date()
+          codigo: '',
+          tarifa_diaria: 12000,
+          stock_total: 25,
+          stock_disponible: 5,
+          stock_en_obra: 20
         }
       ],
       idempotencyKeys: []
@@ -55,7 +63,11 @@ describe('Suite de Pruebas Unitarias: Bodega, SKU Inteligente y Stock', () => {
           stockTotal: 1,
           stockDisponible: 1,
           stockEnObra: 0,
-          creado_en: new Date()
+          codigo: '',
+          tarifa_diaria: 10000,
+          stock_total: 1,
+          stock_disponible: 1,
+          stock_en_obra: 0
         }
       ]
     });

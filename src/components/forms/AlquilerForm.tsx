@@ -4,14 +4,13 @@ import React, { useState, useMemo } from 'react';
 import * as z from 'zod';
 import { useClienteStore } from '../../infrastructure/state/clienteStore';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
-import { CrearAlquilerUseCase } from '../../core/application/use-cases/crear-alquiler.use-case';
-import { EditarAlquilerUseCase } from '../../core/application/use-cases/editar-alquiler.use-case';
-import { ZustandAlquilerRepository } from '../../infrastructure/adapters/ZustandAlquilerRepository';
 import { Button } from '../ui/Button';
 import { idempotencyManager } from '../../lib/idempotency';
 import { Modal } from '../ui/Modal';
 import { ClienteForm } from './ClienteForm';
 import { BodegaForm } from './BodegaForm';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import { ContratoAlquilerPDF } from '../pdf/ContratoAlquilerPDF';
 
 const alquilerSchema = z.object({
   clienteId: z.string().min(1, 'Debe seleccionar un cliente'),
@@ -67,6 +66,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
   
   const [isCreandoCliente, setIsCreandoCliente] = useState(false);
   const [isCreandoEquipo, setIsCreandoEquipo] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [savedAlquilerData, setSavedAlquilerData] = useState<any>(null);
 
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -223,10 +224,15 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
     }
 
     setIsSubmitting(true);
+    
+    // Almacenamos el snapshot previo para el Rollback Optimista
+    const { useAlquilerStore } = await import('../../infrastructure/state/alquilerStore');
+    const store = useAlquilerStore.getState();
+    const previousAlquileres = [...store.alquileres];
+    const optimisticId = initialData ? initialData.id : `temp_${Date.now()}`;
+    
     try {
-      const repo = new ZustandAlquilerRepository();
       const cliente = clientes.find(c => c.id === validation.data.clienteId);
-      
       const itemsConDetalles = validation.data.items.map(item => {
         const equipo = equiposActivos.find(e => e.id === item.itemId);
         if (!equipo) throw new Error("Equipo no encontrado o inactivo");
@@ -240,10 +246,36 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
         };
       });
 
+      // 1. Optimistic Update Local (Simplificado para alquileres UI)
+      const alquilerUi: any = {
+        id: optimisticId,
+        cliente_id: validation.data.clienteId,
+        clienteNombre: cliente?.nombre,
+        flete_entrega: validation.data.fleteEntrega,
+        flete_recogida: validation.data.fleteRecogida,
+        deposito: validation.data.deposito,
+        garantia_monto: validation.data.garantiaMonto,
+        garantia_tipo: validation.data.garantiaTipo,
+        observaciones: validation.data.observaciones,
+        detalles_logistica: validation.data.detallesLogistica,
+        detalles: itemsConDetalles,
+        created_at: validation.data.fechaRegistro,
+        estado: 'ACTIVO',
+      };
+      
       if (initialData) {
-        const useCase = new EditarAlquilerUseCase(repo);
-        await useCase.execute({
+        store.updateAlquiler(alquilerUi);
+      } else {
+        store.addAlquiler(alquilerUi);
+      }
+
+      // 2. Network Persist via Server Action
+      const { crearAlquilerAction, editarAlquilerAction } = await import('../../app/actions/alquileres');
+
+      if (initialData) {
+        await editarAlquilerAction({
           alquilerId: initialData.id,
+          fechaRegistro: validation.data.fechaRegistro,
           fleteEntrega: validation.data.fleteEntrega,
           fleteRecogida: validation.data.fleteRecogida,
           deposito: validation.data.deposito,
@@ -251,12 +283,16 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
           garantiaTipo: validation.data.garantiaTipo,
           observaciones: validation.data.observaciones,
           detallesLogistica: validation.data.detallesLogistica,
-          items: itemsConDetalles
+          items: itemsConDetalles,
+          idempotency_key: idempotencyKey // Optional
         });
-        onSuccess();
+        
+        // Sanitize para calcular los totales en base al payload nuevo
+        store.sanitizeStore();
+        setSavedAlquilerData(alquilerUi);
+        setIsSuccess(true);
       } else {
-        const useCase = new CrearAlquilerUseCase(repo);
-        const nuevoAlquiler = await useCase.execute({
+        const nuevoAlquilerDB = await crearAlquilerAction({
           clienteId: validation.data.clienteId,
           clienteNombre: cliente?.nombre,
           fechaRegistro: validation.data.fechaRegistro,
@@ -267,17 +303,64 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
           garantiaTipo: validation.data.garantiaTipo,
           observaciones: validation.data.observaciones,
           detallesLogistica: validation.data.detallesLogistica,
-          items: itemsConDetalles
+          items: itemsConDetalles,
+          idempotency_key: idempotencyKey
         });
-        onSuccess(nuevoAlquiler);
+        
+        // 3. Update real ID y recalcular subtotales
+        const alquilerFinal = { ...alquilerUi, id: nuevoAlquilerDB.id, consecutivo: nuevoAlquilerDB.consecutivo };
+        store.updateAlquiler(alquilerFinal);
+        store.sanitizeStore();
+        
+        setSavedAlquilerData(alquilerFinal);
+        setIsSuccess(true);
       }
     } catch (err: any) {
+      // 4. Rollback Optimista
+      store.restoreSnapshot(previousAlquileres);
       idempotencyManager.removeKey(idempotencyKey);
+      console.error("Error al guardar alquiler:", err);
       setErrorMsg(err.message || 'Error al guardar el contrato');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (isSuccess && savedAlquilerData) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 space-y-6 text-center">
+        <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-3xl">
+          ✓
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-slate-800">Contrato Guardado Exitosamente</h2>
+          <p className="text-sm text-slate-500 mt-1">
+            El alquiler {savedAlquilerData.consecutivo ? `#${savedAlquilerData.consecutivo}` : ''} ha sido registrado.
+          </p>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-4 mt-4 w-full sm:w-auto">
+          <PDFDownloadLink
+            document={<ContratoAlquilerPDF data={savedAlquilerData} />}
+            fileName={`Contrato_Alquiler_${savedAlquilerData.consecutivo || 'Draft'}.pdf`}
+            className="px-6 py-3 bg-brand-salmon hover:bg-brand-salmonDark text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-2"
+          >
+            <span className="flex items-center space-x-2">
+              <span>📄</span>
+              <span>Descargar Contrato (PDF)</span>
+            </span>
+          </PDFDownloadLink>
+          
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 border border-slate-300 text-slate-600 hover:bg-slate-50 font-bold rounded-xl transition-all"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

@@ -13,7 +13,7 @@ describe("Dominio: EmpresaConfig, Cartera & Pagos", () => {
       "CONSTRUCCIONES SAS",
       150000,
       "TRANSFERENCIA",
-      "REF-BANCOLOMBIA-9988",
+      "ABONO_ALQUILER",
       "Abono parcial 50%"
     );
 

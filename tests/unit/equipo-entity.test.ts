@@ -142,7 +142,7 @@ describe("Domain Entity & Use Cases: Equipo / Inventario", () => {
       nombre: "ANDAMIO MULTIDIRECCIONAL REFORZADO",
       categoria: "ESTRUCTURAS",
       tarifaDiaria: 15000,
-      pesoKilos: 50,
+      // pesoKilos: 50,
       stockTotal: 30, // incremento de 10
     });
 
