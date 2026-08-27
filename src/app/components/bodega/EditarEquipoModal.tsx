@@ -43,7 +43,8 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
       setNombre(equipo.nombre || '');
       setCategoria(equipo.categoria || 'Construcción');
       setTarifaDiaria(equipo.tarifa_diaria || 0);
-      setEstado((equipo.estado as 'Disponible' | 'En Alquiler' | 'Mantenimiento') || 'Disponible');
+      const safeEstado = ['Disponible', 'En Alquiler', 'Mantenimiento'].includes(equipo.estado) ? equipo.estado : 'Disponible';
+      setEstado(safeEstado as 'Disponible' | 'En Alquiler' | 'Mantenimiento');
       setNuevoStock(equipo.stock_disponible || 0);
       setStockDelta(0);
       setFormErrors({});

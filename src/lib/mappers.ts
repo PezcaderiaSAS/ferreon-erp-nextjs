@@ -29,7 +29,7 @@ export function equipoToEquipoUI(equipo: Equipo): EquipoUI {
     stock_total: equipo.stockTotal ?? 0,
     stock_disponible: equipo.stockDisponible ?? 0,
     stock_en_obra: equipo.stockEnObra ?? 0,
-    estado: equipo.estado ?? 'Disponible',
+    estado: (['Disponible', 'En Alquiler', 'Mantenimiento'].includes(equipo.estado as string) ? equipo.estado : 'Disponible') as Equipo['estado'],
     created_at: equipo.creado_en ? new Date(equipo.creado_en).toISOString() : undefined,
     // Retrocompatibilidad camelCase
     sku: equipo.sku,
@@ -53,7 +53,7 @@ export function equipoUIToEquipo(ui: EquipoUI): Equipo {
     stockTotal: ui.stock_total ?? ui.stockTotal ?? 0,
     stockDisponible: ui.stock_disponible ?? ui.stockDisponible ?? 0,
     stockEnObra: ui.stock_en_obra ?? ui.stockEnObra ?? 0,
-    estado: (ui.estado as Equipo['estado']) ?? 'Disponible',
+    estado: (['Disponible', 'En Alquiler', 'Mantenimiento'].includes(ui.estado as string) ? ui.estado : 'Disponible') as Equipo['estado'],
     creado_en: ui.created_at ? new Date(ui.created_at) : new Date(),
   };
 }
