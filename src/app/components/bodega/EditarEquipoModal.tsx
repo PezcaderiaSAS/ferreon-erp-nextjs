@@ -66,21 +66,31 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
     setStockDelta(positiveVal - (equipo.stock_disponible || 0));
   };
 
-  const handleConfirmStockAdjustment = () => {
+  const handleConfirmStockAdjustment = async () => {
     setIsAdjustingStock(true);
+    const equipoOriginal = { ...equipo };
     try {
+      // 1. Optimistic UI (0 Latency)
       ajustarStock(equipo.id, nuevoStock, motivoAjuste);
+      
+      // 2. Base de datos
+      const { ajustarStockEquipoAction } = await import('../../actions/equipos');
+      await ajustarStockEquipoAction(equipo.id, stockDelta);
+      
       setFeedbackMsg(`✓ Stock ajustado con éxito a ${nuevoStock} unidades.`);
       setStockDelta(0);
       setTimeout(() => setFeedbackMsg(null), 3500);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      // 3. Rollback
+      updateEquipo(equipoOriginal);
+      alert(`Error al guardar en base de datos: ${e.message}`);
     } finally {
       setIsAdjustingStock(false);
     }
   };
 
-  const onSubmitGeneral = (e: React.FormEvent) => {
+  const onSubmitGeneral = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormErrors({});
 
@@ -103,6 +113,7 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
     }
 
     setIsSubmitting(true);
+    const equipoOriginal = { ...equipo };
     try {
       const idempotencyKey = generateIdempotencyKey('edit_eq');
       const updated: EquipoUI = {
@@ -113,8 +124,27 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
         tarifaDiaria: validation.data.tarifaDiaria,
         estado: validation.data.estado
       };
+      
+      // 1. Optimistic update
       updateEquipo(updated, idempotencyKey);
+      
+      // 2. Base de datos
+      const { editarEquipoAction } = await import('../../actions/equipos');
+      await editarEquipoAction({
+        id: equipo.id,
+        nombre: validation.data.nombre,
+        categoria: validation.data.categoria,
+        tarifaDiaria: validation.data.tarifaDiaria,
+        estado: validation.data.estado,
+        idempotency_key: idempotencyKey
+      });
+      
       onClose();
+    } catch (e: any) {
+      console.error(e);
+      // 3. Rollback
+      updateEquipo(equipoOriginal);
+      alert(`Error al guardar en base de datos: ${e.message}`);
     } finally {
       setIsSubmitting(false);
     }
