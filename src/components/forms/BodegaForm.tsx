@@ -6,6 +6,7 @@ import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { Button } from '../ui/Button';
 import { idempotencyManager } from '../../lib/idempotency';
 import { Equipo } from '../../core/domain/entities/equipo';
+import { crearEquipoAction } from '../../app/actions/equipos';
 
 const equipoSchema = z.object({
   sku: z.string().min(1, 'El SKU es requerido'),
@@ -95,8 +96,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
       
       store.agregarEquipo(newEquipo, idempotencyKey);
 
-      // 2. Persist to Supabase in background via Server Action
-      const { crearEquipoAction } = await import('../../app/actions/equipos');
+      // 2. Ejecutar Action (Server-Side)
       const guardado = await crearEquipoAction({
         sku: validation.data.sku,
         nombre: validation.data.nombre,

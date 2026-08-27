@@ -7,6 +7,7 @@ import { Button } from '../../../components/ui/Button';
 import { EquipoUI } from '../../../infrastructure/state/bodegaStore';
 import { useBodegaStore } from '../../../infrastructure/state/bodegaStore';
 import { generateIdempotencyKey } from '../../../lib/utils/idempotency';
+import { editarEquipoAction, ajustarStockEquipoAction } from '../../actions/equipos';
 
 const editEquipoSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
@@ -74,8 +75,7 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
       ajustarStock(equipo.id, nuevoStock, motivoAjuste);
       
       // 2. Base de datos
-      const { ajustarStockEquipoAction } = await import('../../actions/equipos');
-      await ajustarStockEquipoAction(equipo.id, stockDelta);
+      await ajustarStockEquipoAction(equipo.id.toString(), stockDelta);
       
       setFeedbackMsg(`✓ Stock ajustado con éxito a ${nuevoStock} unidades.`);
       setStockDelta(0);
@@ -129,9 +129,8 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
       updateEquipo(updated, idempotencyKey);
       
       // 2. Base de datos
-      const { editarEquipoAction } = await import('../../actions/equipos');
       await editarEquipoAction({
-        id: equipo.id,
+        id: equipo.id.toString(),
         nombre: validation.data.nombre,
         categoria: validation.data.categoria,
         tarifaDiaria: validation.data.tarifaDiaria,
