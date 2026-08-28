@@ -15,7 +15,7 @@ export interface AlquilerItemInput {
 export interface CrearAlquilerInput {
   clienteId: string;
   clienteNombre?: string;
-  fechaRegistro: string;
+  fechaRegistro?: string;
   fleteEntrega: number;
   fleteRecogida: number;
   deposito: number;
@@ -24,12 +24,11 @@ export interface CrearAlquilerInput {
   observaciones?: string;
   detallesLogistica?: string;
   items: AlquilerItemInput[];
-  idempotency_key: string;
+  idempotency_key?: string;
 }
 
 export interface EditarAlquilerInput extends Omit<CrearAlquilerInput, 'idempotency_key' | 'clienteId'> {
   alquilerId: string;
-  idempotency_key?: string; // Optional for edit
 }
 
 export async function crearAlquilerAction(input: CrearAlquilerInput) {
