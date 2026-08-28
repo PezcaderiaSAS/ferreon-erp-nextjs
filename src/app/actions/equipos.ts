@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerSupabaseClient } from '../../infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient, createAdminSupabaseClient } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 export interface CrearEquipoInput {
@@ -76,45 +76,42 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
   return { success: true, data };
 }
 
-export async function ajustarStockEquipoAction(equipoId: string, delta: number) {
-  // OJO: Esto requiere tener el stock_disponible y stock_en_obra actuales
-  // Lo más seguro es usar un RPC, pero como no sabemos si hay un RPC "increment_stock",
-  // lo leeremos, y luego lo actualizaremos en la misma transacción (o pseudo-transacción).
-  const supabase = createServerSupabaseClient();
+export async function ajustarStockEquipoAction(equipoId: string, delta: number, idempotencyKey?: string) {
+  // Usar cliente admin (service_role) para operaciones privilegiadas de inventario
+  // que necesitan saltarse RLS y ejecutar RPCs atómicas
+  const supabaseAdmin = createAdminSupabaseClient();
 
-  // Obtenemos estado actual
-  const { data: equipo, error: errFetch } = await supabase
-    .from('equipos')
-    .select('stock_disponible, stock_en_obra, stock_mantenimiento, estado')
-    .eq('id', equipoId)
-    .single();
-
-  if (errFetch || !equipo) {
-    console.error('Error Supabase ajustarStock (leer):', errFetch);
-    return { success: false, error: `Error al leer equipo para ajustar stock: ${errFetch?.message}` };
+  // 1. Validar Idempotencia Fuerte si existe la llave
+  if (idempotencyKey) {
+    const { error: idempError } = await supabaseAdmin
+      .from('idempotency_logs')
+      .insert([{
+        idempotency_key: idempotencyKey,
+        action_type: 'ajuste_stock'
+      }]);
+    
+    // Si la llave ya existe (violación única), abortar silenciosamente
+    if (idempError && idempError.code === '23505') {
+      console.log(`[Idempotency] Duplicado interceptado para llave: ${idempotencyKey}`);
+      return { success: false, error: 'La acción de ajuste ya fue procesada anteriormente.' };
+    }
   }
 
-  const nuevoDisponible = Math.max(0, (equipo.stock_disponible || 0) + delta);
-  const total = nuevoDisponible + (equipo.stock_en_obra || 0) + (equipo.stock_mantenimiento || 0);
-  
-  // No tocamos el estado aquí porque la base de datos solo admite Activo/Inactivo.
-  // El store mapea el estado visual según los balances de stock.
-
-  const { data, error } = await supabase
-    .from('equipos')
-    .update({
-      stock_disponible: nuevoDisponible,
-      stock_total: total,
-    })
-    .eq('id', equipoId)
-    .select()
-    .single();
+  // 2. Ejecutar el RPC Atómico en Supabase (service_role omite RLS)
+  const { data, error } = await supabaseAdmin.rpc('ajustar_stock_equipo', {
+    p_equipo_id: parseInt(equipoId, 10),
+    p_delta: delta
+  });
 
   if (error) {
-    console.error('Error Supabase ajustarStock (update):', error);
+    console.error('Error Supabase ajustarStock RPC:', error);
+    if (error.message && error.message.includes('Stock insuficiente')) {
+      return { success: false, error: 'Stock insuficiente para realizar este ajuste.' };
+    }
     return { success: false, error: `Error al ajustar stock en BD: ${error.message || JSON.stringify(error)}` };
   }
 
   revalidatePath('/bodega');
   return { success: true, data };
 }
+
