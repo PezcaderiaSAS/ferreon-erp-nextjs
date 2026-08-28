@@ -148,6 +148,18 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
       if (!result.success) {
         throw new Error(result.error);
       }
+
+      // Si el usuario cambió el stock pero olvidó darle al botón negro, lo guardamos automáticamente aquí
+      if (stockDelta !== 0) {
+        // Optimistic UI
+        ajustarStock(equipo.id, nuevoStock, motivoAjuste);
+        // Base de datos
+        const stockResult = await ajustarStockEquipoAction(equipo.id.toString(), stockDelta);
+        if (!stockResult.success) {
+           throw new Error(stockResult.error);
+        }
+        setStockDelta(0);
+      }
       
       router.refresh();
       onClose();
