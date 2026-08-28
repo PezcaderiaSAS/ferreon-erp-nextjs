@@ -173,7 +173,15 @@ export const useAlquilerStore = create<AlquilerStore>()(
     }),
     {
       name: 'alquiler-storage',
-      partialize: (state) => ({ alquileres: state.alquileres, idempotencyKeys: state.idempotencyKeys })
+      partialize: (state) => ({ 
+        alquileres: state.alquileres.filter(a => typeof a.id === 'number' || !String(a.id).startsWith('temp_')), 
+        idempotencyKeys: state.idempotencyKeys 
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.alquileres = state.alquileres.filter(a => typeof a.id === 'number' || !String(a.id).startsWith('temp_'));
+        }
+      }
     }
   )
 );
