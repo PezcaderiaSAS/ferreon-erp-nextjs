@@ -428,7 +428,8 @@ export default function AlquileresPage() {
         <AlquilerForm 
           initialData={contratoActivo}
           onSuccess={(alquiler?: any) => { 
-            setIsModalOpen(false); 
+            setIsModalOpen(false);
+            fetchAllData(); 
             if (alquiler && !contratoActivo) {
               setTicketReciente(alquiler);
             } else {

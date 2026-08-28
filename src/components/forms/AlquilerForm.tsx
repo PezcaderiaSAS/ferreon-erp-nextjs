@@ -382,6 +382,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
       if (initialData) {
         const result = await editarAlquilerAction({
           alquilerId: initialData.id,
+          clienteId: validation.data.clienteId,
+          clienteNombre: selectedCliente?.nombre,
           fleteEntrega: validation.data.fleteEntrega,
           fleteRecogida: validation.data.fleteRecogida,
           deposito: validation.data.deposito,
@@ -497,10 +499,10 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
             </button>
             <button
               type="button"
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-slate-200 text-slate-700 hover:bg-slate-300 font-bold rounded-xl text-xs transition-all"
+              onClick={() => onSuccess(savedAlquilerData)}
+              className="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl text-xs transition-all"
             >
-              Finalizar
+              Finalizar y Ver Listado
             </button>
           </div>
         </div>

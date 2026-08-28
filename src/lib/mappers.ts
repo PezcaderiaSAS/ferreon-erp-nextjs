@@ -106,28 +106,59 @@ export function clienteUIToCliente(ui: ClienteUI): Cliente {
  * Convierte un AlquilerEntity (dominio) → AlquilerUI (Zustand store).
  */
 export function alquilerEntityToAlquilerUI(entity: any): AlquilerUI {
+  const clienteNombre = entity.clienteNombre || entity.clientes?.nombre || entity.cliente_nombre || 'Consumidor Final';
+  
+  const detallesMapeados = (entity.detalles && entity.detalles.length > 0)
+    ? entity.detalles
+    : (entity.alquiler_detalles || []).map((d: any) => ({
+        id: d.id,
+        itemId: String(d.equipo_id || d.itemId || ''),
+        equipoId: String(d.equipo_id || d.itemId || ''),
+        nombreItem: d.equipos?.nombre || d.nombreItem || d.nombre || 'Equipo de Construcción',
+        codigo: d.equipos?.codigo || d.equipos?.sku || d.codigo || '',
+        cantidad: d.cantidad || 1,
+        tarifaAplicada: d.tarifa_aplicada ?? d.tarifaAplicada ?? d.valor_unitario ?? 0,
+        valor_unitario: d.tarifa_aplicada ?? d.tarifaAplicada ?? d.valor_unitario ?? 0,
+        diasContratados: d.dias_contratados ?? d.dias ?? 1,
+        fechaInicio: d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (entity.created_at ? new Date(entity.created_at).toISOString().split('T')[0] : ''),
+        fechaFinEstimada: d.fecha_fin ? new Date(d.fecha_fin).toISOString().split('T')[0] : (entity.created_at ? new Date(entity.created_at).toISOString().split('T')[0] : ''),
+        subtotalLineaEstimado: d.subtotal_linea ?? d.subtotalLineaEstimado ?? 0,
+        devuelto: d.devuelto ?? false,
+        cantidadDevuelta: d.cantidad_devuelta ?? 0,
+        costoDano: d.costo_dano ?? 0,
+      }));
+
+  const subtotalEquipos = entity.subtotalEquiposEstimado ?? entity.subtotal_equipos ?? 0;
+  const fleteEntrega = entity.fleteEntrega ?? entity.flete_entrega ?? 0;
+  const fleteRecogida = entity.fleteRecogida ?? entity.flete_recogida ?? 0;
+  const subtotalGeneral = entity.subtotalGeneralEstimado ?? entity.subtotal_general ?? (subtotalEquipos + fleteEntrega + fleteRecogida);
+  const total = entity.totalEstimado ?? entity.total ?? subtotalGeneral;
+  const deposito = entity.deposito ?? 0;
+  const totalPagado = entity.total_pagado ?? entity.totalPagado ?? 0;
+  const saldoPendiente = entity.saldo_pendiente ?? entity.saldoPendiente ?? Math.max(0, total - deposito - totalPagado);
+
   return {
     id: entity.id ?? '',
     consecutivo: entity.consecutivo ?? 0,
     cliente_id: entity.clienteId ?? entity.cliente_id ?? '',
-    clienteNombre: entity.clienteNombre,
-    estado: entity.estado,
-    subtotal_equipos: entity.subtotalEquiposEstimado ?? entity.subtotal_equipos ?? 0,
-    flete_entrega: entity.fleteEntrega ?? entity.flete_entrega ?? 0,
-    flete_recogida: entity.fleteRecogida ?? entity.flete_recogida ?? 0,
-    subtotal_general: entity.subtotalGeneralEstimado ?? entity.subtotal_general ?? 0,
-    total: entity.totalEstimado ?? entity.total ?? 0,
-    deposito: entity.deposito ?? 0,
+    clienteNombre,
+    estado: entity.estado || 'ACTIVO',
+    subtotal_equipos: subtotalEquipos,
+    flete_entrega: fleteEntrega,
+    flete_recogida: fleteRecogida,
+    subtotal_general: subtotalGeneral,
+    total,
+    deposito,
     garantia_monto: entity.garantiaMonto ?? entity.garantia_monto ?? 0,
-    garantia_tipo: entity.garantiaTipo ?? entity.garantia_tipo ?? '',
-    garantia_estado: entity.garantiaEstado ?? entity.garantia_estado ?? '',
-    total_pagado: entity.total_pagado ?? entity.totalPagado ?? 0,
-    saldo_pendiente: entity.saldo_pendiente ?? entity.saldoPendiente ?? Math.max(0, (entity.totalEstimado ?? entity.total ?? 0) - (entity.deposito ?? 0) - (entity.total_pagado ?? entity.totalPagado ?? 0)),
-    totalPagado: entity.total_pagado ?? entity.totalPagado ?? 0,
-    saldoPendiente: entity.saldo_pendiente ?? entity.saldoPendiente ?? Math.max(0, (entity.totalEstimado ?? entity.total ?? 0) - (entity.deposito ?? 0) - (entity.total_pagado ?? entity.totalPagado ?? 0)),
-    observaciones: entity.observacionesGenerales ?? entity.observaciones,
-    detalles_logistica: entity.detallesLogistica ?? entity.detalles_logistica,
-    detalles: entity.detalles ?? [],
+    garantia_tipo: entity.garantiaTipo ?? entity.garantia_tipo ?? 'Efectivo',
+    garantia_estado: entity.garantiaEstado ?? entity.garantia_estado ?? 'Activa',
+    total_pagado: totalPagado,
+    saldo_pendiente: saldoPendiente,
+    totalPagado,
+    saldoPendiente,
+    observaciones: entity.observacionesGenerales ?? entity.observaciones ?? '',
+    detalles_logistica: entity.detallesLogistica ?? entity.detalles_logistica ?? '',
+    detalles: detallesMapeados,
     created_at: entity.createdAt ? new Date(entity.createdAt).toISOString() : (entity.created_at ? new Date(entity.created_at).toISOString() : new Date().toISOString()),
   };
 }
