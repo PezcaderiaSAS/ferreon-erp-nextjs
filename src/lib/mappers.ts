@@ -19,24 +19,24 @@ import { AlquilerUI } from '../infrastructure/state/alquilerStore';
 /**
  * Convierte un Equipo (dominio/Supabase) → EquipoUI (Zustand store).
  */
-export function equipoToEquipoUI(equipo: Equipo): EquipoUI {
+export function equipoToEquipoUI(equipo: any): EquipoUI {
   return {
     id: equipo.id,
-    codigo: equipo.sku ?? '',
+    codigo: equipo.sku ?? equipo.codigo ?? '',
     nombre: equipo.nombre,
     categoria: equipo.categoria,
-    tarifa_diaria: equipo.tarifaDiaria ?? 0,
-    stock_total: equipo.stockTotal ?? 0,
-    stock_disponible: equipo.stockDisponible ?? 0,
-    stock_en_obra: equipo.stockEnObra ?? 0,
+    tarifa_diaria: equipo.tarifaDiaria ?? equipo.tarifa_diaria ?? 0,
+    stock_total: equipo.stockTotal ?? equipo.stock_total ?? 0,
+    stock_disponible: equipo.stockDisponible ?? equipo.stock_disponible ?? 0,
+    stock_en_obra: equipo.stockEnObra ?? equipo.stock_en_obra ?? 0,
     estado: (['Disponible', 'En Alquiler', 'Mantenimiento'].includes(equipo.estado as string) ? equipo.estado : 'Disponible') as Equipo['estado'],
-    created_at: equipo.creado_en ? new Date(equipo.creado_en).toISOString() : undefined,
+    created_at: equipo.creado_en ?? equipo.created_at ? new Date(equipo.creado_en ?? equipo.created_at).toISOString() : undefined,
     // Retrocompatibilidad camelCase
-    sku: equipo.sku,
-    tarifaDiaria: equipo.tarifaDiaria,
-    stockTotal: equipo.stockTotal,
-    stockDisponible: equipo.stockDisponible,
-    stockEnObra: equipo.stockEnObra,
+    sku: equipo.sku ?? equipo.codigo,
+    tarifaDiaria: equipo.tarifaDiaria ?? equipo.tarifa_diaria ?? 0,
+    stockTotal: equipo.stockTotal ?? equipo.stock_total ?? 0,
+    stockDisponible: equipo.stockDisponible ?? equipo.stock_disponible ?? 0,
+    stockEnObra: equipo.stockEnObra ?? equipo.stock_en_obra ?? 0,
   };
 }
 
