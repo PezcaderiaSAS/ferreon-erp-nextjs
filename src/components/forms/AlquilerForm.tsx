@@ -4,6 +4,8 @@ import React, { useState, useMemo } from 'react';
 import * as z from 'zod';
 import { useClienteStore } from '../../infrastructure/state/clienteStore';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
+import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
+import { crearAlquilerAction, editarAlquilerAction } from '../../app/actions/alquileres';
 import { Button } from '../ui/Button';
 import { idempotencyManager } from '../../lib/idempotency';
 import { Modal } from '../ui/Modal';
@@ -226,7 +228,6 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
     setIsSubmitting(true);
     
     // Almacenamos el snapshot previo para el Rollback Optimista
-    const { useAlquilerStore } = await import('../../infrastructure/state/alquilerStore');
     const store = useAlquilerStore.getState();
     const previousAlquileres = [...store.alquileres];
     const optimisticId = initialData ? initialData.id : `temp_${Date.now()}`;
@@ -270,8 +271,6 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
       }
 
       // 2. Network Persist via Server Action
-      const { crearAlquilerAction, editarAlquilerAction } = await import('../../app/actions/alquileres');
-
       if (initialData) {
         const result = await editarAlquilerAction({
           alquilerId: initialData.id,

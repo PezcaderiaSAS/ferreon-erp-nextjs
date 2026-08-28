@@ -17,6 +17,7 @@ import { alquilerUIToAlquilerEntity, alquilerEntityToAlquilerUI } from '../../li
 
 import { registrarPagoAction } from '../actions/pagos';
 import { procesarDevolucionAction } from '../actions/alquileres';
+import { EnterprisePDFService } from '../../core/services/pdf-factura-generator.service';
 
 export default function AlquileresPage() {
   const { alquileres, setAlquileres, updateAlquiler, sanitizeStore } = useAlquilerStore();
@@ -245,7 +246,6 @@ export default function AlquileresPage() {
         empresa: empresaConfig,
       };
 
-      const { EnterprisePDFService } = await import('../../core/services/pdf-factura-generator.service');
       const htmlContent = EnterprisePDFService.generarHTMLDocumento(payload);
       
       const printWindow = window.open('', '_blank');
