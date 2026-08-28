@@ -35,6 +35,14 @@ Este repositorio contiene la evolución desacoplada de **FerreOn ERP** migrado a
 7. **ATOMICIDAD Y PROCEDIMIENTOS RPC TRANSACCIONALES (POSTGRES):**
    - Las operaciones multi-tabla que involucren inventario y valores monetarios (contratos de alquiler, pagos de cartera y devoluciones) DEBEN ejecutarse mediante procedimientos almacenados en PostgreSQL (`RPC`) con bloqueos de fila (`SELECT ... FOR UPDATE`), triggers de actualización de saldos y `ROLLBACK` atómico ante cualquier falta de stock o inconsistencia.
 
+8. **PERSISTENCIA RELACIONAL E INVENTARIO EN EDICIÓN DE CONTRATOS:**
+   - Toda operación de edición de contratos (`editarAlquilerAction`) DEBE actualizar tanto la cabecera `alquileres` (incluyendo `cliente_id`, totales y saldo pendiente) como la tabla relacional `alquiler_detalles`.
+   - Debe revertir transaccionalmente el stock de los equipos retirados/modificados y descontar el inventario de los nuevos ítems asignados, invalidando la caché de Redis y refrescando el estado reactivo en UI mediante `fetchAllData()`.
+
+9. **CERO LATENCIA Y TIMEOUT GUARD EN MIDDLEWARE EDGE (NEXT.JS / VERCEL):**
+   - El archivo `src/middleware.ts` DEBE implementar un Fast-Path de salida temprana (`NextResponse.next()`) para rutas `/_next`, `/api/*`, `/auth/*`, `/unauthorized` y archivos con extensión, SIN invocar Supabase Auth.
+   - Toda llamada a `supabase.auth.getUser()` en el Edge DEBE estar protegida por un Timeout Guard (`Promise.race` $\le 1.2\text{s}$) y emplear los métodos `getAll()` y `setAll()` de `@supabase/ssr` para erradicar el error `504 MIDDLEWARE_INVOCATION_TIMEOUT`.
+
 ---
 
 ## 2. Convención de Archivos y Cobertura de Pruebas
@@ -42,3 +50,4 @@ Este repositorio contiene la evolución desacoplada de **FerreOn ERP** migrado a
 - **Firma de Tipos y Validaciones:** Todas las entradas de API deben ser validadas usando esquemas **Zod** antes de ser procesadas por la capa de aplicación.
 - **Cobertura Mínima de Pruebas:** 80% en casos de uso de dominio y componentes de calculadoras de tarifas.
 - **Formato Commits:** Sigue el estándar Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`).
+
