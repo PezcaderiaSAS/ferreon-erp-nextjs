@@ -273,9 +273,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
       const { crearAlquilerAction, editarAlquilerAction } = await import('../../app/actions/alquileres');
 
       if (initialData) {
-        await editarAlquilerAction({
+        const result = await editarAlquilerAction({
           alquilerId: initialData.id,
-          fechaRegistro: validation.data.fechaRegistro,
           fleteEntrega: validation.data.fleteEntrega,
           fleteRecogida: validation.data.fleteRecogida,
           deposito: validation.data.deposito,
@@ -284,18 +283,20 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
           observaciones: validation.data.observaciones,
           detallesLogistica: validation.data.detallesLogistica,
           items: itemsConDetalles,
-          idempotency_key: idempotencyKey // Optional
         });
+        
+        if (!result.success) {
+          throw new Error(result.error);
+        }
         
         // Sanitize para calcular los totales en base al payload nuevo
         store.sanitizeStore();
         setSavedAlquilerData(alquilerUi);
         setIsSuccess(true);
       } else {
-        const nuevoAlquilerDB = await crearAlquilerAction({
+        const result = await crearAlquilerAction({
           clienteId: validation.data.clienteId,
           clienteNombre: cliente?.nombre,
-          fechaRegistro: validation.data.fechaRegistro,
           fleteEntrega: validation.data.fleteEntrega,
           fleteRecogida: validation.data.fleteRecogida,
           deposito: validation.data.deposito,
@@ -303,11 +304,15 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
           garantiaTipo: validation.data.garantiaTipo,
           observaciones: validation.data.observaciones,
           detallesLogistica: validation.data.detallesLogistica,
-          items: itemsConDetalles,
-          idempotency_key: idempotencyKey
+          items: itemsConDetalles
         });
         
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+        
         // 3. Update real ID y recalcular subtotales
+        const nuevoAlquilerDB = result.data;
         const alquilerFinal = { ...alquilerUi, id: nuevoAlquilerDB.id, consecutivo: nuevoAlquilerDB.consecutivo };
         store.updateAlquiler(alquilerFinal);
         store.sanitizeStore();

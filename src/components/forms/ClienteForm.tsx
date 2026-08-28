@@ -82,7 +82,7 @@ export function ClienteForm({ onSuccess, onCancel }: ClienteFormProps) {
       // 2. Network Persist via Server Action
       const { crearClienteAction } = await import('../../app/actions/clientes');
       
-      const clienteGuardado = await crearClienteAction({
+      const result = await crearClienteAction({
         nit_cedula: validation.data.nit,
         nombre: validation.data.nombre,
         telefono: validation.data.contacto,
@@ -90,8 +90,12 @@ export function ClienteForm({ onSuccess, onCancel }: ClienteFormProps) {
         idempotency_key: idempotencyKey
       });
 
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
       // 3. Update real ID
-      const clienteFinal = { ...nuevoCliente, id: clienteGuardado.id };
+      const clienteFinal = { ...nuevoCliente, id: result.data.id };
       store.updateCliente(clienteFinal as any);
 
       onSuccess(clienteFinal as any);

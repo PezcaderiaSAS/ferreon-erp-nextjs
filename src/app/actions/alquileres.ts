@@ -49,37 +49,62 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
   const saldoPendiente = Math.max(0, total - input.deposito);
   const consecutivo = Math.floor(1000 + Math.random() * 9000); // Temporary sequence
 
-  const { data, error } = await supabase
+  const { data: cabeceraData, error: cabeceraError } = await supabase
     .from('alquileres')
     .insert([{
       cliente_id: input.clienteId,
-      consecutivo,
-      fecha_registro: input.fechaRegistro,
       estado: 'ACTIVO',
       flete_entrega: input.fleteEntrega,
       flete_recogida: input.fleteRecogida,
+      subtotal_equipos: subtotal,
+      subtotal_general: subtotal,
       deposito: input.deposito,
       garantia_monto: input.garantiaMonto,
       garantia_tipo: input.garantiaTipo,
       observaciones: input.observaciones,
       detalles_logistica: input.detallesLogistica,
-      detalles: input.items, // Stored as JSONB in Supabase
-      total,
-      saldo_pendiente: saldoPendiente,
-      idempotency_key: input.idempotency_key
+      total
     }])
     .select()
     .single();
 
-  if (error) {
-    if (error.code === '23505') {
-      throw new Error(`Error de restricción única: Este contrato ya fue registrado (Código: ${error.code})`);
+  if (cabeceraError) {
+    if (cabeceraError.code === '23505') {
+      return { success: false, error: `Error de restricción única: Este contrato ya fue registrado (Código: ${cabeceraError.code})` };
     }
-    throw new Error(`Error al guardar el contrato en BD: ${error.message}`);
+    return { success: false, error: `Error al guardar el contrato en BD: ${cabeceraError.message}` };
+  }
+
+  // Insertar detalles
+  const detallesPayload = input.items.map(item => {
+    const start = new Date(item.fechaInicio);
+    const end = new Date(item.fechaFinEstimada);
+    let dias = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    if (dias <= 0) dias = 1;
+    return {
+      alquiler_id: cabeceraData.id,
+      equipo_id: parseInt(item.itemId, 10), // Convirtiendo UUID o string a id relacional, asumiendo id numérico.
+      cantidad: item.cantidad,
+      tarifa_aplicada: item.tarifaAplicada,
+      dias_contratados: dias,
+      subtotal_linea: item.tarifaAplicada * item.cantidad * dias,
+      fecha_inicio: item.fechaInicio,
+      fecha_fin: item.fechaFinEstimada
+    };
+  });
+
+  const { error: detallesError } = await supabase
+    .from('alquiler_detalles')
+    .insert(detallesPayload);
+
+  if (detallesError) {
+    // Si falla el detalle deberíamos hacer rollback de cabecera idealmente, pero Next.js Server Actions 
+    // no soportan transacciones RPC de Supabase nativamente sin escribir un SQL function.
+    return { success: false, error: `Contrato creado, pero falló al guardar los detalles: ${detallesError.message}` };
   }
 
   revalidatePath('/alquileres');
-  return data;
+  return { success: true, data: cabeceraData };
 }
 
 export async function editarAlquilerAction(input: EditarAlquilerInput) {
@@ -97,29 +122,51 @@ export async function editarAlquilerAction(input: EditarAlquilerInput) {
   const total = subtotal + input.fleteEntrega + input.fleteRecogida;
   const saldoPendiente = Math.max(0, total - input.deposito);
 
-  const { data, error } = await supabase
+  const { data: cabeceraData, error: cabeceraError } = await supabase
     .from('alquileres')
     .update({
-      fecha_registro: input.fechaRegistro,
       flete_entrega: input.fleteEntrega,
       flete_recogida: input.fleteRecogida,
+      subtotal_equipos: subtotal,
+      subtotal_general: subtotal,
       deposito: input.deposito,
       garantia_monto: input.garantiaMonto,
       garantia_tipo: input.garantiaTipo,
       observaciones: input.observaciones,
       detalles_logistica: input.detallesLogistica,
-      detalles: input.items,
-      total,
-      saldo_pendiente: saldoPendiente,
+      total
     })
     .eq('id', input.alquilerId)
     .select()
     .single();
 
-  if (error) {
-    throw new Error(`Error al actualizar el contrato en BD: ${error.message}`);
+  if (cabeceraError) {
+    return { success: false, error: `Error al actualizar el contrato en BD: ${cabeceraError.message}` };
   }
 
+  // Para actualizar detalles es complejo sin un ID de línea, lo más sano es borrar y recrear 
+  // O en su defecto saltarse la actualización de líneas para MVP.
+  await supabase.from('alquiler_detalles').delete().eq('alquiler_id', input.alquilerId);
+  
+  const detallesPayload = input.items.map(item => {
+    const start = new Date(item.fechaInicio);
+    const end = new Date(item.fechaFinEstimada);
+    let dias = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    if (dias <= 0) dias = 1;
+    return {
+      alquiler_id: cabeceraData.id,
+      equipo_id: parseInt(item.itemId, 10),
+      cantidad: item.cantidad,
+      tarifa_aplicada: item.tarifaAplicada,
+      dias_contratados: dias,
+      subtotal_linea: item.tarifaAplicada * item.cantidad * dias,
+      fecha_inicio: item.fechaInicio,
+      fecha_fin: item.fechaFinEstimada
+    };
+  });
+  
+  await supabase.from('alquiler_detalles').insert(detallesPayload);
+
   revalidatePath('/alquileres');
-  return data;
+  return { success: true, data: cabeceraData };
 }

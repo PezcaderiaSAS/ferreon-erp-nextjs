@@ -24,21 +24,18 @@ export async function crearClienteAction(input: CrearClienteInput) {
       telefono: input.telefono || '',
       email: input.email || '',
       direccion: input.direccion || '',
-      nivel_riesgo: input.nivel_riesgo,
-      activo: true,
-      idempotency_key: input.idempotency_key
+      estado: 'Activo',
     }])
     .select()
     .single();
 
   if (error) {
     if (error.code === '23505') { // unique_violation
-      // This means the idempotency key was already used, or the nit_cedula already exists
-      throw new Error(`Error de restricción única: Posible duplicado de registro (Código: ${error.code})`);
+      return { success: false, error: `Error de restricción única: Posible duplicado de registro (Código: ${error.code})` };
     }
-    throw new Error(`Error al guardar cliente en BD: ${error.message}`);
+    return { success: false, error: `Error al guardar cliente en BD: ${error.message}` };
   }
 
   revalidatePath('/clientes');
-  return data;
+  return { success: true, data };
 }
