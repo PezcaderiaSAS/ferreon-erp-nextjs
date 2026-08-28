@@ -57,11 +57,12 @@ export const useClienteStore = create<ClienteState>()(
       partialize: (state) => ({ 
         clientes: state.clientes.filter(c => typeof c.id === 'number' || !String(c.id).startsWith('temp_'))
       }),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.clientes = state.clientes.filter(c => typeof c.id === 'number' || !String(c.id).startsWith('temp_'));
+      merge: (persistedState: any, currentState) => {
+        if (persistedState?.clientes) {
+          persistedState.clientes = persistedState.clientes.filter((c: any) => typeof c.id === 'number' || !String(c.id).startsWith('temp_'));
         }
+        return { ...currentState, ...persistedState };
       }
-    }
+    } as any
   )
 );

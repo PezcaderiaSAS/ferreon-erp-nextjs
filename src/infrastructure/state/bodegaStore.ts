@@ -207,12 +207,12 @@ export const useBodegaStore = create<BodegaState>()(
         equipos: state.equipos.filter(e => typeof e.id === 'number' || !String(e.id).startsWith('temp_')), 
         idempotencyKeys: state.idempotencyKeys 
       }),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          // Si por alguna razón ya había items temporales corruptos guardados, los purgamos al recargar
-          state.equipos = state.equipos.filter(e => typeof e.id === 'number' || !String(e.id).startsWith('temp_'));
+      merge: (persistedState: any, currentState) => {
+        if (persistedState?.equipos) {
+          persistedState.equipos = persistedState.equipos.filter((e: any) => typeof e.id === 'number' || !String(e.id).startsWith('temp_'));
         }
+        return { ...currentState, ...persistedState };
       }
-    }
+    } as any
   )
 );

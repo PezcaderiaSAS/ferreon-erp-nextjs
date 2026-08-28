@@ -177,11 +177,12 @@ export const useAlquilerStore = create<AlquilerStore>()(
         alquileres: state.alquileres.filter(a => typeof a.id === 'number' || !String(a.id).startsWith('temp_')), 
         idempotencyKeys: state.idempotencyKeys 
       }),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.alquileres = state.alquileres.filter(a => typeof a.id === 'number' || !String(a.id).startsWith('temp_'));
+      merge: (persistedState: any, currentState) => {
+        if (persistedState?.alquileres) {
+          persistedState.alquileres = persistedState.alquileres.filter((a: any) => typeof a.id === 'number' || !String(a.id).startsWith('temp_'));
         }
+        return { ...currentState, ...persistedState };
       }
-    }
+    } as any
   )
 );
