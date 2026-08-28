@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
+import { useClienteStore } from '../../infrastructure/state/clienteStore';
+import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
 import { AlquilerForm } from '../../components/forms/AlquilerForm';
 import { Modal } from '../../components/ui/Modal';
@@ -13,7 +15,7 @@ import { DetalleAlquilerModal } from '../components/alquileres/DetalleAlquilerMo
 import { TicketAlquilerModal } from '../components/alquileres/TicketAlquilerModal';
 import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
 import { AlquilerEntity } from '../../core/domain/entities/alquiler';
-import { alquilerUIToAlquilerEntity, alquilerEntityToAlquilerUI } from '../../lib/mappers';
+import { alquilerUIToAlquilerEntity, alquilerEntityToAlquilerUI, equipoToEquipoUI } from '../../lib/mappers';
 
 import { registrarPagoAction } from '../actions/pagos';
 import { procesarDevolucionAction } from '../actions/alquileres';
@@ -75,16 +77,30 @@ export default function AlquileresPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const fetchAlquileres = async () => {
+  const fetchAllData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/alquileres');
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        setAlquileres(json.data.map(alquilerEntityToAlquilerUI));
+      const [resAlq, resCli, resEq] = await Promise.all([
+        fetch('/api/alquileres'),
+        fetch('/api/clientes'),
+        fetch('/api/equipos')
+      ]);
+      const [jsonAlq, jsonCli, jsonEq] = await Promise.all([
+        resAlq.json(),
+        resCli.json(),
+        resEq.json()
+      ]);
+      if (jsonAlq.success && Array.isArray(jsonAlq.data)) {
+        setAlquileres(jsonAlq.data.map(alquilerEntityToAlquilerUI));
+      }
+      if (jsonCli.success && Array.isArray(jsonCli.data)) {
+        useClienteStore.getState().setClientes(jsonCli.data);
+      }
+      if (jsonEq.success && Array.isArray(jsonEq.data)) {
+        useBodegaStore.getState().setEquipos(jsonEq.data.map(equipoToEquipoUI));
       }
     } catch (e) {
-      console.warn('[AlquileresPage] Error cargando contratos desde DB:', e);
+      console.warn('[AlquileresPage] Error cargando catálogos desde DB:', e);
     } finally {
       setLoading(false);
     }
@@ -93,7 +109,7 @@ export default function AlquileresPage() {
   useEffect(() => {
     setIsMounted(true);
     sanitizeStore();
-    fetchAlquileres();
+    fetchAllData();
   }, [sanitizeStore]);
 
   // Handlers para Acciones
@@ -114,7 +130,7 @@ export default function AlquileresPage() {
         return;
       }
 
-      await fetchAlquileres();
+      await fetchAllData();
       setShowPagoModal(false);
       alert("Abono registrado y sincronizado en base de datos correctamente.");
     } catch (error: any) {
@@ -175,7 +191,7 @@ export default function AlquileresPage() {
         });
       }
 
-      await fetchAlquileres();
+      await fetchAllData();
       setShowDevolucionModal(false);
       alert("Devolución procesada y stock restituido correctamente.");
     } catch (error: any) {

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import * as z from 'zod';
 import { useClienteStore } from '../../infrastructure/state/clienteStore';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
 import { crearAlquilerAction, editarAlquilerAction } from '../../app/actions/alquileres';
+import { equipoToEquipoUI } from '../../lib/mappers';
 import { Button } from '../ui/Button';
 import { idempotencyManager } from '../../lib/idempotency';
 import { Modal } from '../ui/Modal';
@@ -55,8 +56,9 @@ const STEPS = [
 ];
 
 export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
-  const { clientes } = useClienteStore();
-  const { equipos } = useBodegaStore();
+  const { clientes, setClientes } = useClienteStore();
+  const { equipos, setEquipos } = useBodegaStore();
+  const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -72,6 +74,34 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
   const [savedAlquilerData, setSavedAlquilerData] = useState<any>(null);
 
   const todayStr = new Date().toISOString().split("T")[0];
+
+  // Sincronización proactiva de catálogos en montaje
+  useEffect(() => {
+    const fetchCatalogs = async () => {
+      try {
+        setIsLoadingCatalogs(true);
+        const [resCli, resEq] = await Promise.all([
+          fetch('/api/clientes'),
+          fetch('/api/equipos')
+        ]);
+        const [jsonCli, jsonEq] = await Promise.all([
+          resCli.json(),
+          resEq.json()
+        ]);
+        if (jsonCli.success && Array.isArray(jsonCli.data)) {
+          setClientes(jsonCli.data);
+        }
+        if (jsonEq.success && Array.isArray(jsonEq.data)) {
+          setEquipos(jsonEq.data.map(equipoToEquipoUI));
+        }
+      } catch (err) {
+        console.warn('[AlquilerForm] Error al sincronizar catálogos:', err);
+      } finally {
+        setIsLoadingCatalogs(false);
+      }
+    };
+    fetchCatalogs();
+  }, [setClientes, setEquipos]);
 
   // Form State
   const [clienteId, setClienteId] = useState<string>(initialData?.cliente_id || initialData?.clienteId || '');
@@ -91,7 +121,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
     if (initialData?.detalles && initialData.detalles.length > 0) {
       return initialData.detalles.map((d: any, idx: number) => ({
         id: `init_${idx}_${Date.now()}`,
-        itemId: d.equipo_id || d.itemId,
+        itemId: String(d.equipo_id || d.itemId || ''),
         cantidad: d.cantidad,
         precioDiario: d.valor_unitario || d.tarifaDiaria || d.precioDiario || d.valorUnitario || 0,
         fechaInicio: d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (d.fechaInicio ? new Date(d.fechaInicio).toISOString().split('T')[0] : todayStr),
@@ -118,18 +148,25 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
   };
 
   const filteredClientes = useMemo(() => {
-    return clientes.filter(c => 
-      c.estado === 'Activo' &&
-      (c.nombre.toLowerCase().includes(clientSearchTerm.toLowerCase()) || 
-      (c.nit || '').includes(clientSearchTerm))
-    );
+    return clientes.filter(c => {
+      const isActivo = c.estado === 'Activo' || !c.estado;
+      if (!isActivo) return false;
+      if (!clientSearchTerm.trim()) return true;
+      const term = clientSearchTerm.toLowerCase();
+      const nombre = (c.nombre || '').toLowerCase();
+      const nit = (c.nit_cedula || c.nit || '').toLowerCase();
+      const tel = (c.telefono || c.contacto || '').toLowerCase();
+      return nombre.includes(term) || nit.includes(term) || tel.includes(term);
+    });
   }, [clientes, clientSearchTerm]);
 
   const equiposActivos = useMemo(() => {
     return equipos.filter(e => e.estado !== 'Inactivo');
   }, [equipos]);
 
-  const selectedCliente = clientes.find(c => c.id === clienteId);
+  const selectedCliente = useMemo(() => {
+    return clientes.find(c => String(c.id) === String(clienteId));
+  }, [clientes, clienteId]);
 
   // Subtotal de equipos
   const subtotalEquipos = useMemo(() => {
@@ -233,9 +270,9 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
     const optimisticId = initialData ? initialData.id : `temp_${Date.now()}`;
     
     try {
-      const cliente = clientes.find(c => c.id === validation.data.clienteId);
+      const cliente = clientes.find(c => String(c.id) === String(validation.data.clienteId));
       const itemsConDetalles = validation.data.items.map(item => {
-        const equipo = equiposActivos.find(e => e.id === item.itemId);
+        const equipo = equiposActivos.find(e => String(e.id) === String(item.itemId));
         if (!equipo) throw new Error("Equipo no encontrado o inactivo");
         return {
           itemId: item.itemId,
@@ -430,42 +467,92 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
               <div className="flex flex-col gap-1.5 relative">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold text-slate-700">Cliente / Razón Social *</label>
-                  <button type="button" onClick={() => setIsCreandoCliente(true)} className="text-[10px] bg-brand-salmon/10 text-brand-salmon px-2 py-0.5 rounded-full font-bold hover:bg-brand-salmon/20 transition-colors flex items-center gap-1">+ Nuevo</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsCreandoCliente(true)} 
+                    className="text-[10px] bg-brand-salmon/10 text-brand-salmon px-2.5 py-0.5 rounded-full font-bold hover:bg-brand-salmon/20 transition-colors flex items-center gap-1"
+                  >
+                    + Nuevo
+                  </button>
                 </div>
-                <div className="relative">
-                  <input 
-                    type="text"
-                    placeholder="Escriba para buscar por nombre o NIT..."
-                    value={isClientDropdownOpen ? clientSearchTerm : (selectedCliente?.nombre || '')}
-                    onChange={(e) => {
-                      setClientSearchTerm(e.target.value);
-                      if(!isClientDropdownOpen) setIsClientDropdownOpen(true);
-                    }}
-                    onFocus={() => setIsClientDropdownOpen(true)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none transition-all"
-                  />
-                  {isClientDropdownOpen && (
-                    <div className="absolute z-20 w-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100">
-                      {filteredClientes.map(c => (
-                        <div 
-                          key={c.id} 
-                          className="px-3.5 py-2.5 text-xs text-slate-700 hover:bg-slate-50 cursor-pointer flex justify-between items-center transition-colors"
-                          onClick={() => {
-                            setClienteId(String(c.id));
-                            setClientSearchTerm('');
-                            setIsClientDropdownOpen(false);
-                          }}
-                        >
-                          <span className="font-bold text-slate-800">{c.nombre}</span>
-                          <span className="text-slate-400 text-[11px] bg-slate-100 px-2 py-0.5 rounded-full">NIT: {c.nit}</span>
+
+                {selectedCliente && !isClientDropdownOpen ? (
+                  <div className="p-3 bg-brand-salmon/5 border border-brand-salmon/30 rounded-xl flex items-center justify-between shadow-sm">
+                    <div className="flex items-center space-x-3 overflow-hidden">
+                      <div className="w-8 h-8 rounded-full bg-brand-salmon/20 text-brand-salmon flex items-center justify-center font-bold text-xs shrink-0">
+                        👤
+                      </div>
+                      <div className="truncate">
+                        <div className="text-xs sm:text-sm font-bold text-slate-800 truncate">{selectedCliente.nombre}</div>
+                        <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                          <span>NIT: {selectedCliente.nit_cedula || selectedCliente.nit || 'S/N'}</span>
+                          {(selectedCliente.telefono || selectedCliente.contacto) && (
+                            <span>• Tel: {selectedCliente.telefono || selectedCliente.contacto}</span>
+                          )}
                         </div>
-                      ))}
-                      {filteredClientes.length === 0 && (
-                        <div className="px-4 py-3 text-xs text-slate-400 text-center">No se encontraron clientes registrados.</div>
-                      )}
+                      </div>
                     </div>
-                  )}
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsClientDropdownOpen(true);
+                        setClientSearchTerm('');
+                      }}
+                      className="px-2.5 py-1 text-[11px] font-bold text-brand-salmon hover:bg-brand-salmon/10 rounded-lg transition-colors shrink-0 ml-2"
+                    >
+                      Cambiar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input 
+                      type="text"
+                      placeholder="Escriba para buscar por nombre o NIT..."
+                      value={clientSearchTerm}
+                      onChange={(e) => {
+                        setClientSearchTerm(e.target.value);
+                        setIsClientDropdownOpen(true);
+                      }}
+                      onFocus={() => setIsClientDropdownOpen(true)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon outline-none transition-all"
+                    />
+                    {isClientDropdownOpen && (
+                      <div className="absolute z-30 w-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100">
+                        {filteredClientes.map(c => (
+                          <div 
+                            key={c.id} 
+                            className="px-3.5 py-2.5 text-xs text-slate-700 hover:bg-brand-salmon/5 hover:text-brand-salmon cursor-pointer flex justify-between items-center transition-colors"
+                            onClick={() => {
+                              setClienteId(String(c.id));
+                              setClientSearchTerm('');
+                              setIsClientDropdownOpen(false);
+                            }}
+                          >
+                            <div className="flex flex-col">
+                              <span className="font-bold text-slate-800">{c.nombre}</span>
+                              <span className="text-[10px] text-slate-400">{c.telefono || c.contacto || ''}</span>
+                            </div>
+                            <span className="text-slate-500 text-[11px] bg-slate-100 px-2 py-0.5 rounded-full font-mono">
+                              NIT: {c.nit_cedula || c.nit}
+                            </span>
+                          </div>
+                        ))}
+                        {filteredClientes.length === 0 && (
+                          <div className="px-4 py-4 text-xs text-slate-400 text-center flex flex-col items-center gap-1.5">
+                            <span>{isLoadingCatalogs ? "Cargando clientes..." : "No se encontraron clientes registrados."}</span>
+                            <button 
+                              type="button" 
+                              onClick={() => setIsCreandoCliente(true)} 
+                              className="text-xs text-brand-salmon font-bold hover:underline"
+                            >
+                              + Crear nuevo cliente ahora
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {formErrors.clienteId && <span className="text-[11px] text-red-500 font-semibold">{formErrors.clienteId}</span>}
               </div>
 
@@ -567,12 +654,13 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                       value={field.itemId}
                       onChange={(e) => {
                         const eqId = e.target.value;
-                        const equipo = equiposActivos.find(eq => eq.id === eqId);
+                        const equipo = equiposActivos.find(eq => String(eq.id) === String(eqId));
+                        const tarifa = equipo ? ((equipo as any).tarifa_diaria ?? equipo.tarifaDiaria ?? 0) : 0;
                         const newItems = [...items];
                         newItems[index] = { 
                           ...newItems[index], 
                           itemId: eqId, 
-                          precioDiario: equipo ? equipo.tarifaDiaria : 0 
+                          precioDiario: tarifa 
                         };
                         setItems(newItems);
                       }}
@@ -580,10 +668,11 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                     >
                       <option value="">Seleccione equipo...</option>
                       {equiposActivos.map(e => {
-                        const isAvailable = e.stockDisponible > 0;
-                        const stockText = isAvailable ? `(${e.stockDisponible} disp.)` : `(Sin stock)`;
+                        const stock = (e as any).stock_disponible ?? e.stockDisponible ?? 0;
+                        const isAvailable = stock > 0;
+                        const stockText = isAvailable ? `(${stock} disp.)` : `(Sin stock)`;
                         return (
-                          <option key={e.id} value={e.id} disabled={!isAvailable}>
+                          <option key={e.id} value={String(e.id)} disabled={!isAvailable}>
                             {e.nombre} {stockText}
                           </option>
                         );
