@@ -8,6 +8,7 @@ import { EquipoUI } from '../../../infrastructure/state/bodegaStore';
 import { useBodegaStore } from '../../../infrastructure/state/bodegaStore';
 import { generateIdempotencyKey } from '../../../lib/utils/idempotency';
 import { editarEquipoAction, ajustarStockEquipoAction } from '../../actions/equipos';
+import { useRouter } from 'next/navigation';
 
 const editEquipoSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
@@ -24,6 +25,7 @@ interface EditarEquipoModalProps {
 
 export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModalProps) {
   const { updateEquipo, ajustarStock, inactivarEquipo } = useBodegaStore();
+  const router = useRouter();
   
   const [nombre, setNombre] = useState('');
   const [categoria, setCategoria] = useState('Construcción');
@@ -83,6 +85,7 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
       
       setFeedbackMsg(`✓ Stock ajustado con éxito a ${nuevoStock} unidades.`);
       setStockDelta(0);
+      router.refresh();
       setTimeout(() => setFeedbackMsg(null), 3500);
     } catch (e: any) {
       console.error(e);
@@ -146,6 +149,7 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
         throw new Error(result.error);
       }
       
+      router.refresh();
       onClose();
     } catch (e: any) {
       console.error(e);
@@ -166,6 +170,7 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
     setIsInactivating(true);
     try {
       await inactivarEquipo(equipo.id);
+      router.refresh();
       onClose();
     } catch (error: any) {
       alert("Error al inactivar el equipo. " + (error.message || "Se aplicó rollback."));

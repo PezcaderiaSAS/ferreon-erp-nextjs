@@ -103,7 +103,7 @@ export const useBodegaStore = create<BodegaState>()(
         if (nuevoStockDisponible < 0) return false;
         set((state) => ({
           equipos: state.equipos.map((e) => {
-            if (e.id === equipoId) {
+            if (String(e.id) === String(equipoId)) {
               const enObra = (e.stock_en_obra ?? e.stockEnObra) || 0;
               const total = nuevoStockDisponible + enObra;
               // Compatibilidad de estados
@@ -129,7 +129,7 @@ export const useBodegaStore = create<BodegaState>()(
       descontarStock: (equipoId, cantidad) => {
         set((state) => ({
           equipos: state.equipos.map((e) => {
-            if (e.id === equipoId) {
+            if (String(e.id) === String(equipoId)) {
               const disponible = Math.max(0, ((e.stock_disponible ?? e.stockDisponible) || 0) - cantidad);
               const enObra = ((e.stock_en_obra ?? e.stockEnObra) || 0) + cantidad;
               const estadoUi = disponible > 0 ? 'Disponible' : 'En Alquiler';
@@ -151,7 +151,7 @@ export const useBodegaStore = create<BodegaState>()(
       incrementarStock: (equipoId, cantidad) => {
         set((state) => ({
           equipos: state.equipos.map((e) => {
-            if (e.id === equipoId) {
+            if (String(e.id) === String(equipoId)) {
               const enObra = Math.max(0, ((e.stock_en_obra ?? e.stockEnObra) || 0) - cantidad);
               const disponible = ((e.stock_disponible ?? e.stockDisponible) || 0) + cantidad;
               const estadoUi = disponible > 0 ? 'Disponible' : (enObra > 0 ? 'En Alquiler' : 'Mantenimiento');
