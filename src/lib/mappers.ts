@@ -105,26 +105,30 @@ export function clienteUIToCliente(ui: ClienteUI): Cliente {
 /**
  * Convierte un AlquilerEntity (dominio) → AlquilerUI (Zustand store).
  */
-export function alquilerEntityToAlquilerUI(entity: AlquilerEntity): AlquilerUI {
+export function alquilerEntityToAlquilerUI(entity: any): AlquilerUI {
   return {
     id: entity.id ?? '',
     consecutivo: entity.consecutivo ?? 0,
-    cliente_id: entity.clienteId ?? '',
+    cliente_id: entity.clienteId ?? entity.cliente_id ?? '',
     clienteNombre: entity.clienteNombre,
     estado: entity.estado,
-    subtotal_equipos: entity.subtotalEquiposEstimado ?? 0,
-    flete_entrega: entity.fleteEntrega ?? 0,
-    flete_recogida: entity.fleteRecogida ?? 0,
-    subtotal_general: entity.subtotalGeneralEstimado ?? 0,
-    total: entity.totalEstimado ?? 0,
+    subtotal_equipos: entity.subtotalEquiposEstimado ?? entity.subtotal_equipos ?? 0,
+    flete_entrega: entity.fleteEntrega ?? entity.flete_entrega ?? 0,
+    flete_recogida: entity.fleteRecogida ?? entity.flete_recogida ?? 0,
+    subtotal_general: entity.subtotalGeneralEstimado ?? entity.subtotal_general ?? 0,
+    total: entity.totalEstimado ?? entity.total ?? 0,
     deposito: entity.deposito ?? 0,
-    garantia_monto: entity.garantiaMonto ?? 0,
-    garantia_tipo: entity.garantiaTipo ?? '',
-    garantia_estado: entity.garantiaEstado ?? '',
-    observaciones: entity.observacionesGenerales,
-    detalles_logistica: entity.detallesLogistica,
+    garantia_monto: entity.garantiaMonto ?? entity.garantia_monto ?? 0,
+    garantia_tipo: entity.garantiaTipo ?? entity.garantia_tipo ?? '',
+    garantia_estado: entity.garantiaEstado ?? entity.garantia_estado ?? '',
+    total_pagado: entity.total_pagado ?? entity.totalPagado ?? 0,
+    saldo_pendiente: entity.saldo_pendiente ?? entity.saldoPendiente ?? Math.max(0, (entity.totalEstimado ?? entity.total ?? 0) - (entity.deposito ?? 0) - (entity.total_pagado ?? entity.totalPagado ?? 0)),
+    totalPagado: entity.total_pagado ?? entity.totalPagado ?? 0,
+    saldoPendiente: entity.saldo_pendiente ?? entity.saldoPendiente ?? Math.max(0, (entity.totalEstimado ?? entity.total ?? 0) - (entity.deposito ?? 0) - (entity.total_pagado ?? entity.totalPagado ?? 0)),
+    observaciones: entity.observacionesGenerales ?? entity.observaciones,
+    detalles_logistica: entity.detallesLogistica ?? entity.detalles_logistica,
     detalles: entity.detalles ?? [],
-    created_at: entity.createdAt ? entity.createdAt.toISOString() : new Date().toISOString(),
+    created_at: entity.createdAt ? new Date(entity.createdAt).toISOString() : (entity.created_at ? new Date(entity.created_at).toISOString() : new Date().toISOString()),
   };
 }
 
@@ -158,3 +162,4 @@ export function alquilerUIToAlquilerEntity(ui: AlquilerUI): AlquilerEntity {
     ui.created_at ? new Date(ui.created_at) : undefined
   );
 }
+

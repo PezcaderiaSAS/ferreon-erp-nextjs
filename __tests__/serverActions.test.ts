@@ -15,8 +15,17 @@ vi.mock('next/headers', () => ({
 }));
 
 vi.mock('../src/infrastructure/persistence/supabase/server', () => ({
-  createServerSupabaseClient: () => {
+  createServerSupabaseClient: async () => {
     return {
+      auth: {
+        getUser: async () => ({ data: { user: { email: 'admin@ferreon.com', id: 'usr-1' } } })
+      },
+      rpc: async (fn: string, params: any) => {
+        if (fn === 'crear_alquiler_transaccional') {
+          return { data: { id: 1, consecutivo: 101, ...params.p_payload }, error: null };
+        }
+        return { data: { success: true }, error: null };
+      },
       from: (table: string) => ({
         insert: (data: any) => ({
           select: () => ({
@@ -72,7 +81,7 @@ describe('Validación de Server Actions (Persistencia DB)', () => {
     });
     
     expect(res.success).toBe(false);
-    expect(res.error).toContain('Posible duplicado');
+    expect(res.error).toContain('restricción única');
   });
 
   it('crearAlquilerAction debe estructurar la cabecera e ignorar error de throw', async () => {

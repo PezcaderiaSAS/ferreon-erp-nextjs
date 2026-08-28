@@ -29,6 +29,12 @@ Este repositorio contiene la evolución desacoplada de **FerreOn ERP** migrado a
    - Formularios complejos (ej. `AlquilerForm`): Usa `flex-wrap` con anchos mínimos (`min-w`) en lugar de grillas estrictas (`grid-cols`) para evitar que inputs como `date` o `select` queden ilegibles en modales.
    - **Idempotencia Obligatoria**: Todo botón de envío en modales transaccionales (pagos, devoluciones, creación) DEBE estar protegido por un estado `isSubmitting` y `disabled={isSubmitting}` para prevenir latencia o doble clic.
 
+6. **INVOCACIÓN ASÍNCRONA DE SUPABASE SSR (NEXT.JS 15):**
+   - En Next.js 15, `cookies()` es asíncrono. Toda Server Action (`'use server'`) y Route Handler (`route.ts`) DEBE invocar obligatoriamente `const supabase = await createServerSupabaseClient()` con `await` explícito para prevenir fallos silenciosos y rollbacks optimistas indebidos.
+
+7. **ATOMICIDAD Y PROCEDIMIENTOS RPC TRANSACCIONALES (POSTGRES):**
+   - Las operaciones multi-tabla que involucren inventario y valores monetarios (contratos de alquiler, pagos de cartera y devoluciones) DEBEN ejecutarse mediante procedimientos almacenados en PostgreSQL (`RPC`) con bloqueos de fila (`SELECT ... FOR UPDATE`), triggers de actualización de saldos y `ROLLBACK` atómico ante cualquier falta de stock o inconsistencia.
+
 ---
 
 ## 2. Convención de Archivos y Cobertura de Pruebas

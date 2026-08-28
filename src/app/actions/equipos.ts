@@ -9,23 +9,25 @@ export interface CrearEquipoInput {
   categoria: string;
   tarifaDiaria: number;
   stockInicial: number;
-  idempotency_key: string;
+  idempotency_key?: string;
 }
 
 export async function crearEquipoAction(input: CrearEquipoInput) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const userIdentifier = user?.email || user?.id || 'SISTEMA_OPERADOR';
 
   const { data, error } = await supabase
     .from('equipos')
     .insert([{
-      sku: input.sku,
-      codigo: input.sku, // Para compatibilidad
-      nombre: input.nombre,
-      categoria: input.categoria,
+      codigo: input.sku.trim().toUpperCase(),
+      nombre: input.nombre.trim(),
+      categoria: input.categoria.trim(),
       tarifa_diaria: input.tarifaDiaria,
       stock_total: input.stockInicial,
       stock_disponible: input.stockInicial,
       stock_en_obra: 0,
+      stock_mantenimiento: 0,
       estado: 'Activo'
     }])
     .select()
@@ -33,7 +35,7 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
 
   if (error) {
     if (error.code === '23505') {
-      return { success: false, error: `Error de restricción única: Este SKU o llave ya fue registrada (Código: ${error.code})` };
+      return { success: false, error: `Error de restricción única: El código/SKU "${input.sku}" ya fue registrado (Código: ${error.code})` };
     }
     console.error('Error Supabase crearEquipoAction:', error);
     return { success: false, error: `Error al guardar equipo en BD: ${error.message}` };
@@ -44,26 +46,30 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
 }
 
 export interface EditarEquipoInput {
-  id: string;
+  id: string | number;
   nombre: string;
   categoria: string;
   tarifaDiaria: number;
-  estado: 'Disponible' | 'En Alquiler' | 'Mantenimiento';
-  idempotency_key: string;
+  estado: 'Disponible' | 'En Alquiler' | 'Mantenimiento' | 'Activo' | 'Inactivo';
+  idempotency_key?: string;
 }
 
 export async function editarEquipoAction(input: EditarEquipoInput) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
+  const numericId = typeof input.id === 'string' ? parseInt(input.id, 10) : input.id;
+
+  const dbEstado = input.estado === 'Inactivo' ? 'Inactivo' : 'Activo';
 
   const { data, error } = await supabase
     .from('equipos')
     .update({
-      nombre: input.nombre,
-      categoria: input.categoria,
+      nombre: input.nombre.trim(),
+      categoria: input.categoria.trim(),
       tarifa_diaria: input.tarifaDiaria,
-      estado: input.estado === 'Mantenimiento' || input.estado === 'En Alquiler' ? 'Activo' : 'Activo', // El check constraint solo admite 'Activo' o 'Inactivo'
+      estado: dbEstado,
+      updated_at: new Date().toISOString()
     })
-    .eq('id', input.id)
+    .eq('id', numericId)
     .select()
     .single();
 
@@ -76,10 +82,9 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
   return { success: true, data };
 }
 
-export async function ajustarStockEquipoAction(equipoId: string, delta: number, idempotencyKey?: string) {
-  // Usar cliente admin (service_role) para operaciones privilegiadas de inventario
-  // que necesitan saltarse RLS y ejecutar RPCs atómicas
+export async function ajustarStockEquipoAction(equipoId: string | number, delta: number, idempotencyKey?: string) {
   const supabaseAdmin = createAdminSupabaseClient();
+  const numericEquipoId = typeof equipoId === 'string' ? parseInt(equipoId, 10) : equipoId;
 
   // 1. Validar Idempotencia Fuerte si existe la llave
   if (idempotencyKey) {
@@ -97,9 +102,9 @@ export async function ajustarStockEquipoAction(equipoId: string, delta: number, 
     }
   }
 
-  // 2. Ejecutar el RPC Atómico en Supabase (service_role omite RLS)
+  // 2. Ejecutar el RPC Atómico en Supabase
   const { data, error } = await supabaseAdmin.rpc('ajustar_stock_equipo', {
-    p_equipo_id: parseInt(equipoId, 10),
+    p_equipo_id: numericEquipoId,
     p_delta: delta
   });
 
@@ -114,4 +119,5 @@ export async function ajustarStockEquipoAction(equipoId: string, delta: number, 
   revalidatePath('/bodega');
   return { success: true, data };
 }
+
 

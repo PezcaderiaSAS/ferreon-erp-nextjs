@@ -26,7 +26,7 @@ export async function GET() {
       }
     }
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("clientes")
       .select("*")
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = CrearClienteSchema.parse(body);
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("clientes")
       .insert([

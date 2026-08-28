@@ -16,7 +16,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data: alquiler, error } = await supabase
       .from("alquileres")
       .select(`
@@ -57,7 +57,7 @@ export async function PUT(
     if (validatedData.garantiaEstado) updateData.garantia_estado = validatedData.garantiaEstado;
     if (validatedData.observaciones !== undefined) updateData.observaciones = validatedData.observaciones || null;
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("alquileres")
       .update(updateData)
@@ -91,7 +91,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     
     // Obtener detalles para devolver el stock
     const { data: detalles } = await supabase

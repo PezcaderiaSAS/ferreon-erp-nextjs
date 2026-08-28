@@ -15,13 +15,13 @@ import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
 import { AlquilerEntity } from '../../core/domain/entities/alquiler';
 import { alquilerUIToAlquilerEntity, alquilerEntityToAlquilerUI } from '../../lib/mappers';
 
+import { registrarPagoAction } from '../actions/pagos';
+import { procesarDevolucionAction } from '../actions/alquileres';
+
 export default function AlquileresPage() {
-  const { alquileres, updateAlquiler, sanitizeStore } = useAlquilerStore();
+  const { alquileres, setAlquileres, updateAlquiler, sanitizeStore } = useAlquilerStore();
   const { config: empresaConfig } = useEmpresaStore();
 
-  useEffect(() => {
-    sanitizeStore();
-  }, [sanitizeStore]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [selectedAlquilerForDetalle, setSelectedAlquilerForDetalle] = useState<any | null>(null);
@@ -72,42 +72,57 @@ export default function AlquileresPage() {
   };
 
   const [isMounted, setIsMounted] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const fetchAlquileres = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/alquileres');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setAlquileres(json.data.map(alquilerEntityToAlquilerUI));
+      }
+    } catch (e) {
+      console.warn('[AlquileresPage] Error cargando contratos desde DB:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+    sanitizeStore();
+    fetchAlquileres();
+  }, [sanitizeStore]);
 
   // Handlers para Acciones
-  const handleRegistrarPago = (monto: number, metodo: string, referencia: string) => {
+  const handleRegistrarPago = async (monto: number, metodo: string, referencia: string) => {
     if (!contratoActivo) return;
-    const nuevoPago = {
-      id: `PAG-${Date.now()}`,
-      consecutivo: Math.floor(Math.random() * 90000) + 10000,
-      alquilerId: contratoActivo.id,
-      consecutivoAlquiler: contratoActivo.consecutivo,
-      clienteNombre: contratoActivo.clienteNombre,
-      monto,
-      metodoPago: metodo,
-      referencia,
-      fecha: new Date().toISOString().split('T')[0],
-      tipoPago: "ABONO"
-    };
-    
-    setPagosGlobal(prev => [nuevoPago, ...prev]);
 
-    // Actualizar Alquiler (Clon inmutable)
-    const currentPagado = contratoActivo.totalPagado || 0;
-    const contratoActualizado = { 
-      ...contratoActivo, 
-      totalPagado: currentPagado + monto 
-    };
-    
-    updateAlquiler(contratoActualizado);
-    setShowPagoModal(false);
-    alert("Pago registrado correctamente");
+    try {
+      const res = await registrarPagoAction({
+        alquilerId: contratoActivo.id,
+        clienteId: contratoActivo.cliente_id,
+        monto,
+        metodoPago: metodo,
+        referencia
+      });
+
+      if (!res.success) {
+        alert(`Error al registrar abono: ${res.error}`);
+        return;
+      }
+
+      await fetchAlquileres();
+      setShowPagoModal(false);
+      alert("Abono registrado y sincronizado en base de datos correctamente.");
+    } catch (error: any) {
+      console.error('Error al registrar pago:', error);
+      alert('Ocurrió un error inesperado al registrar el pago.');
+    }
   };
 
-  const handleConfirmarDevolucion = (
+  const handleConfirmarDevolucion = async (
     cantidades: { [equipoId: string]: number },
     danos: { [equipoId: string]: number },
     pagoDanos: { monto: number; metodo: string; referencia: string } | null
@@ -117,81 +132,57 @@ export default function AlquileresPage() {
     const original = alquileres.find(a => a.id === contratoActivo.id);
     if (!original) return;
 
-    // Clonación profunda de la entidad para mutar de forma segura
-    const contratoActualizado = alquilerUIToAlquilerEntity(JSON.parse(JSON.stringify(original)));
-    
-    let costoTotalCobrado = 0;
-    const detallesDevolucion: any[] = [];
+    try {
+      // Si hay devolución en backend, procesar vía RPC
+      const devolucionesPayload: any[] = [];
+      const detallesList = original.detalles || [];
 
-    Object.keys(cantidades).forEach(equipoId => {
-      const cantDevuelta = cantidades[equipoId] || 0;
-      const costoDano = danos[equipoId] || 0;
-      
-      if (cantDevuelta > 0 || costoDano > 0) {
-        const originalItem = contratoActualizado.detalles.find((i: any) => i.itemId === equipoId && !i.devuelto);
-        if (originalItem) {
-           detallesDevolucion.push({
-             equipoId,
-             nombreEquipo: originalItem.nombreItem,
-             cantidadDevuelta: cantDevuelta,
-             cantidadDanada: costoDano > 0 ? cantDevuelta : 0,
-             costoCobrado: costoDano
-           });
-           costoTotalCobrado += costoDano;
-           
-           if (cantDevuelta > 0) {
-             contratoActualizado.registrarDevolucion(equipoId, cantDevuelta, new Date(), costoDano);
-           } else {
-             originalItem.costoDano = (originalItem.costoDano || 0) + costoDano;
-           }
+      Object.keys(cantidades).forEach(equipoId => {
+        const cantDev = cantidades[equipoId] || 0;
+        const costoDano = danos[equipoId] || 0;
+        const det = detallesList.find((d: any) => String(d.equipo_id || d.itemId || d.id) === String(equipoId) || String(d.id) === String(equipoId));
+        
+        if (cantDev > 0 || costoDano > 0) {
+          devolucionesPayload.push({
+            detalleId: det ? det.id : equipoId,
+            cantidadDevuelta: cantDev,
+            costoDano: costoDano
+          });
+        }
+      });
+
+      if (devolucionesPayload.length > 0) {
+        const res = await procesarDevolucionAction({
+          alquilerId: contratoActivo.id,
+          devoluciones: devolucionesPayload
+        });
+
+        if (!res.success) {
+          alert(`Error al procesar devolución en BD: ${res.error}`);
+          return;
         }
       }
-    });
 
-    const todosDevueltos = contratoActualizado.detalles.every((i: any) => i.devuelto);
-    if (todosDevueltos && contratoActualizado.estado !== 'CANCELADO') {
-      contratoActualizado.finalizar();
+      // Si hay pago de daños asociado, registrar el recaudo correspondiente
+      if (pagoDanos && pagoDanos.monto > 0) {
+        await registrarPagoAction({
+          alquilerId: contratoActivo.id,
+          clienteId: contratoActivo.cliente_id,
+          monto: pagoDanos.monto,
+          metodoPago: pagoDanos.metodo,
+          referencia: `Daños: ${pagoDanos.referencia || 'Cobro por daños en devolución'}`
+        });
+      }
+
+      await fetchAlquileres();
+      setShowDevolucionModal(false);
+      alert("Devolución procesada y stock restituido correctamente.");
+    } catch (error: any) {
+      console.error('Error al procesar devolución:', error);
+      alert('Ocurrió un error inesperado al procesar la devolución.');
     }
-
-    const diferencialMonetario = contratoActualizado.liquidarDevolucion(empresaConfig.diasMinimosAlquiler || 3);
-
-    // Si todo el contrato fue devuelto y hay diferencias, asentarlo en cartera.
-    if (todosDevueltos && diferencialMonetario !== 0) {
-       const tipo = diferencialMonetario > 0 ? "CARGO_EXTRA" : "SALDO_A_FAVOR";
-       const nuevoPagoDif = {
-         id: `PAG-${Date.now()}-DIF`,
-         consecutivo: Math.floor(Math.random() * 90000) + 10000,
-         alquilerId: contratoActivo.id,
-         consecutivoAlquiler: contratoActivo.consecutivo,
-         clienteNombre: contratoActivo.clienteNombre,
-         monto: Math.abs(diferencialMonetario),
-         metodoPago: "Ajuste Sistema",
-         referencia: "Liquidación por Devolución",
-         fecha: new Date().toISOString().split('T')[0],
-         tipoPago: tipo
-       };
-       setPagosGlobal(prev => [nuevoPagoDif, ...prev]);
-    }
-
-    if (detallesDevolucion.length > 0) {
-      setDevolucionesGlobal(prev => [{
-        id: `DEV-${Date.now()}`,
-        consecutivo: Date.now() % 10000,
-        alquilerId: contratoActivo.id,
-        fecha: new Date(),
-        detalles: detallesDevolucion,
-        costosExtra: costoTotalCobrado
-      }, ...prev]);
-    }
-
-    if (pagoDanos) {
-      handleRegistrarPago(pagoDanos.monto, pagoDanos.metodo, pagoDanos.referencia);
-    }
-
-    updateAlquiler(alquilerEntityToAlquilerUI(contratoActualizado));
-    setShowDevolucionModal(false);
-    alert("Devolución procesada correctamente");
   };
+
 
   const openAction = (contrato: AlquilerUI, action: string) => {
     // Adapter para compatibilidad temporal con modals viejos

@@ -38,9 +38,27 @@ export default function ClientesPage() {
   const clientesRiesgoAtencion = clientes.filter(c => c.nivel_riesgo === 'Medio' || c.nivel_riesgo === 'Alto').length;
 
   const [isMounted, setIsMounted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const setClientes = useClienteStore((state) => state.setClientes);
+
+  const fetchClientes = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/clientes');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setClientes(json.data);
+      }
+    } catch (e) {
+      console.warn('[ClientesPage] Error al cargar clientes desde DB:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     setIsMounted(true);
+    fetchClientes();
   }, []);
 
   if (!isMounted) {

@@ -19,7 +19,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data: equipo, error } = await supabase
       .from("equipos")
       .select("*")
@@ -64,7 +64,7 @@ export async function PUT(
     }
     if (validatedData.estado) updateData.estado = validatedData.estado;
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("equipos")
       .update(updateData)
@@ -100,7 +100,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     
     // Verificar si el equipo tiene stock_en_obra antes de borrar
     const { data: equipo } = await supabase
