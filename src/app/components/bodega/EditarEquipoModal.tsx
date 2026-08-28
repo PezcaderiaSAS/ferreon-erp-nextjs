@@ -73,11 +73,12 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
     setIsAdjustingStock(true);
     const equipoOriginal = { ...equipo };
     try {
+      const idempotencyKey = generateIdempotencyKey('stock_adj');
       // 1. Optimistic UI (0 Latency)
       ajustarStock(equipo.id, nuevoStock, motivoAjuste);
       
       // 2. Base de datos
-      const result = await ajustarStockEquipoAction(equipo.id.toString(), stockDelta);
+      const result = await ajustarStockEquipoAction(equipo.id.toString(), stockDelta, idempotencyKey);
       
       if (!result.success) {
         throw new Error(result.error);
@@ -151,10 +152,11 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
 
       // Si el usuario cambió el stock pero olvidó darle al botón negro, lo guardamos automáticamente aquí
       if (stockDelta !== 0) {
+        const stockIdempotencyKey = generateIdempotencyKey('stock_adj_auto');
         // Optimistic UI
         ajustarStock(equipo.id, nuevoStock, motivoAjuste);
         // Base de datos
-        const stockResult = await ajustarStockEquipoAction(equipo.id.toString(), stockDelta);
+        const stockResult = await ajustarStockEquipoAction(equipo.id.toString(), stockDelta, stockIdempotencyKey);
         if (!stockResult.success) {
            throw new Error(stockResult.error);
         }
@@ -318,7 +320,8 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
               type="button"
               onClick={handleConfirmStockAdjustment}
               isLoading={isAdjustingStock}
-              className="!py-1.5 !px-4 !text-xs bg-slate-900 hover:bg-slate-800 text-white"
+              disabled={isAdjustingStock}
+              className={`!py-1.5 !px-4 !text-xs bg-slate-900 hover:bg-slate-800 text-white ${isAdjustingStock ? 'pointer-events-none opacity-50' : ''}`}
             >
               Aplicar Ajuste de Stock
             </Button>
@@ -408,7 +411,8 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
               <Button
                 type="submit"
                 isLoading={isSubmitting}
-                className="min-w-[150px]"
+                disabled={isSubmitting}
+                className={`min-w-[150px] ${isSubmitting ? 'pointer-events-none opacity-50' : ''}`}
               >
                 Guardar Cambios
               </Button>
