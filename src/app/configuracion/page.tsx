@@ -36,6 +36,11 @@ export default function ConfiguracionPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("El logo es demasiado pesado. El límite máximo es 2MB para no afectar el rendimiento.");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData({ ...formData, logoBase64: reader.result as string });
@@ -144,18 +149,35 @@ export default function ConfiguracionPage() {
           <div className="flex flex-col gap-4">
             <h3 className="text-lg font-semibold text-slate-800">Parámetros de Documentos (PDF)</h3>
             
-            <div className="flex flex-col gap-1 md:w-1/2">
-              <label className="text-sm font-medium text-slate-700">Moneda del Sistema</label>
-              <select 
-                value={formData.moneda?.codigo || 'COP'} 
-                onChange={handleMonedaChange} 
-                className="px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-salmon/50"
-              >
-                {OPCIONES_MONEDA.map(m => (
-                  <option key={m.codigo} value={m.codigo}>{m.codigo} - {m.simbolo}</option>
-                ))}
-              </select>
-              <p className="text-xs text-slate-500 mt-1">Todos los montos se formatearán en base a la moneda seleccionada.</p>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex flex-col gap-1 md:w-1/2">
+                <label className="text-sm font-medium text-slate-700">Moneda del Sistema</label>
+                <select 
+                  value={formData.moneda?.codigo || 'COP'} 
+                  onChange={handleMonedaChange} 
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-salmon/50"
+                >
+                  {OPCIONES_MONEDA.map(m => (
+                    <option key={m.codigo} value={m.codigo}>{m.codigo} - {m.simbolo}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-500 mt-1">Todos los montos se formatearán en base a la moneda seleccionada.</p>
+              </div>
+
+              <div className="flex flex-col gap-1 md:w-1/2">
+                <label className="text-sm font-medium text-slate-700">Paleta de Colores (PDF)</label>
+                <select 
+                  name="paletaPDF"
+                  value={formData.paletaPDF || 'SALMON'} 
+                  onChange={handleChange} 
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-salmon/50"
+                >
+                  <option value="SALMON">Salmón Pastel (Principal App)</option>
+                  <option value="TEAL">Teal Corporativo</option>
+                  <option value="AZUL">Azul Océano Formal</option>
+                </select>
+                <p className="text-xs text-slate-500 mt-1">Esquema de colores para Contratos y Cuentas de Cobro.</p>
+              </div>
             </div>
 
             <div className="flex flex-col gap-1 mt-2">

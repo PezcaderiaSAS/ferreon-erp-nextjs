@@ -83,30 +83,33 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
 
   const todayStr = new Date().toISOString().split("T")[0];
 
-  // Sincronización proactiva de catálogos en montaje
+  // Sincronización proactiva de catálogos
+  const fetchCatalogsBackground = async () => {
+    try {
+      const [resCli, resEq] = await Promise.all([
+        fetch('/api/clientes'),
+        fetch('/api/equipos')
+      ]);
+      const [jsonCli, jsonEq] = await Promise.all([
+        resCli.json(),
+        resEq.json()
+      ]);
+      if (jsonCli.success && Array.isArray(jsonCli.data)) {
+        setClientes(jsonCli.data);
+      }
+      if (jsonEq.success && Array.isArray(jsonEq.data)) {
+        setEquipos(jsonEq.data.map(equipoToEquipoUI));
+      }
+    } catch (err) {
+      console.warn('[AlquilerForm] Error al sincronizar catálogos en background:', err);
+    }
+  };
+
   useEffect(() => {
     const fetchCatalogs = async () => {
-      try {
-        setIsLoadingCatalogs(true);
-        const [resCli, resEq] = await Promise.all([
-          fetch('/api/clientes'),
-          fetch('/api/equipos')
-        ]);
-        const [jsonCli, jsonEq] = await Promise.all([
-          resCli.json(),
-          resEq.json()
-        ]);
-        if (jsonCli.success && Array.isArray(jsonCli.data)) {
-          setClientes(jsonCli.data);
-        }
-        if (jsonEq.success && Array.isArray(jsonEq.data)) {
-          setEquipos(jsonEq.data.map(equipoToEquipoUI));
-        }
-      } catch (err) {
-        console.warn('[AlquilerForm] Error al sincronizar catálogos:', err);
-      } finally {
-        setIsLoadingCatalogs(false);
-      }
+      setIsLoadingCatalogs(true);
+      await fetchCatalogsBackground();
+      setIsLoadingCatalogs(false);
     };
     fetchCatalogs();
   }, [setClientes, setEquipos]);
@@ -778,12 +781,26 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
                               const eqId = e.target.value;
                               const equipo = equiposActivos.find(eq => String(eq.id) === String(eqId));
                               const tarifa = equipo ? ((equipo as any).tarifa_diaria ?? equipo.tarifaDiaria ?? 0) : 0;
+                              
+                              // Prevención de ítems duplicados visualmente (Mismo equipo, mismas fechas)
+                              const existingIndex = items.findIndex((it, i) => 
+                                i !== index && String(it.itemId) === String(eqId) && 
+                                it.fechaInicio === field.fechaInicio && 
+                                it.fechaFinEstimada === field.fechaFinEstimada
+                              );
+
                               const newItems = [...items];
-                              newItems[index] = { 
-                                ...newItems[index], 
-                                itemId: eqId, 
-                                precioDiario: tarifa 
-                              };
+                              if (existingIndex !== -1) {
+                                // Consolidar sumando cantidad y eliminar esta fila
+                                newItems[existingIndex].cantidad += field.cantidad;
+                                newItems.splice(index, 1);
+                              } else {
+                                newItems[index] = { 
+                                  ...newItems[index], 
+                                  itemId: eqId, 
+                                  precioDiario: tarifa 
+                                };
+                              }
                               setItems(newItems);
                             }}
                             className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none"
@@ -1186,6 +1203,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
               setClientSearchTerm('');
             }
             setIsCreandoCliente(false);
+            fetchCatalogsBackground(); // Sincronización en background sin latencia
           }} 
           onCancel={() => setIsCreandoCliente(false)} 
         />
@@ -1215,6 +1233,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
               setItems(newItems);
             }
             setIsCreandoEquipo(false);
+            fetchCatalogsBackground(); // Sincronización en background
           }} 
           onCancel={() => setIsCreandoEquipo(false)} 
         />

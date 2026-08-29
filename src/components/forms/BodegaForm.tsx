@@ -44,7 +44,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
 
     const validation = equipoSchema.safeParse({
       sku,
-      nombre,
+      nombre: nombre.toUpperCase().trim(),
       categoria,
       tarifaDiaria,
       stockInicial

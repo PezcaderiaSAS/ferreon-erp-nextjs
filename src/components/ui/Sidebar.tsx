@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { config } = useEmpresaStore();
 
   const links = [
     { href: '/', icon: 'dashboard', label: 'Dashboard' },
@@ -17,11 +19,21 @@ export function Sidebar() {
 
   return (
     <nav className="bg-white text-slate-900 font-sans h-screen w-64 fixed left-0 top-0 border-r border-slate-200 shadow-sm flex flex-col p-4 gap-2 z-50">
-      <div className="mb-8 flex items-center px-4 py-2">
-        <div className="text-2xl font-bold text-slate-900">
-          Alquileres ERP
-          <div className="text-xs text-slate-500 font-normal tracking-wide mt-1">System</div>
-        </div>
+      <div className="mb-8 flex items-center px-4 py-2 gap-3">
+        {config.logoBase64 ? (
+          <img 
+            src={config.logoBase64} 
+            alt="Logo Empresa" 
+            className="h-10 w-auto object-contain max-w-[180px]"
+          />
+        ) : (
+          <div className="text-2xl font-bold text-slate-900 leading-none">
+            {config.razonSocial ? config.razonSocial.split(' ')[0] : 'Alquileres'}
+            <div className="text-xs text-slate-500 font-normal tracking-wide mt-1">
+              {config.razonSocial ? config.razonSocial.split(' ').slice(1).join(' ') : 'ERP System'}
+            </div>
+          </div>
+        )}
       </div>
       <div className="flex flex-col gap-2 flex-grow">
         {links.map((link) => {

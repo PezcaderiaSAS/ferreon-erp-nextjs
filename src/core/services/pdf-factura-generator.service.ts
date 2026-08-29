@@ -84,16 +84,19 @@ export class EnterprisePDFService {
     const tituloDoc =
       payload.tipo === "COTIZACION"
         ? "COTIZACIÓN COMERCIAL"
-        : payload.tipo === "CONTRATO"
-        ? "CONTRATO DE ALQUILER & REMISIÓN"
-        : "CUENTA DE COBRO OFICIAL";
+        : "CUENTA DE COBRO";
 
     const badgePrefijo =
-      payload.tipo === "COTIZACION" ? "COT" : payload.tipo === "CONTRATO" ? "ALQ" : "CC";
+      payload.tipo === "COTIZACION" ? "COT" : "CC";
 
-    const badgeColor = "#0f766e"; // Teal corporativo
-    const badgeBg = "#f0fdf4";
-
+    const isTeal = emp.paletaPDF === "TEAL";
+    const isAzul = emp.paletaPDF === "AZUL";
+    const badgeColor = isTeal ? "#0f766e" : isAzul ? "#1e40af" : "#f97316"; // Teal, Blue-800, Salmon (Orange-500)
+    const badgeBg = isTeal ? "#f0fdf4" : isAzul ? "#eff6ff" : "#fff7ed";
+    
+    // Configuración secundaria
+    const headerColor = isTeal ? "#0f766e" : isAzul ? "#1e40af" : "#ea580c"; // Un poco más oscuro para el texto
+    
     const consecutivoDisplay = payload.consecutivo ? `#${String(payload.consecutivo).padStart(5, "0")}` : "BORRADOR";
 
     return `
@@ -182,7 +185,7 @@ export class EnterprisePDFService {
     .brand-title { 
       font-size: ${isA5 ? "14pt" : "18pt"}; 
       font-weight: 900; 
-      color: #0f766e; 
+      color: ${headerColor}; 
       margin: 0; 
       letter-spacing: -0.5px; 
     }
@@ -210,7 +213,7 @@ export class EnterprisePDFService {
       margin: 0; 
       font-size: ${isA5 ? "10pt" : "12pt"}; 
       font-weight: 800; 
-      color: #0f766e;
+      color: ${headerColor};
     }
     .doc-badge p {
       margin: 2px 0 0 0;
@@ -229,7 +232,7 @@ export class EnterprisePDFService {
     }
     .info-block h4 { 
       margin: 0 0 4px 0; 
-      color: #0f766e; 
+      color: ${headerColor}; 
       font-size: ${isA5 ? "7pt" : "7.5pt"}; 
       text-transform: uppercase; 
       letter-spacing: 0.5px; 
@@ -248,7 +251,7 @@ export class EnterprisePDFService {
       border: 1px solid #cbd5e1;
     }
     th { 
-      background: #0f766e; 
+      background: ${badgeColor}; 
       color: #ffffff; 
       text-align: left; 
       padding: ${isA5 ? "4px 6px" : "6px 8px"}; 
@@ -300,7 +303,7 @@ export class EnterprisePDFService {
       font-size: ${isA5 ? "8.5pt" : "10pt"} !important; 
       font-weight: 900; 
       color: #ffffff; 
-      background: #0f766e !important;
+      background: ${badgeColor} !important;
     }
     .total-row td {
       color: #ffffff !important;
@@ -314,7 +317,7 @@ export class EnterprisePDFService {
       border-radius: 6px;
       font-size: ${isA5 ? "7pt" : "8pt"};
       font-weight: 800;
-      color: #0f766e;
+      color: ${headerColor};
     }
     .bank-box {
       margin-top: 6px;
@@ -389,11 +392,14 @@ export class EnterprisePDFService {
     </div>
 
     <div class="header">
-      <div>
-        <h1 class="brand-title">${emp.razonSocial}</h1>
-        <span class="brand-sub">Gestión y Alquiler de Maquinaria y Equipos para la Construcción</span>
-        <div class="brand-meta">
-          NIT: ${emp.nit} • Tel: ${emp.telefono} • ${emp.direccion}, ${emp.ciudad}
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        ${emp.logoBase64 ? `<img src="${emp.logoBase64}" alt="Logo" style="max-height: ${isA5 ? '40px' : '60px'}; object-fit: contain; align-self: flex-start;" />` : ''}
+        <div>
+          <h1 class="brand-title">${emp.razonSocial}</h1>
+          <span class="brand-sub">Gestión y Alquiler de Maquinaria y Equipos para la Construcción</span>
+          <div class="brand-meta">
+            NIT: ${emp.nit} • Tel: ${emp.telefono} • ${emp.direccion}, ${emp.ciudad}
+          </div>
         </div>
       </div>
       <div class="doc-badge">
