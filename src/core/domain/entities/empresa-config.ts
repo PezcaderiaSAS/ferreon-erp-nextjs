@@ -19,11 +19,11 @@ export interface EmpresaConfig {
 }
 
 export const DEFAULT_EMPRESA_CONFIG: EmpresaConfig = {
-  razonSocial: "ALQUILERES & MAQUINARIA S.A.S.",
+  razonSocial: "ALQUILERES SYSTEM",
   nit: "900.854.123-9",
   telefono: "(+57) 310 987 6543 / 601 234 5678",
-  email: "gerencia@alquilereserp.com",
-  direccion: "Avenida Las Américas # 68-45",
+  email: "contacto@alquileressystem.com",
+  direccion: "Avenida Principal # 14 - 34",
   ciudad: "Bogotá D.C., Colombia",
   moneda: {
     codigo: "COP",
@@ -32,6 +32,6 @@ export const DEFAULT_EMPRESA_CONFIG: EmpresaConfig = {
   },
   logoBase64: "",
   notasFacturaPDF: "Horario de corte de facturación: 5:00 PM (hora de Bogotá). Los equipos deben ser devueltos limpios y en las mismas condiciones técnicas de entrega.",
-  cuentaBancariaInfo: "Pagos y Transferencias: Cuenta de Ahorros Bancolombia No. 123-456789-01 a nombre de ALQUILERES & MAQUINARIA S.A.S. (NIT 900.854.123-9) o Nequi/Daviplata al 3109876543.",
-  diasMinimosAlquiler: 3
+  cuentaBancariaInfo: "Pagos y Transferencias: Cuenta de Ahorros Bancolombia No. 123-456789-01 a nombre de ALQUILERES SYSTEM (NIT 900.854.123-9) o Nequi/Daviplata al 3109876543.",
+  diasMinimosAlquiler: 1
 };

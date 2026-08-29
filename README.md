@@ -23,8 +23,10 @@ Sistema ERP desacoplado para la gestión de alquiler de equipos de construcción
 
 ---
 
-## 🛠️ Guías Operativas
+## 🛠️ Guías Operativas y Arquitectura
 
+- 📄 **[Manual del Motor de PDFs y Emisión Multiformato](docs/guides/manual_motor_pdf_y_emision.md):** Guía completa del motor vectorial `@react-pdf/renderer` e impresión HTML, soporte para **Carta (`LETTER`)** y **Media Carta (`A5`)**, desglose de 7 columnas, liquidación de saldo y asistencia monetaria verbal (`$10.000 - Diez mil pesos`).
+- ⚡ **[Persistencia Relacional y Middleware Edge Resiliente](docs/architecture/persistencia-y-middleware-resiliente.md):** Documento técnico sobre la persistencia atómica en creación/edición de alquileres, compensación de inventario y optimización de Next.js Edge Middleware para prevenir errores 504.
 - 🧪 **[Guía de Pruebas Locales](docs/guides/local-testing-guide.md):** Manual completo paso a paso para la instalación de dependencias, ejecución de pruebas unitarias (Vitest), pruebas E2E (Playwright) y emulador local de Supabase.
 - ✨ **[Inicialización de Producción Limpia (`seed_clean.sql`)](supabase/seed_clean.sql):** Script SQL oficial sin datos de prueba, con secuencias reiniciadas en 1, índices optimizados y RLS listo para el despliegue inmediato en producción.
 

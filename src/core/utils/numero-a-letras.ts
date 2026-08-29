@@ -87,7 +87,28 @@ export function numeroALetras(cantidad: number): string {
  * Formatea un número al estándar monetario colombiano: $40.000
  */
 export function formatearMonedaCOP(monto: number): string {
-  const redondeado = Math.round(monto);
+  const redondeado = Math.round(monto || 0);
   const partes = redondeado.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return `$${partes}`;
+}
+
+/**
+ * Formatea un número al estándar visual con texto en letras:
+ * Ejemplo: 10000 -> "$10.000 (Diez mil pesos)"
+ * Ejemplo: 350000 -> "$350.000 (Trescientos cincuenta mil pesos)"
+ * Ejemplo: 0 -> "$0 (Cero pesos)"
+ */
+export function formatearMonedaConLetras(monto: number): string {
+  const valor = Math.round(Math.abs(monto || 0));
+  const cop = formatearMonedaCOP(valor);
+  if (valor === 0) return `${cop} (Cero pesos)`;
+
+  const texto = numeroALetras(valor)
+    .replace(/^SON:\s*/i, "")
+    .replace(/\s*PESOS\s*M\/CTE$/i, "")
+    .trim()
+    .toLowerCase();
+
+  const textoCapitalizado = texto.charAt(0).toUpperCase() + texto.slice(1);
+  return `${cop} (${textoCapitalizado} pesos)`;
 }

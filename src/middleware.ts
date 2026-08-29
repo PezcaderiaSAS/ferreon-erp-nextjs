@@ -1,86 +1,96 @@
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 export async function middleware(request: NextRequest) {
-  // Create an unmodified response
+  const { pathname } = request.nextUrl;
+
+  // 1. FAST-PATH: Excluir de inmediato rutas internas, API, Auth y archivos estáticos sin llamadas de red
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/auth') ||
+    pathname === '/unauthorized' ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next();
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // Si no hay credenciales de Supabase configuradas, permitir navegación segura
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          // If the cookie is updated, update the request and response cookies
-          request.cookies.set({ name, value, ...options });
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          });
-          response.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          // If the cookie is removed, update the request and response cookies
-          request.cookies.set({ name, value: '', ...options });
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          });
-          response.cookies.set({ name, value: '', ...options });
-        },
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
       },
-    }
-  );
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        response = NextResponse.next({
+          request,
+        });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options)
+        );
+      },
+    },
+  });
 
-  // Refresh session if expired - this will also refresh the cookie
-  const { data: { user } } = await supabase.auth.getUser();
-  const url = request.nextUrl.clone();
-  
-  // Exclude static paths and auth routes from strict checking
-  if (
-    url.pathname.startsWith('/_next') ||
-    url.pathname.startsWith('/api') ||
-    url.pathname.startsWith('/auth') ||
-    url.pathname === '/unauthorized' ||
-    url.pathname.includes('.')
-  ) {
+  // 2. Verificación de sesión con Timeout Guard (máximo 1200ms para prevenir 504 MIDDLEWARE_INVOCATION_TIMEOUT)
+  let user = null;
+  try {
+    const timeoutPromise = new Promise<{ data: { user: null } }>((resolve) =>
+      setTimeout(() => resolve({ data: { user: null } }), 1200)
+    );
+    
+    const { data } = await Promise.race([
+      supabase.auth.getUser(),
+      timeoutPromise,
+    ]);
+    user = data.user;
+  } catch (error) {
+    console.warn('[Middleware] Supabase auth check warning:', error);
+  }
+
+  // 3. Redirección condicional a login
+  if (!user) {
+    // Verificar si existe cookie de sesión de Supabase para evitar falsos positivos por latencia
+    const hasAuthCookie = request.cookies.getAll().some(c => c.name.includes('sb-') && c.name.includes('-auth-token'));
+    if (!hasAuthCookie) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = '/auth/login';
+      loginUrl.searchParams.set('redirectTo', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    // Si tiene cookie pero hubo timeout de red, permitir que los Server Components resuelvan la sesión
     return response;
   }
 
-  // If no user, redirect to login
-  if (!user) {
-    url.pathname = '/auth/login';
-    return NextResponse.redirect(url);
-  }
-
-  // Zero-Latency RBAC verification via JWT metadata
+  // 4. Control de acceso por roles (RBAC)
   const userRole = user.user_metadata?.rol;
-
-  // Route: /configuracion requires SUPERADMIN or ADMIN
-  if (url.pathname.startsWith('/configuracion')) {
+  if (pathname.startsWith('/configuracion')) {
     if (userRole !== 'SUPERADMIN' && userRole !== 'ADMIN') {
-      // Rewrite to unauthorized preserving the original URL
       return NextResponse.rewrite(new URL('/unauthorized', request.url));
     }
   }
 
-  // Other routes can be mapped here later
   return response;
 }
 
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
+     * Intercepta rutas de la aplicación excepto archivos estáticos
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],

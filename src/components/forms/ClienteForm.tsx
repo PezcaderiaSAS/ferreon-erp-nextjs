@@ -5,6 +5,7 @@ import * as z from 'zod';
 import { useClienteStore } from '../../infrastructure/state/clienteStore';
 import { Cliente } from '../../core/domain/entities/cliente';
 import { idempotencyManager } from '../../lib/idempotency';
+import { crearClienteAction } from '../../app/actions/clientes';
 
 const clienteSchema = z.object({
   nit: z.string().min(1, 'El NIT es requerido'),
@@ -80,8 +81,6 @@ export function ClienteForm({ onSuccess, onCancel }: ClienteFormProps) {
       store.agregarCliente(nuevoCliente as any);
       
       // 2. Network Persist via Server Action
-      const { crearClienteAction } = await import('../../app/actions/clientes');
-      
       const result = await crearClienteAction({
         nit_cedula: validation.data.nit,
         nombre: validation.data.nombre,

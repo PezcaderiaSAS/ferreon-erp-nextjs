@@ -24,10 +24,15 @@ export class SupabaseEquipoRepository implements EquipoRepository {
       .from('equipos')
       .insert([
         {
-          sku: equipo.sku,
+          codigo: equipo.sku || (equipo as any).codigo,
           nombre: equipo.nombre,
           categoria: equipo.categoria,
-          estado: equipo.estado,
+          tarifa_diaria: (equipo as any).tarifa_diaria ?? (equipo as any).tarifaDiaria ?? 0,
+          stock_total: (equipo as any).stock_total ?? (equipo as any).stockTotal ?? 0,
+          stock_disponible: (equipo as any).stock_disponible ?? (equipo as any).stockDisponible ?? 0,
+          stock_en_obra: 0,
+          stock_mantenimiento: 0,
+          estado: 'Activo',
         }
       ])
       .select()
