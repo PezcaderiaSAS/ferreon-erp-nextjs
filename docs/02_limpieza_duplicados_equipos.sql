@@ -19,6 +19,8 @@ BEGIN
             MIN(id) as maestro_id,
             array_remove(array_agg(id), MIN(id)) as ids_duplicados,
             SUM(stock_disponible) as suma_stock_disponible,
+            SUM(stock_en_obra) as suma_stock_en_obra,
+            SUM(stock_mantenimiento) as suma_stock_mantenimiento,
             SUM(stock_total) as suma_stock_total
         FROM public.equipos
         WHERE deleted_at IS NULL
@@ -35,6 +37,8 @@ BEGIN
         UPDATE public.equipos
         SET 
             stock_disponible = r.suma_stock_disponible,
+            stock_en_obra = r.suma_stock_en_obra,
+            stock_mantenimiento = r.suma_stock_mantenimiento,
             stock_total = r.suma_stock_total,
             nombre = UPPER(TRIM(nombre)) -- Aprovechamos para estandarizar en mayúsculas
         WHERE id = r.maestro_id;
