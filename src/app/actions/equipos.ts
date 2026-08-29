@@ -13,7 +13,7 @@ export interface CrearEquipoInput {
 }
 
 export async function crearEquipoAction(input: CrearEquipoInput) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   const { data, error } = await supabase
     .from('equipos')
@@ -53,7 +53,7 @@ export interface EditarEquipoInput {
 }
 
 export async function editarEquipoAction(input: EditarEquipoInput) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   const { data, error } = await supabase
     .from('equipos')

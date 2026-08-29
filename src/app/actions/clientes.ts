@@ -14,7 +14,7 @@ export interface CrearClienteInput {
 }
 
 export async function crearClienteAction(input: CrearClienteInput) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   const { data, error } = await supabase
     .from('clientes')

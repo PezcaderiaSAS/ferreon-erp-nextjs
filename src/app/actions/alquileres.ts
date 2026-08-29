@@ -32,7 +32,7 @@ export interface EditarAlquilerInput extends Omit<CrearAlquilerInput, 'idempoten
 }
 
 export async function crearAlquilerAction(input: CrearAlquilerInput) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   // Basic calculation for total and saldo
   let subtotal = 0;
@@ -107,7 +107,7 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
 }
 
 export async function editarAlquilerAction(input: EditarAlquilerInput) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   let subtotal = 0;
   input.items.forEach(item => {

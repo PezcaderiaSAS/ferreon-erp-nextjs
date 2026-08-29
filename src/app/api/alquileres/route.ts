@@ -40,7 +40,7 @@ export async function GET() {
       }
     }
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     
     // Para el catálogo, traemos alquileres y sus detalles (y los clientes para el nombre)
     const { data, error } = await supabase
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     const subtotalGeneral = subtotalEquipos + totalFletes;
     const total = Math.max(0, subtotalGeneral - validatedData.deposito);
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
 
     // 1. Insertar Cabecera
     const { data: cabecera, error: errorCabecera } = await supabase

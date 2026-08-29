@@ -30,7 +30,7 @@ export async function GET() {
       }
     }
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("equipos")
       .select("*")
@@ -59,7 +59,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
 
     if (body.equipos && Array.isArray(body.equipos)) {
       const validatedData = CargaMasivaSchema.parse(body);

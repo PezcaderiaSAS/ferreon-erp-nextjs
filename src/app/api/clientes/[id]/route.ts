@@ -17,7 +17,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data: cliente, error } = await supabase
       .from("clientes")
       .select("*")
@@ -62,7 +62,7 @@ export async function PUT(
     if (validatedData.direccion !== undefined) updateData.direccion = validatedData.direccion || null;
     if (validatedData.estado) updateData.estado = validatedData.estado;
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("clientes")
       .update(updateData)
@@ -101,7 +101,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     
     // Soft delete: setear deleted_at
     const { error } = await supabase
