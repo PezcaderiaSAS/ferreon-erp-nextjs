@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { BodegaForm } from '../../components/forms/BodegaForm';
 import { EditarEquipoModal } from '../components/bodega/EditarEquipoModal';
-import { SupabaseEquipoRepository } from '../../infrastructure/adapters/SupabaseEquipoRepository';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { EquipoUI } from '../../infrastructure/state/bodegaStore';
 import { equipoToEquipoUI } from '../../lib/mappers';
@@ -20,10 +19,11 @@ export default function BodegaPage() {
 
   const fetchEquipos = async () => {
     try {
-      const repo = new SupabaseEquipoRepository();
-      const data = await repo.obtenerTodos();
-      if (data && data.length > 0) {
-        setEquipos(data.map(equipoToEquipoUI));
+      setLoading(true);
+      const res = await fetch('/api/equipos');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setEquipos(json.data.map(equipoToEquipoUI));
       }
     } catch (e) {
       console.warn('[BodegaPage] Usando almacenamiento local persistido (modo offline):', e);

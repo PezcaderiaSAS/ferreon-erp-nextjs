@@ -231,8 +231,8 @@ export default function AlquileresPage() {
       const payload: any = {
         tipo: contrato.estado === 'COTIZACION' ? 'COTIZACION' : (contrato.estado === 'FINALIZADO' ? 'CUENTA_COBRO' : 'CONTRATO'),
         consecutivo: contrato.consecutivo || parseInt(String(contrato.id || "").replace(/\D/g, '') || "0") || Date.now() % 10000,
-        fechaEmision: new Date().toLocaleDateString(),
-        fechaInicioGeneral: new Date(contrato.createdAt || Date.now()).toLocaleDateString(),
+        fechaEmision: new Date().toISOString(),
+        fechaInicioGeneral: new Date(contrato.createdAt || Date.now()).toISOString(),
         clienteNombre: contrato.clienteNombre || "Cliente General",
         clienteNit: contrato.clienteDocumento || "222222222",
         items: contrato.detalles.map((d: any) => {
@@ -240,11 +240,12 @@ export default function AlquileresPage() {
           const fFin = new Date(d.fechaFinEstimada || d.fechaFin || contrato.createdAt || Date.now()).getTime();
           const dias = Math.max(1, Math.ceil((fFin - fInicio) / 86400000));
           const tarifaDiaria = d.tarifaAplicada || 0;
+          const equipoReal = useBodegaStore.getState().equipos.find(e => String(e.id) === String(d.itemId || d.equipo_id));
           return {
             cantidad: d.cantidad,
-            nombre: d.nombreItem || d.nombre || "Equipo",
-            fechaInicio: new Date(fInicio).toLocaleDateString(),
-            fechaFin: new Date(fFin).toLocaleDateString(),
+            nombre: equipoReal?.nombre || d.nombreItem || d.nombre || "Equipo",
+            fechaInicio: new Date(fInicio).toISOString(),
+            fechaFin: new Date(fFin).toISOString(),
             dias: dias,
             tarifaDiaria: tarifaDiaria,
             subtotal: d.subtotalLineaReal || d.subtotalLineaEstimado || (tarifaDiaria * dias * d.cantidad) || 0,

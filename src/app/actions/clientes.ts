@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { redis } from '@/lib/redis';
 
 export interface CrearClienteInput {
   nit_cedula: string;
@@ -35,6 +36,14 @@ export async function crearClienteAction(input: CrearClienteInput) {
     }
     console.error('Error Supabase crearClienteAction:', error);
     return { success: false, error: `Error al guardar cliente en BD: ${error.message}` };
+  }
+
+  if (redis) {
+    try {
+      await redis.del('cache:clientes');
+    } catch (e) {
+      console.warn('Error invalidando caché de clientes en Redis:', e);
+    }
   }
 
   revalidatePath('/clientes');
@@ -84,6 +93,14 @@ export async function editarClienteAction(input: EditarClienteInput) {
     }
     console.error('Error Supabase editarClienteAction:', error);
     return { success: false, error: `Error al actualizar cliente en BD: ${error.message}` };
+  }
+
+  if (redis) {
+    try {
+      await redis.del('cache:clientes');
+    } catch (e) {
+      console.warn('Error invalidando caché de clientes en Redis:', e);
+    }
   }
 
   revalidatePath('/clientes');

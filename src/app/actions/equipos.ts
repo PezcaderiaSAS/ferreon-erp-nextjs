@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient, createAdminSupabaseClient } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { redis } from '@/lib/redis';
 
 export interface CrearEquipoInput {
   sku: string;
@@ -41,6 +42,14 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
     return { success: false, error: `Error al guardar equipo en BD: ${error.message}` };
   }
 
+  if (redis) {
+    try {
+      await redis.del('cache:equipos');
+    } catch (e) {
+      console.warn('Error invalidando caché de equipos en Redis:', e);
+    }
+  }
+
   revalidatePath('/bodega');
   return { success: true, data };
 }
@@ -76,6 +85,14 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
   if (error) {
     console.error('Error Supabase editarEquipoAction:', error);
     return { success: false, error: `Error al editar equipo en BD: ${error.message || JSON.stringify(error)}` };
+  }
+
+  if (redis) {
+    try {
+      await redis.del('cache:equipos');
+    } catch (e) {
+      console.warn('Error invalidando caché de equipos en Redis:', e);
+    }
   }
 
   revalidatePath('/bodega');
@@ -114,6 +131,14 @@ export async function ajustarStockEquipoAction(equipoId: string | number, delta:
       return { success: false, error: 'Stock insuficiente para realizar este ajuste.' };
     }
     return { success: false, error: `Error al ajustar stock en BD: ${error.message || JSON.stringify(error)}` };
+  }
+
+  if (redis) {
+    try {
+      await redis.del('cache:equipos');
+    } catch (e) {
+      console.warn('Error invalidando caché de equipos en Redis:', e);
+    }
   }
 
   revalidatePath('/bodega');
