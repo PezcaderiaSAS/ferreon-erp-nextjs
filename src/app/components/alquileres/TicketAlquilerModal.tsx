@@ -18,6 +18,8 @@ interface TicketAlquilerModalProps {
 }
 
 export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuevoAlquiler }: TicketAlquilerModalProps) {
+  const { clientes } = useClienteStore();
+  
   if (!alquiler || !empresa) return null;
 
   const formatearMoneda = (valor: number) => {
@@ -31,8 +33,6 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
   const handlePrint = () => {
     window.print();
   };
-
-  const { clientes } = useClienteStore();
   
   // Lectura pasiva de datos (Single Source of Truth)
   const consecutivo = alquiler.consecutivo || alquiler.id;
