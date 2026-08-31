@@ -28,7 +28,7 @@ export function DetalleAlquilerModal({
 
   // Inyección Dinámica del Cliente
   const esAlquilerAbierto = alquiler.estado !== 'DEVUELTO' && alquiler.estado !== 'CERRADO' && alquiler.estado !== 'PAGADO';
-  const clienteActualizado = clientes.find((c: any) => c.id === alquiler.clienteId);
+  const clienteActualizado = clientes.find((c: any) => c.id === alquiler.cliente_id);
   const clienteNombreFinal = esAlquilerAbierto && clienteActualizado ? clienteActualizado.nombre : (alquiler.clienteNombre || "Cliente General");
 
   const consecutivoFormatted = `#CTR-${String(alquiler.consecutivo || 1).padStart(4, '0')}`;
