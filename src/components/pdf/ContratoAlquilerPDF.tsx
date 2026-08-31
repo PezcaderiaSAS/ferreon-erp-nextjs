@@ -444,6 +444,12 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
               <Text style={styles.totalLabel}>Anticipo / Depósito Aplicado:</Text>
               <Text style={[styles.totalVal, { color: '#dc2626' }]}>- {formatearCOP(deposito)}</Text>
             </View>
+            {garantiaMonto > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Fondo de Garantía (No cobrado):</Text>
+                <Text style={[styles.totalVal, { color: '#475569' }]}>{formatearCOP(garantiaMonto)}</Text>
+              </View>
+            )}
             <View style={styles.totalRowFinal}>
               <Text style={styles.totalLabelFinal}>SALDO PENDIENTE:</Text>
               <Text style={styles.totalValFinal}>{formatearCOP(saldoPendiente)}</Text>

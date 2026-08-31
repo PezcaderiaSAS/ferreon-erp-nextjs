@@ -1,5 +1,8 @@
 'use client';
 
+import { BadgeInfo, History, Wallet, CheckCircle, Receipt, Info } from 'lucide-react';
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import * as z from 'zod';
 import { Modal } from '../../../components/ui/Modal';
@@ -222,7 +225,7 @@ export function DetalleClienteModal({
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">badge</span>
+            <BadgeInfo className="text-[18px] w-5 h-5" />
             <span>1. Información & Edición</span>
           </button>
 
@@ -235,7 +238,7 @@ export function DetalleClienteModal({
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">history_edu</span>
+            <History className="text-[18px] w-5 h-5" />
             <span>2. Historial de Alquileres ({alquileresDelCliente.length})</span>
           </button>
 
@@ -248,7 +251,7 @@ export function DetalleClienteModal({
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">account_balance_wallet</span>
+            <Wallet className="text-[18px] w-5 h-5" />
             <span>3. Cartera & Saldos</span>
           </button>
         </div>
@@ -258,7 +261,7 @@ export function DetalleClienteModal({
           <form onSubmit={onSubmitInfo} className="flex flex-col gap-4">
             {feedbackSuccess && (
               <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold p-3 rounded-xl flex items-center gap-2 animate-fadeIn">
-                <span className="material-symbols-outlined text-[18px] text-emerald-600">check_circle</span>
+                <CheckCircle className="text-[18px] text-emerald-600 w-5 h-5" />
                 <span>{feedbackSuccess}</span>
               </div>
             )}
@@ -393,7 +396,7 @@ export function DetalleClienteModal({
                   {alquileresDelCliente.length === 0 && (
                     <tr>
                       <td colSpan={5} className="py-10 text-center text-slate-400">
-                        <span className="material-symbols-outlined text-3xl text-slate-300 mb-1 block">receipt_long</span>
+                        <Receipt className="text-3xl text-slate-300 mb-1 block w-5 h-5" />
                         Este cliente no registra contratos de alquiler previos.
                       </td>
                     </tr>
@@ -430,7 +433,7 @@ export function DetalleClienteModal({
 
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2 text-slate-700 font-medium">
-                <span className="material-symbols-outlined text-slate-500 text-[18px]">info</span>
+                <Info className="text-slate-500 text-[18px] w-5 h-5" />
                 <span>Contratos con equipos actualmente en posesión: <strong>{resumenCartera.contratosActivosCount}</strong></span>
               </div>
               <span className="font-bold text-slate-600">

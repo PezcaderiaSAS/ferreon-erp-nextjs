@@ -1,5 +1,8 @@
 "use client";
 
+import { X } from 'lucide-react';
+
+
 import React, { useEffect } from 'react';
 
 interface ModalProps {
@@ -59,7 +62,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
             className="text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 p-2 rounded-xl transition-all"
             aria-label="Cerrar modal"
           >
-            <span className="material-symbols-outlined text-[20px] block">close</span>
+            <X className="text-[20px] block w-5 h-5" />
           </button>
         </div>
         

@@ -1,5 +1,8 @@
 import Link from 'next/link';
 
+import { Hammer, TrendingUp, FileText, AlertTriangle, PlusCircle, CornerDownLeft } from 'lucide-react';
+
+
 export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-8">
@@ -15,12 +18,12 @@ export default function DashboardPage() {
           <div className="flex justify-between items-start">
             <span className="text-sm font-medium text-slate-600">Equipos Alquilados</span>
             <div className="p-2 bg-slate-100 rounded-lg text-slate-600">
-              <span className="material-symbols-outlined">construction</span>
+              <Hammer className=" w-5 h-5" />
             </div>
           </div>
           <div className="text-4xl font-bold text-slate-900">124</div>
           <div className="text-sm text-emerald-600 flex items-center gap-1">
-            <span className="material-symbols-outlined text-base">trending_up</span> +5% desde ayer
+            <TrendingUp className="text-base w-5 h-5" /> +5% desde ayer
           </div>
         </div>
 
@@ -28,7 +31,7 @@ export default function DashboardPage() {
           <div className="flex justify-between items-start">
             <span className="text-sm font-medium text-slate-600">Contratos Activos</span>
             <div className="p-2 bg-slate-100 rounded-lg text-slate-600">
-              <span className="material-symbols-outlined">description</span>
+              <FileText className=" w-5 h-5" />
             </div>
           </div>
           <div className="text-4xl font-bold text-slate-900">45</div>
@@ -41,7 +44,7 @@ export default function DashboardPage() {
           <div className="flex justify-between items-start">
             <span className="text-sm font-medium text-slate-600">Devoluciones Pendientes hoy</span>
             <div className="p-2 bg-red-50 rounded-lg text-red-600">
-              <span className="material-symbols-outlined">warning</span>
+              <AlertTriangle className=" w-5 h-5" />
             </div>
           </div>
           <div className="text-4xl font-bold text-red-600">12</div>
@@ -54,12 +57,12 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Link href="/alquileres" className="bg-brand-salmonLight text-brand-salmonDark rounded-xl shadow-card p-6 flex items-center justify-center gap-4 hover:bg-brand-salmon hover:text-white transition-colors duration-200 group border border-transparent">
-          <span className="material-symbols-outlined text-[32px] group-hover:scale-110 transition-transform">add_circle</span>
+          <PlusCircle className="text-[32px] group-hover:scale-110 transition-transform w-5 h-5" />
           <span className="text-xl font-semibold">Ir al Módulo de Alquileres</span>
         </Link>
         
         <Link href="/alquileres" className="bg-white text-slate-900 border border-slate-200 rounded-xl shadow-card p-6 flex items-center justify-center gap-4 hover:bg-slate-50 transition-colors duration-200 group">
-          <span className="material-symbols-outlined text-[32px] text-brand-salmon group-hover:-translate-y-1 transition-transform">keyboard_return</span>
+          <CornerDownLeft className="text-[32px] text-brand-salmon group-hover:-translate-y-1 transition-transform w-5 h-5" />
           <span className="text-xl font-semibold">Gestionar Devoluciones</span>
         </Link>
       </div>

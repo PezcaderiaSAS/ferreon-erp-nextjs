@@ -1,5 +1,8 @@
 "use client";
 
+import { X, Plus, Edit2 } from 'lucide-react';
+
+
 import React, { useState, useEffect } from 'react';
 import { RoleType } from '../../core/domain/entities/usuario';
 
@@ -125,7 +128,7 @@ export function UsuariosTab() {
         <div className="w-full bg-red-50 text-red-600 text-sm p-4 rounded-xl border border-red-100 flex items-center justify-between">
           <span>{errorMsg}</span>
           <button type="button" onClick={() => setErrorMsg(null)} className="text-red-400 hover:text-red-700">
-            <span className="material-symbols-outlined text-lg">close</span>
+            <X className="text-lg w-5 h-5" />
           </button>
         </div>
       )}
@@ -143,7 +146,7 @@ export function UsuariosTab() {
           }}
           className="px-4 py-2 bg-brand-salmon text-white rounded-lg text-sm font-medium hover:bg-brand-salmonDark transition-colors flex items-center gap-2"
         >
-          <span className="material-symbols-outlined text-sm">add</span>
+          <Plus className="text-sm w-5 h-5" />
           Nuevo Usuario
         </button>
       </div>
@@ -257,7 +260,7 @@ export function UsuariosTab() {
                     onClick={() => handleEditClick(u)}
                     className="text-slate-400 hover:text-brand-salmon transition-colors"
                   >
-                    <span className="material-symbols-outlined text-xl">edit</span>
+                    <Edit2 className="text-xl w-5 h-5" />
                   </button>
                 </td>
               </tr>

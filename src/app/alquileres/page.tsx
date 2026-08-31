@@ -1,4 +1,5 @@
 "use client";
+import { Plus, Search, MoreVertical } from "lucide-react";
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
@@ -292,9 +293,9 @@ export default function AlquileresPage() {
         </div>
         <button 
           onClick={() => { setContratoActivo(null); setIsModalOpen(true); }}
-          className="bg-brand-salmonLight text-brand-salmonDark hover:bg-brand-salmon hover:text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm self-start md:self-end"
+          className="bg-brand-salmonLight text-brand-salmonDark hover:bg-brand-salmon hover:text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm w-full sm:w-auto"
         >
-          <span className="material-symbols-outlined text-[20px]">add</span>
+          <Plus className="w-5 h-5" />
           Nuevo Contrato
         </button>
       </div>
@@ -317,7 +318,7 @@ export default function AlquileresPage() {
             >Cotizaciones</button>
           </div>
           <div className="relative w-full sm:w-64">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[20px]">search</span>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
             <input 
               className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-salmon focus:ring-1 focus:ring-brand-salmon transition-all" 
               placeholder="Buscar contrato..." 
@@ -382,7 +383,7 @@ export default function AlquileresPage() {
                       className="text-slate-400 hover:text-brand-salmon transition-colors p-1.5 rounded-lg hover:bg-slate-100"
                       title="Menú de acciones"
                     >
-                      <span className="material-symbols-outlined text-[20px]">more_vert</span>
+                      <MoreVertical className="w-5 h-5" />
                     </button>
                     
                     {/* Dropdown Menu */}

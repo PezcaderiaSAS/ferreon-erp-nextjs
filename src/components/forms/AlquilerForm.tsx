@@ -87,8 +87,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
   const fetchCatalogsBackground = async () => {
     try {
       const [resCli, resEq] = await Promise.all([
-        fetch('/api/clientes'),
-        fetch('/api/equipos')
+        fetch('/api/clientes', { cache: 'no-store' }),
+        fetch('/api/equipos', { cache: 'no-store' })
       ]);
       const [jsonCli, jsonEq] = await Promise.all([
         resCli.json(),

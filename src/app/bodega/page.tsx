@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { PlusSquare, Package, CheckCircle, Wrench, Warehouse, FileEdit } from "lucide-react";
 import { Modal } from '../../components/ui/Modal';
 import { BodegaForm } from '../../components/forms/BodegaForm';
 import { EditarEquipoModal } from '../components/bodega/EditarEquipoModal';
@@ -64,7 +65,7 @@ export default function BodegaPage() {
           onClick={() => setIsCreateModalOpen(true)}
           className="flex items-center justify-center gap-2 bg-brand-salmon hover:bg-brand-salmonDark text-white px-6 py-2.5 rounded-xl transition-colors shadow-sm w-full sm:w-auto text-sm font-semibold"
         >
-          <span className="material-symbols-outlined text-[20px]">add_box</span>
+          <PlusSquare className="w-5 h-5" />
           Añadir Nuevo Equipo
         </button>
       </div>
@@ -74,7 +75,7 @@ export default function BodegaPage() {
         <div className="bg-white rounded-2xl p-5 shadow-card border border-slate-100 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Total Equipos</span>
-            <span className="material-symbols-outlined text-slate-400 text-[22px]">inventory_2</span>
+            <Package className="text-slate-400 w-6 h-6" />
           </div>
           <div className="text-3xl font-bold text-slate-900">{totalModelos} <span className="text-xs font-normal text-slate-500">modelos</span></div>
         </div>
@@ -82,7 +83,7 @@ export default function BodegaPage() {
         <div className="bg-white rounded-2xl p-5 shadow-card border border-slate-100 flex flex-col justify-between border-l-4 border-l-emerald-500">
           <div className="flex items-center justify-between text-emerald-700 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Stock Disponible</span>
-            <span className="material-symbols-outlined text-emerald-500 text-[22px]">check_circle</span>
+            <CheckCircle className="text-emerald-500 w-6 h-6" />
           </div>
           <div className="text-3xl font-bold text-emerald-700">{totalDisponible} <span className="text-xs font-normal text-slate-500">unidades listas</span></div>
         </div>
@@ -90,7 +91,7 @@ export default function BodegaPage() {
         <div className="bg-white rounded-2xl p-5 shadow-card border border-slate-100 flex flex-col justify-between border-l-4 border-l-amber-500">
           <div className="flex items-center justify-between text-amber-700 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Stock en Obra</span>
-            <span className="material-symbols-outlined text-amber-500 text-[22px]">engineering</span>
+            <Wrench className="text-amber-500 w-6 h-6" />
           </div>
           <div className="text-3xl font-bold text-amber-700">{totalEnObra} <span className="text-xs font-normal text-slate-500">alquiladas</span></div>
         </div>
@@ -98,7 +99,7 @@ export default function BodegaPage() {
         <div className="bg-white rounded-2xl p-5 shadow-card border border-slate-100 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Capacidad Total</span>
-            <span className="material-symbols-outlined text-slate-400 text-[22px]">warehouse</span>
+            <Warehouse className="text-slate-400 w-6 h-6" />
           </div>
           <div className="text-3xl font-bold text-slate-900">{totalStockFisico} <span className="text-xs font-normal text-slate-500">unidades físicas</span></div>
         </div>
@@ -183,7 +184,7 @@ export default function BodegaPage() {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-brand-salmon hover:text-white text-slate-700 text-xs font-semibold rounded-lg transition-colors shadow-xs"
                       title="Editar datos y ajustar stock"
                     >
-                      <span className="material-symbols-outlined text-[16px]">edit_note</span>
+                      <FileEdit className="w-4 h-4" />
                       <span>Ajustar / Editar</span>
                     </button>
                   </td>
@@ -192,7 +193,7 @@ export default function BodegaPage() {
               {equipos.length === 0 && (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-slate-500">
-                    <span className="material-symbols-outlined text-4xl text-slate-300 mb-2 block">inventory_2</span>
+                    <Package className="w-10 h-10 text-slate-300 mb-2 block mx-auto" />
                     No hay equipos registrados en bodega.
                   </td>
                 </tr>

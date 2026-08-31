@@ -1,4 +1,5 @@
 "use client";
+import { UserPlus, Users, ShieldCheck, ShieldAlert, Search, Eye, UserSearch } from "lucide-react";
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useClienteStore } from '../../infrastructure/state/clienteStore';
@@ -75,9 +76,9 @@ export default function ClientesPage() {
         </div>
         <button 
           onClick={() => setIsCreateModalOpen(true)}
-          className="bg-brand-salmon hover:bg-brand-salmonDark text-white transition-colors px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-sm"
+          className="bg-brand-salmon hover:bg-brand-salmonDark text-white transition-colors px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 shadow-sm w-full sm:w-auto"
         >
-          <span className="material-symbols-outlined text-[20px]">person_add</span>
+          <UserPlus className="w-5 h-5" />
           Añadir Nuevo Cliente
         </button>
       </div>
@@ -87,7 +88,7 @@ export default function ClientesPage() {
         <div className="bg-white p-5 rounded-2xl shadow-card border border-slate-100 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Total Clientes</span>
-            <span className="material-symbols-outlined text-slate-400 text-[22px]">group</span>
+            <Users className="text-slate-400 w-6 h-6" />
           </div>
           <p className="text-3xl font-bold text-slate-900">{totalClientes}</p>
         </div>
@@ -95,7 +96,7 @@ export default function ClientesPage() {
         <div className="bg-white p-5 rounded-2xl shadow-card border border-slate-100 flex flex-col justify-between border-l-4 border-l-emerald-500">
           <div className="flex items-center justify-between text-emerald-700 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Clientes Confiables</span>
-            <span className="material-symbols-outlined text-emerald-500 text-[22px]">verified_user</span>
+            <ShieldCheck className="text-emerald-500 w-6 h-6" />
           </div>
           <p className="text-3xl font-bold text-emerald-700">{clientesBajoRiesgo} <span className="text-xs font-normal text-slate-500">Riesgo Bajo</span></p>
         </div>
@@ -103,7 +104,7 @@ export default function ClientesPage() {
         <div className="bg-white p-5 rounded-2xl shadow-card border border-slate-100 flex flex-col justify-between border-l-4 border-l-amber-500">
           <div className="flex items-center justify-between text-amber-700 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Seguimiento Cartera</span>
-            <span className="material-symbols-outlined text-amber-500 text-[22px]">policy</span>
+            <ShieldAlert className="text-amber-500 w-6 h-6" />
           </div>
           <p className="text-3xl font-bold text-amber-700">{clientesRiesgoAtencion} <span className="text-xs font-normal text-slate-500">Medio / Alto</span></p>
         </div>
@@ -113,7 +114,7 @@ export default function ClientesPage() {
       <div className="bg-white rounded-2xl shadow-card border border-slate-200/80 overflow-hidden flex-1 flex flex-col min-h-[450px]">
         <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
           <div className="relative w-full sm:w-72">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
             <input
               type="text"
               value={searchTerm}
@@ -178,7 +179,7 @@ export default function ClientesPage() {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-brand-salmon hover:text-white text-slate-700 text-xs font-semibold rounded-lg transition-colors shadow-xs"
                       title="Ver ficha 360°, editar e historial"
                     >
-                      <span className="material-symbols-outlined text-[16px]">visibility</span>
+                      <Eye className="w-4 h-4" />
                       <span>Ficha 360°</span>
                     </button>
                   </td>
@@ -187,7 +188,7 @@ export default function ClientesPage() {
               {clientesFiltrados.length === 0 && (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-500">
-                    <span className="material-symbols-outlined text-4xl text-slate-300 mb-2 block">person_search</span>
+                    <UserSearch className="w-10 h-10 text-slate-300 mb-2 block mx-auto" />
                     No se encontraron clientes que coincidan con la búsqueda.
                   </td>
                 </tr>

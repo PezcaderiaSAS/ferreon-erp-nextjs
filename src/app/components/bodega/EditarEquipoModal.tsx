@@ -1,5 +1,8 @@
 'use client';
 
+import { ArrowUpDown } from 'lucide-react';
+
+
 import React, { useState, useEffect } from 'react';
 import * as z from 'zod';
 import { Modal } from '../../../components/ui/Modal';
@@ -234,7 +237,7 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
         <div className="bg-gradient-to-br from-brand-salmonLight/30 to-amber-50/40 border border-brand-salmon/20 rounded-2xl p-5 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-brand-salmon text-[22px]">swap_vertical_circle</span>
+              <ArrowUpDown className="text-brand-salmon text-[22px] w-5 h-5" />
               <h3 className="text-sm font-bold text-slate-900">Ajuste Rápido de Stock Disponible</h3>
             </div>
             {stockDelta !== 0 && (

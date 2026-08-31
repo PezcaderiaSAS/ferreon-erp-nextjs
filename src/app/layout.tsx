@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { Outfit } from "next/font/google";
 import "./globals.css";
 
 import { Sidebar } from "../components/ui/Sidebar";
 import { TopNav } from "../components/ui/TopNav";
 import { RealtimeProvider } from "../components/providers/RealtimeProvider";
+
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
   title: "Alquileres ERP — Gestión Integral de Maquinaria y Construcción",
@@ -16,17 +19,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
-      <head>
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-      </head>
+    <html lang="es" className={`${outfit.variable}`}>
       <body className="antialiased font-sans bg-slate-50 text-slate-900 min-h-screen flex">
         <RealtimeProvider>
           <Sidebar />
-          <div className="flex-grow ml-64 flex flex-col min-h-screen">
+          <div className="flex-1 flex flex-col min-h-screen transition-all duration-300 md:ml-64 w-full overflow-hidden">
             <TopNav />
-            <main className="flex-grow p-8">
+            <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto overflow-x-hidden">
               {children}
             </main>
           </div>

@@ -1,9 +1,13 @@
 "use client";
 
+import { Printer } from 'lucide-react';
+
+
 import React from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { EmpresaConfig } from '../../../core/domain/entities/empresa-config';
 import { AlquilerEntity } from '../../../core/domain/entities/alquiler';
+import { useClienteStore } from '../../../infrastructure/state/clienteStore';
 
 interface TicketAlquilerModalProps {
   isOpen: boolean;
@@ -28,10 +32,20 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
     window.print();
   };
 
+  const { clientes } = useClienteStore();
+  
   // Lectura pasiva de datos (Single Source of Truth)
   const consecutivo = alquiler.consecutivo || alquiler.id;
   const fechaStr = alquiler.createdAt ? new Date(alquiler.createdAt).toLocaleDateString() : new Date().toLocaleDateString();
   const fletes = (alquiler.fleteEntrega || 0) + (alquiler.fleteRecogida || 0);
+  const deposito = Number(alquiler.deposito || 0);
+  const garantiaMonto = Number(alquiler.garantiaMonto || alquiler.garantia_monto || 0);
+
+  // Inyección Dinámica del Cliente
+  const esAlquilerAbierto = alquiler.estado !== 'DEVUELTO' && alquiler.estado !== 'CERRADO' && alquiler.estado !== 'PAGADO';
+  const clienteActualizado = clientes.find((c: any) => c.id === alquiler.clienteId);
+  const clienteNombreFinal = esAlquilerAbierto && clienteActualizado ? clienteActualizado.nombre : (alquiler.clienteNombre || "Cliente Mostrador");
+  const clienteNitFinal = esAlquilerAbierto && clienteActualizado ? (clienteActualizado.nit_cedula || clienteActualizado.nit) : (alquiler.clienteNit || "");
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Documento Soporte de Alquiler" maxWidth="3xl">
@@ -69,7 +83,7 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
           onClick={handlePrint}
           className="px-5 py-2 bg-brand-salmon hover:bg-brand-salmonDark text-white shadow-lg shadow-brand-salmon/25 font-black text-sm rounded-xl flex items-center space-x-2 transition-all"
         >
-          <span className="material-symbols-outlined text-[18px]">print</span>
+          <Printer className="text-[18px] w-5 h-5" />
           <span>Imprimir Documento</span>
         </button>
       </div>
@@ -94,8 +108,11 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
         {/* Info del Cliente */}
         <div className="mb-6 bg-slate-50 rounded-lg p-4 border border-slate-100">
           <h3 className="text-xs uppercase font-bold text-slate-400 tracking-wider mb-2">Datos del Cliente</h3>
-          <p className="text-base font-bold text-slate-800">{alquiler.clienteNombre || "Cliente Mostrador"}</p>
-          {alquiler.clienteId && <p className="text-sm text-slate-600 mt-1">ID Cliente: {alquiler.clienteId}</p>}
+          <p className="text-base font-bold text-slate-800">{clienteNombreFinal}</p>
+          <div className="flex gap-4">
+            <p className="text-sm text-slate-600 mt-1 font-semibold">NIT/Cédula: {clienteNitFinal || "N/A"}</p>
+            {alquiler.clienteId && <p className="text-sm text-slate-600 mt-1">ID Ref: {alquiler.clienteId}</p>}
+          </div>
         </div>
 
         {/* Detalles de Equipos */}
@@ -155,13 +172,21 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
                 <span className="font-semibold">{formatearMoneda(fletes)}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm text-amber-600">
-              <span>Anticipo / Depósito:</span>
-              <span className="font-bold">- {formatearMoneda(alquiler.deposito || 0)}</span>
-            </div>
+            {garantiaMonto > 0 && (
+              <div className="flex justify-between text-sm text-slate-600">
+                <span>Fondo de Garantía:</span>
+                <span className="font-semibold">{formatearMoneda(garantiaMonto)}</span>
+              </div>
+            )}
+            {deposito > 0 && (
+              <div className="flex justify-between text-sm text-amber-600">
+                <span>Anticipo / Depósito:</span>
+                <span className="font-bold text-amber-700">- {formatearMoneda(deposito)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-lg font-black border-t-2 border-slate-300 pt-2 mt-2">
-              <span className="text-slate-800">TOTAL A PAGAR:</span>
-              <span className="text-brand-salmon">{formatearMoneda(alquiler.totalEstimado || 0)}</span>
+              <span className="text-slate-800">SALDO PENDIENTE:</span>
+              <span className="text-brand-salmon">{formatearMoneda(Math.max(0, (alquiler.subtotalEquiposEstimado || 0) + fletes - deposito))}</span>
             </div>
           </div>
         </div>

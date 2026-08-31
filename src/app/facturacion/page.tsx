@@ -1,5 +1,8 @@
 'use client';
 
+import { Box, Receipt, TrendingUp, ArrowUp, Clock, AlertTriangle, Search, FileBox, Mail, CircleDollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+
+
 import React, { useState } from 'react';
 import { RegistrarPagoModal } from '../components/cartera/RegistrarPagoModal';
 import { useCurrencyFormatter } from '../../lib/hooks/useCurrencyFormatter';
@@ -77,9 +80,7 @@ export default function FacturacionPage() {
             toast.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800' : 
             'bg-blue-50 border-blue-200 text-blue-800'}`}
         >
-          <span className="material-symbols-outlined text-[20px]">
-            {toast.type === 'success' ? 'check_circle' : toast.type === 'warning' ? 'warning' : 'info'}
-          </span>
+          <Box className="text-[20px] w-5 h-5" />
           <p className="text-sm font-semibold">{toast.message}</p>
         </div>
       )}
@@ -94,7 +95,7 @@ export default function FacturacionPage() {
           onClick={() => showToast('Abriendo generador de facturas...', 'info')}
           className="flex items-center justify-center gap-2 bg-brand-salmonLight text-brand-salmonDark hover:bg-brand-salmon hover:text-white transition-colors px-6 py-2 rounded-lg text-sm font-semibold shadow-sm"
         >
-          <span className="material-symbols-outlined text-[20px]">receipt_long</span>
+          <Receipt className="text-[20px] w-5 h-5" />
           Generar Factura
         </button>
       </div>
@@ -105,11 +106,11 @@ export default function FacturacionPage() {
         <div className="bg-white p-6 rounded-xl shadow-card border border-slate-200 flex flex-col gap-2 transition-all hover:border-emerald-200 hover:shadow-lg">
           <div className="flex items-center justify-between text-slate-600">
             <span className="text-sm font-medium">Ingresos del Mes</span>
-            <span className="material-symbols-outlined text-brand-salmon text-[20px]">trending_up</span>
+            <TrendingUp className="text-brand-salmon text-[20px] w-5 h-5" />
           </div>
           <span className="text-4xl font-semibold text-slate-900">{formatearMoneda(ingresosMes)}</span>
           <div className="flex items-center gap-1 text-emerald-600 text-sm font-medium">
-            <span className="material-symbols-outlined text-sm">arrow_upward</span>
+            <ArrowUp className="text-sm w-5 h-5" />
             <span>+12% vs mes anterior</span>
           </div>
         </div>
@@ -118,7 +119,7 @@ export default function FacturacionPage() {
         <div className="bg-white p-6 rounded-xl shadow-card border border-slate-200 flex flex-col gap-2 transition-all hover:border-slate-300 hover:shadow-lg">
           <div className="flex items-center justify-between text-slate-600">
             <span className="text-sm font-medium">Por Cobrar</span>
-            <span className="material-symbols-outlined text-slate-400 text-[20px]">pending_actions</span>
+            <Clock className="text-slate-400 text-[20px] w-5 h-5" />
           </div>
           <span className="text-4xl font-semibold text-slate-900">{formatearMoneda(porCobrar)}</span>
           <p className="text-sm text-slate-500">Facturas pendientes</p>
@@ -128,7 +129,7 @@ export default function FacturacionPage() {
         <div className="bg-red-50 p-6 rounded-xl shadow-card border border-red-200 flex flex-col gap-2 transition-all hover:border-red-300 hover:shadow-lg">
           <div className="flex items-center justify-between text-red-700">
             <span className="text-sm font-medium">Vencido</span>
-            <span className="material-symbols-outlined text-red-600 text-[20px]">warning</span>
+            <AlertTriangle className="text-red-600 text-[20px] w-5 h-5" />
           </div>
           <span className="text-4xl font-semibold text-red-600">{formatearMoneda(vencido)}</span>
           <p className="text-sm text-red-600">Fuera de plazo</p>
@@ -144,7 +145,7 @@ export default function FacturacionPage() {
           <button className="px-4 py-1.5 rounded-lg text-slate-600 bg-white hover:bg-slate-50 text-sm font-medium border border-transparent transition-colors">Vencidas</button>
         </div>
         <div className="flex items-center gap-2 px-3 bg-white rounded-lg border border-slate-200 focus-within:border-brand-salmon focus-within:ring-1 focus-within:ring-brand-salmon w-full sm:w-64 transition-all">
-          <span className="material-symbols-outlined text-slate-400 text-[20px]">search</span>
+          <Search className="text-slate-400 text-[20px] w-5 h-5" />
           <input 
             className="w-full bg-transparent border-none focus:ring-0 py-1.5 text-sm text-slate-900 placeholder:text-slate-500 outline-none" 
             placeholder="N° Factura..." 
@@ -195,7 +196,7 @@ export default function FacturacionPage() {
                         className={`flex items-center gap-1.5 py-1.5 text-xs font-semibold rounded-lg transition-colors
                           ${factura.estado === 'Pagada' ? 'px-3 text-slate-600 hover:text-brand-salmon bg-slate-100 hover:bg-brand-salmonLight/30' : 'px-2 text-slate-500 hover:text-brand-salmon bg-slate-50 hover:bg-brand-salmonLight/30'}`}
                       >
-                        <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span> {factura.estado === 'Pagada' && 'PDF'}
+                        <FileBox className="text-[16px] w-5 h-5" /> {factura.estado === 'Pagada' && 'PDF'}
                       </button>
                       
                       <button 
@@ -204,7 +205,7 @@ export default function FacturacionPage() {
                         className={`flex items-center gap-1.5 py-1.5 text-xs font-semibold rounded-lg transition-colors
                           ${factura.estado === 'Pagada' ? 'px-3 text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-blue-50' : 'px-2 text-slate-500 hover:text-blue-600 bg-slate-50 hover:bg-blue-50'}`}
                       >
-                        <span className="material-symbols-outlined text-[16px]">mail</span> {factura.estado === 'Pagada' && 'Enviar'}
+                        <Mail className="text-[16px] w-5 h-5" /> {factura.estado === 'Pagada' && 'Enviar'}
                       </button>
 
                       {factura.estado === 'Vencida' && (
@@ -213,7 +214,7 @@ export default function FacturacionPage() {
                           title="Notificar Atraso" 
                           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 hover:border-red-300 shadow-sm rounded-lg transition-colors"
                         >
-                          <span className="material-symbols-outlined text-[16px]">warning</span> Reclamar
+                          <AlertTriangle className="text-[16px] w-5 h-5" /> Reclamar
                         </button>
                       )}
 
@@ -223,7 +224,7 @@ export default function FacturacionPage() {
                           title="Registrar Pago" 
                           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 shadow-sm rounded-lg transition-colors"
                         >
-                          <span className="material-symbols-outlined text-[16px]">payments</span> Cobrar
+                          <CircleDollarSign className="text-[16px] w-5 h-5" /> Cobrar
                         </button>
                       )}
                     </div>
@@ -246,10 +247,10 @@ export default function FacturacionPage() {
           <span>Mostrando 1 - {facturas.length} de {facturas.length}</span>
           <div className="flex gap-2">
             <button className="p-1 hover:bg-slate-50 rounded border border-slate-200 text-slate-400 disabled:opacity-50 transition-colors" disabled>
-              <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+              <ChevronLeft className="text-[20px] w-5 h-5" />
             </button>
             <button className="p-1 hover:bg-slate-50 rounded border border-slate-200 text-slate-600 disabled:opacity-50 transition-colors" disabled>
-              <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+              <ChevronRight className="text-[20px] w-5 h-5" />
             </button>
           </div>
         </div>

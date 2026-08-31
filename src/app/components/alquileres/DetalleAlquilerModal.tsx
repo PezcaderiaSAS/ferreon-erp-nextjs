@@ -1,9 +1,13 @@
 'use client';
 
+import { Truck, AlignLeft, FileEdit } from 'lucide-react';
+
+
 import React from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { AlquilerUI } from '../../../infrastructure/state/alquilerStore';
+import { useClienteStore } from '../../../infrastructure/state/clienteStore';
 
 interface DetalleAlquilerModalProps {
   isOpen: boolean;
@@ -18,7 +22,14 @@ export function DetalleAlquilerModal({
   alquiler,
   onEdit
 }: DetalleAlquilerModalProps) {
+  const { clientes } = useClienteStore();
+  
   if (!alquiler) return null;
+
+  // Inyección Dinámica del Cliente
+  const esAlquilerAbierto = alquiler.estado !== 'DEVUELTO' && alquiler.estado !== 'CERRADO' && alquiler.estado !== 'PAGADO';
+  const clienteActualizado = clientes.find((c: any) => c.id === alquiler.clienteId);
+  const clienteNombreFinal = esAlquilerAbierto && clienteActualizado ? clienteActualizado.nombre : (alquiler.clienteNombre || "Cliente General");
 
   const consecutivoFormatted = `#CTR-${String(alquiler.consecutivo || 1).padStart(4, '0')}`;
   const totalEquipos = (alquiler.detalles || []).reduce((acc, d) => acc + (d.cantidad || 0), 0);
@@ -40,7 +51,7 @@ export function DetalleAlquilerModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-white">{alquiler.clienteNombre || 'Cliente General'}</h3>
+                <h3 className="text-lg font-bold text-white">{clienteNombreFinal}</h3>
                 <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                   alquiler.estado === 'ACTIVO' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
                   alquiler.estado === 'FINALIZADO' && (alquiler.total || 0) - (alquiler.totalPagado || 0) > 0 ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' :
@@ -126,7 +137,7 @@ export function DetalleAlquilerModal({
           <div className="md:col-span-6 flex flex-col gap-3">
             <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[16px] text-slate-400">local_shipping</span>
+                <Truck className="text-[16px] text-slate-400 w-5 h-5" />
                 Detalles Logísticos y Entrega
               </span>
               <p className="text-xs text-slate-700 leading-relaxed">
@@ -137,7 +148,7 @@ export function DetalleAlquilerModal({
             {alquiler.observaciones && (
               <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[16px] text-slate-400">notes</span>
+                  <AlignLeft className="text-[16px] text-slate-400 w-5 h-5" />
                   Observaciones Generales
                 </span>
                 <p className="text-xs text-slate-700 leading-relaxed italic">
@@ -202,7 +213,7 @@ export function DetalleAlquilerModal({
               }}
               className="flex items-center gap-2 bg-brand-salmon hover:bg-brand-salmonDark text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all"
             >
-              <span className="material-symbols-outlined text-[18px]">edit_document</span>
+              <FileEdit className="text-[18px] w-5 h-5" />
               <span>✏️ Editar Contrato</span>
             </Button>
           </div>

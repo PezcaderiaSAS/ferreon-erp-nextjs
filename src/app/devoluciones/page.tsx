@@ -1,5 +1,8 @@
 'use client';
 
+import { CheckCircle, CheckCircle2, AlertTriangle, Package, AlertOctagon } from 'lucide-react';
+
+
 import React, { useState, useMemo } from 'react';
 import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
@@ -131,7 +134,7 @@ export default function DevolucionesPage() {
             onClick={() => handleOpenDevolucion(contratosConPendientes[0])}
             className="bg-brand-salmon text-white hover:bg-brand-salmonDark transition-colors px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-sm"
           >
-            <span className="material-symbols-outlined text-[20px]">check_circle</span>
+            <CheckCircle className="text-[20px] w-5 h-5" />
             Procesar Devolución Rápida
           </button>
         )}
@@ -139,14 +142,14 @@ export default function DevolucionesPage() {
 
       {feedbackSuccess && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-4 flex items-center gap-3 shadow-xs animate-fadeIn">
-          <span className="material-symbols-outlined text-emerald-600">task_alt</span>
+          <CheckCircle2 className="text-emerald-600 w-5 h-5" />
           <p className="text-sm font-bold">{feedbackSuccess}</p>
         </div>
       )}
 
       {/* Delay Summary Alert */}
       <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 shadow-sm flex items-start gap-4">
-        <span className="material-symbols-outlined text-amber-600 mt-0.5">warning</span>
+        <AlertTriangle className="text-amber-600 mt-0.5 w-5 h-5" />
         <div>
           <h3 className="text-sm font-bold text-amber-900">Alquileres pendientes por retornar a bodega</h3>
           <p className="text-xs text-amber-700 mt-0.5">Verifique el listado de contratos activos para inspeccionar el estado físico y registrar daños o devoluciones.</p>
@@ -220,7 +223,7 @@ export default function DevolucionesPage() {
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 text-xs font-bold rounded-lg transition-colors border border-emerald-200/60 shadow-xs"
                         title="Recibir equipos y reintegrar stock"
                       >
-                        <span className="material-symbols-outlined text-[16px]">inventory_2</span>
+                        <Package className="text-[16px] w-5 h-5" />
                         <span>Recibir Equipos</span>
                       </button>
 
@@ -233,7 +236,7 @@ export default function DevolucionesPage() {
                         className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 hover:bg-red-600 hover:text-white text-red-700 text-xs font-bold rounded-lg transition-colors border border-red-200/60 shadow-xs"
                         title="Reportar daños o averías"
                       >
-                        <span className="material-symbols-outlined text-[16px]">report</span>
+                        <AlertOctagon className="text-[16px] w-5 h-5" />
                         <span>Daños</span>
                       </button>
                     </div>
@@ -244,7 +247,7 @@ export default function DevolucionesPage() {
               {contratosConPendientes.length === 0 && (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-500">
-                    <span className="material-symbols-outlined text-4xl text-slate-300 mb-2 block">task_alt</span>
+                    <CheckCircle2 className="text-4xl text-slate-300 mb-2 block w-5 h-5" />
                     No hay devoluciones pendientes en este momento.
                   </td>
                 </tr>
