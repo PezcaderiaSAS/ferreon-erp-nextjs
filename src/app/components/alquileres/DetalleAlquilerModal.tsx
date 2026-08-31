@@ -1,6 +1,6 @@
 'use client';
 
-import { Truck, AlignLeft, FileEdit } from 'lucide-react';
+import { Truck, AlignLeft, Pen } from 'lucide-react';
 
 
 import React from 'react';
@@ -213,7 +213,7 @@ export function DetalleAlquilerModal({
               }}
               className="flex items-center gap-2 bg-brand-salmon hover:bg-brand-salmonDark text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all"
             >
-              <FileEdit className="text-[18px] w-5 h-5" />
+              <Pen className="text-[18px] w-5 h-5" />
               <span>✏️ Editar Contrato</span>
             </Button>
           </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { PlusSquare, Package, CheckCircle, Wrench, Warehouse, FileEdit } from "lucide-react";
+import { PlusSquare, Package, CheckCircle, Wrench, Warehouse, Pen } from "lucide-react";
 import { Modal } from '../../components/ui/Modal';
 import { BodegaForm } from '../../components/forms/BodegaForm';
 import { EditarEquipoModal } from '../components/bodega/EditarEquipoModal';
@@ -184,7 +184,7 @@ export default function BodegaPage() {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-brand-salmon hover:text-white text-slate-700 text-xs font-semibold rounded-lg transition-colors shadow-xs"
                       title="Editar datos y ajustar stock"
                     >
-                      <FileEdit className="w-4 h-4" />
+                      <Pen className="w-4 h-4" />
                       <span>Ajustar / Editar</span>
                     </button>
                   </td>
