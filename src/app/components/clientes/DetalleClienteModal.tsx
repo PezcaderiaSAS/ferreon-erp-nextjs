@@ -7,6 +7,7 @@ import { Button } from '../../../components/ui/Button';
 import { ClienteUI } from '../../../infrastructure/state/clienteStore';
 import { useClienteStore } from '../../../infrastructure/state/clienteStore';
 import { useAlquilerStore } from '../../../infrastructure/state/alquilerStore';
+import { editarClienteAction } from '../../../app/actions/clientes';
 
 const clienteEditSchema = z.object({
   nombre: z.string().min(1, 'El nombre o razón social es requerido'),
@@ -83,7 +84,7 @@ export function DetalleClienteModal({
 
   if (!cliente) return null;
 
-  const onSubmitInfo = (e: React.FormEvent) => {
+  const onSubmitInfo = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
 
@@ -121,9 +122,32 @@ export function DetalleClienteModal({
         nivel_riesgo: validation.data.nivel_riesgo
       };
 
+      // 1. Actualización Optimista Local
       updateCliente(updated as any);
+
+      // 2. Persistencia en Red
+      const res = await editarClienteAction({
+        id: cliente.id,
+        nit_cedula: validation.data.nit,
+        nombre: validation.data.nombre,
+        telefono: validation.data.contacto,
+        email: validation.data.email || '',
+        direccion: validation.data.direccion || ''
+      });
+
+      if (!res.success) {
+        // 3. Rollback en caso de fallo del Backend
+        updateCliente(cliente); 
+        alert(`Error al guardar cliente: ${res.error}`);
+        return;
+      }
+
       setFeedbackSuccess('✓ Datos del cliente actualizados correctamente.');
       setTimeout(() => setFeedbackSuccess(null), 3500);
+    } catch (error: any) {
+      // Rollback por excepción de red
+      updateCliente(cliente);
+      alert(`Error al guardar cliente: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
