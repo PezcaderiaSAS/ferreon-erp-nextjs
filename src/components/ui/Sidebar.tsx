@@ -2,15 +2,16 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Package, ArrowLeftRight, FileText, Users, X } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Package, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X } from 'lucide-react';
 import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';
+import { useTenantStore } from '../../infrastructure/state/tenantStore';
 
 export function Sidebar() {
   const pathname = usePathname();
   const { config } = useEmpresaStore();
   const { isMobileMenuOpen, setMobileMenuOpen } = useLayoutStore();
+  const { tenant } = useTenantStore();
 
   const links = [
     { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -19,6 +20,7 @@ export function Sidebar() {
     { href: '/devoluciones', icon: ArrowLeftRight, label: 'Devoluciones' },
     { href: '/facturacion', icon: FileText, label: 'Facturación' },
     { href: '/clientes', icon: Users, label: 'Clientes' },
+    { href: '/suscripcion', icon: CreditCard, label: 'Suscripción' },
   ];
 
   return (
@@ -83,6 +85,30 @@ export function Sidebar() {
               </Link>
             );
           })}
+        </div>
+
+        {/* Badge de Suscripción / Tenant Activo al Pie */}
+        <div className="pt-3 border-t border-slate-100 mt-auto">
+          <Link 
+            href="/suscripcion"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block p-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-colors"
+          >
+            <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+              <span className="truncate max-w-[120px]">{tenant?.nombreEmpresa || 'FerreOn SaaS'}</span>
+              {tenant?.subscriptionStatus === 'active' ? (
+                <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px]">Pro</span>
+              ) : (
+                <span className="px-1.5 py-0.5 bg-sky-100 text-sky-700 rounded text-[10px]">Trial</span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-500 flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+              {tenant?.subscriptionStatus === 'active' 
+                ? 'Suscripción Activa' 
+                : `${tenant?.daysLeftInTrial ?? 14} días de prueba`}
+            </p>
+          </Link>
         </div>
       </nav>
     </>
