@@ -13,6 +13,7 @@ export interface TenantSubscriptionInfo {
   isTrialActive: boolean;
   daysLeftInTrial: number;
   isReadOnly: boolean;
+  isLifetime: boolean;
   hasStripeCustomer: boolean;
 }
 
@@ -45,6 +46,8 @@ export async function getTenantSubscriptionAction(): Promise<{
     }
 
     const empresa: any = membership.empresas;
+    const isLifetime = empresa.plan_id === 'plan_lifetime' && empresa.subscription_status === 'active';
+    
     const now = new Date();
     const trialEnds = new Date(empresa.trial_ends_at || now);
     const msDiff = trialEnds.getTime() - now.getTime();
@@ -53,8 +56,8 @@ export async function getTenantSubscriptionAction(): Promise<{
     const isTrial = empresa.subscription_status === 'trialing';
     const isTrialActive = isTrial && daysLeft > 0;
     
-    // Modo Solo Lectura si está cancelado, en mora ('past_due'/'unpaid') o si el trial venció
-    const isReadOnly = (isTrial && daysLeft <= 0) || ['past_due', 'canceled', 'unpaid'].includes(empresa.subscription_status);
+    // Modo Solo Lectura si está cancelado, en mora ('past_due'/'unpaid') o si el trial venció (a menos que sea vitalicio)
+    const isReadOnly = !isLifetime && ((isTrial && daysLeft <= 0) || ['past_due', 'canceled', 'unpaid'].includes(empresa.subscription_status));
 
     return {
       success: true,
@@ -68,6 +71,7 @@ export async function getTenantSubscriptionAction(): Promise<{
         isTrialActive,
         daysLeftInTrial: daysLeft,
         isReadOnly,
+        isLifetime,
         hasStripeCustomer: Boolean(empresa.stripe_customer_id),
       },
     };
@@ -106,53 +110,65 @@ export async function createCheckoutSessionAction(returnUrl?: string): Promise<{
       .single();
 
     if (memberError || !membership || !membership.empresas) {
-      return { success: false, error: 'Empresa no encontrada' };
+      return { success: false, error: 'Empresa activa no encontrada' };
     }
 
     const empresa: any = membership.empresas;
-    let stripeCustomerId = empresa.stripe_customer_id;
+    let customerId = empresa.stripe_customer_id;
 
-    // 2. Si la empresa no tiene Customer en Stripe, crearlo
-    if (!stripeCustomerId) {
+    // 2. Crear Customer en Stripe si no existe
+    if (!customerId) {
       const customer = await stripe.customers.create({
         email: user.email,
         name: empresa.nombre,
         metadata: {
           empresa_id: empresa.id,
-          empresa_slug: empresa.slug,
           user_id: user.id,
         },
       });
+      customerId = customer.id;
 
-      stripeCustomerId = customer.id;
-
-      // Actualizar en Supabase
+      // Guardar el customer_id en la empresa
       await supabase
         .from('empresas')
-        .update({ stripe_customer_id: stripeCustomerId, updated_at: new Date().toISOString() })
+        .update({ stripe_customer_id: customerId })
         .eq('id', empresa.id);
     }
 
-    // 3. URLs de éxito y cancelación
     const baseUrl = returnUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const successUrl = `${baseUrl}/suscripcion?session_id={CHECKOUT_SESSION_ID}&status=success`;
-    const cancelUrl = `${baseUrl}/suscripcion?status=cancelled`;
+    const successUrl = `${baseUrl}/suscripcion?success=true&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${baseUrl}/suscripcion?canceled=true`;
 
-    // 4. Crear Checkout Session en modo suscripción recurrente
+    const priceId = STRIPE_PLANS.MONTHLY_FLAT.priceId;
+    const isCustomPrice = priceId.startsWith('price_') && priceId !== 'price_default_ferreon_monthly';
+
+    // 3. Crear sesión de Checkout para Suscripción Mensual
     const session = await stripe.checkout.sessions.create({
-      customer: stripeCustomerId,
+      customer: customerId,
       mode: 'subscription',
       payment_method_types: ['card'],
+      billing_address_collection: 'auto',
       line_items: [
-        {
-          price: STRIPE_PLANS.MONTHLY_FLAT.priceId,
-          quantity: 1,
-        },
+        isCustomPrice
+          ? { price: priceId, quantity: 1 }
+          : {
+              price_data: {
+                currency: 'cop',
+                product_data: {
+                  name: STRIPE_PLANS.MONTHLY_FLAT.name,
+                  description: 'Acceso completo e ilimitado al ERP de Alquileres de Maquinaria y Bodega',
+                },
+                unit_amount: STRIPE_PLANS.MONTHLY_FLAT.priceMonthlyCOP * 100,
+                recurring: { interval: 'month' },
+              },
+              quantity: 1,
+            },
       ],
       subscription_data: {
         metadata: {
           empresa_id: empresa.id,
           user_id: user.id,
+          plan_id: 'plan_monthly_flat',
         },
       },
       success_url: successUrl,
@@ -161,6 +177,7 @@ export async function createCheckoutSessionAction(returnUrl?: string): Promise<{
       metadata: {
         empresa_id: empresa.id,
         user_id: user.id,
+        plan_id: 'plan_monthly_flat',
       },
     });
 
@@ -170,6 +187,105 @@ export async function createCheckoutSessionAction(returnUrl?: string): Promise<{
     };
   } catch (error: any) {
     console.error('[Billing Action] Error al crear Checkout Session:', error);
+    return { success: false, error: error.message || 'Error al conectar con Stripe Checkout' };
+  }
+}
+
+/**
+ * Crea una sesión de Stripe Checkout para el Plan Vitalicio (Lifetime Deal - Pago Único).
+ */
+export async function createLifetimeCheckoutSessionAction(returnUrl?: string): Promise<{
+  success: boolean;
+  url?: string;
+  error?: string;
+}> {
+  try {
+    if (!stripe) {
+      return { success: false, error: 'Stripe no está configurado en el servidor' };
+    }
+
+    const supabase = await createServerSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'Usuario no autenticado' };
+    }
+
+    const { data: membership, error: memberError } = await supabase
+      .from('empresa_usuarios')
+      .select('empresa_id, empresas (*)')
+      .eq('user_id', user.id)
+      .eq('es_empresa_activa', true)
+      .single();
+
+    if (memberError || !membership || !membership.empresas) {
+      return { success: false, error: 'Empresa activa no encontrada' };
+    }
+
+    const empresa: any = membership.empresas;
+    let customerId = empresa.stripe_customer_id;
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: empresa.nombre,
+        metadata: {
+          empresa_id: empresa.id,
+          user_id: user.id,
+        },
+      });
+      customerId = customer.id;
+
+      await supabase
+        .from('empresas')
+        .update({ stripe_customer_id: customerId })
+        .eq('id', empresa.id);
+    }
+
+    const baseUrl = returnUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const successUrl = `${baseUrl}/suscripcion?success=lifetime&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${baseUrl}/suscripcion?canceled=true`;
+
+    const priceId = STRIPE_PLANS.LIFETIME_DEAL.priceId;
+    const isCustomPrice = priceId.startsWith('price_') && priceId !== 'price_default_ferreon_lifetime';
+
+    // Crear sesión de Checkout en Modo 'payment' (Pago Único Perpetuo)
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'payment',
+      payment_method_types: ['card'],
+      billing_address_collection: 'auto',
+      line_items: [
+        isCustomPrice
+          ? { price: priceId, quantity: 1 }
+          : {
+              price_data: {
+                currency: 'cop',
+                product_data: {
+                  name: STRIPE_PLANS.LIFETIME_DEAL.name,
+                  description: 'Acceso total de por vida sin mensualidades ni renovaciones (Lifetime Deal)',
+                },
+                unit_amount: STRIPE_PLANS.LIFETIME_DEAL.priceCOP * 100,
+              },
+              quantity: 1,
+            },
+      ],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      client_reference_id: empresa.id,
+      metadata: {
+        empresa_id: empresa.id,
+        user_id: user.id,
+        plan_id: 'plan_lifetime',
+      },
+    });
+
+    return {
+      success: true,
+      url: session.url || undefined,
+    };
+  } catch (error: any) {
+    console.error('[Billing Action] Error al crear Lifetime Checkout Session:', error);
     return { success: false, error: error.message || 'Error al conectar con Stripe Checkout' };
   }
 }

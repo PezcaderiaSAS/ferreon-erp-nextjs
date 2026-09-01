@@ -60,6 +60,24 @@ export const STRIPE_PLANS = {
       'Soporte prioritario'
     ],
   },
+  LIFETIME_DEAL: {
+    id: 'plan_lifetime',
+    name: 'Plan FerreOn Vitalicio (Acceso de por Vida)',
+    priceCOP: 1200000,
+    priceUSD: 299,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_LIFETIME || 'price_default_ferreon_lifetime',
+    type: 'one_time',
+    features: [
+      'Acceso total de por vida sin mensualidades ni renovaciones',
+      'Alquileres y contratos ilimitados para siempre',
+      'Catálogo completo de clientes y bodega ilimitado',
+      'Generación de PDFs empresariales y tickets',
+      'Control de caja y cartera en tiempo real',
+      'Múltiples usuarios por empresa',
+      'Aislamiento estricto de datos con RLS',
+      'Actualizaciones futuras incluidas'
+    ],
+  },
 } as const;
 
 export const TRIAL_PERIOD_DAYS = 14;

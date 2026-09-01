@@ -69,19 +69,27 @@ export async function POST(req: NextRequest) {
         const empresaId = session.metadata?.empresa_id || session.client_reference_id;
         const customerId = session.customer as string;
         const subscriptionId = session.subscription as string;
+        const isLifetime = session.mode === 'payment' || session.metadata?.plan_id === 'plan_lifetime';
 
         if (empresaId) {
+          const updateData: any = {
+            stripe_customer_id: customerId,
+            stripe_subscription_id: subscriptionId || (isLifetime ? 'lifetime_access' : null),
+            subscription_status: 'active',
+            plan_id: isLifetime ? 'plan_lifetime' : 'plan_monthly_flat',
+            updated_at: new Date().toISOString(),
+          };
+
+          if (isLifetime) {
+            updateData.trial_ends_at = null;
+          }
+
           await supabaseAdmin
             .from('empresas')
-            .update({
-              stripe_customer_id: customerId,
-              stripe_subscription_id: subscriptionId,
-              subscription_status: 'active',
-              updated_at: new Date().toISOString(),
-            })
+            .update(updateData)
             .eq('id', empresaId);
 
-          console.log(`✅ [Stripe Webhook] Empresa ${empresaId} activada tras Checkout exitoso.`);
+          console.log(`✅ [Stripe Webhook] Empresa ${empresaId} activada exitosamente (${isLifetime ? 'Plan Vitalicio Perpetuo' : 'Suscripción Mensual'}).`);
         }
         break;
       }

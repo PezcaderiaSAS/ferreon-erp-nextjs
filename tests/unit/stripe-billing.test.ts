@@ -20,6 +20,16 @@ describe("Integración Stripe Billing: Planes, Idempotencia y Lifecycle", () => 
     expect(TRIAL_PERIOD_DAYS).toBe(14);
   });
 
+  it("debe tener configurado el Plan Vitalicio (Lifetime Deal) con pago único perpetuo", () => {
+    const lifetimePlan = STRIPE_PLANS.LIFETIME_DEAL;
+
+    expect(lifetimePlan.id).toBe("plan_lifetime");
+    expect(lifetimePlan.type).toBe("one_time");
+    expect(lifetimePlan.priceCOP).toBe(1200000);
+    expect(lifetimePlan.priceUSD).toBe(299);
+    expect(lifetimePlan.features.length).toBeGreaterThanOrEqual(5);
+  });
+
   it("debe mapear correctamente los estados de suscripción de Stripe a la base de datos", () => {
     expect(resolveStripeSubscriptionStatus("active")).toBe("active");
     expect(resolveStripeSubscriptionStatus("past_due")).toBe("past_due");

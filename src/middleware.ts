@@ -77,7 +77,14 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // 4. Control de acceso por roles (RBAC)
+  // 4. Inyección de Cabeceras de Seguridad Perimetral (Three-Tier Boundary System)
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+  // 5. Control de acceso por roles (RBAC)
   const userRole = user.user_metadata?.rol;
   if (pathname.startsWith('/configuracion')) {
     if (userRole !== 'SUPERADMIN' && userRole !== 'ADMIN') {

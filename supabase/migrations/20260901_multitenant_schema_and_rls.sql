@@ -279,71 +279,63 @@ BEGIN
         RAISE EXCEPTION 'La suscripción de la empresa se encuentra inactiva (%) o en mora. Por favor actualice su método de pago.', v_sub_status;
     END IF;
 
-    -- 3. Generar Consecutivo de Alquiler por Tenant
-    SELECT COALESCE(MAX(consecutivo), 0) + 1 INTO v_consecutivo
-    FROM public.alquileres
-    WHERE empresa_id = v_tenant_id;
-
-    -- 4. Insertar Cabecera de Alquiler vinculada al Tenant
+    -- 3. Insertar Cabecera de Alquiler vinculada al Tenant
     INSERT INTO public.alquileres (
         empresa_id,
         cliente_id,
         estado,
-        consecutivo,
+        subtotal_equipos,
         flete_entrega,
         flete_recogida,
+        subtotal_general,
+        total,
         deposito,
         garantia_monto,
         garantia_tipo,
-        subtotal_general,
-        total,
-        saldo_pendiente,
+        garantia_estado,
         total_pagado,
+        saldo_pendiente,
         observaciones,
         detalles_logistica,
-        fecha_entrega,
-        fecha_devolucion_estimada,
-        created_at,
-        updated_at
+        creado_por
     ) VALUES (
         v_tenant_id,
-        (p_payload->>'clienteId')::BIGINT,
+        COALESCE((p_payload->>'cliente_id')::BIGINT, (p_payload->>'clienteId')::BIGINT),
         COALESCE(p_payload->>'estado', 'ACTIVO'),
-        v_consecutivo,
-        COALESCE((p_payload->>'fleteEntrega')::NUMERIC, 0),
-        COALESCE((p_payload->>'fleteRecogida')::NUMERIC, 0),
-        COALESCE((p_payload->>'deposito')::NUMERIC, 0),
-        COALESCE((p_payload->>'garantiaMonto')::NUMERIC, 0),
-        COALESCE(p_payload->>'garantiaTipo', 'Efectivo'),
-        COALESCE((p_payload->>'subtotalGeneral')::NUMERIC, (p_payload->>'totalEstimado')::NUMERIC, 0),
+        COALESCE((p_payload->>'subtotal_equipos')::NUMERIC, (p_payload->>'subtotalEquipos')::NUMERIC, 0),
+        COALESCE((p_payload->>'flete_entrega')::NUMERIC, (p_payload->>'fleteEntrega')::NUMERIC, 0),
+        COALESCE((p_payload->>'flete_recogida')::NUMERIC, (p_payload->>'fleteRecogida')::NUMERIC, 0),
+        COALESCE((p_payload->>'subtotal_general')::NUMERIC, (p_payload->>'subtotalGeneral')::NUMERIC, (p_payload->>'total')::NUMERIC, 0),
         COALESCE((p_payload->>'total')::NUMERIC, (p_payload->>'totalEstimado')::NUMERIC, 0),
-        GREATEST(0, COALESCE((p_payload->>'total')::NUMERIC, 0) - COALESCE((p_payload->>'deposito')::NUMERIC, 0)),
+        COALESCE((p_payload->>'deposito')::NUMERIC, 0),
+        COALESCE((p_payload->>'garantia_monto')::NUMERIC, (p_payload->>'garantiaMonto')::NUMERIC, 0),
+        COALESCE(p_payload->>'garantia_tipo', p_payload->>'garantiaTipo', 'Efectivo'),
+        'Activa',
         0,
+        GREATEST(0, COALESCE((p_payload->>'total')::NUMERIC, 0) - COALESCE((p_payload->>'deposito')::NUMERIC, 0)),
         p_payload->>'observaciones',
-        p_payload->>'detallesLogistica',
-        COALESCE((p_payload->>'fechaEntrega')::TIMESTAMPTZ, NOW()),
-        (p_payload->>'fechaDevolucionEstimada')::TIMESTAMPTZ,
-        NOW(),
-        NOW()
-    ) RETURNING id INTO v_alquiler_id;
+        COALESCE(p_payload->>'detalles_logistica', p_payload->>'detallesLogistica'),
+        COALESCE(p_payload->>'creado_por', p_payload->>'creadoPor', 'SISTEMA')
+    )
+    RETURNING id, consecutivo INTO v_alquiler_id, v_consecutivo;
 
-    -- 5. Procesar Ítems y Bloquear Stock de Equipos con FOR UPDATE
+    -- 4. Procesar Ítems y Bloquear Stock de Equipos con FOR UPDATE
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_payload->'items') LOOP
-        v_equipo_id := (v_item->>'equipoId')::BIGINT;
-        v_cantidad := (v_item->>'cantidad')::INT;
-        v_tarifa := (v_item->>'tarifaAplicada')::NUMERIC;
-        v_dias := COALESCE((v_item->>'diasCobro')::INT, 1);
-        v_subtotal_linea := COALESCE((v_item->>'subtotalLinea')::NUMERIC, v_cantidad * v_tarifa * v_dias);
+        v_equipo_id := COALESCE((v_item->>'equipo_id')::BIGINT, (v_item->>'itemId')::BIGINT);
+        v_cantidad := COALESCE((v_item->>'cantidad')::INT, 1);
+        v_tarifa := COALESCE((v_item->>'tarifa_aplicada')::NUMERIC, (v_item->>'tarifaAplicada')::NUMERIC, 0);
+        v_dias := COALESCE((v_item->>'dias_contratados')::INT, (v_item->>'diasCobro')::INT, 1);
+        v_subtotal_linea := COALESCE((v_item->>'subtotal_linea')::NUMERIC, (v_item->>'subtotalLinea')::NUMERIC, v_cantidad * v_tarifa * v_dias);
 
         -- Bloqueo Pesimista del Equipo en el Tenant
         SELECT stock_disponible, stock_en_obra 
         INTO v_stock_disp, v_stock_obra
         FROM public.equipos
-        WHERE id = v_equipo_id AND empresa_id = v_tenant_id
+        WHERE id = v_equipo_id
         FOR UPDATE;
 
         IF NOT FOUND THEN
-            RAISE EXCEPTION 'Equipo con ID % no encontrado en la empresa actual', v_equipo_id;
+            RAISE EXCEPTION 'Equipo no encontrado en catálogo (ID: %)', v_equipo_id;
         END IF;
 
         IF v_stock_disp < v_cantidad THEN
@@ -355,7 +347,7 @@ BEGIN
         SET stock_disponible = stock_disponible - v_cantidad,
             stock_en_obra = stock_en_obra + v_cantidad,
             updated_at = NOW()
-        WHERE id = v_equipo_id AND empresa_id = v_tenant_id;
+        WHERE id = v_equipo_id;
 
         -- Insertar Detalle
         INSERT INTO public.alquiler_detalles (
@@ -364,12 +356,13 @@ BEGIN
             equipo_id,
             cantidad,
             tarifa_aplicada,
-            dias_cobro,
+            dias_contratados,
             subtotal_linea,
             fecha_inicio,
-            fecha_fin_estimada,
-            created_at,
-            updated_at
+            fecha_fin,
+            devuelto,
+            cantidad_devuelta,
+            costo_dano
         ) VALUES (
             v_tenant_id,
             v_alquiler_id,
@@ -378,17 +371,19 @@ BEGIN
             v_tarifa,
             v_dias,
             v_subtotal_linea,
-            COALESCE((v_item->>'fechaInicio')::TIMESTAMPTZ, NOW()),
-            (v_item->>'fechaFinEstimada')::TIMESTAMPTZ,
-            NOW(),
-            NOW()
+            COALESCE((v_item->>'fecha_inicio')::TIMESTAMPTZ, (v_item->>'fechaInicio')::TIMESTAMPTZ, NOW()),
+            COALESCE((v_item->>'fecha_fin')::TIMESTAMPTZ, (v_item->>'fechaFinEstimada')::TIMESTAMPTZ),
+            FALSE,
+            0,
+            0
         );
     END LOOP;
 
-    -- 6. Respuesta Estructurada
+    -- 5. Respuesta Estructurada
     SELECT jsonb_build_object(
         'success', true,
         'alquiler_id', v_alquiler_id,
+        'id', v_alquiler_id,
         'consecutivo', v_consecutivo,
         'empresa_id', v_tenant_id,
         'message', 'Alquiler multi-tenant creado exitosamente con control de concurrencia'
