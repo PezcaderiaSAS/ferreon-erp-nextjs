@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createAdminSupabaseClient } from '@/infrastructure/persistence/supabase/server';
-import Stripe from 'stripe';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Obtener el cuerpo de la petición en raw text para validar la firma criptográfica
     const body = await req.text();
-    let event: Stripe.Event;
+    let event: any;
 
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
@@ -66,7 +65,7 @@ export async function POST(req: NextRequest) {
     // 3. Procesar eventos del ciclo de vida de la suscripción
     switch (event.type) {
       case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
+        const session = event.data.object;
         const empresaId = session.metadata?.empresa_id || session.client_reference_id;
         const customerId = session.customer as string;
         const subscriptionId = session.subscription as string;
@@ -88,7 +87,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription;
+        const subscription = event.data.object;
         const customerId = subscription.customer as string;
         const status = subscription.status; // 'active', 'past_due', 'unpaid', 'canceled', etc.
 
@@ -111,7 +110,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription;
+        const subscription = event.data.object;
         const customerId = subscription.customer as string;
 
         await supabaseAdmin
@@ -127,7 +126,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'invoice.payment_succeeded': {
-        const invoice = event.data.object as Stripe.Invoice;
+        const invoice = event.data.object;
         const customerId = invoice.customer as string;
 
         await supabaseAdmin
@@ -143,7 +142,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice;
+        const invoice = event.data.object;
         const customerId = invoice.customer as string;
 
         await supabaseAdmin

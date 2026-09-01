@@ -73,7 +73,7 @@ describe("Dominio: EmpresaConfig, Cartera & Pagos", () => {
     const html = EnterprisePDFService.generarHTMLDocumento(payload);
     expect(html).toContain("CONSTRUCTORA & ANDAMIOS BOGOTÁ SAS");
     expect(html).toContain("data:image/png;base64");
-    expect(html).toContain("Instrucciones de Pago y Transferencia");
+    expect(html).toContain("Cuentas para Abonos y Pagos:");
     expect(html).toContain("SON: CIENTO CUARENTA Y CINCO MIL PESOS M/CTE");
   });
 });

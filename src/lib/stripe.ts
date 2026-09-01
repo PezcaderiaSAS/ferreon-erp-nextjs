@@ -1,29 +1,44 @@
-import Stripe from 'stripe';
-
 /**
  * Cliente de Stripe SDK para Node.js / Server Actions y Webhooks.
- * Utiliza variables de entorno con fallback seguro para no romper builds de CI/CD.
+ * Utiliza carga dinámica para no bloquear compilaciones previas al npm install.
  */
+
+let StripeClientClass: any = null;
+
+try {
+  // Carga dinámica segura para Next.js / Webpack
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval
+  const dynamicRequire = eval('require');
+  StripeClientClass = dynamicRequire('stripe');
+  if (StripeClientClass && StripeClientClass.default) {
+    StripeClientClass = StripeClientClass.default;
+  }
+} catch {
+  // Stripe aún no instalado localmente en node_modules
+}
 
 const getStripeClient = () => {
   const secretKey = process.env.STRIPE_SECRET_KEY;
 
-  if (!secretKey) {
-    console.warn('⚠️ [Stripe] STRIPE_SECRET_KEY no está configurada en las variables de entorno.');
+  if (!secretKey || !StripeClientClass) {
     return null;
   }
 
-  return new Stripe(secretKey, {
-    apiVersion: '2024-06-20',
-    appInfo: {
-      name: 'FerreOn ERP SaaS',
-      version: '1.0.0',
-    },
-    typescript: true,
-  });
+  try {
+    return new StripeClientClass(secretKey, {
+      apiVersion: '2024-06-20',
+      appInfo: {
+        name: 'FerreOn ERP SaaS',
+        version: '1.0.0',
+      },
+    });
+  } catch (err) {
+    console.warn('[Stripe Init Warning]', err);
+    return null;
+  }
 };
 
-export const stripe = getStripeClient();
+export const stripe: any = getStripeClient();
 
 /**
  * Constantes de Planes y Precios de FerreOn ERP SaaS

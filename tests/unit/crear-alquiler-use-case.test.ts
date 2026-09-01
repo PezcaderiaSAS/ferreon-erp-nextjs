@@ -61,7 +61,7 @@ describe("Use Case: CrearAlquilerUseCase", () => {
           nombreItem: "Mezcladora",
           cantidad: 2,
           tarifaAplicada: 45000,
-          fechaFinEstimada: new Date().toISOString(),
+          fechaFinEstimada: "2026-08-21T08:00:00.000Z",
           fechaInicio: "2026-08-18T08:00:00.000Z",
         },
       ],

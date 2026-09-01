@@ -43,6 +43,21 @@ describe('Suite de Pruebas Unitarias: Bodega, SKU Inteligente y Stock', () => {
       ],
       idempotencyKeys: []
     });
+
+    useClienteStore.setState({
+      clientes: [
+        {
+          id: 1,
+          nombre: 'Constructora Alfa SAS',
+          nit: '900.123.456-1',
+          contacto: 'Juan Pérez',
+          email: 'juan@alfa.com',
+          direccion: 'Calle 100 # 15-20',
+          telefono: '3001234567',
+          nivel_riesgo: 'Bajo'
+        }
+      ]
+    });
   });
 
   it('debe autocalcular el siguiente SKU correlativo con formato padStart (EQ-003)', () => {

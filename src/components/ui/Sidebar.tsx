@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { LayoutDashboard, CalendarDays, Package, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X } from 'lucide-react';
 import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';

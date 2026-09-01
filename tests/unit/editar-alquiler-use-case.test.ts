@@ -40,7 +40,7 @@ describe('EditarAlquilerUseCase', () => {
           cantidad: 2,
           tarifaAplicada: 45000,
           
-          fechaFinEstimada: new Date().toISOString(),
+          fechaFinEstimada: '2026-08-22',
           fechaInicio: '2026-08-19',
           // fechaFin: '2026-08-22'
         }
