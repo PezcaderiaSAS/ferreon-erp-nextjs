@@ -1,3 +1,40 @@
 {
-  "projectId": "2532550202617516448"
+  "projectId": "2532550202617516448",
+  "name": "FerreOn ERP & AppFrios Pezca",
+  "theme": "dark-mode-glassmorphism",
+  "designSystem": {
+    "framework": "Next.js App Router + Tailwind CSS",
+    "style": "Glassmorphism",
+    "baseTokens": {
+      "bgCanvas": "hsl(222, 47%, 11%)",
+      "bgSurface": "hsl(217, 33%, 17%)",
+      "bgElevated": "hsl(215, 28%, 23%)",
+      "border": "hsla(0, 0%, 100%, 0.12)",
+      "primary": "hsl(215, 85%, 45%)",
+      "accentCyan": "hsl(190, 90%, 48%)",
+      "accentEmerald": "hsl(142, 71%, 45%)"
+    },
+    "effects": {
+      "backdropBlur": "blur(16px)",
+      "boxShadow": "0 20px 50px rgba(0, 0, 0, 0.4)",
+      "neonGlow": "radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.15), transparent 70%)"
+    }
+  },
+  "ricouiIntegration": {
+    "enabled": true,
+    "catalogUrl": "https://design.ricoui.com/brands",
+    "supportedBrands": ["ferreon", "linear", "supabase", "vercel", "raycast"],
+    "engine": "scripts/ricoui-mcp.mjs"
+  },
+  "promptGuidelines": {
+    "requiredDirectives": [
+      "Dark Mode Glassmorphism with deep slate/navy background",
+      "Cyan (#06b6d4) and Sky Blue (#0ea5e9) vibrant neon accents",
+      "Card panels with rgba(15, 23, 42, 0.65) and backdrop-filter blur(16px)",
+      "Subtle 1px border with rgba(255, 255, 255, 0.1)",
+      "Micro-animations on hover (translate-y, brighter gradient, scale-95 on active)",
+      "Mobile-first responsive card views instead of horizontal overflow tables",
+      "All numeric financial figures and weights formatted with high legibility"
+    ]
+  }
 }

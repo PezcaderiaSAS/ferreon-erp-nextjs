@@ -60,6 +60,8 @@ Cuando se aborden requerimientos de software complejos, seguir el ciclo Speckit:
 - **/open-design:** Transformación e interoperabilidad de especificaciones visuales a componentes web limpios.
 - **/ponytail:** Tailoring de prompts y context slicing optimizado.
 - **/humanizer:** Refinamiento y humanización de mensajes de UI, comentarios de código y documentación técnica.
+- **/stitch-design:** Generación de interfaces y componentes con Google Stitch basados en marcas y Glassmorphism.
+- **/ricoui:** Extracción de sistemas de diseño de marcas y tokens desde Rico UI (`design.ricoui.com/brands`).
 - **/agent-toolkit:** Centro de mando y directorio interactivo de herramientas.
 
 ---
@@ -71,6 +73,7 @@ Cuando se aborden requerimientos de software complejos, seguir el ciclo Speckit:
 - **/ui-tools:** Generación de sombras avanzadas, glassmorphism, gradientes y micro-animaciones GPU.
 - **/styleguide:** Referencia de sistemas de diseño líderes (Shopify Polaris, GitHub Primer, Radix UI).
 - **/penpot:** Directrices de diseño y prototipado colaborativo en estándares web abiertos.
+- **Google Stitch & Rico UI:** Motor de generación rápida y presets de marca (`stitch.json` y `scripts/ricoui-mcp.mjs`).
 
 ---
 
@@ -90,6 +93,7 @@ Cuando se aborden requerimientos de software complejos, seguir el ciclo Speckit:
 | **Archify C4** | `/archify` | `.agents/skills/archify/SKILL.md` |
 | **Scientific Skills** | `/scientific-skills` | `.agents/skills/scientific-agent-skills/SKILL.md` |
 | **Humanizer** | `/humanizer` | `.agents/skills/humanizer/SKILL.md` |
+| **Stitch & Rico UI** | `/stitch-design` / `/ricoui` | `.agents/skills/stitch-ricoui-design/SKILL.md` |
 | **Ecosistema UI/UX** | `/design-md` | `.agents/skills/ui-ux-ecosystem/SKILL.md` |
 | **UI Tools & CSS** | `/ui-tools` | `.agent/workflows/ui-tools.md` |
 | **Styleguides** | `/styleguide` | `.agent/workflows/styleguide.md` |

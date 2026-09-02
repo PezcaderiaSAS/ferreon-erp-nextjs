@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ricoui-stitch": {
+      "command": "node",
+      "args": ["scripts/ricoui-mcp.mjs"],
+      "description": "Rico UI Brands & Google Stitch Design System Engine for UI extraction and prompt generation"
+    }
+  }
+}
