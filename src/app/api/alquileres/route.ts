@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { redis } from "@/lib/redis";
+import { getTenantCache, setTenantCache, invalidateTenantCache } from "@/lib/redis";
 import { createServerSupabaseClient } from "@/infrastructure/persistence/supabase/server";
 
-const CACHE_KEY = "cache:alquileres";
+export const dynamic = 'force-dynamic';
 
 const ItemAlquilerSchema = z.object({
   itemId: z.number().int().or(z.string()).transform(val => Number(val)),
@@ -29,20 +29,21 @@ const CrearAlquilerSchema = z.object({
 
 export async function GET() {
   try {
-    if (redis) {
-      const cached = await redis.get(CACHE_KEY);
-      if (cached) {
-        return NextResponse.json({
-          success: true,
-          data: typeof cached === "string" ? JSON.parse(cached) : cached,
-          message: "Listado de alquileres obtenido desde caché",
-        });
-      }
-    }
-
     const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const tenantId = user?.id || 'default';
+
+    // 1. Lectura en Caché Multi-Tenant (Read-Through)
+    const cachedData = await getTenantCache<any[]>(tenantId, 'alquileres');
+    if (cachedData) {
+      return NextResponse.json({
+        success: true,
+        data: cachedData,
+        message: "Listado de alquileres obtenido desde caché Multi-Tenant (Hit)",
+      });
+    }
     
-    // Para el catálogo, traemos alquileres y sus detalles (y los clientes para el nombre)
+    // 2. Consulta Base de Datos protegida por RLS (Miss)
     const { data, error } = await supabase
       .from("alquileres")
       .select(`
@@ -55,14 +56,15 @@ export async function GET() {
 
     if (error) throw error;
 
-    if (redis && data) {
-      await redis.set(CACHE_KEY, JSON.stringify(data), { ex: 3600 });
+    // 3. Guardar en Caché Multi-Tenant (TTL 10 Minutos = 600s para datos dinámicos)
+    if (data) {
+      await setTenantCache(tenantId, 'alquileres', data, 600);
     }
 
     return NextResponse.json({
       success: true,
       data: data || [],
-      message: "Listado de alquileres obtenido desde DB",
+      message: "Listado de alquileres obtenido desde DB (Miss)",
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -77,6 +79,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = CrearAlquilerSchema.parse(body);
 
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const tenantId = user?.id || 'default';
+
     const subtotalEquipos = validatedData.items.reduce(
       (acc, item) => acc + item.cantidad * item.tarifaAplicada * item.diasContratados,
       0
@@ -84,8 +90,6 @@ export async function POST(request: Request) {
     const totalFletes = validatedData.fleteEntrega + validatedData.fleteRecogida;
     const subtotalGeneral = subtotalEquipos + totalFletes;
     const total = Math.max(0, subtotalGeneral - validatedData.deposito);
-
-    const supabase = await createServerSupabaseClient();
 
     // 1. Insertar Cabecera
     const { data: cabecera, error: errorCabecera } = await supabase
@@ -104,6 +108,7 @@ export async function POST(request: Request) {
         garantia_estado: "Activa",
         observaciones: validatedData.observaciones || null,
         detalles_logistica: validatedData.detallesLogistica || null,
+        creado_por: user?.email || "SISTEMA",
       }])
       .select()
       .single();
@@ -111,7 +116,7 @@ export async function POST(request: Request) {
     if (errorCabecera) throw errorCabecera;
 
     // 2. Insertar Detalles
-    const detallesToInsert = validatedData.items.map(item => ({
+    const detallesPayload = validatedData.items.map(item => ({
       alquiler_id: cabecera.id,
       equipo_id: item.itemId,
       cantidad: item.cantidad,
@@ -120,60 +125,50 @@ export async function POST(request: Request) {
       subtotal_linea: item.cantidad * item.tarifaAplicada * item.diasContratados,
       fecha_inicio: item.fechaInicio || new Date().toISOString(),
       fecha_fin: item.fechaFin || null,
-      costo_dano: 0,
       devuelto: false,
       cantidad_devuelta: 0,
+      costo_dano: 0,
     }));
 
     const { error: errorDetalles } = await supabase
       .from("alquiler_detalles")
-      .insert(detallesToInsert);
+      .insert(detallesPayload);
 
-    if (errorDetalles) {
-      // Intento de compensación (Rollback manual) si fallan los detalles
-      await supabase.from("alquileres").delete().eq("id", cabecera.id);
-      throw errorDetalles;
-    }
+    if (errorDetalles) throw errorDetalles;
 
-    // 3. Actualizar stock en obra para cada equipo
+    // 3. Ajustar Stock de Equipos
     for (const item of validatedData.items) {
-      // Como no tenemos RPC para transacciones atómicas desde JS puro, hacemos un update por equipo.
-      // Leemos el equipo primero o si confiamos en SQL, usamos un RPC.
-      // Usaremos una aproximación leyendo y actualizando (puede haber race conditions sin RLS/RPC estricto)
-      const { data: eq } = await supabase.from("equipos").select("stock_disponible, stock_en_obra").eq("id", item.itemId).single();
-      if (eq) {
-        await supabase.from("equipos")
+      const { data: equipoActual } = await supabase
+        .from("equipos")
+        .select("stock_disponible, stock_en_obra")
+        .eq("id", item.itemId)
+        .single();
+
+      if (equipoActual) {
+        await supabase
+          .from("equipos")
           .update({
-            stock_disponible: eq.stock_disponible - item.cantidad,
-            stock_en_obra: eq.stock_en_obra + item.cantidad,
+            stock_disponible: Math.max(0, equipoActual.stock_disponible - item.cantidad),
+            stock_en_obra: equipoActual.stock_en_obra + item.cantidad,
+            updated_at: new Date().toISOString(),
           })
           .eq("id", item.itemId);
       }
     }
 
-    if (redis) {
-      await redis.del(CACHE_KEY);
-      await redis.del("cache:equipos"); // El stock cambió
-    }
+    // 4. Invalidar Caché Multi-Tenant
+    await invalidateTenantCache(tenantId, ['alquileres', 'equipos']);
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: cabecera,
-        message: "Contrato de alquiler registrado exitosamente",
-      },
-      { status: 201 }
-    );
+    return NextResponse.json({
+      success: true,
+      data: cabecera,
+      message: "Alquiler creado exitosamente",
+    }, { status: 201 });
+
   } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: error.errors[0].message },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: error.errors[0].message }, { status: 400 });
     }
-    return NextResponse.json(
-      { success: false, error: error.message || "Error al registrar el contrato de alquiler" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || "Error al crear alquiler" }, { status: 500 });
   }
 }

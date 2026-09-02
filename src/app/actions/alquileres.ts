@@ -2,7 +2,7 @@
 
 import { createServerSupabaseClient } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { redis } from '../../lib/redis';
+import { invalidateTenantCache } from '../../lib/redis';
 
 export interface AlquilerItemInput {
   itemId: string | number;
@@ -117,12 +117,9 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
     return { success: false, error: `Error al crear contrato en BD: ${error.message || JSON.stringify(error)}` };
   }
 
-  // 3. Invalidar Caché
+  // 3. Invalidar Caché Multi-Tenant
   try {
-    if (redis) {
-      await redis.del('cache:alquileres');
-      await redis.del('cache:equipos');
-    }
+    await invalidateTenantCache(user?.id, ['alquileres', 'equipos']);
   } catch (cErr) {
     console.warn('[crearAlquilerAction] Cache clear error:', cErr);
   }
@@ -271,12 +268,10 @@ export async function editarAlquilerAction(input: EditarAlquilerInput) {
     console.error('Error al sincronizar detalles en editarAlquilerAction:', detError);
   }
 
-  // 4. Invalidar Caché
+  // 4. Invalidar Caché Multi-Tenant
   try {
-    if (redis) {
-      await redis.del('cache:alquileres');
-      await redis.del('cache:equipos');
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    await invalidateTenantCache(user?.id, ['alquileres', 'equipos']);
   } catch (cErr) {
     console.warn('[editarAlquilerAction] Cache clear error:', cErr);
   }
@@ -308,12 +303,10 @@ export async function procesarDevolucionAction(input: ProcesarDevolucionInput) {
     return { success: false, error: `Error al procesar devolución en BD: ${error.message || JSON.stringify(error)}` };
   }
 
-  // Invalidar Caché
+  // Invalidar Caché Multi-Tenant
   try {
-    if (redis) {
-      await redis.del('cache:alquileres');
-      await redis.del('cache:equipos');
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    await invalidateTenantCache(user?.id, ['alquileres', 'equipos']);
   } catch (cErr) {
     console.warn('[procesarDevolucionAction] Cache clear error:', cErr);
   }

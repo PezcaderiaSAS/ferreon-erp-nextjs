@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { redis } from "@/lib/redis";
+import { getTenantCache, setTenantCache, invalidateTenantCache } from "@/lib/redis";
 import { createServerSupabaseClient } from "@/infrastructure/persistence/supabase/server";
+
+export const dynamic = 'force-dynamic';
 
 const EditarClienteSchema = z.object({
   nitCedula: z.string().min(3).optional(),
@@ -18,6 +20,18 @@ export async function GET(
 ) {
   try {
     const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const tenantId = user?.id || 'default';
+
+    // 1. Lectura en Caché Multi-Tenant
+    const cachedData = await getTenantCache<any>(tenantId, 'clientes', params.id);
+    if (cachedData) {
+      return NextResponse.json({
+        success: true,
+        data: cachedData,
+      });
+    }
+
     const { data: cliente, error } = await supabase
       .from("clientes")
       .select("*")
@@ -29,14 +43,19 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Cliente no encontrado" }, { status: 404 });
     }
 
+    const result = {
+      cliente,
+      alquileres: [],
+      pagos: [],
+      cartera: { totalFacturado: 0, totalPagado: 0, saldoPendiente: 0 },
+    };
+
+    // Guardar en Caché Multi-Tenant
+    await setTenantCache(tenantId, 'clientes', result, 3600, params.id);
+
     return NextResponse.json({
       success: true,
-      data: {
-        cliente,
-        alquileres: [], // Pendiente de cargar si es necesario
-        pagos: [],
-        cartera: { totalFacturado: 0, totalPagado: 0, saldoPendiente: 0 },
-      },
+      data: result,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: "Error interno" }, { status: 500 });
@@ -48,6 +67,10 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const tenantId = user?.id || 'default';
+
     const body = await request.json();
     const validatedData = EditarClienteSchema.parse(body);
 
@@ -62,7 +85,6 @@ export async function PUT(
     if (validatedData.direccion !== undefined) updateData.direccion = validatedData.direccion || null;
     if (validatedData.estado) updateData.estado = validatedData.estado;
 
-    const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("clientes")
       .update(updateData)
@@ -78,10 +100,8 @@ export async function PUT(
       throw error;
     }
 
-    if (redis) {
-      await redis.del("cache:clientes");
-      await redis.del("cache:alquileres");
-    }
+    // Invalidar caché del tenant
+    await invalidateTenantCache(tenantId, ['clientes', 'alquileres'], params.id);
 
     return NextResponse.json({
       success: true,
@@ -102,22 +122,22 @@ export async function DELETE(
 ) {
   try {
     const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const tenantId = user?.id || 'default';
     
     // Soft delete: setear deleted_at
     const { error } = await supabase
       .from("clientes")
       .update({ 
         deleted_at: new Date().toISOString(),
-        estado: 'Inactivo' // Lo forzamos a Inactivo lógicamente
+        estado: 'Inactivo'
       })
       .eq("id", params.id);
 
     if (error) throw error;
 
-    if (redis) {
-      await redis.del("cache:clientes");
-      await redis.del("cache:alquileres");
-    }
+    // Invalidar caché del tenant
+    await invalidateTenantCache(tenantId, ['clientes', 'alquileres'], params.id);
 
     return NextResponse.json({
       success: true,

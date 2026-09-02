@@ -1,10 +1,36 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { checkRateLimit } from './lib/redis';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. FAST-PATH: Excluir de inmediato rutas internas, API, Auth y archivos estáticos sin llamadas de red
+  // 1. Rate Limiting Perimetral (Sliding Window en Upstash Redis)
+  if (pathname.startsWith('/auth') || pathname.startsWith('/api')) {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '127.0.0.1';
+    const isAuthRoute = pathname.startsWith('/auth');
+    const limit = isAuthRoute ? 15 : 120;
+    const windowSecs = isAuthRoute ? 10 : 60;
+    
+    const rateLimit = await checkRateLimit(`${ip}:${isAuthRoute ? 'auth' : 'api'}`, limit, windowSecs);
+    if (!rateLimit.success) {
+      return new NextResponse(
+        JSON.stringify({
+          error: 'Demasiadas solicitudes. Por favor espera unos segundos antes de reintentar.',
+          retryAfter: rateLimit.reset,
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(rateLimit.reset),
+          },
+        }
+      );
+    }
+  }
+
+  // 2. FAST-PATH: Excluir de inmediato rutas internas, API, Auth y archivos estáticos sin llamadas de red de sesión
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||

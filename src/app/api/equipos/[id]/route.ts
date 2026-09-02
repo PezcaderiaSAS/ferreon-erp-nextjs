@@ -1,18 +1,10 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
-import { redis } from "@/lib/redis";
+import { getTenantCache, setTenantCache, invalidateTenantCache } from "@/lib/redis";
 import { createServerSupabaseClient } from "@/infrastructure/persistence/supabase/server";
+import { EquipoSchema, EditarEquipoSchema } from "@/infrastructure/dtos/equipo.dto";
+import { z } from "zod";
 
-const EditarEquipoSchema = z.object({
-  codigo: z.string().min(2).optional(),
-  nombre: z.string().min(2).optional(),
-  categoria: z.string().optional(),
-  tarifaDiaria: z.number().min(0).optional(),
-  stockTotal: z.number().int().min(0).optional(),
-  estado: z.enum(["Activo", "Inactivo"]).optional(),
-});
-
-const CACHE_KEY = "cache:equipos";
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: Request,
@@ -20,23 +12,49 @@ export async function GET(
 ) {
   try {
     const supabase = await createServerSupabaseClient();
-    const { data: equipo, error } = await supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    const tenantId = user?.id || 'default';
+
+    // 1. Lectura en Caché Multi-Tenant
+    const cachedData = await getTenantCache<any>(tenantId, 'equipos', params.id);
+    if (cachedData) {
+      return NextResponse.json({
+        success: true,
+        data: cachedData,
+        message: "Equipo obtenido desde caché (Hit)",
+      });
+    }
+
+    // 2. Consulta DB
+    const { data, error } = await supabase
       .from("equipos")
       .select("*")
       .eq("id", params.id)
+      .is("deleted_at", null)
       .single();
 
-    if (error) throw error;
-    if (!equipo || equipo.deleted_at) {
-      return NextResponse.json({ success: false, error: "Equipo no encontrado" }, { status: 404 });
+    if (error || !data) {
+      return NextResponse.json(
+        { success: false, error: "Equipo no encontrado" },
+        { status: 404 }
+      );
     }
+
+    const parsed = EquipoSchema.safeParse(data);
+    const validatedData = parsed.success ? parsed.data : data;
+
+    // 3. Guardar en Caché Multi-Tenant
+    await setTenantCache(tenantId, 'equipos', validatedData, 3600, params.id);
 
     return NextResponse.json({
       success: true,
-      data: equipo,
+      data: validatedData,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: "Error interno" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error.message || "Error interno del servidor" },
+      { status: 500 }
+    );
   }
 }
 
@@ -45,26 +63,18 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const tenantId = user?.id || 'default';
+
     const body = await request.json();
-    const validatedData = EditarEquipoSchema.parse(body);
+    const parsed = EditarEquipoSchema.parse(body);
 
     const updateData: any = {
+      ...parsed,
       updated_at: new Date().toISOString(),
     };
 
-    if (validatedData.codigo) updateData.codigo = validatedData.codigo.trim().toUpperCase();
-    if (validatedData.nombre) updateData.nombre = validatedData.nombre.trim().toUpperCase();
-    if (validatedData.categoria) updateData.categoria = validatedData.categoria.trim().toUpperCase();
-    if (validatedData.tarifaDiaria !== undefined) updateData.tarifa_diaria = validatedData.tarifaDiaria;
-    if (validatedData.stockTotal !== undefined) {
-      // Nota: Si se cambia el stock_total, la lógica de balanceo debería revisar si afecta disponible.
-      // Por ahora se actualiza directo el stock_total, asumimos que stock_disponible se ajusta.
-      updateData.stock_total = validatedData.stockTotal;
-      // Una lógica más robusta recalcularía stock_disponible = stock_total - stock_en_obra - stock_mantenimiento
-    }
-    if (validatedData.estado) updateData.estado = validatedData.estado;
-
-    const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("equipos")
       .update(updateData)
@@ -80,7 +90,8 @@ export async function PUT(
       throw error;
     }
 
-    if (redis) await redis.del(CACHE_KEY);
+    // Invalidar caché del catálogo completo y del ítem individual
+    await invalidateTenantCache(tenantId, ['equipos'], params.id);
 
     return NextResponse.json({
       success: true,
@@ -101,6 +112,8 @@ export async function DELETE(
 ) {
   try {
     const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const tenantId = user?.id || 'default';
     
     // Verificar si el equipo tiene stock_en_obra antes de borrar
     const { data: equipo } = await supabase
@@ -127,7 +140,8 @@ export async function DELETE(
 
     if (error) throw error;
 
-    if (redis) await redis.del(CACHE_KEY);
+    // Invalidar caché
+    await invalidateTenantCache(tenantId, ['equipos'], params.id);
 
     return NextResponse.json({
       success: true,

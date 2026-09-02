@@ -23,4 +23,34 @@ body {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+
+  /* Futuristic Cyber Grid Pattern */
+  .bg-cyber-grid {
+    background-image: 
+      linear-gradient(to right, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .bg-cyber-dots {
+    background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.25) 1px, transparent 0);
+    background-size: 24px 24px;
+  }
+
+  /* Glassmorphism Border Shimmer */
+  .border-glow-gradient {
+    border-image: linear-gradient(135deg, rgba(255, 255, 255, 0.35), rgba(249, 115, 22, 0.3), rgba(6, 182, 212, 0.2)) 1;
+  }
+}
+
+/* Accessibility: Respetar preferencias de reducción de movimiento */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

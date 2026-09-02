@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { redis } from "@/lib/redis";
+import { getTenantCache, setTenantCache, invalidateTenantCache } from "@/lib/redis";
 import { createServerSupabaseClient } from "@/infrastructure/persistence/supabase/server";
 import { ClienteSchema } from "@/infrastructure/dtos/cliente.dto";
+
+export const dynamic = 'force-dynamic';
 
 const CrearClienteSchema = z.object({
   nitCedula: z.string().min(3, "La identificación debe contener al menos 3 caracteres"),
@@ -12,26 +14,23 @@ const CrearClienteSchema = z.object({
   direccion: z.string().optional(),
 });
 
-const CACHE_KEY = "cache:clientes";
-
 export async function GET() {
   try {
-    if (redis) {
-      try {
-        const cached = await redis.get(CACHE_KEY);
-        if (cached) {
-          return NextResponse.json({
-            success: true,
-            data: typeof cached === "string" ? JSON.parse(cached) : cached,
-            message: "Directorio de clientes obtenido desde caché (Hit)",
-          });
-        }
-      } catch (redisError) {
-        console.warn("[API Clientes] Error leyendo de Redis:", redisError);
-      }
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const tenantId = user?.id || 'default';
+
+    // 1. Intento de Lectura en Caché Multi-Tenant (Read-Through)
+    const cachedData = await getTenantCache<any[]>(tenantId, 'clientes');
+    if (cachedData) {
+      return NextResponse.json({
+        success: true,
+        data: cachedData,
+        message: "Directorio de clientes obtenido desde caché Multi-Tenant (Hit)",
+      });
     }
 
-    const supabase = await createServerSupabaseClient();
+    // 2. Consulta Base de Datos protegida por RLS (Miss)
     const { data, error } = await supabase
       .from("clientes")
       .select("*")
@@ -51,12 +50,9 @@ export async function GET() {
       }
     }
 
-    if (redis && validatedData.length > 0) {
-      try {
-        await redis.set(CACHE_KEY, JSON.stringify(validatedData), { ex: 3600 });
-      } catch (redisError) {
-        console.warn("[API Clientes] Error guardando en Redis:", redisError);
-      }
+    // 3. Guardar en Caché Multi-Tenant (TTL 1 Hora)
+    if (validatedData.length > 0) {
+      await setTenantCache(tenantId, 'clientes', validatedData, 3600);
     }
 
     return NextResponse.json({
@@ -78,6 +74,9 @@ export async function POST(request: Request) {
     const validatedData = CrearClienteSchema.parse(body);
 
     const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const tenantId = user?.id || 'default';
+
     const { data, error } = await supabase
       .from("clientes")
       .insert([
@@ -100,10 +99,8 @@ export async function POST(request: Request) {
       throw error;
     }
 
-    if (redis) {
-      await redis.del("cache:clientes");
-      await redis.del("cache:alquileres");
-    }
+    // Invalidar caché del tenant
+    await invalidateTenantCache(tenantId, ['clientes', 'alquileres']);
 
     return NextResponse.json(
       {
@@ -121,7 +118,7 @@ export async function POST(request: Request) {
       );
     }
     return NextResponse.json(
-      { success: false, error: error.message || "Error al procesar la solicitud" },
+      { success: false, error: error.message || "Error al registrar cliente" },
       { status: 500 }
     );
   }

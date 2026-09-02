@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
-export const EquipoSchema = z.object({
-  id: z.union([z.string(), z.number()]),
+export const BaseEquipoSchema = z.object({
+  id: z.union([z.string(), z.number()]).optional(),
   codigo: z.string().optional().nullable(),
   sku: z.string().optional().nullable(),
-  nombre: z.string(),
-  categoria: z.string(),
+  nombre: z.string().optional(),
+  categoria: z.string().optional(),
   tarifa_diaria: z.number().nullable().optional(),
   stock_total: z.number().nullable().optional(),
   stock_disponible: z.number().nullable().optional(),
@@ -13,6 +13,14 @@ export const EquipoSchema = z.object({
   estado: z.string().nullable().optional(),
   created_at: z.string().nullable().optional(),
   creado_en: z.string().nullable().optional()
+});
+
+export const EditarEquipoSchema = BaseEquipoSchema.partial();
+
+export const EquipoSchema = BaseEquipoSchema.extend({
+  id: z.union([z.string(), z.number()]),
+  nombre: z.string(),
+  categoria: z.string(),
 }).transform((data) => {
   // Aseguramos fallbacks para evitar nulos que rompan React
   const tarifaDiaria = data.tarifa_diaria ?? 0;
@@ -25,8 +33,8 @@ export const EquipoSchema = z.object({
     id: data.id,
     codigo: data.sku ?? data.codigo ?? '', // Mantenemos codigo para compatibilidad con EquipoUI original
     sku: data.sku ?? data.codigo ?? '',
-    nombre: data.nombre.toUpperCase(),
-    categoria: data.categoria,
+    nombre: (data.nombre || '').toUpperCase(),
+    categoria: data.categoria || 'General',
     tarifaDiaria,
     tarifa_diaria: tarifaDiaria, // Compatibilidad EquipoUI
     stockTotal,
