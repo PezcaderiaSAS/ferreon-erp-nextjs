@@ -1,31 +1,21 @@
 ---
 name: frios-pezca-api
-description: Convenciones para API Routes en Next.js (App Router), Middlewares, Autenticación Supabase y Manejo de Errores.
+description: Convenciones para endpoints de controladores y lectura optimizada de datos
 ---
 
-# API Routes y Protocolo HTTP (FerreOn ERP Next.js)
+# APIs y Controladores (Frios Pezca)
 
-## 1. Convención de Rutas y Métodos HTTP
-Las API Routes residen en `src/presentation/app/api/` siguiendo la estructura RESTful / Clean Architecture:
-- `GET /api/alquileres`: Listado de contratos con paginación y filtros.
-- `POST /api/alquileres`: Creación de contrato de alquiler y sus renglones.
-- `GET /api/alquileres/[id]`: Detalle del alquiler por UUID.
-- `POST /api/facturas/[id]/pdf`: Endpoint serverless para generar y almacenar el PDF de la factura/cuenta de cobro.
-- `POST /api/cron/rotar-logs`: Endpoint de mantenimiento invocado periódicamente por Vercel Cron.
+## Convención de Nomenclatura
+Los métodos que fungen como endpoints expuestos al frontend a través de `google.script.run` deben estar prefijados con:
+- `apiGet...` (para consultas, reportes, listados)
+- `apiPost...` (para inserciones, actualizaciones)
 
-## 2. Involución de Middleware y Autenticación Supabase
-- Cada petición protegida extrae el token JWT mediante `@supabase/ssr`.
-- Si el usuario no está autenticado, la API Route retorna `401 Unauthorized`.
-- Si el rol del usuario no tiene permisos en RLS, PostgreSQL rechaza la transacción y la API Route retorna `403 Forbidden`.
+## Lectura en Bloque (I/O Optimizado)
+- Para consultas pesadas en las tablas, **NUNCA** leas celda por celda.
+- Usa `sheet.getDataRange().getValues()` para cargar toda la información en memoria.
+- Recorre y manipula los datos utilizando los índices nombrados definidos en `core/Schema.js`.
 
-## 3. Envelope Estándar de Respuesta HTTP
-```json
-{
-  "success": true,
-  "data": { ... },
-  "error": null,
-  "meta": {
-    "timestamp": "2026-08-18T07:00:00Z"
-  }
-}
-```
+## Caché Obligatoria
+Cualquier endpoint de tipo consulta (`apiGetDashboardData` por ejemplo) debe consultar la caché antes de hacer llamadas I/O.
+- Siempre usa un prefijo de llave unívoco, por ejemplo: `DASH_DATA_` + `idCliente`.
+- Maneja un periodo de caducidad razonable (usualmente `21600` segundos por defecto).

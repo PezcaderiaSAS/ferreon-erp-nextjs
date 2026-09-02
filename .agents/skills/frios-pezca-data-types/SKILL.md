@@ -1,32 +1,23 @@
 ---
 name: frios-pezca-data-types
-description: Reglas estrictas para manejar los esquemas DDL en Supabase, conversiones de gramos a kilos, fechas y decimales financieros.
+description: Reglas estrictas para manejar los esquemas, conversiones de gramos a kilos y fechas
 ---
 
-# Tipos de Datos y Esquemas (FerreOn ERP Next.js + Supabase)
+# Tipos de Datos y Esquemas (Frios Pezca)
 
-## 1. Muestreo de Tipos en Supabase PostgreSQL
-- **UUID:** Claves primarias generadas mediante `uuid_generate_v4()`.
-- **Precios / Finanzas:** `NUMERIC(12, 2)` para evitar distorsiones de coma flotante.
-- **Peso de Equipos / Materiales:** `peso_gramos BIGINT` (Gramos enteros, ej. 24,575,400 gramos = 24,575.4 Kilos).
-- **Fechas / Marcas de Tiempo:** `TIMESTAMPTZ` (ISO 8601 con zona horaria `America/Bogota` / UTC).
+## 1. PROHIBIDO USAR ÍNDICES MÁGICOS
+Nunca asumas los índices de las columnas (`r[1]`, `r[5]`). **Siempre** debes referenciar el archivo `core/Schema.js` e importar o copiar las constantes correspondientes.
+Ejemplo correcto:
+- Usa `r[H.ID_CLIENTE]` en vez de `r[3]`
+- Usa `r[D.PESO_KG]` en vez de `r[7]`
 
-## 2. Conversión de Unidades (Gramos vs. Kilos)
-```typescript
-// En Dominio (Value Object)
-export class PesoGramos {
-  private constructor(public readonly gramos: bigint) {}
+## 2. CONVERSIÓN DE CANTIDADES (Gramos vs Kilos)
+El campo `PESO_KG` en la base de datos se almacena internamente como **gramos enteros** (`PESO_KG * 1000`) para evitar errores de precisión de coma flotante.
+- Si ves un valor como `24,575,400`, significa `24.575` Kilos.
+- Al leer desde la DB y mostrar en UI: Divide entre `1000`.
+- Al escribir en DB desde la UI: Multiplica por `1000` y asegúrate de redondear a entero (`Math.round()`).
 
-  static fromKilos(kilos: number): PesoGramos {
-    return new PesoGramos(BigInt(Math.round(kilos * 1000)));
-  }
-
-  toKilos(): number {
-    return Number(this.gramos) / 1000;
-  }
-}
-```
-
-## 3. Manejo de Fechas e Invariantes
-- En las API Routes y la capa de infraestructura, formatear y manipular fechas utilizando `date-fns` o ISO 8601 strings.
-- Los rangos de alquiler (`fecha_inicio` a `fecha_fin`) deben ser validados para prevenir que la fecha de finalización sea anterior a la inicial.
+## 3. Integridad de Fechas
+Todas las fechas generadas por App Script o leídas desde la hoja de cálculo deben ser validadas.
+- Revisa siempre que los rangos de fechas (ej. mayo a julio) tengan registros correctos en caso de procesamientos históricos.
+- Los formatos de fecha deben coincidir para operaciones de agregación. Usa `UtilsText` o las librerías integradas si aplican.
