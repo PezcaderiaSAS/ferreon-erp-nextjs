@@ -5,6 +5,29 @@
 :root {
   --background: 248, 250, 252; /* #f8fafc */
   --foreground: 15, 23, 42; /* #0f172a */
+
+  /* Tema por Defecto (Salmon Pastel) */
+  --brand-light: #FFDBCF;
+  --brand-base: #FF8A65;
+  --brand-dark: #E76E4A;
+  --shadow-neu-light: #ffffff;
+  --shadow-neu-dark: #d9baba;
+}
+
+[data-theme="ocean"] {
+  --brand-light: #E0F2FE;
+  --brand-base: #38BDF8;
+  --brand-dark: #0284C7;
+  --shadow-neu-light: #ffffff;
+  --shadow-neu-dark: #bedaea;
+}
+
+[data-theme="slate"] {
+  --brand-light: #F1F5F9;
+  --brand-base: #94A3B8;
+  --brand-dark: #475569;
+  --shadow-neu-light: #ffffff;
+  --shadow-neu-dark: #ccd4dc;
 }
 
 body {

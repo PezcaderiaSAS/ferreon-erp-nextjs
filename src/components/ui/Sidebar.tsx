@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { config } = useEmpresaStore();
+  const { config, actualizarConfig } = useEmpresaStore();
   const { isMobileMenuOpen, setMobileMenuOpen } = useLayoutStore();
   const { tenant } = useTenantStore();
 
@@ -39,6 +39,15 @@ export function Sidebar() {
       subscription.unsubscribe();
     };
   }, [router]);
+
+  // Sincronizar el tema con el DOM (inyectar data-theme en el <html>)
+  useEffect(() => {
+    if (mounted && config.themeApp) {
+      document.documentElement.setAttribute('data-theme', config.themeApp);
+    } else if (mounted) {
+      document.documentElement.removeAttribute('data-theme'); // default es salmon
+    }
+  }, [config.themeApp, mounted]);
 
   const handleLogout = async () => {
     await unifiedLogout();
@@ -175,6 +184,22 @@ export function Sidebar() {
               <LogOut className="w-5 h-5" />
             </button>
           </div>
+          
+          {/* Theme Switcher Temporal (Sólo para Admins) */}
+          {mounted && user && (user.user_metadata?.rol === 'admin' || user.user_metadata?.rol === 'superadmin' || !user.user_metadata?.rol) && (
+            <div className="mt-3 px-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Tema UI (Admin)</label>
+              <select
+                className="w-full text-xs p-1.5 rounded bg-slate-50 border border-slate-200 text-slate-600 focus:outline-none focus:ring-1 focus:ring-brand-salmon"
+                value={config.themeApp || 'salmon'}
+                onChange={(e) => actualizarConfig({ themeApp: e.target.value as any })}
+              >
+                <option value="salmon">Salmón Pastel (Default)</option>
+                <option value="ocean">Océano (Azul Claro)</option>
+                <option value="slate">Pizarra (Gris/Plata)</option>
+              </select>
+            </div>
+          )}
         </div>
       </nav>
     </>
