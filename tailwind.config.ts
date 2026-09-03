@@ -13,6 +13,7 @@ const config: Config = {
           salmon: 'var(--brand-base)',
           salmonDark: 'var(--brand-dark)',
           salmonLight: 'var(--brand-light)',
+          glow: 'var(--brand-glow)',
         },
         sidebar: {
           bg: '#FFFFFF',
@@ -27,6 +28,8 @@ const config: Config = {
       boxShadow: {
         'card': '0 4px 6px -1px rgba(15, 23, 42, 0.05)',
         'modal': '0 10px 15px -3px rgba(15, 23, 42, 0.08)',
+        'glow-brand': '0 0 35px -5px var(--brand-glow)',
+        'glow-brand-lg': '0 0 50px -2px var(--brand-glow)',
         'glow-orange': '0 0 35px -5px rgba(234, 88, 12, 0.3)',
         'glow-cyan': '0 0 35px -5px rgba(6, 182, 212, 0.25)',
         'neu-salmon': '8px 8px 16px var(--shadow-neu-dark), -8px -8px 16px var(--shadow-neu-light)',
@@ -34,6 +37,7 @@ const config: Config = {
         'neu-salmon-sm': '4px 4px 8px var(--shadow-neu-dark), -4px -4px 8px var(--shadow-neu-light)',
         'neu-salmon-inset-sm': 'inset 4px 4px 8px var(--shadow-neu-dark), inset -4px -4px 8px var(--shadow-neu-light)',
       },
+
       animation: {
         'float-slow': 'float 6s ease-in-out infinite',
         'float-delayed': 'float 7s ease-in-out 2s infinite',

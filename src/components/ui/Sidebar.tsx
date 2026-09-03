@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Package, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X, LogOut } from 'lucide-react';
-import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
+import { LayoutDashboard, CalendarDays, Package, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X, LogOut, Palette } from 'lucide-react';
+import { useEmpresaStore, applyThemeToDOM } from '../../infrastructure/state/empresaStore';
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';
 import { useTenantStore } from '../../infrastructure/state/tenantStore';
+
 import { supabaseClient } from '../../infrastructure/persistence/supabase/client';
 import { unifiedLogout } from '../../lib/auth/logout';
 import { useEffect, useState } from 'react';
@@ -40,14 +41,13 @@ export function Sidebar() {
     };
   }, [router]);
 
-  // Sincronizar el tema con el DOM (inyectar data-theme en el <html>)
+  // Sincronizar el tema con el DOM
   useEffect(() => {
-    if (mounted && config.themeApp) {
-      document.documentElement.setAttribute('data-theme', config.themeApp);
-    } else if (mounted) {
-      document.documentElement.removeAttribute('data-theme'); // default es salmon
+    if (mounted && config) {
+      applyThemeToDOM(config);
     }
-  }, [config.themeApp, mounted]);
+  }, [config, mounted]);
+
 
   const handleLogout = async () => {
     await unifiedLogout();
@@ -185,21 +185,31 @@ export function Sidebar() {
             </button>
           </div>
           
-          {/* Theme Switcher Temporal (Sólo para Admins) */}
+          {/* Theme Switcher Rápido (Sólo para Admins) */}
           {mounted && user && (user.user_metadata?.rol === 'admin' || user.user_metadata?.rol === 'superadmin' || !user.user_metadata?.rol) && (
             <div className="mt-3 px-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Tema UI (Admin)</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                <Palette className="w-3 h-3 text-slate-400" />
+                Tema UI (Admin)
+              </label>
               <select
-                className="w-full text-xs p-1.5 rounded bg-slate-50 border border-slate-200 text-slate-600 focus:outline-none focus:ring-1 focus:ring-brand-salmon"
-                value={config.themeApp || 'salmon'}
-                onChange={(e) => actualizarConfig({ themeApp: e.target.value as any })}
+                className="w-full text-xs p-1.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-brand-salmon"
+                value={config.themeId || config.themeApp || 'salmon'}
+                onChange={(e) => actualizarConfig({ themeId: e.target.value as any, themeApp: e.target.value as any })}
               >
                 <option value="salmon">Salmón Pastel (Default)</option>
-                <option value="ocean">Océano (Azul Claro)</option>
-                <option value="slate">Pizarra (Gris/Plata)</option>
+                <option value="ocean">Azul Océano Corporativo</option>
+                <option value="teal">Esmeralda & Teal</option>
+                <option value="slate">Pizarra Industrial</option>
+                <option value="indigo">Índigo Elegante</option>
+                <option value="amber">Ámbar Maquinaria</option>
+                {config.themeId === 'custom' && (
+                  <option value="custom">Personalizado ({config.customBrandHex || 'HEX'})</option>
+                )}
               </select>
             </div>
           )}
+
         </div>
       </nav>
     </>

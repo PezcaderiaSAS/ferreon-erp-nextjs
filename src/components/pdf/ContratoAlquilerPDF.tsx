@@ -1,6 +1,8 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
 import { numeroALetras } from '../../core/utils/numero-a-letras';
+import { resolveCompanyTheme, ThemeTokens } from '../../core/domain/theme/theme-tokens';
+import { EmpresaConfig } from '../../core/domain/entities/empresa-config';
 
 // Registrar fuentes para evitar fallos de renderizado
 Font.register({
@@ -13,30 +15,29 @@ Font.register({
   ]
 });
 
-// Paleta de Colores Corporativa
-const COLORS = {
-  brandPrimary: '#0f766e',  // Teal elegante
-  brandAccent: '#f97316',   // Naranja / Salmón
-  textDark: '#0f172a',      // slate-900
-  textMuted: '#475569',     // slate-600
-  border: '#cbd5e1',        // slate-300
-  borderLight: '#e2e8f0',   // slate-200
-  bgLight: '#f8fafc',       // slate-50
-  bgZebra: '#f1f5f9',       // slate-100
-  badgeBg: '#f0fdf4',       // emerald-50
-  badgeBorder: '#86efac',   // emerald-300
-  badgeText: '#15803d',     // emerald-700
-};
-
-const getStyles = (pageSize: 'LETTER' | 'A5') => {
+const getStyles = (pageSize: 'LETTER' | 'A5', tokens: ThemeTokens) => {
   const isA5 = pageSize === 'A5';
   
+  const colors = {
+    brandPrimary: tokens.dark,
+    brandAccent: tokens.accent,
+    textDark: '#0f172a',      // slate-900
+    textMuted: '#475569',     // slate-600
+    border: '#cbd5e1',        // slate-300
+    borderLight: '#e2e8f0',   // slate-200
+    bgLight: '#f8fafc',       // slate-50
+    bgZebra: tokens.light,    // Tinte suave de la marca
+    badgeBg: tokens.badgeBg,  // emerald/amber/theme bg
+    badgeBorder: tokens.base,
+    badgeText: tokens.badgeText,
+  };
+
   return StyleSheet.create({
     page: {
       padding: isA5 ? 18 : 28,
       fontFamily: 'Roboto',
       fontSize: isA5 ? 7.5 : 8.5,
-      color: COLORS.textDark,
+      color: colors.textDark,
       backgroundColor: '#ffffff',
     },
     header: {
@@ -44,54 +45,55 @@ const getStyles = (pageSize: 'LETTER' | 'A5') => {
       justifyContent: 'space-between',
       alignItems: 'flex-start',
       borderBottomWidth: 2,
-      borderBottomColor: COLORS.brandPrimary,
+      borderBottomColor: colors.brandPrimary,
       paddingBottom: isA5 ? 8 : 12,
       marginBottom: isA5 ? 10 : 14,
     },
     brandTitle: {
       fontSize: isA5 ? 16 : 20,
       fontWeight: 'bold',
-      color: COLORS.brandPrimary,
+      color: colors.brandPrimary,
       letterSpacing: -0.5,
     },
     brandSubtitle: {
       fontSize: isA5 ? 7.5 : 8.5,
-      color: COLORS.textMuted,
+      color: colors.textMuted,
       marginTop: 2,
       fontWeight: 500,
     },
+
     metaBox: {
       alignItems: 'flex-end',
-      backgroundColor: COLORS.bgLight,
+      backgroundColor: colors.bgLight,
       padding: isA5 ? 4 : 6,
       borderRadius: 4,
       borderWidth: 1,
-      borderColor: COLORS.borderLight,
+      borderColor: colors.borderLight,
     },
     metaText: {
       fontSize: isA5 ? 7 : 8,
       marginBottom: 1.5,
-      color: COLORS.textMuted,
+      color: colors.textMuted,
     },
     metaBold: {
       fontWeight: 'bold',
-      color: COLORS.textDark,
+      color: colors.textDark,
     },
     consecutivoHighlight: {
       fontSize: isA5 ? 10 : 12,
       fontWeight: 'bold',
-      color: COLORS.brandPrimary,
+      color: colors.brandPrimary,
     },
     sectionTitle: {
       fontSize: isA5 ? 8.5 : 9.5,
       fontWeight: 'bold',
-      backgroundColor: COLORS.bgLight,
+      backgroundColor: colors.bgLight,
       padding: isA5 ? 3.5 : 5,
       marginBottom: isA5 ? 6 : 8,
       marginTop: isA5 ? 4 : 6,
       borderLeftWidth: 3,
-      borderLeftColor: COLORS.brandPrimary,
-      color: COLORS.textDark,
+      borderLeftColor: colors.brandPrimary,
+      color: colors.textDark,
     },
     grid2Col: {
       flexDirection: 'row',
@@ -101,11 +103,11 @@ const getStyles = (pageSize: 'LETTER' | 'A5') => {
     },
     card: {
       flex: 1,
-      backgroundColor: COLORS.bgLight,
+      backgroundColor: colors.bgLight,
       padding: isA5 ? 6 : 8,
       borderRadius: 4,
       borderWidth: 1,
-      borderColor: COLORS.borderLight,
+      borderColor: colors.borderLight,
     },
     infoRow: {
       flexDirection: 'row',
@@ -114,26 +116,26 @@ const getStyles = (pageSize: 'LETTER' | 'A5') => {
     infoLabel: {
       width: isA5 ? '38%' : '35%',
       fontSize: isA5 ? 7 : 8,
-      color: COLORS.textMuted,
+      color: colors.textMuted,
       fontWeight: 500,
     },
     infoValue: {
       width: isA5 ? '62%' : '65%',
       fontSize: isA5 ? 7.5 : 8.5,
       fontWeight: 'bold',
-      color: COLORS.textDark,
+      color: colors.textDark,
     },
     table: {
       width: '100%',
       borderWidth: 1,
-      borderColor: COLORS.border,
+      borderColor: colors.border,
       borderRadius: 4,
       marginBottom: isA5 ? 8 : 10,
       overflow: 'hidden',
     },
     tableHeader: {
       flexDirection: 'row',
-      backgroundColor: COLORS.brandPrimary,
+      backgroundColor: colors.brandPrimary,
       color: '#ffffff',
       fontWeight: 'bold',
       fontSize: isA5 ? 7 : 8,
@@ -143,13 +145,13 @@ const getStyles = (pageSize: 'LETTER' | 'A5') => {
     tableRow: {
       flexDirection: 'row',
       borderBottomWidth: 1,
-      borderBottomColor: COLORS.borderLight,
+      borderBottomColor: colors.borderLight,
       paddingVertical: isA5 ? 3.5 : 4.5,
       paddingHorizontal: 3,
       alignItems: 'center',
     },
     tableRowZebra: {
-      backgroundColor: COLORS.bgZebra,
+      backgroundColor: colors.bgZebra,
     },
     colItem: { width: '30%' },
     colCant: { width: '8%', textAlign: 'center' },
@@ -160,7 +162,7 @@ const getStyles = (pageSize: 'LETTER' | 'A5') => {
     colSubtotal: { width: '15%', textAlign: 'right' },
     cellText: {
       fontSize: isA5 ? 6.8 : 7.8,
-      color: COLORS.textDark,
+      color: colors.textDark,
     },
     cellBold: {
       fontWeight: 'bold',
@@ -174,22 +176,22 @@ const getStyles = (pageSize: 'LETTER' | 'A5') => {
     },
     wordsBox: {
       flex: 1.1,
-      backgroundColor: COLORS.bgLight,
+      backgroundColor: colors.bgLight,
       padding: isA5 ? 6 : 8,
       borderRadius: 4,
       borderWidth: 1,
-      borderColor: COLORS.borderLight,
+      borderColor: colors.borderLight,
     },
     wordsText: {
       fontSize: isA5 ? 7 : 8,
       fontWeight: 'bold',
-      color: COLORS.brandPrimary,
+      color: colors.brandPrimary,
       lineHeight: 1.3,
     },
     totalsBox: {
       flex: 0.9,
       borderWidth: 1,
-      borderColor: COLORS.border,
+      borderColor: colors.border,
       borderRadius: 4,
       overflow: 'hidden',
     },
@@ -199,7 +201,7 @@ const getStyles = (pageSize: 'LETTER' | 'A5') => {
       paddingVertical: isA5 ? 2.5 : 3.5,
       paddingHorizontal: isA5 ? 5 : 7,
       borderBottomWidth: 1,
-      borderBottomColor: COLORS.borderLight,
+      borderBottomColor: colors.borderLight,
       backgroundColor: '#ffffff',
     },
     totalRowFinal: {
@@ -207,16 +209,16 @@ const getStyles = (pageSize: 'LETTER' | 'A5') => {
       justifyContent: 'space-between',
       paddingVertical: isA5 ? 4 : 5,
       paddingHorizontal: isA5 ? 5 : 7,
-      backgroundColor: COLORS.brandPrimary,
+      backgroundColor: colors.brandPrimary,
     },
     totalLabel: {
       fontSize: isA5 ? 7 : 8,
-      color: COLORS.textMuted,
+      color: colors.textMuted,
     },
     totalVal: {
       fontSize: isA5 ? 7.5 : 8.5,
       fontWeight: 'bold',
-      color: COLORS.textDark,
+      color: colors.textDark,
     },
     totalLabelFinal: {
       fontSize: isA5 ? 8 : 9,
@@ -237,18 +239,18 @@ const getStyles = (pageSize: 'LETTER' | 'A5') => {
     sigBox: {
       width: '42%',
       borderTopWidth: 1,
-      borderTopColor: COLORS.textDark,
+      borderTopColor: colors.textDark,
       paddingTop: 4,
       alignItems: 'center',
     },
     sigLabel: {
       fontSize: isA5 ? 7.5 : 8.5,
       fontWeight: 'bold',
-      color: COLORS.textDark,
+      color: colors.textDark,
     },
     sigSub: {
       fontSize: isA5 ? 6.5 : 7.5,
-      color: COLORS.textMuted,
+      color: colors.textMuted,
       marginTop: 1,
     },
     footer: {
@@ -257,10 +259,10 @@ const getStyles = (pageSize: 'LETTER' | 'A5') => {
       left: isA5 ? 18 : 28,
       right: isA5 ? 18 : 28,
       textAlign: 'center',
-      color: COLORS.textMuted,
+      color: colors.textMuted,
       fontSize: isA5 ? 6 : 7,
       borderTopWidth: 1,
-      borderTopColor: COLORS.borderLight,
+      borderTopColor: colors.borderLight,
       paddingTop: 4,
     },
   });
@@ -269,13 +271,18 @@ const getStyles = (pageSize: 'LETTER' | 'A5') => {
 interface ContratoAlquilerPDFProps {
   data: any;
   pageSize?: 'LETTER' | 'A5';
+  empresaConfig?: Partial<EmpresaConfig>;
 }
 
 export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({ 
   data, 
-  pageSize = 'LETTER' 
+  pageSize = 'LETTER',
+  empresaConfig
 }) => {
-  const styles = getStyles(pageSize);
+  const config = empresaConfig || data?.empresa || data?.empresaConfig;
+  const themeTokens = resolveCompanyTheme(config);
+  const styles = getStyles(pageSize, themeTokens);
+
 
   const formatearCOP = (valor: number) => {
     return new Intl.NumberFormat('es-CO', { 
@@ -338,9 +345,11 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
         {/* CABECERA CORPORATIVA */}
         <View style={styles.header} fixed>
           <View>
-            <Text style={styles.brandTitle}>Alquileres System</Text>
+            <Text style={styles.brandTitle}>{config?.razonSocial || 'Alquileres System'}</Text>
             <Text style={styles.brandSubtitle}>Gestión y Alquiler de Maquinaria y Equipos para la Construcción</Text>
-            <Text style={[styles.metaText, { marginTop: 2 }]}>NIT: 900.854.123-9 • Tel: (+57) 310 987 6543 • Bogotá D.C.</Text>
+            <Text style={[styles.metaText, { marginTop: 2 }]}>
+              {config?.nit ? `NIT: ${config.nit}` : 'NIT: 900.854.123-9'} • Tel: {config?.telefono || '(+57) 310 987 6543'} • {config?.ciudad || 'Bogotá D.C.'}
+            </Text>
           </View>
           <View style={styles.metaBox}>
             <Text style={styles.metaText}>CONTRATO DE ALQUILER</Text>
@@ -354,7 +363,7 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
         <View style={styles.grid2Col}>
           {/* Card Cliente */}
           <View style={styles.card}>
-            <Text style={[styles.metaBold, { color: COLORS.brandPrimary, marginBottom: 4 }]}>DATOS DEL CLIENTE</Text>
+            <Text style={[styles.metaBold, { color: themeTokens.dark, marginBottom: 4 }]}>DATOS DEL CLIENTE</Text>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Cliente:</Text>
               <Text style={styles.infoValue}>{data.clienteNombre || data.cliente_nombre || 'Consumidor Final'}</Text>
@@ -371,7 +380,7 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
 
           {/* Card Logística y Garantía */}
           <View style={styles.card}>
-            <Text style={[styles.metaBold, { color: COLORS.brandPrimary, marginBottom: 4 }]}>LOGÍSTICA Y RESPALDO</Text>
+            <Text style={[styles.metaBold, { color: themeTokens.dark, marginBottom: 4 }]}>LOGÍSTICA Y RESPALDO</Text>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Lugar de Obra:</Text>
               <Text style={styles.infoValue}>{data.detalles_logistica || data.detallesLogistica || 'Entrega en bodega central'}</Text>
@@ -419,12 +428,13 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
         <View style={styles.totalsWrapper} wrap={false}>
           {/* Caja en Letras y Cuentas */}
           <View style={styles.wordsBox}>
-            <Text style={[styles.metaText, { color: COLORS.textMuted }]}>VALOR TOTAL ESTIMADO EN LETRAS:</Text>
+            <Text style={[styles.metaText, { color: '#475569' }]}>VALOR TOTAL ESTIMADO EN LETRAS:</Text>
             <Text style={styles.wordsText}>{montoEnLetras}</Text>
             <Text style={[styles.metaText, { marginTop: 6, fontSize: pageSize === 'A5' ? 6 : 7 }]}>
-              Pagos: Bancolombia Cta Ahorros No. 123-456789-01 (Alquileres System NIT 900.854.123-9)
+              {config?.cuentaBancariaInfo || 'Pagos: Bancolombia Cta Ahorros No. 123-456789-01 (Alquileres System NIT 900.854.123-9)'}
             </Text>
           </View>
+
 
           {/* Desglose de Totales */}
           <View style={styles.totalsBox}>

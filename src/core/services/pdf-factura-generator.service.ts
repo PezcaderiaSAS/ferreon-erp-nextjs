@@ -1,5 +1,7 @@
 import { numeroALetras, formatearMonedaCOP } from "../utils/numero-a-letras";
 import { EmpresaConfig, DEFAULT_EMPRESA_CONFIG } from "../domain/entities/empresa-config";
+import { resolveCompanyTheme } from "../domain/theme/theme-tokens";
+
 
 export interface DetalleItemPDF {
   cantidad: number;
@@ -89,15 +91,14 @@ export class EnterprisePDFService {
     const badgePrefijo =
       payload.tipo === "COTIZACION" ? "COT" : "CC";
 
-    const isTeal = emp.paletaPDF === "TEAL";
-    const isAzul = emp.paletaPDF === "AZUL";
-    const badgeColor = isTeal ? "#0f766e" : isAzul ? "#1e40af" : "#f97316"; // Teal, Blue-800, Salmon (Orange-500)
-    const badgeBg = isTeal ? "#f0fdf4" : isAzul ? "#eff6ff" : "#fff7ed";
-    
-    // Configuración secundaria
-    const headerColor = isTeal ? "#0f766e" : isAzul ? "#1e40af" : "#ea580c"; // Un poco más oscuro para el texto
+    const themeTokens = resolveCompanyTheme(emp);
+    const badgeColor = themeTokens.base;
+    const headerColor = themeTokens.dark;
+    const badgeBg = themeTokens.badgeBg;
+    const badgeText = themeTokens.badgeText;
     
     const consecutivoDisplay = payload.consecutivo ? `#${String(payload.consecutivo).padStart(5, "0")}` : "BORRADOR";
+
 
     return `
 <!DOCTYPE html>
@@ -161,11 +162,11 @@ export class EnterprisePDFService {
       transition: all 0.15s ease;
     }
     .btn-primary {
-      background: #0f766e;
-      color: #ffffff;
+      background: ${themeTokens.base};
+      color: ${themeTokens.textOnBase};
     }
     .btn-primary:hover {
-      background: #115e59;
+      background: ${themeTokens.dark};
     }
     .btn-secondary {
       background: #e2e8f0;
@@ -178,7 +179,7 @@ export class EnterprisePDFService {
       display: flex; 
       justify-content: space-between; 
       align-items: flex-start; 
-      border-bottom: 2px solid ${badgeColor}; 
+      border-bottom: 2px solid ${headerColor}; 
       padding-bottom: 12px; 
       margin-bottom: 14px; 
     }
@@ -203,12 +204,13 @@ export class EnterprisePDFService {
     }
     .doc-badge { 
       background: ${badgeBg}; 
-      border: 1px solid #86efac; 
-      color: #15803d; 
+      border: 1px solid ${badgeColor}; 
+      color: ${badgeText}; 
       padding: ${isA5 ? "4px 10px" : "6px 14px"}; 
       border-radius: 8px; 
       text-align: right; 
     }
+
     .doc-badge h2 { 
       margin: 0; 
       font-size: ${isA5 ? "10pt" : "12pt"}; 
