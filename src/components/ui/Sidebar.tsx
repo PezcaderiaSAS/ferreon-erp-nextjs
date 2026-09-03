@@ -2,17 +2,46 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Package, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { LayoutDashboard, CalendarDays, Package, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X, LogOut } from 'lucide-react';
 import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';
 import { useTenantStore } from '../../infrastructure/state/tenantStore';
+import { supabaseClient } from '../../infrastructure/persistence/supabase/client';
+import { unifiedLogout } from '../../lib/auth/logout';
+import { useEffect, useState } from 'react';
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { config } = useEmpresaStore();
   const { isMobileMenuOpen, setMobileMenuOpen } = useLayoutStore();
   const { tenant } = useTenantStore();
+
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabaseClient.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        setUser(data.user);
+      }
+    });
+
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        router.push('/auth/login');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router]);
+
+  const handleLogout = async () => {
+    await unifiedLogout();
+    router.push('/auth/login');
+  };
 
   const links = [
     { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -36,6 +65,7 @@ export function Sidebar() {
 
       {/* Sidebar Navigation */}
       <nav 
+        id="tour-sidebar"
         className={`bg-white text-slate-900 font-sans h-[100dvh] w-64 fixed left-0 top-0 border-r border-slate-200 shadow-sm flex flex-col p-4 gap-2 z-50 transition-transform duration-300 ease-in-out ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         } md:translate-x-0`}
@@ -70,9 +100,16 @@ export function Sidebar() {
           {links.map((link) => {
             const isActive = pathname === link.href;
             const Icon = link.icon;
+            
+            // Asignar IDs para el Tour Interactivo
+            let tourId = undefined;
+            if (link.href === '/bodega') tourId = 'tour-bodega';
+            if (link.href === '/facturacion') tourId = 'tour-facturacion';
+
             return (
               <Link 
                 key={link.href}
+                id={tourId}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
                 className={`rounded-lg text-base font-semibold flex items-center gap-4 px-4 py-3 transition-colors duration-200 active:scale-95 ${
@@ -110,6 +147,32 @@ export function Sidebar() {
                 : `${tenant?.daysLeftInTrial ?? 14} días de prueba`}
             </p>
           </Link>
+        </div>
+
+        {/* User Info / Logout Section */}
+        <div className="pt-3 pb-1 border-t border-slate-100 mt-1">
+          <div className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition-colors">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold shrink-0">
+                {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
+              </div>
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-sm font-semibold text-slate-800 truncate">
+                  {user?.user_metadata?.nombre || user?.email?.split('@')[0] || 'Usuario'}
+                </span>
+                <span className="text-xs text-slate-500 truncate capitalize">
+                  {user?.user_metadata?.rol || 'Administrador'}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+              title="Cerrar sesión"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </nav>
     </>

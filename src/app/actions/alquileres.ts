@@ -25,6 +25,7 @@ export interface CrearAlquilerInput {
   observaciones?: string;
   detallesLogistica?: string;
   items: AlquilerItemInput[];
+  estado?: string;
   idempotency_key?: string;
 }
 
@@ -41,6 +42,7 @@ export interface EditarAlquilerInput {
   observaciones?: string;
   detallesLogistica?: string;
   items: AlquilerItemInput[];
+  estado?: string;
 }
 
 export interface DevolucionItemInput {
@@ -52,6 +54,17 @@ export interface DevolucionItemInput {
 export interface ProcesarDevolucionInput {
   alquilerId: string | number;
   devoluciones: DevolucionItemInput[];
+}
+
+export interface AprobarCotizacionInput {
+  alquilerId: string | number;
+}
+
+export interface RegistrarAbonoInput {
+  alquilerId: string | number;
+  montoAbono: number;
+  metodoPago?: string;
+  referencia?: string;
 }
 
 export async function crearAlquilerAction(input: CrearAlquilerInput) {
@@ -89,7 +102,7 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
 
   const payload = {
     cliente_id: typeof input.clienteId === 'string' ? parseInt(input.clienteId, 10) : input.clienteId,
-    estado: 'ACTIVO',
+    estado: input.estado || 'ACTIVO',
     subtotal_equipos: subtotalEquipos,
     flete_entrega: fleteEntrega,
     flete_recogida: fleteRecogida,
@@ -176,6 +189,7 @@ export async function editarAlquilerAction(input: EditarAlquilerInput) {
     garantia_tipo: input.garantiaTipo || 'Efectivo',
     observaciones: input.observaciones || '',
     detalles_logistica: input.detallesLogistica || '',
+    estado: input.estado || 'ACTIVO',
     updated_at: new Date().toISOString()
   };
 
@@ -314,4 +328,132 @@ export async function procesarDevolucionAction(input: ProcesarDevolucionInput) {
   revalidatePath('/alquileres');
   revalidatePath('/bodega');
   return { success: true, data };
+}
+
+export async function aprobarCotizacionAction(input: AprobarCotizacionInput) {
+  const supabase = await createServerSupabaseClient();
+  const numericAlquilerId = typeof input.alquilerId === 'string' ? parseInt(input.alquilerId, 10) : input.alquilerId;
+
+  // 1. Obtener detalles del alquiler
+  const { data: detalles, error: detErr } = await supabase
+    .from('alquiler_detalles')
+    .select('equipo_id, cantidad')
+    .eq('alquiler_id', numericAlquilerId);
+
+  if (detErr) return { success: false, error: 'Error al consultar detalles de cotización.' };
+  if (!detalles || detalles.length === 0) return { success: false, error: 'La cotización no tiene equipos asociados.' };
+
+  // 2. Validación pesimista de stock disponible
+  for (const det of detalles) {
+    const { data: eq } = await supabase
+      .from('equipos')
+      .select('nombre, stock_disponible')
+      .eq('id', det.equipo_id)
+      .single();
+
+    if (!eq) return { success: false, error: `Equipo no encontrado (ID: ${det.equipo_id}).` };
+
+    if (eq.stock_disponible < det.cantidad) {
+      return { 
+        success: false, 
+        error: `Stock insuficiente para "${eq.nombre}". Solicitados: ${det.cantidad}, Disponibles: ${eq.stock_disponible}.` 
+      };
+    }
+  }
+
+  // 3. Descontar stock (solo si todos los items pasaron la validación)
+  for (const det of detalles) {
+    const { data: eq } = await supabase
+      .from('equipos')
+      .select('stock_disponible, stock_en_obra')
+      .eq('id', det.equipo_id)
+      .single();
+
+    if (eq) {
+      await supabase
+        .from('equipos')
+        .update({
+          stock_disponible: Math.max(0, eq.stock_disponible - det.cantidad),
+          stock_en_obra: eq.stock_en_obra + det.cantidad,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', det.equipo_id);
+    }
+  }
+
+  // 4. Actualizar estado del alquiler a ACTIVO
+  const { error: updErr } = await supabase
+    .from('alquileres')
+    .update({ 
+      estado: 'ACTIVO',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', numericAlquilerId);
+
+  if (updErr) return { success: false, error: 'Error al activar el contrato.' };
+
+  // 5. Invalidar Caché Multi-Tenant
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    await invalidateTenantCache(user?.id, ['alquileres', 'equipos']);
+  } catch (cErr) {
+    console.warn('[aprobarCotizacionAction] Cache clear error:', cErr);
+  }
+
+  revalidatePath('/alquileres');
+  revalidatePath('/bodega');
+  return { success: true };
+}
+
+export async function registrarAbonoAction(input: RegistrarAbonoInput) {
+  const supabase = await createServerSupabaseClient();
+  const numericAlquilerId = typeof input.alquilerId === 'string' ? parseInt(input.alquilerId, 10) : input.alquilerId;
+
+  // 1. Obtener contrato actual
+  const { data: alq, error: alqErr } = await supabase
+    .from('alquileres')
+    .select('deposito, total, saldo_pendiente')
+    .eq('id', numericAlquilerId)
+    .single();
+
+  if (alqErr || !alq) {
+    return { success: false, error: 'Error al consultar el contrato para el abono.' };
+  }
+
+  // 2. Cálculos
+  const monto = Number(input.montoAbono);
+  if (isNaN(monto) || monto <= 0) {
+    return { success: false, error: 'Monto de abono inválido.' };
+  }
+
+  const nuevoDeposito = (Number(alq.deposito) || 0) + monto;
+  const nuevoSaldoPendiente = Math.max(0, (Number(alq.total) || 0) - nuevoDeposito);
+
+  // 3. Actualizar
+  const { error: updErr } = await supabase
+    .from('alquileres')
+    .update({
+      deposito: nuevoDeposito,
+      saldo_pendiente: nuevoSaldoPendiente,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', numericAlquilerId);
+
+  if (updErr) {
+    console.error('Error al registrar abono:', updErr);
+    return { success: false, error: 'Error al actualizar el saldo en la base de datos.' };
+  }
+
+  // (Opcional) Aquí se podría insertar el registro histórico del pago en una tabla `pagos_recibidos`.
+
+  // 4. Invalidar Caché
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    await invalidateTenantCache(user?.id, ['alquileres']);
+  } catch (cErr) {
+    console.warn('[registrarAbonoAction] Cache clear error:', cErr);
+  }
+
+  revalidatePath('/alquileres');
+  return { success: true, data: { nuevoDeposito, nuevoSaldoPendiente } };
 }

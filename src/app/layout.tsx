@@ -5,6 +5,7 @@ import "./globals.css";
 import { Sidebar } from "../components/ui/Sidebar";
 import { TopNav } from "../components/ui/TopNav";
 import { RealtimeProvider } from "../components/providers/RealtimeProvider";
+import { GlobalTourWrapper } from "../components/ui/GlobalTourWrapper";
 
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
@@ -29,6 +30,7 @@ export default function RootLayout({
               {children}
             </main>
           </div>
+          <GlobalTourWrapper />
         </RealtimeProvider>
       </body>
     </html>

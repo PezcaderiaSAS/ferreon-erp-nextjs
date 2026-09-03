@@ -8,18 +8,22 @@ import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
 import { AlquilerForm } from '../../components/forms/AlquilerForm';
 import { Modal } from '../../components/ui/Modal';
+import { useDirtyFormGuard } from '../../hooks/useDirtyFormGuard';
+import { DiscardChangesModal } from '../../components/ui/DiscardChangesModal';
 import { RegistrarDevolucionModal } from '../components/devoluciones/RegistrarDevolucionModal';
 import { HistorialDevolucionesModal } from '../components/devoluciones/HistorialDevolucionesModal';
 import { RegistrarPagoModal } from '../components/cartera/RegistrarPagoModal';
 import { HistorialPagosModal } from '../components/cartera/HistorialPagosModal';
 import { DetalleAlquilerModal } from '../components/alquileres/DetalleAlquilerModal';
 import { TicketAlquilerModal } from '../components/alquileres/TicketAlquilerModal';
+import { AprobarCotizacionModal } from '../components/alquileres/AprobarCotizacionModal';
+import { RegistrarAbonoModal } from '../components/cartera/RegistrarAbonoModal';
 import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
 import { AlquilerEntity } from '../../core/domain/entities/alquiler';
 import { alquilerUIToAlquilerEntity, alquilerEntityToAlquilerUI, equipoToEquipoUI } from '../../lib/mappers';
 
 import { registrarPagoAction } from '../actions/pagos';
-import { procesarDevolucionAction } from '../actions/alquileres';
+import { procesarDevolucionAction, aprobarCotizacionAction, registrarAbonoAction } from '../actions/alquileres';
 import { EnterprisePDFService } from '../../core/services/pdf-factura-generator.service';
 
 export default function AlquileresPage() {
@@ -32,10 +36,16 @@ export default function AlquileresPage() {
   const [filtroEstado, setFiltroEstado] = useState<string>('Todos');
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
+  // Integración de Salvaguarda de Modales
+  const [isFormDirty, setIsFormDirty] = useState(false);
+  const { attemptAction, showDiscardModal, confirmDiscard, cancelDiscard } = useDirtyFormGuard(isFormDirty);
+
   // Estados para Modales
   const [showDevolucionModal, setShowDevolucionModal] = useState<boolean>(false);
   const [showHistorialDevolucionesModal, setShowHistorialDevolucionesModal] = useState<boolean>(false);
   const [showPagoModal, setShowPagoModal] = useState<boolean>(false);
+  const [showAbonoModal, setShowAbonoModal] = useState<boolean>(false);
+  const [showAprobarCotizacionModal, setShowAprobarCotizacionModal] = useState<boolean>(false);
   const [showHistorialPagosModal, setShowHistorialPagosModal] = useState<boolean>(false);
   const [contratoActivo, setContratoActivo] = useState<any | null>(null);
   const [ticketReciente, setTicketReciente] = useState<any | null>(null);
@@ -48,8 +58,9 @@ export default function AlquileresPage() {
   const alquileresFiltrados = useMemo(() => {
     let filtrados = alquileres.filter(a => {
       if (filtroEstado === 'Todos') return true;
-      if (filtroEstado === 'Activos') return a.estado === 'ACTIVO';
+      if (filtroEstado === 'Contratos Activos') return a.estado === 'ACTIVO';
       if (filtroEstado === 'Cotizaciones') return a.estado === 'COTIZACION';
+      if (filtroEstado === 'Finalizados') return a.estado === 'FINALIZADO';
       return true;
     });
 
@@ -140,6 +151,49 @@ export default function AlquileresPage() {
     }
   };
 
+  const handleRegistrarAbono = async (alquilerId: string, monto: number, metodo: string, referencia: string) => {
+    try {
+      const res = await registrarAbonoAction({
+        alquilerId,
+        montoAbono: monto,
+        metodoPago: metodo,
+        referencia
+      });
+
+      if (!res.success) {
+        alert(`Error al registrar abono: ${res.error}`);
+        return;
+      }
+
+      await fetchAllData();
+      setShowAbonoModal(false);
+      alert("Abono registrado correctamente.");
+    } catch (error: any) {
+      console.error('Error al registrar abono:', error);
+      alert('Ocurrió un error inesperado al registrar el abono.');
+    }
+  };
+
+  const handleAprobarCotizacion = async (alquilerId: string, ajustes: any) => {
+    // Si necesitas aplicar los ajustes (fleteEntrega, etc.) podrías hacer un update antes o junto con la aprobación.
+    // Por simplicidad para el alcance, llamaremos a la aprobación directamente.
+    try {
+      const res = await aprobarCotizacionAction({ alquilerId });
+      
+      if (!res.success) {
+        alert(`No se pudo aprobar la cotización: ${res.error}`);
+        return;
+      }
+
+      await fetchAllData();
+      setShowAprobarCotizacionModal(false);
+      alert("Cotización aprobada y stock reservado correctamente.");
+    } catch (error: any) {
+      console.error('Error al aprobar cotización:', error);
+      alert('Ocurrió un error inesperado al aprobar la cotización.');
+    }
+  };
+
   const handleConfirmarDevolucion = async (
     cantidades: { [equipoId: string]: number },
     danos: { [equipoId: string]: number },
@@ -219,6 +273,8 @@ export default function AlquileresPage() {
 
     switch(action) {
       case 'EDITAR': setIsModalOpen(true); break;
+      case 'APROBAR_COTIZACION': setShowAprobarCotizacionModal(true); break;
+      case 'ABONO': setShowAbonoModal(true); break;
       case 'PAGO': setShowPagoModal(true); break;
       case 'HISTORIAL_PAGOS': setShowHistorialPagosModal(true); break;
       case 'DEVOLUCION': setShowDevolucionModal(true); break;
@@ -292,6 +348,7 @@ export default function AlquileresPage() {
           <p className="text-base text-slate-600">Gestiona y supervisa los alquileres de maquinaria y equipos.</p>
         </div>
         <button 
+          id="tour-nuevo-alquiler"
           onClick={() => { setContratoActivo(null); setIsModalOpen(true); }}
           className="bg-brand-salmonLight text-brand-salmonDark hover:bg-brand-salmon hover:text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm w-full sm:w-auto"
         >
@@ -302,20 +359,24 @@ export default function AlquileresPage() {
 
       {/* Controls Section */}
       <div className="bg-white rounded-xl shadow-card border border-slate-200 overflow-hidden flex flex-col h-full">
-        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50">
+        <div id="tour-filtros-alquileres" className="p-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50">
           <div className="flex gap-2">
             <button 
               onClick={() => setFiltroEstado('Todos')}
               className={`px-4 py-2 rounded-lg text-sm font-medium border shadow-sm transition-colors ${filtroEstado === 'Todos' ? 'bg-white text-slate-900 border-slate-200' : 'bg-transparent text-slate-600 border-transparent hover:bg-slate-100'}`}
             >Todos</button>
             <button 
-              onClick={() => setFiltroEstado('Activos')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium border shadow-sm transition-colors ${filtroEstado === 'Activos' ? 'bg-white text-slate-900 border-slate-200' : 'bg-transparent text-slate-600 border-transparent hover:bg-slate-100'}`}
-            >Activos</button>
+              onClick={() => setFiltroEstado('Contratos Activos')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium border shadow-sm transition-colors ${filtroEstado === 'Contratos Activos' ? 'bg-white text-slate-900 border-slate-200' : 'bg-transparent text-slate-600 border-transparent hover:bg-slate-100'}`}
+            >Contratos Activos</button>
             <button 
               onClick={() => setFiltroEstado('Cotizaciones')}
               className={`px-4 py-2 rounded-lg text-sm font-medium border shadow-sm transition-colors ${filtroEstado === 'Cotizaciones' ? 'bg-white text-slate-900 border-slate-200' : 'bg-transparent text-slate-600 border-transparent hover:bg-slate-100'}`}
             >Cotizaciones</button>
+            <button 
+              onClick={() => setFiltroEstado('Finalizados')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium border shadow-sm transition-colors ${filtroEstado === 'Finalizados' ? 'bg-white text-slate-900 border-slate-200' : 'bg-transparent text-slate-600 border-transparent hover:bg-slate-100'}`}
+            >Finalizados</button>
           </div>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
@@ -390,12 +451,12 @@ export default function AlquileresPage() {
                     {activeDropdown === alq.id && (
                       <div className="absolute right-8 top-10 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 py-1.5 flex flex-col text-left">
                         {alq.estado === 'COTIZACION' && (
-                          <button className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full">Aprobar Cotización</button>
+                          <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'APROBAR_COTIZACION'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full">Aprobar Cotización</button>
                         )}
                         <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'EDITAR'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full">Editar Contrato</button>
                         <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'PDF'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full border-b border-slate-100">Generar PDF</button>
                         
-                        <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'PAGO'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full">Registrar Abono</button>
+                        <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'ABONO'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full">Registrar Abono</button>
                         <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'HISTORIAL_PAGOS'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full border-b border-slate-100">Historial Pagos</button>
                         
                         <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'DEVOLUCION'); }} className="px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 text-left w-full">Recibir Equipos</button>
@@ -423,13 +484,14 @@ export default function AlquileresPage() {
 
       <Modal 
         isOpen={isModalOpen} 
-        onClose={() => { setIsModalOpen(false); setContratoActivo(null); }}
+        onClose={() => attemptAction(() => { setIsModalOpen(false); setContratoActivo(null); setIsFormDirty(false); })}
         title={contratoActivo ? "Editar Contrato de Alquiler" : "Registrar Nuevo Contrato de Alquiler"}
         maxWidth="4xl"
       >
         <AlquilerForm 
           initialData={contratoActivo}
           onSuccess={(alquiler?: any) => { 
+            setIsFormDirty(false);
             setIsModalOpen(false);
             fetchAllData(); 
             if (alquiler && !contratoActivo) {
@@ -438,9 +500,16 @@ export default function AlquileresPage() {
               setContratoActivo(null); 
             }
           }} 
-          onCancel={() => { setIsModalOpen(false); setContratoActivo(null); }} 
+          onCancel={() => attemptAction(() => { setIsModalOpen(false); setContratoActivo(null); setIsFormDirty(false); })} 
+          onDirtyChange={setIsFormDirty}
         />
       </Modal>
+
+      <DiscardChangesModal
+        isOpen={showDiscardModal}
+        onConfirm={confirmDiscard}
+        onCancel={cancelDiscard}
+      />
 
       <TicketAlquilerModal
         isOpen={ticketReciente !== null}
@@ -468,6 +537,18 @@ export default function AlquileresPage() {
         }}
       />
 
+      <AprobarCotizacionModal
+        isOpen={showAprobarCotizacionModal}
+        onClose={() => setShowAprobarCotizacionModal(false)}
+        cotizacion={contratoActivo}
+        onConfirmarAprobacion={handleAprobarCotizacion}
+      />
+      <RegistrarAbonoModal
+        isOpen={showAbonoModal}
+        onClose={() => setShowAbonoModal(false)}
+        contrato={contratoActivo}
+        onConfirmar={handleRegistrarAbono}
+      />
       <RegistrarPagoModal
         isOpen={showPagoModal}
         onClose={() => setShowPagoModal(false)}

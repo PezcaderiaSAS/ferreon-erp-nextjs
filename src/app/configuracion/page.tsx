@@ -2,8 +2,10 @@
 
 import React, { useRef, useState } from 'react';
 import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
+import { useLayoutStore } from '../../infrastructure/state/layoutStore';
 import { MonedaConfig } from '../../core/domain/entities/empresa-config';
 import { UsuariosTab } from './UsuariosTab';
+import { HelpCircle } from 'lucide-react';
 
 const OPCIONES_MONEDA: MonedaConfig[] = [
   { codigo: 'COP', locale: 'es-CO', simbolo: '$' },
@@ -14,6 +16,7 @@ const OPCIONES_MONEDA: MonedaConfig[] = [
 
 export default function ConfiguracionPage() {
   const { config, actualizarConfig } = useEmpresaStore();
+  const { setTourOpen } = useLayoutStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [activeTab, setActiveTab] = useState<'empresa' | 'usuarios'>('empresa');
@@ -142,6 +145,29 @@ export default function ConfiguracionPage() {
                 <label className="text-sm font-medium text-slate-700">Ciudad / Ubicación</label>
                 <input type="text" name="ciudad" value={formData.ciudad} onChange={handleChange} className="px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-salmon/50" />
               </div>
+            </div>
+          </div>
+
+          {/* User Preferences / Tour */}
+          <div className="flex flex-col gap-4 border-b border-slate-100 pb-6">
+            <h3 className="text-lg font-semibold text-slate-800">Preferencias y Ayuda</h3>
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+              <div className="flex flex-col">
+                <h4 className="text-sm font-bold text-indigo-900 flex items-center gap-2">
+                  <HelpCircle className="w-4 h-4" />
+                  Tour Interactivo
+                </h4>
+                <p className="text-xs text-indigo-700 mt-1">
+                  Vuelve a reproducir la guía paso a paso para familiarizarte con el sistema.
+                </p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setTourOpen(true)}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors whitespace-nowrap"
+              >
+                Reiniciar Tour
+              </button>
             </div>
           </div>
 

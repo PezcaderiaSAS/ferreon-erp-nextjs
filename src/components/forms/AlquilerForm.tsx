@@ -50,6 +50,7 @@ interface Props {
   initialData?: any;
   onSuccess: (alquiler?: any) => void;
   onCancel: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 const STEPS = [
@@ -58,7 +59,7 @@ const STEPS = [
   { id: 3, title: 'Resumen y Confirmación', desc: 'Observaciones y cálculo final' },
 ];
 
-export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
+export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }: Props) {
   const { clientes, setClientes } = useClienteStore();
   const { equipos, setEquipos } = useBodegaStore();
   const { config: empresaConfig } = useEmpresaStore();
@@ -127,6 +128,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
   const [garantiaTipo, setGarantiaTipo] = useState<string>(initialData?.garantia_tipo || initialData?.garantiaTipo || 'Efectivo');
   const [observaciones, setObservaciones] = useState<string>(initialData?.observaciones || initialData?.observacionesGenerales || '');
   const [detallesLogistica, setDetallesLogistica] = useState<string>(initialData?.detalles_logistica || initialData?.detallesLogistica || '');
+  const [estadoDocumento, setEstadoDocumento] = useState<'COTIZACION' | 'ACTIVO'>(initialData?.estado || 'ACTIVO');
 
   const [items, setItems] = useState<ItemRow[]>(() => {
     if (initialData?.detalles && initialData.detalles.length > 0) {
@@ -141,6 +143,31 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
     }
     return [{ id: `row_0_${Date.now()}`, itemId: '', cantidad: 1, precioDiario: 0, fechaInicio: todayStr, fechaFinEstimada: todayStr }];
   });
+
+  const initialStateStr = useMemo(() => {
+    return JSON.stringify({
+      clienteId, fechaRegistro, fleteEntrega, fleteRecogida,
+      deposito, garantiaMonto, garantiaTipo, observaciones,
+      detallesLogistica, items, estadoDocumento
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const currentDataStr = JSON.stringify({
+      clienteId, fechaRegistro, fleteEntrega, fleteRecogida,
+      deposito, garantiaMonto, garantiaTipo, observaciones,
+      detallesLogistica, items, estadoDocumento
+    });
+    if (onDirtyChange) {
+      onDirtyChange(currentDataStr !== initialStateStr);
+    }
+  }, [
+    clienteId, fechaRegistro, fleteEntrega, fleteRecogida,
+    deposito, garantiaMonto, garantiaTipo, observaciones,
+    detallesLogistica, items, estadoDocumento, initialStateStr, onDirtyChange
+  ]);
+
 
   const addItemRow = () => {
     setItems(prev => [
@@ -305,7 +332,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
       saldoPendiente: totalEstimado,
       created_at: fechaRegistro,
       fechaEmision: fechaRegistro,
-      estado: 'ACTIVO',
+      estado: estadoDocumento,
       empresa: empresaConfig,
       formatoPapel: 'LETTER' as 'LETTER' | 'A5',
     };
@@ -394,6 +421,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
           garantiaTipo: validation.data.garantiaTipo,
           observaciones: validation.data.observaciones,
           detallesLogistica: validation.data.detallesLogistica,
+          estado: estadoDocumento,
           items: alquilerUi.detalles,
         });
         
@@ -415,6 +443,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
           garantiaTipo: validation.data.garantiaTipo,
           observaciones: validation.data.observaciones,
           detallesLogistica: validation.data.detallesLogistica,
+          estado: estadoDocumento,
           items: alquilerUi.detalles
         });
         
@@ -566,6 +595,40 @@ export function AlquilerForm({ initialData, onSuccess, onCancel }: Props) {
         {/* PASO 1: CLIENTE Y GARANTÍAS */}
         {currentStep === 1 && (
           <div className="space-y-4 animate-fadeIn">
+            {/* Tipo de Documento */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                <span>Tipo de Documento</span>
+              </h3>
+              <div className="flex bg-slate-100/50 p-1 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setEstadoDocumento('COTIZACION')}
+                  className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all ${
+                    estadoDocumento === 'COTIZACION'
+                      ? 'bg-white text-indigo-700 shadow-sm border border-slate-200/60'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  📝 Cotización / Presupuesto
+                  <span className="block font-normal text-[10px] text-slate-400 mt-0.5">No descuenta stock</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEstadoDocumento('ACTIVO')}
+                  className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all ${
+                    estadoDocumento === 'ACTIVO'
+                      ? 'bg-white text-teal-700 shadow-sm border border-slate-200/60'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  📄 Contrato Activo
+                  <span className="block font-normal text-[10px] text-slate-400 mt-0.5">Reserva equipos</span>
+                </button>
+              </div>
+            </div>
+
             <div className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4 shadow-sm">
               <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
                 <span className="w-2 h-2 rounded-full bg-teal-600" />
