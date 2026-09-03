@@ -36,11 +36,20 @@ export async function GET() {
     // 1. Lectura en Caché Multi-Tenant (Read-Through)
     const cachedData = await getTenantCache<any[]>(tenantId, 'alquileres');
     if (cachedData) {
-      return NextResponse.json({
-        success: true,
-        data: cachedData,
-        message: "Listado de alquileres obtenido desde caché Multi-Tenant (Hit)",
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          data: cachedData,
+          message: "Listado de alquileres obtenido desde caché Multi-Tenant (Hit)",
+        },
+        {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            Pragma: 'no-cache',
+            Expires: '0',
+          },
+        }
+      );
     }
     
     // 2. Consulta Base de Datos protegida por RLS (Miss)
@@ -61,15 +70,29 @@ export async function GET() {
       await setTenantCache(tenantId, 'alquileres', data, 600);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: data || [],
-      message: "Listado de alquileres obtenido desde DB (Miss)",
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: data || [],
+        message: "Listado de alquileres obtenido desde DB (Miss)",
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    );
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || "Error al obtener alquileres" },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
     );
   }
 }

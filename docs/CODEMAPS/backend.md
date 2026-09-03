@@ -1,18 +1,21 @@
-<!-- Generated: 2026-09-03 | Files scanned: ~15 | Token estimate: ~400 -->
+<!-- Generated: 2026-09-03 | Files scanned: ~20 | Token estimate: ~420 -->
 # Backend Architecture & API Routes
 
-Este mapa refleja la capa de APIs Serverless de Next.js, Middlewares Edge, la arquitectura Multi-tenant, y las integraciones de pago.
+Este mapa refleja la capa de APIs Serverless de Next.js, Middlewares Edge, adaptadores de autenticación SSR y políticas anti-caché.
 
-## Edge Middleware
-- **`src/middleware.ts`**
-  - Manejo integral de autenticación usando `@supabase/ssr`.
-  - Verificación de Multi-tenancy por subdominios y headers de Tenant.
-  - Rate Limiting usando Upstash Redis en Edge (previene abuso de endpoints críticos).
-  - Protección de rutas basada en `user_metadata.rol`.
+## Edge Middleware & SSR Client
+- **`src/middleware.ts`**:
+  - Manejo integral de autenticación usando `@supabase/ssr` con cookies `getAll` y `setAll`.
+  - Rate Limiting con Upstash Redis en Edge (ventana deslizante perimetral).
+  - Verificación y protección RBAC basada en `user_metadata.rol`.
+- **`src/infrastructure/persistence/supabase/server.ts`**:
+  - `createServerSupabaseClient()`: Implementa el estándar `getAll()` y `setAll()` para ensamblar JWTs fragmentados (chunked cookies `sb-*-auth-token.0`, `.1`) previniendo desincronizaciones de sesión al operar concurrentemente desde múltiples dispositivos.
+  - `createAdminSupabaseClient()`: Cliente privilegiado (`service_role`) para operaciones que eluden RLS (idempotencia, RPCs atómicas críticas).
 
 ## API Routes (`src/app/api/`)
-- **`auth/callback/route.ts`**: Intercambia código OAuth por token de sesión JWT válido de Supabase.
-- **`usuarios/route.ts`**: Utiliza `SUPABASE_SERVICE_ROLE_KEY` para listar, crear e invitar usuarios con roles RBAC (Superadmin, Admin, etc).
-- **`clientes/route.ts`, `equipos/route.ts`, `alquileres/route.ts`**: Controladores de acceso a datos que interactúan con los adaptadores de infraestructura para resolver los Domain Use Cases.
-- **`stripe/webhook/route.ts`**: (Nuevo) Escucha eventos asíncronos de Stripe (facturas pagadas, suscripciones canceladas) y actualiza el Tenant correspondiente en la BD.
-- **`stripe/checkout/route.ts`**: Inicia sesiones de Checkout dinámicas.
+- **`clientes/route.ts`, `equipos/route.ts`, `alquileres/route.ts`**:
+  - Lectura read-through sobre Upstash Redis Multi-Tenant + DB PostgreSQL con RLS.
+  - **Protección Anti-Caché Safari/WebKit**: Emisión de cabeceras `Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate`, `Pragma: no-cache` y `Expires: 0` para forzar frescura absoluta de datos en navegadores macOS.
+- **`auth/callback/route.ts`**: Intercambia código OAuth por token de sesión JWT de Supabase.
+- **`usuarios/route.ts`**: Gestión RBAC de usuarios con `service_role`.
+- **`webhooks/stripe/route.ts`**: Procesamiento asíncrono de eventos de suscripción y facturación.

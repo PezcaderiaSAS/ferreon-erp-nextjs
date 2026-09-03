@@ -21,7 +21,7 @@ export default function BodegaPage() {
   const fetchEquipos = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/equipos');
+      const res = await fetch('/api/equipos', { cache: 'no-store' });
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setEquipos(json.data.map(equipoToEquipoUI));
@@ -36,6 +36,24 @@ export default function BodegaPage() {
   useEffect(() => {
     setIsMounted(true);
     fetchEquipos();
+
+    const handleReconcile = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchEquipos();
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleReconcile);
+      window.addEventListener('focus', handleReconcile);
+    }
+
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleReconcile);
+        window.removeEventListener('focus', handleReconcile);
+      }
+    };
   }, []);
 
   if (!isMounted) {

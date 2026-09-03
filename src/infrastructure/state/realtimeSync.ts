@@ -2,13 +2,15 @@ import { useEffect } from 'react';
 import { supabaseClient } from '../persistence/supabase/client';
 import { useBodegaStore } from './bodegaStore';
 import { useAlquilerStore } from './alquilerStore';
+import { useClienteStore } from './clienteStore';
 import { EquipoUI } from './bodegaStore';
 import { AlquilerUI } from './alquilerStore';
+import { ClienteUI } from './clienteStore';
 
 /**
  * Servicio de sincronización en tiempo real con Supabase Realtime (WebSockets)
- * Escucha cambios en las tablas 'equipos' y 'alquileres' para alimentar los stores
- * de Zustand en segundo plano con latencia mínima.
+ * Escucha cambios en las tablas 'equipos', 'alquileres' y 'clientes' para alimentar los stores
+ * de Zustand en segundo plano con latencia mínima (<100ms).
  */
 export function setupRealtimeSubscriptions() {
   if (typeof window === 'undefined') return () => {};
@@ -95,6 +97,55 @@ export function setupRealtimeSubscriptions() {
         }
       }
     )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'clientes',
+      },
+      (payload) => {
+        console.info('[Realtime] Cambio detectado en tabla clientes:', payload.eventType);
+        const { eventType, new: newRecord, old: oldRecord } = payload;
+        const clienteState = useClienteStore.getState();
+
+        if (eventType === 'INSERT' && newRecord) {
+          const cliente: ClienteUI = {
+            id: newRecord.id,
+            nit_cedula: newRecord.nit_cedula || newRecord.nit || '',
+            nit: newRecord.nit_cedula || newRecord.nit || '',
+            nombre: newRecord.nombre,
+            telefono: newRecord.telefono || newRecord.contacto || '',
+            contacto: newRecord.contacto || newRecord.telefono || '',
+            email: newRecord.email || '',
+            direccion: newRecord.direccion || '',
+            estado: (newRecord.estado as string) || 'Activo',
+            nivel_riesgo: (newRecord.nivel_riesgo as string) || 'Bajo',
+            created_at: newRecord.created_at || new Date().toISOString(),
+          };
+          if (!clienteState.clientes.some((c) => c.id === cliente.id)) {
+            clienteState.agregarCliente(cliente);
+          }
+        } else if (eventType === 'UPDATE' && newRecord) {
+          const updatedCliente: ClienteUI = {
+            id: newRecord.id,
+            nit_cedula: newRecord.nit_cedula || newRecord.nit || '',
+            nit: newRecord.nit_cedula || newRecord.nit || '',
+            nombre: newRecord.nombre,
+            telefono: newRecord.telefono || newRecord.contacto || '',
+            contacto: newRecord.contacto || newRecord.telefono || '',
+            email: newRecord.email || '',
+            direccion: newRecord.direccion || '',
+            estado: (newRecord.estado as string) || 'Activo',
+            nivel_riesgo: (newRecord.nivel_riesgo as string) || 'Bajo',
+            created_at: newRecord.created_at || new Date().toISOString(),
+          };
+          clienteState.updateCliente(updatedCliente);
+        } else if (eventType === 'DELETE' && oldRecord) {
+          clienteState.setClientes(clienteState.clientes.filter((c) => c.id !== oldRecord.id));
+        }
+      }
+    )
     .subscribe();
 
   return () => {
@@ -104,12 +155,39 @@ export function setupRealtimeSubscriptions() {
 
 /**
  * Hook de React para inicializar las suscripciones en el ciclo de vida del layout
+ * con reconciliación automática ante reactivación de pestaña en macOS (App Nap / Safari).
  */
 export function useRealtimeSync() {
   useEffect(() => {
-    const unsubscribe = setupRealtimeSubscriptions();
+    let unsubscribe = setupRealtimeSubscriptions();
+
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        try {
+          const channels = supabaseClient.getChannels();
+          channels.forEach((ch) => {
+            if (ch.state === 'closed' || ch.state === 'errored') {
+              console.info('[RealtimeSync] Reconectando canal tras evento de foco/visibilidad en macOS');
+              ch.subscribe();
+            }
+          });
+        } catch (e) {
+          console.warn('[RealtimeSync] Error al verificar canales en reconexión:', e);
+        }
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.addEventListener('focus', handleVisibilityOrFocus);
+    }
+
     return () => {
       unsubscribe();
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+        window.removeEventListener('focus', handleVisibilityOrFocus);
+      }
     };
   }, []);
 }

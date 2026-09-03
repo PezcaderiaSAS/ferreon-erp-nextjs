@@ -23,11 +23,20 @@ export async function GET() {
     // 1. Intento de Lectura en Caché Multi-Tenant (Read-Through)
     const cachedData = await getTenantCache<any[]>(tenantId, 'clientes');
     if (cachedData) {
-      return NextResponse.json({
-        success: true,
-        data: cachedData,
-        message: "Directorio de clientes obtenido desde caché Multi-Tenant (Hit)",
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          data: cachedData,
+          message: "Directorio de clientes obtenido desde caché Multi-Tenant (Hit)",
+        },
+        {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            Pragma: 'no-cache',
+            Expires: '0',
+          },
+        }
+      );
     }
 
     // 2. Consulta Base de Datos protegida por RLS (Miss)
@@ -55,15 +64,29 @@ export async function GET() {
       await setTenantCache(tenantId, 'clientes', validatedData, 3600);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: validatedData,
-      message: "Directorio de clientes obtenido desde DB (Miss)",
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: validatedData,
+        message: "Directorio de clientes obtenido desde DB (Miss)",
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    );
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || "Error al obtener clientes" },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
     );
   }
 }

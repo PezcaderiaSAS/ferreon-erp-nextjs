@@ -14,11 +14,20 @@ export async function GET() {
     // 1. Intento de Lectura en Caché Aislado por Tenant (Read-Through)
     const cachedData = await getTenantCache<any[]>(tenantId, 'equipos');
     if (cachedData) {
-      return NextResponse.json({
-        success: true,
-        data: cachedData,
-        message: "Equipos obtenidos desde caché Multi-Tenant (Hit)",
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          data: cachedData,
+          message: "Equipos obtenidos desde caché Multi-Tenant (Hit)",
+        },
+        {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            Pragma: 'no-cache',
+            Expires: '0',
+          },
+        }
+      );
     }
 
     // 2. Consulta a Base de Datos protegida por RLS (Miss)
@@ -50,16 +59,30 @@ export async function GET() {
     }
 
     // 5. Retorno al Cliente
-    return NextResponse.json({
-      success: true,
-      data: validatedData,
-      message: "Equipos obtenidos desde DB (Miss)",
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: validatedData,
+        message: "Equipos obtenidos desde DB (Miss)",
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    );
 
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || "Error interno del servidor" },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
     );
   }
 }

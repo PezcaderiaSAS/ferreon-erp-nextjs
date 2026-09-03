@@ -37,3 +37,6 @@ Si la versión desplegada a producción quiebra (Error crítico, React Hydration
   - *Mitigación*: Asegurarse de envolver el renderizado condicionado del LocalStorage con variables de estado de montaje (ej. `const [mounted, setMounted] = useState(false)`).
 - **Error: Limitación de Cuotas API Stripe/Supabase**:
   - Revisar las reglas de Rate Limiting del middleware (`src/middleware.ts`) para ver si el Upstash Redis está filtrando tráfico genuino o si se ha activado una DDoS.
+- **Error: Desincronización o rechazo de mutaciones en Múltiples Dispositivos (Mac/Safari)**:
+  - *Causa*: Concurrencia de sesiones con cookies fragmentadas o suspensión de WebSockets por App Nap en Safari.
+  - *Verificación*: Confirmar que `src/infrastructure/persistence/supabase/server.ts` use `getAll()` y `setAll()`, que las APIs emitan `Cache-Control: no-store` y que `realtimeSync.ts` mantenga los listeners de `equipos`, `alquileres` y `clientes`.

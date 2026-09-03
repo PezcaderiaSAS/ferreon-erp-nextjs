@@ -93,9 +93,9 @@ export default function AlquileresPage() {
     try {
       setLoading(true);
       const [resAlq, resCli, resEq] = await Promise.all([
-        fetch('/api/alquileres'),
-        fetch('/api/clientes'),
-        fetch('/api/equipos')
+        fetch('/api/alquileres', { cache: 'no-store' }),
+        fetch('/api/clientes', { cache: 'no-store' }),
+        fetch('/api/equipos', { cache: 'no-store' })
       ]);
       const [jsonAlq, jsonCli, jsonEq] = await Promise.all([
         resAlq.json(),
@@ -122,6 +122,24 @@ export default function AlquileresPage() {
     setIsMounted(true);
     sanitizeStore();
     fetchAllData();
+
+    const handleReconcile = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchAllData();
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleReconcile);
+      window.addEventListener('focus', handleReconcile);
+    }
+
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleReconcile);
+        window.removeEventListener('focus', handleReconcile);
+      }
+    };
   }, [sanitizeStore]);
 
   // Handlers para Acciones

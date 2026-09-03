@@ -45,7 +45,7 @@ export default function ClientesPage() {
   const fetchClientes = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/clientes');
+      const res = await fetch('/api/clientes', { cache: 'no-store' });
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setClientes(json.data);
@@ -60,6 +60,24 @@ export default function ClientesPage() {
   useEffect(() => {
     setIsMounted(true);
     fetchClientes();
+
+    const handleReconcile = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchClientes();
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleReconcile);
+      window.addEventListener('focus', handleReconcile);
+    }
+
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleReconcile);
+        window.removeEventListener('focus', handleReconcile);
+      }
+    };
   }, []);
 
   if (!isMounted) {
