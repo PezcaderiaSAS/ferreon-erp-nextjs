@@ -29,6 +29,10 @@ const config: Config = {
         'modal': '0 10px 15px -3px rgba(15, 23, 42, 0.08)',
         'glow-orange': '0 0 35px -5px rgba(234, 88, 12, 0.3)',
         'glow-cyan': '0 0 35px -5px rgba(6, 182, 212, 0.25)',
+        'neu-salmon': '8px 8px 16px #d9baba, -8px -8px 16px #ffffff',
+        'neu-salmon-inset': 'inset 6px 6px 12px #d9baba, inset -6px -6px 12px #ffffff',
+        'neu-salmon-sm': '4px 4px 8px #d9baba, -4px -4px 8px #ffffff',
+        'neu-salmon-inset-sm': 'inset 4px 4px 8px #d9baba, inset -4px -4px 8px #ffffff',
       },
       animation: {
         'float-slow': 'float 6s ease-in-out infinite',
