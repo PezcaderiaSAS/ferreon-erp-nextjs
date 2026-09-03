@@ -49,12 +49,15 @@ describe('Suite de Pruebas Unitarias: Bodega, SKU Inteligente y Stock', () => {
         {
           id: 1,
           nombre: 'Constructora Alfa SAS',
+          nit_cedula: '900.123.456-1',
           nit: '900.123.456-1',
           contacto: 'Juan Pérez',
           email: 'juan@alfa.com',
           direccion: 'Calle 100 # 15-20',
           telefono: '3001234567',
-          nivel_riesgo: 'Bajo'
+          nivel_riesgo: 'Bajo',
+          estado: 'Activo',
+          created_at: new Date().toISOString()
         }
       ]
     });

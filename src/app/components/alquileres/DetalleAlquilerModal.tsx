@@ -152,7 +152,7 @@ export function DetalleAlquilerModal({
                   Observaciones Generales
                 </span>
                 <p className="text-xs text-slate-700 leading-relaxed italic">
-                  "{alquiler.observaciones}"
+                  &quot;{alquiler.observaciones}&quot;
                 </p>
               </div>
             )}

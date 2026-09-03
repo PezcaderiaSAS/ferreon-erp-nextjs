@@ -1,32 +1,15 @@
-/**
- * Cliente de Stripe SDK para Node.js / Server Actions y Webhooks.
- * Utiliza carga dinámica para no bloquear compilaciones previas al npm install.
- */
+import Stripe from 'stripe';
 
-let StripeClientClass: any = null;
-
-try {
-  // Carga dinámica segura para Next.js / Webpack
-  // eslint-disable-next-line @typescript-eslint/no-implied-eval
-  const dynamicRequire = eval('require');
-  StripeClientClass = dynamicRequire('stripe');
-  if (StripeClientClass && StripeClientClass.default) {
-    StripeClientClass = StripeClientClass.default;
-  }
-} catch {
-  // Stripe aún no instalado localmente en node_modules
-}
-
-const getStripeClient = () => {
+const getStripeClient = (): Stripe | null => {
   const secretKey = process.env.STRIPE_SECRET_KEY;
 
-  if (!secretKey || !StripeClientClass) {
+  if (!secretKey) {
     return null;
   }
 
   try {
-    return new StripeClientClass(secretKey, {
-      apiVersion: '2024-06-20',
+    return new Stripe(secretKey, {
+      apiVersion: '2024-06-20' as any,
       appInfo: {
         name: 'FerreOn ERP SaaS',
         version: '1.0.0',
@@ -38,7 +21,7 @@ const getStripeClient = () => {
   }
 };
 
-export const stripe: any = getStripeClient();
+export const stripe: Stripe | null = getStripeClient();
 
 /**
  * Constantes de Planes y Precios de FerreOn ERP SaaS
