@@ -412,7 +412,7 @@ export async function registrarAbonoAction(input: RegistrarAbonoInput) {
   // 1. Obtener contrato actual
   const { data: alq, error: alqErr } = await supabase
     .from('alquileres')
-    .select('deposito, total, saldo_pendiente')
+    .select('id, deposito, total, saldo_pendiente')
     .eq('id', numericAlquilerId)
     .single();
 
