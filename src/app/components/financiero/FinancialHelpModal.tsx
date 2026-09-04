@@ -33,7 +33,7 @@ export function FinancialHelpModal({ isOpen, onClose }: FinancialHelpModalProps)
               <span className="text-indigo-500">Q.</span> ¿Cómo saco dinero para pagar la luz o a un empleado?
             </h3>
             <p className="text-sm text-slate-600 leading-relaxed">
-              El sistema usa "Partida Doble". Para registrar un gasto, debes hacer clic en el botón <strong>"Nuevo Gasto"</strong> (Próximamente en Fase 5). 
+              El sistema usa &quot;Partida Doble&quot;. Para registrar un gasto, debes hacer clic en el botón <strong>&quot;Nuevo Gasto&quot;</strong> (Próximamente en Fase 5). 
               El sistema <strong>descontará</strong> el dinero de la caja que elijas (ej: Caja Menor) y lo <strong>registrará</strong> en la cuenta de Gastos correspondiente.
             </p>
           </div>
@@ -44,7 +44,7 @@ export function FinancialHelpModal({ isOpen, onClose }: FinancialHelpModalProps)
             </h3>
             <p className="text-sm text-slate-600 leading-relaxed">
               <strong>NO.</strong> En contabilidad real, no se puede borrar ni alterar dinero (es ilegal). 
-              Si te equivocas, debes crear un <strong>"Contra-Asiento"</strong>. Esto significa registrar una operación inversa (una devolución) para que la suma matemática quede en cero.
+              Si te equivocas, debes crear un <strong>&quot;Contra-Asiento&quot;</strong>. Esto significa registrar una operación inversa (una devolución) para que la suma matemática quede en cero.
             </p>
           </div>
 
