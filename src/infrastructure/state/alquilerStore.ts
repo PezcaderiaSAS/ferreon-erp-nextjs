@@ -24,6 +24,7 @@ export interface AlquilerUI {
   totalPagado?: number;
   saldoPendiente?: number;
   created_at: string;
+  fecha_vencimiento?: string;
 }
 
 export interface ItemDevolucionPayload {
