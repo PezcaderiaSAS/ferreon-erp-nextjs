@@ -7,6 +7,10 @@ import React, { useState } from 'react';
 import { RegistrarPagoModal } from '../components/cartera/RegistrarPagoModal';
 import { useCurrencyFormatter } from '../../lib/hooks/useCurrencyFormatter';
 
+import { AutoTourTrigger } from '../../components/ui/AutoTourTrigger';
+import { InteractiveTour } from '../../components/ui/InteractiveTour';
+import { FACTURACION_STEPS } from '../../config/tours/TourConfigs';
+
 type EstadoFactura = 'Pagada' | 'Pendiente' | 'Vencida';
 
 interface Factura {
@@ -92,6 +96,7 @@ export default function FacturacionPage() {
           <p className="text-base text-slate-600 mt-1">Gestiona tus ingresos, facturas emitidas y estado de pagos.</p>
         </div>
         <button 
+          id="tour-btn-generar-factura"
           onClick={() => showToast('Abriendo generador de facturas...', 'info')}
           className="flex items-center justify-center gap-2 bg-brand-salmonLight text-brand-salmonDark hover:bg-brand-salmon hover:text-white transition-colors px-6 py-2 rounded-lg text-sm font-semibold shadow-sm"
         >
@@ -101,7 +106,7 @@ export default function FacturacionPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div id="tour-kpis-facturacion" className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Ingresos */}
         <div className="bg-white p-6 rounded-xl shadow-card border border-slate-200 flex flex-col gap-2 transition-all hover:border-emerald-200 hover:shadow-lg">
           <div className="flex items-center justify-between text-slate-600">
@@ -270,6 +275,10 @@ export default function FacturacionPage() {
         } : null}
         onConfirmarPago={handleConfirmarPago}
       />
+
+      {/* Tour Módulo Facturación */}
+      <AutoTourTrigger tourId="facturacion-core" delay={1000} forceMode={true} />
+      <InteractiveTour tourId="facturacion-core" steps={FACTURACION_STEPS} />
     </div>
   );
 }

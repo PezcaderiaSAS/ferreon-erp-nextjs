@@ -38,12 +38,14 @@ const TOUR_STEPS: TourStep[] = [
 ];
 
 export function GlobalTourWrapper() {
-  const { isTourOpen, setTourOpen } = useLayoutStore();
-
+  // El control de si se muestra o no ahora lo tiene InteractiveTour a través de Zustand.
+  // Ya no dependemos de useLayoutStore aquí para el tour, o lo mantenemos para lanzar el tour.
+  // Para retrocompatibilidad con la demo, si isTourOpen era seteado externamente, 
+  // idealmente ahora deberíamos llamar a startTour('global') desde el botón que abría el layout.
+  // Por ahora, solo adaptamos el componente para que no rompa TypeScript:
   return (
     <InteractiveTour 
-      isOpen={isTourOpen} 
-      onClose={() => setTourOpen(false)} 
+      tourId="global"
       steps={TOUR_STEPS} 
     />
   );

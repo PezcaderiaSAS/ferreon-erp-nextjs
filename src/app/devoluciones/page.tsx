@@ -9,6 +9,10 @@ import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { NeuDevolucionWizard } from '../components/devoluciones/NeuDevolucionWizard';
 import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
 
+import { AutoTourTrigger } from '../../components/ui/AutoTourTrigger';
+import { InteractiveTour } from '../../components/ui/InteractiveTour';
+import { DEVOLUCIONES_STEPS } from '../../config/tours/TourConfigs';
+
 export default function DevolucionesPage() {
   const { alquileres, procesarDevolucionOptimista } = useAlquilerStore();
   const { incrementarStock } = useBodegaStore();
@@ -128,6 +132,7 @@ export default function DevolucionesPage() {
         </div>
         {contratosConPendientes.length > 0 && (
           <button 
+            id="tour-btn-devolucion-rapida"
             onClick={() => handleOpenDevolucion(contratosConPendientes[0])}
             className="bg-brand-salmon text-white hover:bg-brand-salmonDark transition-colors px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-sm"
           >
@@ -167,7 +172,7 @@ export default function DevolucionesPage() {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto flex-1">
+        <div id="tour-lista-devoluciones" className="overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse">
             <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10">
               <tr>
@@ -264,6 +269,10 @@ export default function DevolucionesPage() {
         contrato={contratoActivo}
         onConfirm={handleConfirmarDevolucion}
       />
+
+      {/* Tour Módulo Devoluciones */}
+      <AutoTourTrigger tourId="devoluciones-core" delay={1000} forceMode={true} />
+      <InteractiveTour tourId="devoluciones-core" steps={DEVOLUCIONES_STEPS} />
     </div>
   );
 }

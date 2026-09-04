@@ -22,6 +22,10 @@ import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
 import { AlquilerEntity } from '../../core/domain/entities/alquiler';
 import { alquilerUIToAlquilerEntity, alquilerEntityToAlquilerUI, equipoToEquipoUI } from '../../lib/mappers';
 
+import { AutoTourTrigger } from '../../components/ui/AutoTourTrigger';
+import { InteractiveTour } from '../../components/ui/InteractiveTour';
+import { ALQUILERES_STEPS } from '../../config/tours/TourConfigs';
+
 import { registrarPagoAction } from '../actions/pagos';
 import { procesarDevolucionAction, aprobarCotizacionAction, registrarAbonoAction } from '../actions/alquileres';
 import { EnterprisePDFService } from '../../core/services/pdf-factura-generator.service';
@@ -591,6 +595,10 @@ export default function AlquileresPage() {
         contratoParaDevolucion={contratoActivo}
         devoluciones={devolucionesGlobal.filter(d => d.alquilerId === contratoActivo?.id)}
       />
+
+      {/* Tour Módulo Alquileres */}
+      <AutoTourTrigger tourId="alquileres-core" delay={1000} forceMode={true} />
+      <InteractiveTour tourId="alquileres-core" steps={ALQUILERES_STEPS} />
     </div>
   );
 }
