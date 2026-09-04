@@ -6,11 +6,11 @@ import { CheckCircle, CheckCircle2, AlertTriangle, Package, AlertOctagon } from 
 import React, { useState, useMemo } from 'react';
 import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
-import { RegistrarDevolucionModal } from '../components/devoluciones/RegistrarDevolucionModal';
+import { NeuDevolucionWizard } from '../components/devoluciones/NeuDevolucionWizard';
 import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
 
 export default function DevolucionesPage() {
-  const { alquileres, updateAlquiler } = useAlquilerStore();
+  const { alquileres, procesarDevolucionOptimista } = useAlquilerStore();
   const { incrementarStock } = useBodegaStore();
   
   const [filtroEstado, setFiltroEstado] = useState<string>('Todos');
@@ -74,51 +74,48 @@ export default function DevolucionesPage() {
     setShowDevolucionModal(true);
   };
 
-  const handleConfirmarDevolucion = (
-    cantidades: { [equipoId: string]: number },
-    danos: { [equipoId: string]: number },
-    pagoDanos: { monto: number; metodo: string; referencia: string } | null
-  ) => {
+  const handleConfirmarDevolucion = async (payload: {
+    cantidades: { [equipoId: string]: number };
+    danos: { [equipoId: string]: number };
+    fechaDevolucion: string;
+  }) => {
     if (!contratoActivo) return;
 
-    // 1. Reintegrar stock a Bodega atómicamente (Enmienda QC2)
-    Object.entries(cantidades).forEach(([equipoId, cantDevuelta]) => {
-      if (cantDevuelta > 0) {
-        incrementarStock(equipoId, cantDevuelta);
-      }
+    const { cantidades, danos, fechaDevolucion } = payload;
+    
+    // Preparar itemsDevueltos para el Payload Inmutable de Zustand
+    const itemsDevueltos = Object.entries(cantidades).map(([equipoId, qty]) => ({
+      equipoId,
+      cantidadDevuelta: qty,
+      costoDano: danos[equipoId] || 0
+    })).filter(it => it.cantidadDevuelta > 0);
+    
+    if (itemsDevueltos.length === 0) {
+      setShowDevolucionModal(false);
+      return;
+    }
+
+    const uuidIdempotente = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `dev-${Date.now()}`;
+
+    // 1. Mutación de Zustand (Lógica matemática inmutable)
+    const exito = procesarDevolucionOptimista({
+      contratoId: contratoActivo.id,
+      itemsDevueltos,
+      fechaDevolucion,
+      idempotencyKey: uuidIdempotente
     });
 
-    // 2. Si es una entidad AlquilerUI viva, actualizarla
-    if (contratoActivo.rawAlquiler) {
-      const raw = contratoActivo.rawAlquiler;
-      const contratoActualizado = Object.assign(Object.create(Object.getPrototypeOf(raw)), raw);
-      let todosDevueltos = true;
-
-      contratoActualizado.detalles = contratoActualizado.detalles.map((it: any) => {
-        const cantDevueltasHoy = cantidades[it.itemId] || cantidades[it.equipoId] || 0;
-        const totalDev = (it.cantidadDevuelta || 0) + cantDevueltasHoy;
-        const estaDevuelto = totalDev >= it.cantidad;
-        if (!estaDevuelto) todosDevueltos = false;
-
-        return {
-          ...it,
-          cantidadDevuelta: totalDev,
-          devuelto: estaDevuelto,
-          costoDano: (it.costoDano || 0) + (danos[it.itemId] || 0),
-          fechaDevolucionReal: cantDevueltasHoy > 0 ? new Date() : it.fechaDevolucionReal
-        };
+    if (exito) {
+      // 2. Reintegrar stock a Bodega
+      itemsDevueltos.forEach(it => {
+        incrementarStock(it.equipoId, it.cantidadDevuelta);
       });
 
-      if (todosDevueltos && contratoActualizado.estado !== 'CANCELADO') {
-        contratoActualizado.finalizar();
-      }
-
-      updateAlquiler(contratoActualizado);
+      setFeedbackSuccess(`✓ Devolución procesada con éxito y stock reintegrado a Bodega.`);
+      setTimeout(() => setFeedbackSuccess(null), 4000);
     }
 
     setShowDevolucionModal(false);
-    setFeedbackSuccess(`✓ Devolución procesada con éxito y stock reintegrado a Bodega.`);
-    setTimeout(() => setFeedbackSuccess(null), 4000);
   };
 
   return (
@@ -257,17 +254,16 @@ export default function DevolucionesPage() {
         </div>
       </div>
 
-      {/* Modal para Registrar Devolución y Daños */}
-      <RegistrarDevolucionModal
+      {/* Orquestador Visual (Híbrido) */}
+      <NeuDevolucionWizard
         isOpen={showDevolucionModal}
         onClose={() => {
           setShowDevolucionModal(false);
           setContratoActivo(null);
         }}
-        contratoParaDevolucion={contratoActivo}
-        onConfirmarDevolucion={handleConfirmarDevolucion}
+        contrato={contratoActivo}
+        onConfirm={handleConfirmarDevolucion}
       />
     </div>
   );
 }
-

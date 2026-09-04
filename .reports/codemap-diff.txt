@@ -1,19 +1,20 @@
-Resumen de Actualización de Codemaps y Documentación
-Fecha: 2026-09-03
+Reporte de Actualización de Codemaps
+──────────────────────────────
+Fecha: 2026-09-04
+Archivos modificados desde último escaneo: 
+  - src/app/components/devoluciones/NeuDevolucionWizard.tsx (Nuevo)
+  - src/components/ui/neumorphism/NeuStepper.tsx (Nuevo)
+  - src/app/devoluciones/page.tsx (Modificado)
+  - src/infrastructure/state/alquilerStore.ts (Modificado)
 
-# Diff de Arquitectura y Mapas (>30% de Cambios Detectados)
+Cambios Arquitectónicos Detectados:
+  - Nueva ruta de componentes híbridos (Wizard/Bottom Sheet) para devoluciones.
+  - Sincronización inmutable transaccional en `alquilerStore`.
 
-- Se sobrescribieron todos los mapas base en `docs/CODEMAPS` para reflejar la migración SaaS Multi-tenant.
-- Cambios críticos detectados e inyectados:
-  - Nueva capa de estado: `empresaStore` (manejo de temas persistidos) y `tenantStore` introducidos en `frontend.md`.
-  - Nueva capa Edge: Integración de Stripe Webhooks y Checkout documentados en `backend.md`.
-  - Ecosistema Visual: Actualizado el mapeo UI para reflejar "Glassmorphism/Neumorphism" estricto con variables de CSS dinámicas (`var(--brand-base)`).
-  - Eliminados viejos endpoints obsoletos (`auth/[...all]`) de los mapas.
-
-# Novedades en Dependencias
-- Añadidos `stripe`, `@upstash/redis` (Rate Limiting en Edge).
-
-# Documentos Generales
-- Generado `CONTRIBUTING.md` extrayendo scripts directamente de `package.json`.
-- Generado `ENV.md` mapeando nuevas variables obligatorias desde `.env.example` (CRON_SECRET, UPSTASH_*).
-- Generado `RUNBOOK.md` documentando el proceso de Rollback Rápido de Vercel y monitoreo del Hydration Mismatch.
+Acciones:
+  - docs/CODEMAPS/frontend.md: ACTUALIZADO (Añadido NeuDevolucionWizard y transacciones duales).
+  - docs/CODEMAPS/backend.md: SIN CAMBIOS
+  - docs/CONTRIBUTING.md: SIN CAMBIOS (Sincronizado)
+  - docs/ENV.md: SIN CAMBIOS (Sincronizado con .env.example)
+  - docs/RUNBOOK.md: SIN CAMBIOS (Sincronizado)
+──────────────────────────────

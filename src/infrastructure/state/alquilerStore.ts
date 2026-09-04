@@ -26,6 +26,19 @@ export interface AlquilerUI {
   created_at: string;
 }
 
+export interface ItemDevolucionPayload {
+  equipoId: string;
+  cantidadDevuelta: number;
+  costoDano: number;
+}
+
+export interface DevolucionPayload {
+  contratoId: string | number;
+  itemsDevueltos: ItemDevolucionPayload[];
+  fechaDevolucion: string;
+  idempotencyKey: string;
+}
+
 interface AlquilerStore {
   alquileres: AlquilerUI[];
   idempotencyKeys: string[];
@@ -33,6 +46,7 @@ interface AlquilerStore {
   addAlquiler: (alquiler: AlquilerUI, idempotencyKey?: string) => boolean;
   updateAlquiler: (alquiler: AlquilerUI, idempotencyKey?: string) => boolean;
   eliminarAlquiler: (id: string | number) => Promise<void>;
+  procesarDevolucionOptimista: (payload: DevolucionPayload) => boolean;
   restoreSnapshot: (previousAlquileres: AlquilerUI[]) => void;
   sanitizeStore: () => void;
 }
@@ -101,6 +115,91 @@ export const useAlquilerStore = create<AlquilerStore>()(
           set({ alquileres: previousAlquileres });
           throw error;
         }
+      },
+
+      procesarDevolucionOptimista: (payload) => {
+        const state = get();
+        if (state.idempotencyKeys.includes(payload.idempotencyKey)) {
+          console.warn(`[AlquilerStore] Devolución duplicada bloqueada por Idempotencia: ${payload.idempotencyKey}`);
+          return false;
+        }
+
+        const alquilerIndex = state.alquileres.findIndex(a => String(a.id) === String(payload.contratoId));
+        if (alquilerIndex === -1) return false;
+
+        const alquilerOriginal = state.alquileres[alquilerIndex];
+        // Clon profundo inmutable para no mutar el estado accidentalmente
+        const alquilerActualizado = JSON.parse(JSON.stringify(alquilerOriginal)) as AlquilerUI;
+
+        let todosDevueltos = true;
+
+        alquilerActualizado.detalles = alquilerActualizado.detalles.flatMap((it) => {
+          const itemPayload = payload.itemsDevueltos.find(p => String(p.equipoId) === String(it.itemId) || String(p.equipoId) === String(it.equipoId));
+          
+          if (!itemPayload || itemPayload.cantidadDevuelta <= 0) {
+            const devuelto = (it.cantidadDevuelta || 0) >= it.cantidad;
+            if (!devuelto) todosDevueltos = false;
+            return [it];
+          }
+
+          const pendientes = it.cantidad - (it.cantidadDevuelta || 0);
+          const cantidadDevueltaHoy = Math.min(itemPayload.cantidadDevuelta, pendientes);
+          
+          if (cantidadDevueltaHoy < pendientes) {
+            // Split Line
+            const msDiffEst = new Date(it.fechaFinEstimada || it.fechaFin || new Date()).getTime() - new Date(it.fechaInicio || new Date()).getTime();
+            const diasEstimados = Math.max(1, Math.ceil(msDiffEst / (1000 * 3600 * 24)));
+            
+            const uuidSeguro = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `clon-${Date.now()}-${Math.random().toString(36).substring(2,9)}`;
+
+            const newItemClonado = {
+              ...it,
+              id: it.id ? `${it.id}-clon-${uuidSeguro}` : uuidSeguro,
+              cantidad: cantidadDevueltaHoy,
+              cantidadDevuelta: cantidadDevueltaHoy,
+              fechaDevolucionReal: payload.fechaDevolucion,
+              devuelto: true,
+              costoDano: itemPayload.costoDano,
+              subtotalLineaEstimado: (it.tarifaAplicada || 0) * cantidadDevueltaHoy * diasEstimados
+            };
+
+            // Ajustar el original
+            const updatedOriginal = {
+              ...it,
+              cantidad: it.cantidad - cantidadDevueltaHoy,
+              subtotalLineaEstimado: (it.tarifaAplicada || 0) * (it.cantidad - cantidadDevueltaHoy) * diasEstimados
+            };
+
+            todosDevueltos = false;
+            return [updatedOriginal, newItemClonado];
+          } else {
+            // Devolución completa de la línea
+            const totalDevueltas = (it.cantidadDevuelta || 0) + cantidadDevueltaHoy;
+            return [{
+              ...it,
+              cantidadDevuelta: totalDevueltas,
+              fechaDevolucionReal: payload.fechaDevolucion,
+              devuelto: true,
+              costoDano: (it.costoDano || 0) + itemPayload.costoDano
+            }];
+          }
+        });
+
+        if (todosDevueltos && alquilerActualizado.estado !== 'CANCELADO') {
+          alquilerActualizado.estado = 'FINALIZADO';
+          alquilerActualizado.garantia_estado = 'Liberada';
+        }
+
+        const newKeys = [...state.idempotencyKeys.slice(-49), payload.idempotencyKey];
+        const nuevosAlquileres = [...state.alquileres];
+        nuevosAlquileres[alquilerIndex] = alquilerActualizado;
+
+        set({
+          alquileres: nuevosAlquileres,
+          idempotencyKeys: newKeys,
+        });
+
+        return true;
       },
 
       restoreSnapshot: (previousAlquileres) => {

@@ -9,8 +9,10 @@ Este mapa detalla la capa de presentación de la aplicación, construida en Reac
 
 ## Componentes Clave & Páginas
 - **`src/components/ui/Sidebar.tsx`**: Contenedor principal de navegación. Incorpora el **Theme Switcher** que sincroniza el estado local de Zustand (`empresaStore.config.themeApp`) con el DOM sin parpadeos.
-- **`src/app/clientes/page.tsx`, `src/app/bodega/page.tsx`, `src/app/alquileres/page.tsx`**:
+- **`src/app/components/devoluciones/NeuDevolucionWizard.tsx`**: Orquestador visual híbrido para recepción de equipos y daños. Maneja comportamiento responsive (Bottom Sheet móvil vs Wizard Desktop) e inyecta llaves de idempotencia.
+- **`src/app/clientes/page.tsx`, `src/app/bodega/page.tsx`, `src/app/alquileres/page.tsx`, `src/app/devoluciones/page.tsx`**:
   - Consumo directo de stores reactivos de Zustand.
+  - Orquestan la doble transacción de estado e inventario físico (ej: `procesarDevolucionOptimista` y `incrementarStock`).
   - Carga de catálogos mediante `fetch(..., { cache: 'no-store' })` para invalidar el almacenamiento en disco de Safari/WebKit.
   - Escuchadores de eventos de visibilidad (`visibilitychange` / `window.onfocus`) para revalidar datos automáticamente cuando una ventana inactiva recupera el foco en macOS.
 

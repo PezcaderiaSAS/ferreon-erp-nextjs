@@ -23,6 +23,7 @@ vi.mock('../../src/infrastructure/persistence/supabase/server', () => ({
     auth: {
       getUser: async () => ({ data: { user: { id: 'usr-test-1', email: 'test@ferreon.com' } } }),
     },
+    rpc: vi.fn().mockResolvedValue({ error: null, data: 'mocked-transaction-id' }),
     from: (table: string) => ({
       select: (fields?: string) => ({
         eq: (field: string, value: any) => ({

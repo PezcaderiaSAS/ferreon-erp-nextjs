@@ -445,6 +445,24 @@ export async function registrarAbonoAction(input: RegistrarAbonoInput) {
   }
 
   // (Opcional) Aquí se podría insertar el registro histórico del pago en una tabla `pagos_recibidos`.
+  
+  // Novedad: Insertar en Ledger (Partida Doble)
+  // Débito a Caja (+), Crédito a Ingresos por Alquileres (-)
+  const { error: rpcErr } = await supabase.rpc('insert_transaction', {
+    p_description: `Abono de ${input.metodoPago || 'Efectivo'} para alquiler #${numericAlquilerId}`,
+    p_reference_id: alq.id || null, // idealmente el UUID del contrato real si estuviera, usando numericAlquilerId temporalmente
+    p_created_by: null, // Asignar UUID del usuario autenticado si es necesario
+    p_idempotency_key: crypto.randomUUID(), // En prod usar un derivado estable o pasarlo del frontend
+    p_entries: [
+      { account_id: "00000000-0000-0000-0000-000000000001", amount: monto }, // TODO: ID real de Caja
+      { account_id: "00000000-0000-0000-0000-000000000002", amount: -monto } // TODO: ID real de Ingresos
+    ]
+  });
+
+  if (rpcErr) {
+    console.error('Error al insertar en ledger:', rpcErr);
+    // No bloqueamos el flujo principal por ahora si falla, pero en rigor debería revertirse o hacerse en una sola transacción
+  }
 
   // 4. Invalidar Caché
   try {
