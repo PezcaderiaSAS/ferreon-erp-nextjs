@@ -35,21 +35,31 @@ export async function GET() {
 
     // 1. Lectura en Caché Multi-Tenant (Read-Through)
     const cachedData = await getTenantCache<any[]>(tenantId, 'alquileres');
-    if (cachedData) {
-      return NextResponse.json(
-        {
-          success: true,
-          data: cachedData,
-          message: "Listado de alquileres obtenido desde caché Multi-Tenant (Hit)",
-        },
-        {
-          headers: {
-            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-            Pragma: 'no-cache',
-            Expires: '0',
-          },
-        }
+    if (cachedData && Array.isArray(cachedData)) {
+      // Validar integridad: verificar que los detalles tengan nombre de equipo
+      const tieneNombresEquipo = cachedData.every(alq =>
+        !alq.alquiler_detalles?.length ||
+        alq.alquiler_detalles.every((d: any) => d.equipos?.nombre)
       );
+
+      if (tieneNombresEquipo) {
+        return NextResponse.json(
+          {
+            success: true,
+            data: cachedData,
+            message: "Listado de alquileres obtenido desde caché Multi-Tenant (Hit)",
+          },
+          {
+            headers: {
+              'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+              Pragma: 'no-cache',
+              Expires: '0',
+            },
+          }
+        );
+      }
+      // Caché obsoleta (sin equipos.nombre): ignorar y re-consultar BD
+      console.warn('[API Alquileres] Caché obsoleta detectada (sin equipos.nombre). Forzando re-fetch desde BD.');
     }
     
     // 2. Consulta Base de Datos protegida por RLS (Miss)
@@ -58,7 +68,7 @@ export async function GET() {
       .select(`
         *,
         clientes ( nombre, nit_cedula ),
-        alquiler_detalles ( * )
+        alquiler_detalles ( *, equipos ( nombre ) )
       `)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });

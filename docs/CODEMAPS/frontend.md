@@ -1,26 +1,20 @@
-<!-- Generated: 2026-09-03 | Files scanned: ~45 | Token estimate: ~430 -->
-# Frontend Architecture & UI Ecosystem
+<!-- Generated: 2026-09-07 | Files scanned: ~20 | Token estimate: ~450 -->
+# Frontend Architecture
 
-Este mapa detalla la capa de presentación de la aplicación, construida en React / Next.js bajo los principios de consistencia en tiempo real, latencia mínima y gobernanza visual.
+## Page Tree (`src/app/`)
+- `/alquileres`: Dashboard de contratos, wizard de nuevo alquiler y manejo de abonos.
+- `/bodega`: Panel de inventario, Kardex visual (pendiente) y ajustes Poka-Yoke de stock (`EditarEquipoModal.tsx`).
+- `/caja`: Gestión de turnos, apertura, cierres de caja y arqueo de efectivo.
+- `/devoluciones`: Wizard Poka-Yoke interactivo para el reingreso parcial/total de equipos.
+- `/facturacion`: Visualización de cuentas por cobrar.
 
-## Gobernanza Visual (Design System)
-- **CSS Variables & Tailwind**: El sistema de diseño (tokens de color HSL, sombras y espaciados) está centralizado en variables de CSS (`:root` y `[data-theme="ocean"]` en `globals.css`). `tailwind.config.ts` consume exclusivamente estas variables (`var(--brand-base)`).
-- **Neumorphism & Glassmorphism**: Componentes UI base definidos en `src/components/ui/neumorphism/`. Implementan sombras dinámicas y transiciones suaves (`NeuToggle`, `NeuButton`).
+## Components (`src/app/components/` & `src/components/`)
+- `bodega/EditarEquipoModal.tsx`: Control de Stock UI con motivo de ajuste obligatorio (Delta).
+- `cartera/RegistrarPagoModal.tsx`: Calculadora de Vueltas para pagos en EFECTIVO.
+- `devoluciones/NeuDevolucionWizard.tsx`: Wizard paso a paso para devolver items.
+- `forms/AlquilerForm.tsx` & `BodegaForm.tsx`: Formularios base.
 
-## Componentes Clave & Páginas
-- **`src/components/ui/Sidebar.tsx`**: Contenedor principal de navegación. Incorpora el **Theme Switcher** que sincroniza el estado local de Zustand (`empresaStore.config.themeApp`) con el DOM sin parpadeos.
-- **`src/app/components/devoluciones/NeuDevolucionWizard.tsx`**: Orquestador visual híbrido para recepción de equipos y daños. Maneja comportamiento responsive (Bottom Sheet móvil vs Wizard Desktop) e inyecta llaves de idempotencia.
-- **`src/app/clientes/page.tsx`, `src/app/bodega/page.tsx`, `src/app/alquileres/page.tsx`, `src/app/devoluciones/page.tsx`**:
-  - Consumo directo de stores reactivos de Zustand.
-  - Orquestan la doble transacción de estado e inventario físico (ej: `procesarDevolucionOptimista` y `incrementarStock`).
-  - Carga de catálogos mediante `fetch(..., { cache: 'no-store' })` para invalidar el almacenamiento en disco de Safari/WebKit.
-  - Escuchadores de eventos de visibilidad (`visibilitychange` / `window.onfocus`) para revalidar datos automáticamente cuando una ventana inactiva recupera el foco en macOS.
-
-## Sincronización en Tiempo Real & Estado
-- **`src/infrastructure/state/realtimeSync.ts`**:
-  - `setupRealtimeSubscriptions()`: Escucha eventos `postgres_changes` (`INSERT`, `UPDATE`, `DELETE`) en las tablas `equipos`, `alquileres` y `clientes`.
-  - `useRealtimeSync()`: Hook de ciclo de vida con auto-reconexión de WebSockets ante la reactivación de pestañas suspendidas por App Nap en Safari.
-- **Zustand Stores (`src/infrastructure/state/`)**:
-  - `alquilerStore.ts`, `clienteStore.ts`, `bodegaStore.ts`: Stores con persistencia local y soporte para Rollback Optimista.
-  - `empresaStore.ts`: Configuración persistida de tenant y temas.
-  - `layoutStore.ts`: Control temporal de modales, tours y drawers.
+## State Management (`src/infrastructure/state/`)
+- `alquilerStore.ts`: Estado local de contratos.
+- `bodegaStore.ts`: Estado local de equipos.
+- `ledgerStore.ts`: Estado global para transacciones (pagos).

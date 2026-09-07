@@ -1,25 +1,17 @@
-<!-- Generated: 2026-09-03 | Files scanned: ~15 | Token estimate: ~280 -->
-# Data Schemas & Persistence Map
+<!-- Generated: 2026-09-07 | Files scanned: ~5 | Token estimate: ~500 -->
+# Data Architecture (Supabase)
 
-## Base de Datos (Supabase PostgreSQL)
-- **Row Level Security (RLS)**: Altamente optimizado para el modelo Multi-tenant. Las tablas contienen el campo `tenant_id` y validan el contexto de autenticación mediante `auth.uid()`.
-- **Replicación en Tiempo Real (Supabase Realtime)**:
-  - Habilitada para `equipos`, `alquileres` y `clientes`.
-  - Emite eventos `INSERT`, `UPDATE` y `DELETE` para alimentar stores reactivos en todos los navegadores conectados.
-- **Procedimientos Almacenados (RPCs)**:
-  - `crear_alquiler_transaccional`: Ejecuta inserción atómica de cabecera y detalles de alquiler, bloqueo de filas de equipos (`FOR UPDATE`), descuento de stock disponible e incremento de stock en obra con `ROLLBACK` automático si el stock es insuficiente.
+## Tables
+- `equipos`: Catálogo de inventario. (`stock_disponible`, `stock_en_obra`)
+- `alquileres`: Contratos cabecera.
+- `alquiler_items`: Detalle de equipos alquilados por contrato.
+- `kardex_inventario`: Registro inmutable (Append-Only) de cualquier alteración en el stock. Evita descuadres silenciosos.
+- `sesiones_caja`: Control de turnos de cajeros. Estado ('ABIERTA', 'CERRADA').
+- `pagos`: Abonos realizados. Enlaza con `sesiones_caja_id`. Guarda `efectivo_recibido` y `cambio_entregado`.
 
-## Esquemas Críticos (JSONB)
-- **`auth.users` (Gestión de Identidad Supabase)**:
-  - Usamos el campo nativo `raw_user_meta_data` para inyectar datos del perfil:
-  ```json
-  {
-    "nombre": "string",
-    "rol": "superadmin | admin | operador | facturacion",
-    "avatarUrl": "string"
-  }
-  ```
+## Stored Procedures (RPCs)
+- `reducir_stock_seguro(p_equipo_id, p_cantidad_requerida)`: Candado optimista con `FOR UPDATE`. Levanta excepción si se intenta overbooking.
 
-## Entidades de Dominio (`src/core/domain/entities/`)
-- **`EmpresaConfig`**: Configuraciones del arrendatario y sincronización de tema visual.
-- **`AlquilerEntity` / `Cliente` / `Equipo`**: Modelos de dominio con tipado inmutable, validaciones Zod y soporte de Rollback Optimista.
+## RLS & Multi-Tenancy
+- Las tablas implementan Row Level Security (RLS) filtrando por `tenant_id`.
+- Se requiere pasar el usuario autenticado (via `createServerSupabaseClient()`) a las consultas para no violar el aislamiento de datos.

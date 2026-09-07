@@ -144,11 +144,15 @@ export default function FacturacionPage() {
     setIsPagoModalOpen(true);
   };
 
-  const handleConfirmarPago = (monto: number, metodo: string, referencia: string) => {
+  const handleConfirmarPago = (monto: number, metodo: string, referencia: string, efectivoRecibido?: number, cambioEntregado?: number) => {
     if (!facturaSeleccionada) return;
     setIsPagoModalOpen(false);
     setFacturaSeleccionada(null);
-    showToast(`¡Pago de ${formatearMoneda(monto)} registrado correctamente!`, 'success');
+    if (metodo === 'EFECTIVO' && cambioEntregado !== undefined && cambioEntregado > 0) {
+      showToast(`¡Pago registrado! Entregar cambio: ${formatearMoneda(cambioEntregado)}`, 'success');
+    } else {
+      showToast(`¡Pago de ${formatearMoneda(monto)} registrado correctamente!`, 'success');
+    }
   };
 
   return (

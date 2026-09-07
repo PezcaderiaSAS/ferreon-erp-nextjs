@@ -10,6 +10,8 @@ export interface EquipoUI {
   stock_total: number;
   stock_disponible: number;
   stock_en_obra: number;
+  stock_mantenimiento?: number;
+  valor_reposicion?: number;
   estado: string; // 'Activo' | 'Inactivo' | 'Disponible' | 'En Alquiler' | 'Mantenimiento'
   created_at?: string;
   // Campos por retrocompatibilidad
@@ -18,6 +20,7 @@ export interface EquipoUI {
   stockTotal?: number;
   stockDisponible?: number;
   stockEnObra?: number;
+  stockMantenimiento?: number;
 }
 
 interface BodegaState {
@@ -30,6 +33,8 @@ interface BodegaState {
   ajustarStock: (equipoId: string | number, nuevoStockDisponible: number, motivo?: string) => boolean;
   descontarStock: (equipoId: string | number, cantidad: number) => boolean;
   incrementarStock: (equipoId: string | number, cantidad: number) => boolean;
+  incrementarStockMantenimiento: (equipoId: string | number, cantidad: number) => boolean;
+  liberarDeMantenimiento: (equipoId: string | number, cantidad: number) => boolean;
   inactivarEquipo: (id: string | number) => Promise<void>;
   restoreSnapshot: (previousEquipos: EquipoUI[]) => void;
 }
@@ -162,6 +167,56 @@ export const useBodegaStore = create<BodegaState>()(
                 stock_en_obra: enObra,
                 stockEnObra: enObra,
                 estado: estadoUi
+              };
+            }
+            return e;
+          })
+        }));
+        return true;
+      },
+
+      incrementarStockMantenimiento: (equipoId, cantidad) => {
+        set((state) => ({
+          equipos: state.equipos.map((e) => {
+            if (String(e.id) === String(equipoId)) {
+              const enObra = Math.max(0, ((e.stock_en_obra ?? e.stockEnObra) || 0) - cantidad);
+              const enMantenimiento = (e.stock_mantenimiento || e.stockMantenimiento || 0) + cantidad;
+              
+              // Determina el estado UI, dando prioridad a mantenimiento si no hay stock disponible.
+              const disponible = (e.stock_disponible ?? e.stockDisponible) || 0;
+              let estadoUi = e.estado;
+              if (disponible === 0 && enMantenimiento > 0) estadoUi = 'Mantenimiento';
+              else if (disponible > 0) estadoUi = 'Disponible';
+              
+              return {
+                ...e,
+                stock_en_obra: enObra,
+                stockEnObra: enObra,
+                stock_mantenimiento: enMantenimiento,
+                stockMantenimiento: enMantenimiento,
+                estado: estadoUi
+              };
+            }
+            return e;
+          })
+        }));
+        return true;
+      },
+
+      liberarDeMantenimiento: (equipoId, cantidad) => {
+        set((state) => ({
+          equipos: state.equipos.map((e) => {
+            if (String(e.id) === String(equipoId)) {
+              const enMantenimiento = Math.max(0, (e.stock_mantenimiento || e.stockMantenimiento || 0) - cantidad);
+              const disponible = ((e.stock_disponible ?? e.stockDisponible) || 0) + cantidad;
+              
+              return {
+                ...e,
+                stock_mantenimiento: enMantenimiento,
+                stockMantenimiento: enMantenimiento,
+                stock_disponible: disponible,
+                stockDisponible: disponible,
+                estado: disponible > 0 ? 'Disponible' : (enMantenimiento > 0 ? 'Mantenimiento' : 'En Alquiler')
               };
             }
             return e;

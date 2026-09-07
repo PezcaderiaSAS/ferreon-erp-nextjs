@@ -224,6 +224,15 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
   const totalGeneral = subtotalEquipos + totalFletes;
   const totalEstimado = Math.max(0, totalGeneral - (deposito || 0));
 
+  // POKA-YOKE: Calcular Valor de Reposición Total para regla del 10%
+  const valorReposicionTotal = useMemo(() => {
+    return items.reduce((acc, item) => {
+      if (!item.itemId) return acc;
+      const equipo = equiposActivos.find(e => String(e.id) === String(item.itemId));
+      return acc + ((equipo?.valor_reposicion || 0) * (item.cantidad || 1));
+    }, 0);
+  }, [items, equiposActivos]);
+
   const formatearCOP = (valor: number) => {
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Math.round(valor || 0));
   };
@@ -255,6 +264,14 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
       const hasEmptyItem = items.some(it => !it.itemId);
       if (hasEmptyItem) {
         setFormErrors(prev => ({ ...prev, items: 'Seleccione un equipo para cada fila' }));
+        return false;
+      }
+      
+      // POKA-YOKE: Validación del 10% del Valor de Reposición (Restricción Global)
+      const minimoRequerido = valorReposicionTotal * 0.1;
+      const garantiaTotal = Number(deposito) + Number(garantiaMonto);
+      if (garantiaTotal < minimoRequerido) {
+        setErrorMsg(`Bloqueo de Seguridad: Se requiere un colateral (Depósito + Garantía) mínimo del 10% del valor de los equipos (${formatearCOP(minimoRequerido)}). El colateral actual es ${formatearCOP(garantiaTotal)}. Por favor regrese al Paso 1.`);
         return false;
       }
     }

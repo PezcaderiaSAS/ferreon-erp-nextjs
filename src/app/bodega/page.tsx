@@ -134,6 +134,7 @@ export default function BodegaPage() {
                 <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Categoría</th>
                 <th className="py-3.5 px-4 text-xs font-semibold text-emerald-700 uppercase tracking-wider text-center">Disponible</th>
                 <th className="py-3.5 px-4 text-xs font-semibold text-amber-700 uppercase tracking-wider text-center">En Obra</th>
+                <th className="py-3.5 px-4 text-xs font-semibold text-rose-700 uppercase tracking-wider text-center">Mantenimiento</th>
                 <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider text-center">Total</th>
                 <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Tarifa / Día</th>
                 <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Estado</th>
@@ -171,6 +172,31 @@ export default function BodegaPage() {
                     <span className="inline-flex items-center justify-center font-bold px-2.5 py-1 rounded-full text-xs bg-amber-50 text-amber-700 border border-amber-200/60 min-w-[32px]">
                       {equipo.stockEnObra ?? 0}
                     </span>
+                  </td>
+                  <td className="py-4 px-4 text-center">
+                    { (equipo.stockMantenimiento || equipo.stock_mantenimiento || 0) > 0 ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="inline-flex items-center justify-center font-bold px-2.5 py-1 rounded-full text-xs bg-rose-50 text-rose-700 border border-rose-200/60 min-w-[32px] animate-pulse">
+                          {equipo.stockMantenimiento || equipo.stock_mantenimiento}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`¿Liberar ${(equipo.stockMantenimiento || equipo.stock_mantenimiento)} unidades de ${equipo.nombre} a disponibles?`)) {
+                              useBodegaStore.getState().liberarDeMantenimiento(equipo.id, (equipo.stockMantenimiento || equipo.stock_mantenimiento || 0));
+                            }
+                          }}
+                          className="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded shadow-sm hover:bg-rose-200"
+                        >
+                          Liberar
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="inline-flex items-center justify-center font-bold px-2.5 py-1 rounded-full text-xs bg-slate-50 text-slate-400 border border-slate-200/60 min-w-[32px]">
+                        0
+                      </span>
+                    )}
                   </td>
                   <td className="py-4 px-4 text-center font-semibold text-slate-700">
                     {equipo.stockTotal ?? ((equipo.stockDisponible || 0) + (equipo.stockEnObra || 0))}

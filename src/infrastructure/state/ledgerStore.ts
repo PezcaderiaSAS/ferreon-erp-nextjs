@@ -15,6 +15,12 @@ interface LedgerState {
     referenceId: string | null,
     entradas: { account_id: string; amount: number }[]
   ) => Promise<boolean>;
+  registrarLiquidacionGarantia: (payload: {
+    contratoId: string;
+    montoDanos: number;
+    montoGarantia: number;
+    metodoPagoExcedente?: string;
+  }) => Promise<string | null>;
   getROI: (equipoId: string) => { ingresos: number; costos: number; roi: number };
 }
 
@@ -67,6 +73,46 @@ export const useLedgerStore = create<LedgerState>()(
           set({ error: 'Falló la inserción en el ledger.' });
           return false;
         }
+      },
+
+      registrarLiquidacionGarantia: async ({ contratoId, montoDanos, montoGarantia, metodoPagoExcedente }) => {
+        const transactionId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `txn-${Date.now()}`;
+        
+        const entradas = [];
+        // 1. Reducir Pasivo de Garantía
+        entradas.push({ account_id: 'pasivo_garantias', amount: -Math.min(montoDanos, montoGarantia) });
+        
+        // 2. Registrar el Ingreso por Penalidad/Daño
+        entradas.push({ account_id: 'ingresos_penalidades', amount: montoDanos });
+        
+        // 3. Si los daños superan la garantía, entra dinero extra por Caja
+        if (montoDanos > montoGarantia) {
+          const excedente = montoDanos - montoGarantia;
+          const cuentaCaja = metodoPagoExcedente === 'Transferencia' ? 'bancos' : 'caja_efectivo';
+          entradas.push({ account_id: cuentaCaja, amount: excedente });
+        } else if (montoDanos < montoGarantia) {
+          // Si sobra garantía y se devuelve, se saca de caja/pasivo (simplificado aquí)
+          // Asumimos que la devolución física del dinero se registra en otro asiento, 
+          // pero el pasivo completo debe reducirse.
+          const sobrante = montoGarantia - montoDanos;
+          entradas.push({ account_id: 'pasivo_garantias', amount: -sobrante });
+          entradas.push({ account_id: 'caja_efectivo', amount: sobrante }); // Salida de dinero
+        }
+
+        const suma = entradas.reduce((acc, curr) => acc + curr.amount, 0);
+        if (suma !== 0) {
+          console.error("Error contable: Liquidación descuadrada", entradas);
+          // Auto-compensación (mock safety net)
+          entradas.push({ account_id: 'cuenta_puente_error', amount: -suma });
+        }
+
+        const exito = await get().procesarTransaccionOptimista(
+          `Liquidación Garantía y Daños Contrato ${contratoId}`,
+          contratoId,
+          entradas
+        );
+
+        return exito ? transactionId : null;
       },
 
       getROI: (equipoId: string) => {

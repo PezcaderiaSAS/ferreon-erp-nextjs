@@ -8,7 +8,7 @@ export interface RegistrarPagoModalProps {
   isOpen: boolean;
   onClose: () => void;
   contratoParaPago: any | null; 
-  onConfirmarPago: (monto: number, metodo: string, referencia: string) => void;
+  onConfirmarPago: (monto: number, metodo: string, referencia: string, efectivoRecibido?: number, cambioEntregado?: number) => void;
 }
 
 export function RegistrarPagoModal({
@@ -20,7 +20,12 @@ export function RegistrarPagoModal({
   const [pagoMonto, setPagoMonto] = useState<number | "">("");
   const [pagoMetodo, setPagoMetodo] = useState("TRANSFERENCIA");
   const [pagoReferencia, setPagoReferencia] = useState("");
+  const [efectivoRecibido, setEfectivoRecibido] = useState<number | "">("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const cambioEntregado = (pagoMetodo === 'EFECTIVO' && typeof efectivoRecibido === 'number' && typeof pagoMonto === 'number') 
+    ? Math.max(0, efectivoRecibido - pagoMonto) 
+    : 0;
 
   const { formatearMoneda, monedaConfig } = useCurrencyFormatter();
 
@@ -30,6 +35,7 @@ export function RegistrarPagoModal({
       setPagoMonto(saldoPendiente > 0 ? saldoPendiente : "");
       setPagoMetodo("TRANSFERENCIA");
       setPagoReferencia("");
+      setEfectivoRecibido("");
     }
   }, [isOpen, contratoParaPago]);
 
@@ -38,9 +44,19 @@ export function RegistrarPagoModal({
     if (isSubmitting) return;
     
     if (typeof pagoMonto === 'number' && pagoMonto > 0) {
+      if (pagoMetodo === 'EFECTIVO' && typeof efectivoRecibido === 'number' && efectivoRecibido < pagoMonto) {
+        alert('Poka-Yoke: El efectivo recibido no puede ser menor al monto a abonar.');
+        return;
+      }
       setIsSubmitting(true);
       try {
-        await onConfirmarPago(pagoMonto, pagoMetodo, pagoReferencia);
+        await onConfirmarPago(
+          pagoMonto, 
+          pagoMetodo, 
+          pagoReferencia, 
+          pagoMetodo === 'EFECTIVO' ? Number(efectivoRecibido) : undefined,
+          pagoMetodo === 'EFECTIVO' ? cambioEntregado : undefined
+        );
       } finally {
         setIsSubmitting(false);
       }
@@ -113,6 +129,36 @@ export function RegistrarPagoModal({
               />
             </div>
           </div>
+
+          {pagoMetodo === 'EFECTIVO' && (
+            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 mt-4 animate-fadeIn">
+              <h3 className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <span>💵</span>
+                <span>Calculadora de Vueltas (Poka-Yoke)</span>
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block">Efectivo Recibido</label>
+                  <input
+                    type="number"
+                    min={typeof pagoMonto === 'number' ? pagoMonto : 1}
+                    value={efectivoRecibido}
+                    onChange={(e) => setEfectivoRecibido(e.target.value === "" ? "" : parseFloat(e.target.value) || 0)}
+                    placeholder="Ej: 50000"
+                    className="w-full p-2.5 mt-1 bg-white border border-amber-200 focus:border-amber-500 outline-none rounded-xl text-sm font-bold text-slate-700"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block">Cambio a Entregar</label>
+                  <div className="w-full p-2.5 mt-1 bg-slate-100 border border-slate-200 rounded-xl text-sm font-black text-amber-600 flex items-center justify-between">
+                    <span>{formatearMoneda(cambioEntregado)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
             <button 

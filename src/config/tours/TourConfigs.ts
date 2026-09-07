@@ -17,6 +17,12 @@ export const ALQUILERES_STEPS: TourStep[] = [
 
 export const DEVOLUCIONES_STEPS: TourStep[] = [
   {
+    targetId: 'tour-sort-devoluciones',
+    title: '🔄 Orden Inteligente Dual',
+    content: 'Puedes alternar la vista entre los contratos "Más recientes" o los "Próximos a vencer". ¡Tú eliges cómo trabajar! 🎯',
+    forcedClick: false
+  },
+  {
     targetId: 'tour-lista-devoluciones',
     title: '📦 Control de entregas',
     content: 'Aquí verás los equipos alquilados. Los que están en rojo están atrasados. Revisa la lista rápido. 👀',

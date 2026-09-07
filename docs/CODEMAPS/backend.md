@@ -1,21 +1,16 @@
-<!-- Generated: 2026-09-03 | Files scanned: ~20 | Token estimate: ~420 -->
-# Backend Architecture & API Routes
+<!-- Generated: 2026-09-07 | Files scanned: ~10 | Token estimate: ~400 -->
+# Backend Architecture (Server Actions)
 
-Este mapa refleja la capa de APIs Serverless de Next.js, Middlewares Edge, adaptadores de autenticación SSR y políticas anti-caché.
+## Core Actions (`src/app/actions/`)
+- `alquileres.ts`: Maneja la lógica de contratos de alquiler y devoluciones.
+- `equipos.ts`: Gestión de inventario (Kardex) y ajustes Poka-Yoke. Usa RPC `ajustar_stock_equipo` para evitar overbooking.
+- `pagos.ts`: Registro de ingresos. Tiene dependencias de validación contra `sesiones_caja` (estado ABIERTA).
 
-## Edge Middleware & SSR Client
-- **`src/middleware.ts`**:
-  - Manejo integral de autenticación usando `@supabase/ssr` con cookies `getAll` y `setAll`.
-  - Rate Limiting con Upstash Redis en Edge (ventana deslizante perimetral).
-  - Verificación y protección RBAC basada en `user_metadata.rol`.
-- **`src/infrastructure/persistence/supabase/server.ts`**:
-  - `createServerSupabaseClient()`: Implementa el estándar `getAll()` y `setAll()` para ensamblar JWTs fragmentados (chunked cookies `sb-*-auth-token.0`, `.1`) previniendo desincronizaciones de sesión al operar concurrentemente desde múltiples dispositivos.
-  - `createAdminSupabaseClient()`: Cliente privilegiado (`service_role`) para operaciones que eluden RLS (idempotencia, RPCs atómicas críticas).
+## Key Files
+- `src/infrastructure/persistence/supabase/server.ts` (Instanciación de clientes Supabase SSR)
+- `src/app/actions/pagos.ts` (Validación de Caja Poka-Yoke)
+- `src/app/actions/equipos.ts` (Manejo del Kardex Inmutable)
 
-## API Routes (`src/app/api/`)
-- **`clientes/route.ts`, `equipos/route.ts`, `alquileres/route.ts`**:
-  - Lectura read-through sobre Upstash Redis Multi-Tenant + DB PostgreSQL con RLS.
-  - **Protección Anti-Caché Safari/WebKit**: Emisión de cabeceras `Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate`, `Pragma: no-cache` y `Expires: 0` para forzar frescura absoluta de datos en navegadores macOS.
-- **`auth/callback/route.ts`**: Intercambia código OAuth por token de sesión JWT de Supabase.
-- **`usuarios/route.ts`**: Gestión RBAC de usuarios con `service_role`.
-- **`webhooks/stripe/route.ts`**: Procesamiento asíncrono de eventos de suscripción y facturación.
+## Patterns
+- **Poka-Yoke**: Validaciones restrictivas a nivel de backend antes de la mutación (ej: Caja abierta, stock disponible).
+- **Idempotencia**: Se prevé el uso de `idempotency_key` en acciones críticas para evitar inserciones duplicadas (ej: doble click en pagos).

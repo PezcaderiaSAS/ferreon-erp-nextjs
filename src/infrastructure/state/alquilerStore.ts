@@ -30,6 +30,9 @@ export interface AlquilerUI {
 export interface ItemDevolucionPayload {
   equipoId: string;
   cantidadDevuelta: number;
+  buenas?: number;
+  malas?: number;
+  extraviadas?: number;
   costoDano: number;
 }
 
@@ -38,6 +41,7 @@ export interface DevolucionPayload {
   itemsDevueltos: ItemDevolucionPayload[];
   fechaDevolucion: string;
   idempotencyKey: string;
+  transactionId?: string;
 }
 
 interface AlquilerStore {
@@ -146,6 +150,8 @@ export const useAlquilerStore = create<AlquilerStore>()(
           const pendientes = it.cantidad - (it.cantidadDevuelta || 0);
           const cantidadDevueltaHoy = Math.min(itemPayload.cantidadDevuelta, pendientes);
           
+          const resultItems = [];
+
           if (cantidadDevueltaHoy < pendientes) {
             // Split Line
             const msDiffEst = new Date(it.fechaFinEstimada || it.fechaFin || new Date()).getTime() - new Date(it.fechaInicio || new Date()).getTime();
@@ -172,18 +178,48 @@ export const useAlquilerStore = create<AlquilerStore>()(
             };
 
             todosDevueltos = false;
-            return [updatedOriginal, newItemClonado];
+            resultItems.push(updatedOriginal, newItemClonado);
           } else {
             // Devolución completa de la línea
             const totalDevueltas = (it.cantidadDevuelta || 0) + cantidadDevueltaHoy;
-            return [{
+            resultItems.push({
               ...it,
               cantidadDevuelta: totalDevueltas,
               fechaDevolucionReal: payload.fechaDevolucion,
               devuelto: true,
               costoDano: (it.costoDano || 0) + itemPayload.costoDano
-            }];
+            });
           }
+
+          if (itemPayload.costoDano > 0) {
+            const uuidCargo = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `cargo-${Date.now()}`;
+            
+            let descripcionPenalty = `Daño/Mantenimiento: ${it.nombreItem || 'Equipo'}`;
+            if ((itemPayload.extraviadas || 0) > 0) {
+              descripcionPenalty = `Extravío/Pérdida: ${it.nombreItem || 'Equipo'}`;
+            }
+
+            resultItems.push({
+              id: uuidCargo,
+              itemId: `PENALTY-${it.itemId || it.equipoId || 'UNK'}`,
+              nombreItem: descripcionPenalty,
+              tipo: 'REPOSICION',
+              cantidad: (itemPayload.malas || 0) + (itemPayload.extraviadas || 0) || 1,
+              cantidadDevuelta: (itemPayload.malas || 0) + (itemPayload.extraviadas || 0) || 1,
+              devuelto: true,
+              tarifaAplicada: itemPayload.costoDano,
+              subtotalLineaEstimado: itemPayload.costoDano,
+              fechaInicio: payload.fechaDevolucion,
+              fechaFinEstimada: payload.fechaDevolucion
+            });
+            // Incrementar el subtotal del contrato para que la factura cobre esto
+            alquilerActualizado.subtotal_equipos = (alquilerActualizado.subtotal_equipos || 0) + itemPayload.costoDano;
+            alquilerActualizado.subtotal_general = (alquilerActualizado.subtotal_general || 0) + itemPayload.costoDano;
+            alquilerActualizado.total = (alquilerActualizado.total || 0) + itemPayload.costoDano;
+            alquilerActualizado.saldoPendiente = (alquilerActualizado.saldoPendiente || 0) + itemPayload.costoDano;
+          }
+
+          return resultItems;
         });
 
         if (todosDevueltos && alquilerActualizado.estado !== 'CANCELADO') {

@@ -3,19 +3,23 @@
 import { CheckCircle, CheckCircle2, AlertTriangle, Package, AlertOctagon } from 'lucide-react';
 
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
+import { useLedgerStore } from '../../infrastructure/state/ledgerStore';
 import { NeuDevolucionWizard } from '../components/devoluciones/NeuDevolucionWizard';
+import { QuickReturnHeroCard } from '../components/devoluciones/QuickReturnHeroCard';
 import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
+import { alquilerEntityToAlquilerUI } from '../../lib/mappers';
 
 import { AutoTourTrigger } from '../../components/ui/AutoTourTrigger';
 import { InteractiveTour } from '../../components/ui/InteractiveTour';
 import { DEVOLUCIONES_STEPS } from '../../config/tours/TourConfigs';
 
 export default function DevolucionesPage() {
-  const { alquileres, procesarDevolucionOptimista } = useAlquilerStore();
+  const { alquileres, procesarDevolucionOptimista, setAlquileres } = useAlquilerStore();
   const { incrementarStock } = useBodegaStore();
+  const { registrarLiquidacionGarantia } = useLedgerStore();
   
   const [filtroEstado, setFiltroEstado] = useState<string>('Todos');
   const [showDevolucionModal, setShowDevolucionModal] = useState<boolean>(false);
@@ -54,6 +58,7 @@ export default function DevolucionesPage() {
         fechaEsperada: 'Hoy, 14:00',
         equiposResumen: '3x Andamios Tubulares, 1x Mezcladora',
         estadoRetraso: 'A tiempo',
+        rawAlquiler: { consecutivo: 89, id: 'CTR-2023-089', created_at: new Date().toISOString() },
         items: [
           { equipoId: '2', nombre: 'Andamio Tubular 2x2m', cantidad: 3, cantidadDevuelta: 0 },
           { equipoId: '1', nombre: 'Taladro Percutor 800W', cantidad: 1, cantidadDevuelta: 0 }
@@ -66,6 +71,7 @@ export default function DevolucionesPage() {
         fechaEsperada: 'Ayer, 18:00',
         equiposResumen: '1x Taladro Percutor 800W',
         estadoRetraso: 'Retrasado',
+        rawAlquiler: { consecutivo: 75, id: 'CTR-2023-075', created_at: new Date().toISOString() },
         items: [
           { equipoId: '1', nombre: 'Taladro Percutor 800W', cantidad: 1, cantidadDevuelta: 0 }
         ]
@@ -73,26 +79,60 @@ export default function DevolucionesPage() {
     ];
   }, [alquileres]);
 
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    // Forzar fetch fresco desde la API al montar la página
+    // para asegurar que los detalles tienen el nombre de equipo (evitar cache localStorage obsoleta)
+    fetch('/api/alquileres', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(json => {
+        if (json.success && Array.isArray(json.data)) {
+          setAlquileres(json.data.map(alquilerEntityToAlquilerUI));
+        }
+      })
+      .catch(e => console.warn('[DevolucionesPage] Error refrescando alquileres:', e));
+  }, [setAlquileres]);
+
   const handleOpenDevolucion = (contrato: any) => {
     setContratoActivo(contrato);
     setShowDevolucionModal(true);
   };
 
   const handleConfirmarDevolucion = async (payload: {
-    cantidades: { [equipoId: string]: number };
+    cantidadesBuenas: { [equipoId: string]: number };
+    cantidadesMalas: { [equipoId: string]: number };
+    cantidadesExtraviadas: { [equipoId: string]: number };
     danos: { [equipoId: string]: number };
+    valoresReposicion: { [equipoId: string]: number };
     fechaDevolucion: string;
+    metodoPagoExcedente: string;
   }) => {
     if (!contratoActivo) return;
 
-    const { cantidades, danos, fechaDevolucion } = payload;
+    const { cantidadesBuenas, cantidadesMalas, cantidadesExtraviadas, danos, valoresReposicion, fechaDevolucion, metodoPagoExcedente } = payload;
     
     // Preparar itemsDevueltos para el Payload Inmutable de Zustand
-    const itemsDevueltos = Object.entries(cantidades).map(([equipoId, qty]) => ({
-      equipoId,
-      cantidadDevuelta: qty,
-      costoDano: danos[equipoId] || 0
-    })).filter(it => it.cantidadDevuelta > 0);
+    const todosLosEquiposIds = new Set([...Object.keys(cantidadesBuenas), ...Object.keys(cantidadesMalas), ...Object.keys(cantidadesExtraviadas)]);
+    const itemsDevueltos = Array.from(todosLosEquiposIds).map(equipoId => {
+      const buenas = cantidadesBuenas[equipoId] || 0;
+      const malas = cantidadesMalas[equipoId] || 0;
+      const extraviadas = cantidadesExtraviadas[equipoId] || 0;
+      
+      const itemEnContrato = contratoActivo.items.find((i:any) => String(i.equipoId) === String(equipoId));
+      const valorRep = itemEnContrato?.valorReposicion || valoresReposicion[equipoId] || 0;
+      const totalRep = extraviadas * valorRep;
+      
+      return {
+        equipoId,
+        cantidadDevuelta: buenas + malas + extraviadas,
+        buenas,
+        malas,
+        extraviadas,
+        costoDano: (danos[equipoId] || 0) + totalRep
+      };
+    }).filter(it => it.cantidadDevuelta > 0);
     
     if (itemsDevueltos.length === 0) {
       setShowDevolucionModal(false);
@@ -101,18 +141,44 @@ export default function DevolucionesPage() {
 
     const uuidIdempotente = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `dev-${Date.now()}`;
 
-    // 1. Mutación de Zustand (Lógica matemática inmutable)
+    // 1. Coordinación de Transacción (Atomicidad con Ledger)
+    let totalDanosGlobal = 0;
+    itemsDevueltos.forEach(it => { totalDanosGlobal += it.costoDano; });
+    
+    let transactionId = null;
+    if (totalDanosGlobal > 0) {
+      transactionId = await registrarLiquidacionGarantia({
+        contratoId: contratoActivo.id,
+        montoDanos: totalDanosGlobal,
+        montoGarantia: contratoActivo.rawAlquiler?.garantia_monto || 0,
+        metodoPagoExcedente
+      });
+      
+      if (!transactionId) {
+        alert("Fallo al registrar la transacción contable. No se procesó la devolución.");
+        return;
+      }
+    }
+
+    // 2. Mutación de Zustand (Lógica matemática inmutable)
     const exito = procesarDevolucionOptimista({
       contratoId: contratoActivo.id,
       itemsDevueltos,
       fechaDevolucion,
-      idempotencyKey: uuidIdempotente
+      idempotencyKey: uuidIdempotente,
+      transactionId: transactionId || undefined
     });
 
     if (exito) {
-      // 2. Reintegrar stock a Bodega
+      // 2. Reintegrar stock a Bodega segregando Mantenimiento y Disponibles
+      const { incrementarStock, incrementarStockMantenimiento } = useBodegaStore.getState();
       itemsDevueltos.forEach(it => {
-        incrementarStock(it.equipoId, it.cantidadDevuelta);
+        if (it.buenas > 0) {
+          incrementarStock(it.equipoId, it.buenas);
+        }
+        if (it.malas > 0) {
+          incrementarStockMantenimiento(it.equipoId, it.malas);
+        }
       });
 
       setFeedbackSuccess(`✓ Devolución procesada con éxito y stock reintegrado a Bodega.`);
@@ -122,6 +188,10 @@ export default function DevolucionesPage() {
     setShowDevolucionModal(false);
   };
 
+  if (!isMounted) {
+    return null;
+  }
+
   return (
     <div className="flex flex-col gap-8 h-full">
       {/* Page Header & Actions */}
@@ -130,17 +200,12 @@ export default function DevolucionesPage() {
           <h2 className="text-3xl font-semibold text-slate-900">Recepción y Devoluciones</h2>
           <p className="text-base text-slate-600 mt-1">Gestión de maquinaria retornada, inspección física y reintegro a bodega.</p>
         </div>
-        {contratosConPendientes.length > 0 && (
-          <button 
-            id="tour-btn-devolucion-rapida"
-            onClick={() => handleOpenDevolucion(contratosConPendientes[0])}
-            className="bg-brand-salmon text-white hover:bg-brand-salmonDark transition-colors px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-sm"
-          >
-            <CheckCircle className="text-[20px] w-5 h-5" />
-            Procesar Devolución Rápida
-          </button>
-        )}
       </div>
+      
+      <QuickReturnHeroCard 
+        contratos={contratosConPendientes}
+        onProcesar={handleOpenDevolucion}
+      />
 
       {feedbackSuccess && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-4 flex items-center gap-3 shadow-xs animate-fadeIn">

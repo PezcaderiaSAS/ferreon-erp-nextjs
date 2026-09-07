@@ -9,6 +9,8 @@ export interface RegistrarPagoInput {
   monto: number;
   metodoPago: 'TRANSFERENCIA' | 'EFECTIVO' | 'NEQUI' | 'DAVIPLATA' | 'CHEQUE' | string;
   referencia?: string;
+  efectivo_recibido?: number;
+  cambio_entregado?: number;
   idempotency_key?: string;
 }
 
@@ -42,8 +44,25 @@ export async function registrarPagoAction(input: RegistrarPagoInput) {
     numericClienteId = alq.cliente_id;
   }
 
+  // POKA-YOKE: Si el método es efectivo, verificar que exista una caja abierta
   const validMetodos = ['TRANSFERENCIA', 'EFECTIVO', 'NEQUI', 'DAVIPLATA', 'CHEQUE'];
   const safeMetodo = validMetodos.includes(input.metodoPago.toUpperCase()) ? input.metodoPago.toUpperCase() : 'TRANSFERENCIA';
+
+  let sesionCajaId: string | null = null;
+  
+  if (safeMetodo === 'EFECTIVO') {
+    const { data: sesionCaja, error: errCaja } = await supabase
+      .from('sesiones_caja')
+      .select('id, estado')
+      .eq('estado', 'ABIERTA')
+      .eq('usuario_id', user?.id || '')
+      .maybeSingle();
+
+    if (errCaja || !sesionCaja) {
+      return { success: false, error: 'Poka-Yoke: No puedes registrar un pago en EFECTIVO porque no tienes una Caja Abierta en este momento.' };
+    }
+    sesionCajaId = sesionCaja.id;
+  }
 
   const { data, error } = await supabase
     .from('pagos')
@@ -53,6 +72,9 @@ export async function registrarPagoAction(input: RegistrarPagoInput) {
       monto: input.monto,
       metodo_pago: safeMetodo,
       referencia: input.referencia?.trim() || null,
+      efectivo_recibido: input.efectivo_recibido || null,
+      cambio_entregado: input.cambio_entregado || null,
+      sesion_caja_id: sesionCajaId,
       registrado_por: userIdentifier,
       fecha: new Date().toISOString()
     }])

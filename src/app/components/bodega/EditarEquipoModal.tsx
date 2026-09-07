@@ -17,6 +17,7 @@ const editEquipoSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
   categoria: z.string().min(1, 'La categoría es requerida'),
   tarifaDiaria: z.number().min(0, 'La tarifa debe ser mayor o igual a 0'),
+  valorReposicion: z.number().min(1, 'El valor de reposición es requerido'),
   estado: z.enum(['Disponible', 'En Alquiler', 'Mantenimiento'])
 });
 
@@ -33,6 +34,7 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
   const [nombre, setNombre] = useState('');
   const [categoria, setCategoria] = useState('Construcción');
   const [tarifaDiaria, setTarifaDiaria] = useState<number>(0);
+  const [valorReposicion, setValorReposicion] = useState<number>(100000);
   const [estado, setEstado] = useState<'Disponible' | 'En Alquiler' | 'Mantenimiento'>('Disponible');
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,6 +51,7 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
       setNombre(equipo.nombre || '');
       setCategoria(equipo.categoria || 'Construcción');
       setTarifaDiaria(equipo.tarifa_diaria || 0);
+      setValorReposicion(equipo.valor_reposicion || 100000);
       const safeEstado = ['Disponible', 'En Alquiler', 'Mantenimiento'].includes(equipo.estado) ? equipo.estado : 'Disponible';
       setEstado(safeEstado as 'Disponible' | 'En Alquiler' | 'Mantenimiento');
       setNuevoStock(equipo.stock_disponible || 0);
@@ -80,8 +83,13 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
       // 1. Optimistic UI (0 Latency)
       ajustarStock(equipo.id, nuevoStock, motivoAjuste);
       
+      // Mapeo Poka-Yoke del tipo_movimiento
+      let tipoMovimiento = 'AJUSTE_AUDITORIA';
+      if (motivoAjuste.includes('Compra')) tipoMovimiento = 'INGRESO_COMPRA';
+      if (motivoAjuste.includes('Baja')) tipoMovimiento = 'BAJA_DANO';
+
       // 2. Base de datos
-      const result = await ajustarStockEquipoAction(equipo.id.toString(), stockDelta, idempotencyKey);
+      const result = await ajustarStockEquipoAction(equipo.id.toString(), stockDelta, motivoAjuste, tipoMovimiento, idempotencyKey);
       
       if (!result.success) {
         throw new Error(result.error);
@@ -109,6 +117,7 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
       nombre,
       categoria,
       tarifaDiaria,
+      valorReposicion,
       estado
     });
 
@@ -133,6 +142,7 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
         categoria: validation.data.categoria,
         tarifa_diaria: validation.data.tarifaDiaria,
         tarifaDiaria: validation.data.tarifaDiaria,
+        valor_reposicion: validation.data.valorReposicion,
         estado: validation.data.estado
       };
       
@@ -145,6 +155,7 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
         nombre: validation.data.nombre,
         categoria: validation.data.categoria,
         tarifaDiaria: validation.data.tarifaDiaria,
+        valorReposicion: validation.data.valorReposicion,
         estado: validation.data.estado,
         idempotency_key: idempotencyKey,
       });
@@ -158,8 +169,13 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
         const stockIdempotencyKey = generateIdempotencyKey('stock_adj_auto');
         // Optimistic UI
         ajustarStock(equipo.id, nuevoStock, motivoAjuste);
+        // Mapeo Poka-Yoke del tipo_movimiento
+        let tipoMovimiento = 'AJUSTE_AUDITORIA';
+        if (motivoAjuste.includes('Compra')) tipoMovimiento = 'INGRESO_COMPRA';
+        if (motivoAjuste.includes('Baja')) tipoMovimiento = 'BAJA_DANO';
+
         // Base de datos
-        const stockResult = await ajustarStockEquipoAction(equipo.id.toString(), stockDelta, stockIdempotencyKey);
+        const stockResult = await ajustarStockEquipoAction(equipo.id.toString(), stockDelta, motivoAjuste, tipoMovimiento, stockIdempotencyKey);
         if (!stockResult.success) {
            throw new Error(stockResult.error);
         }
@@ -374,6 +390,18 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
                 className="px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-salmon"
               />
               {formErrors.tarifaDiaria && <span className="text-xs text-red-500">{formErrors.tarifaDiaria}</span>}
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-slate-600 text-amber-700">Valor Reposición ($)</label>
+              <input
+                type="number"
+                min="1"
+                value={valorReposicion}
+                onChange={(e) => setValorReposicion(parseFloat(e.target.value) || 0)}
+                className="px-3 py-2 border border-amber-300 rounded-lg text-sm text-amber-900 font-semibold bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+              {formErrors.valorReposicion && <span className="text-xs text-red-500">{formErrors.valorReposicion}</span>}
             </div>
 
             <div className="flex flex-col gap-1">

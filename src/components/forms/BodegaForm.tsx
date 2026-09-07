@@ -13,6 +13,7 @@ const equipoSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
   categoria: z.string().min(1, 'La categoría es requerida'),
   tarifaDiaria: z.number().min(0, 'La tarifa debe ser mayor o igual a 0'),
+  valorReposicion: z.number().min(1, 'El valor de reposición es requerido'),
   stockInicial: z.number().int().min(1, 'El stock inicial debe ser al menos 1')
 });
 
@@ -28,6 +29,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
   const [nombre, setNombre] = useState('');
   const [categoria, setCategoria] = useState('Construcción');
   const [tarifaDiaria, setTarifaDiaria] = useState<number>(35000);
+  const [valorReposicion, setValorReposicion] = useState<number>(100000);
   const [stockInicial, setStockInicial] = useState<number>(1);
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,6 +49,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
       nombre: nombre.toUpperCase().trim(),
       categoria,
       tarifaDiaria,
+      valorReposicion,
       stockInicial
     });
 
@@ -83,6 +86,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
         categoria: validation.data.categoria,
         tarifa_diaria: validation.data.tarifaDiaria,
         tarifaDiaria: validation.data.tarifaDiaria,
+        valor_reposicion: validation.data.valorReposicion,
         stock_total: validation.data.stockInicial,
         stockTotal: validation.data.stockInicial,
         stock_disponible: validation.data.stockInicial,
@@ -102,6 +106,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
         nombre: validation.data.nombre,
         categoria: validation.data.categoria,
         tarifaDiaria: validation.data.tarifaDiaria,
+        valorReposicion: validation.data.valorReposicion,
         stockInicial: validation.data.stockInicial,
         idempotency_key: idempotencyKey
       });
@@ -173,7 +178,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
         {formErrors.nombre && <span className="text-xs text-red-500">{formErrors.nombre}</span>}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="flex flex-col gap-1">
           <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Tarifa Diaria ($ COP)</label>
           <input 
@@ -185,6 +190,19 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
             placeholder="35000"
           />
           {formErrors.tarifaDiaria && <span className="text-xs text-red-500">{formErrors.tarifaDiaria}</span>}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider text-amber-700">Valor Reposición ($)</label>
+          <input 
+            type="number"
+            min="1"
+            value={valorReposicion}
+            onChange={(e) => setValorReposicion(parseFloat(e.target.value) || 0)}
+            className="px-3 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm text-amber-900 font-semibold bg-amber-50"
+            placeholder="Valor si se pierde o daña"
+          />
+          {formErrors.valorReposicion && <span className="text-xs text-red-500">{formErrors.valorReposicion}</span>}
         </div>
 
         <div className="flex flex-col gap-1">

@@ -9,6 +9,7 @@ export interface CrearEquipoInput {
   nombre: string;
   categoria: string;
   tarifaDiaria: number;
+  valorReposicion: number;
   stockInicial: number;
   idempotency_key?: string;
 }
@@ -25,6 +26,7 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
       nombre: input.nombre.trim(),
       categoria: input.categoria.trim(),
       tarifa_diaria: input.tarifaDiaria,
+      valor_reposicion: input.valorReposicion,
       stock_total: input.stockInicial,
       stock_disponible: input.stockInicial,
       stock_en_obra: 0,
@@ -59,6 +61,7 @@ export interface EditarEquipoInput {
   nombre: string;
   categoria: string;
   tarifaDiaria: number;
+  valorReposicion: number;
   estado: 'Disponible' | 'En Alquiler' | 'Mantenimiento' | 'Activo' | 'Inactivo';
   idempotency_key?: string;
 }
@@ -75,6 +78,7 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
       nombre: input.nombre.trim(),
       categoria: input.categoria.trim(),
       tarifa_diaria: input.tarifaDiaria,
+      valor_reposicion: input.valorReposicion,
       estado: dbEstado,
       updated_at: new Date().toISOString()
     })
@@ -99,7 +103,7 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
   return { success: true, data };
 }
 
-export async function ajustarStockEquipoAction(equipoId: string | number, delta: number, idempotencyKey?: string) {
+export async function ajustarStockEquipoAction(equipoId: string | number, delta: number, motivo: string = 'Ajuste Manual', tipoMovimiento: string = 'AJUSTE_AUDITORIA', idempotencyKey?: string) {
   const supabaseAdmin = createAdminSupabaseClient();
   const numericEquipoId = typeof equipoId === 'string' ? parseInt(equipoId, 10) : equipoId;
 
@@ -131,6 +135,30 @@ export async function ajustarStockEquipoAction(equipoId: string | number, delta:
       return { success: false, error: 'Stock insuficiente para realizar este ajuste.' };
     }
     return { success: false, error: `Error al ajustar stock en BD: ${error.message || JSON.stringify(error)}` };
+  }
+
+  // 3. POKA-YOKE: Grabar en el Kardex (Trazabilidad Inmutable)
+  try {
+    const supabaseAuth = await createServerSupabaseClient();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+    
+    // Tipo de movimiento ya viene explícito desde el frontend
+    let tipo_mov = tipoMovimiento;
+
+    // Para saber el stock resultante real que quedó (la RPC lo devolvió en `data` o consultamos)
+    const { data: eqAct } = await supabaseAdmin.from('equipos').select('stock_disponible, tenant_id').eq('id', numericEquipoId).single();
+
+    await supabaseAdmin.from('kardex_inventario').insert([{
+      equipo_id: numericEquipoId,
+      tenant_id: eqAct?.tenant_id,
+      tipo_movimiento: tipo_mov,
+      cantidad_delta: delta,
+      stock_resultante: eqAct?.stock_disponible || 0,
+      motivo: motivo,
+      usuario_id: user?.id || 'SISTEMA'
+    }]);
+  } catch (kardexErr) {
+    console.error('Error insertando en Kardex (pero el stock fue ajustado):', kardexErr);
   }
 
   if (redis) {

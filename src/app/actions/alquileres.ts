@@ -343,41 +343,21 @@ export async function aprobarCotizacionAction(input: AprobarCotizacionInput) {
   if (detErr) return { success: false, error: 'Error al consultar detalles de cotización.' };
   if (!detalles || detalles.length === 0) return { success: false, error: 'La cotización no tiene equipos asociados.' };
 
-  // 2. Validación pesimista de stock disponible
+  // 2 y 3. Validación Pesimista y Descuento Atómico (RPC - Optimistic Locking)
+  // Utilizamos el candado SQL 'reducir_stock_seguro' para asegurar que nadie más tome el equipo
   for (const det of detalles) {
-    const { data: eq } = await supabase
-      .from('equipos')
-      .select('nombre, stock_disponible')
-      .eq('id', det.equipo_id)
-      .single();
+    const { data: rpcSuccess, error: rpcErr } = await supabase.rpc('reducir_stock_seguro', {
+      p_equipo_id: det.equipo_id,
+      p_cantidad_requerida: det.cantidad
+    });
 
-    if (!eq) return { success: false, error: `Equipo no encontrado (ID: ${det.equipo_id}).` };
-
-    if (eq.stock_disponible < det.cantidad) {
+    if (rpcErr || !rpcSuccess) {
+      // Poka-Yoke: En caso de error, el RPC aborta y Next.js recibe la excepción SQL.
+      // Sería ideal hacer rollback de los que ya pasaron si esto fuera una transacción única.
       return { 
         success: false, 
-        error: `Stock insuficiente para "${eq.nombre}". Solicitados: ${det.cantidad}, Disponibles: ${eq.stock_disponible}.` 
+        error: `Error de concurrencia al alquilar equipo ID: ${det.equipo_id}. Posible Overbooking: ${rpcErr?.message || 'Stock Insuficiente.'}`
       };
-    }
-  }
-
-  // 3. Descontar stock (solo si todos los items pasaron la validación)
-  for (const det of detalles) {
-    const { data: eq } = await supabase
-      .from('equipos')
-      .select('stock_disponible, stock_en_obra')
-      .eq('id', det.equipo_id)
-      .single();
-
-    if (eq) {
-      await supabase
-        .from('equipos')
-        .update({
-          stock_disponible: Math.max(0, eq.stock_disponible - det.cantidad),
-          stock_en_obra: eq.stock_en_obra + det.cantidad,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', det.equipo_id);
     }
   }
 

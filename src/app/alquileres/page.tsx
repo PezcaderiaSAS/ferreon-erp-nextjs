@@ -147,7 +147,7 @@ export default function AlquileresPage() {
   }, [sanitizeStore]);
 
   // Handlers para Acciones
-  const handleRegistrarPago = async (monto: number, metodo: string, referencia: string) => {
+  const handleRegistrarPago = async (monto: number, metodo: string, referencia: string, efectivoRecibido?: number, cambioEntregado?: number) => {
     if (!contratoActivo) return;
 
     try {
@@ -156,7 +156,9 @@ export default function AlquileresPage() {
         clienteId: contratoActivo.cliente_id,
         monto,
         metodoPago: metodo,
-        referencia
+        referencia,
+        efectivo_recibido: efectivoRecibido,
+        cambio_entregado: cambioEntregado
       });
 
       if (!res.success) {
@@ -166,7 +168,12 @@ export default function AlquileresPage() {
 
       await fetchAllData();
       setShowPagoModal(false);
-      alert("Abono registrado y sincronizado en base de datos correctamente.");
+      
+      if (metodo === 'EFECTIVO' && cambioEntregado !== undefined && cambioEntregado > 0) {
+        alert(`Abono registrado correctamente.\n\n[POKA-YOKE] Entregar cambio (Vueltas): $${cambioEntregado.toLocaleString()}`);
+      } else {
+        alert("Abono registrado y sincronizado en base de datos correctamente.");
+      }
     } catch (error: any) {
       console.error('Error al registrar pago:', error);
       alert('Ocurrió un error inesperado al registrar el pago.');
