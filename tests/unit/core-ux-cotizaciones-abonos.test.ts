@@ -23,7 +23,19 @@ vi.mock('../../src/infrastructure/persistence/supabase/server', () => ({
     auth: {
       getUser: async () => ({ data: { user: { id: 'usr-test-1', email: 'test@ferreon.com' } } }),
     },
-    rpc: vi.fn().mockResolvedValue({ error: null, data: 'mocked-transaction-id' }),
+    rpc: vi.fn().mockImplementation(async (proc: string, params: any) => {
+      if (proc === 'reducir_stock_seguro') {
+        const eq = mockDb.equipos[params?.p_equipo_id];
+        if (!eq || eq.stock_disponible < params?.p_cantidad_requerida) {
+          return { data: false, error: { message: 'Stock insuficiente' } };
+        }
+        eq.stock_disponible -= params.p_cantidad_requerida;
+        eq.stock_en_obra += params.p_cantidad_requerida;
+        mockDb.updateEquiposFn({ stock_disponible: eq.stock_disponible, stock_en_obra: eq.stock_en_obra }, params.p_equipo_id);
+        return { data: true, error: null };
+      }
+      return { error: null, data: 'mocked-transaction-id' };
+    }),
     from: (table: string) => ({
       select: (fields?: string) => ({
         eq: (field: string, value: any) => ({

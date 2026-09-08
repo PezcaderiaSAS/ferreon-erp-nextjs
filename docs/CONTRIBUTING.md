@@ -23,6 +23,9 @@
 <!-- AUTO-GENERATED END -->
 
 ## Reglas del Ecosistema Poka-Yoke
-Cualquier PR nuevo debe asegurar que las interfaces no confíen ciegamente en el input.
-- **Mutaciones Backend:** Deben validar la existencia de condiciones necesarias (ej: caja abierta, stock suficiente).
-- **Frontend UI:** Ocultar botones inválidos, mostrar modales de confirmación con Deltas (no sobreescritura ciega).
+Cualquier PR nuevo debe asegurar que las interfaces no confíen ciegamente en el input:
+- **Mutaciones Backend:** Deben validar la existencia de condiciones necesarias (ej: caja abierta, stock suficiente, contrato no finalizado).
+- **Frontend UI:** Ocultar botones de acción inválidos, mostrar modales de confirmación con Deltas (no sobreescritura ciega).
+- **Bloqueo en Edición:** Al editar entidades vinculadas (ej: contratos de alquiler), los datos clave como el cliente deben bloquearse en modo Solo Lectura (*Read-Only*), proveyendo fallbacks resilientes con `initialData` para evitar pérdidas por latencia de red.
+- **Ciclo de Vida de Modales:** Todo modal con formularios debe renderizarse con una clave dinámica (`key={activo ? id : 'new'}`) para forzar un remonte limpio y erradicar el estado zombie entre aperturas.
+- **Compresión de Assets:** Cualquier imagen subida en cliente (ej: logos) debe redimensionarse mediante Canvas API (máx 400×120px / <150KB) antes de almacenarse en `localStorage` o en columnas JSONB.

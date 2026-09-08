@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';
 import { MonedaConfig } from '../../core/domain/entities/empresa-config';
 import { UsuariosTab } from './UsuariosTab';
-import { HelpCircle, Palette, Sparkles, Check, FileText, Eye } from 'lucide-react';
+import { HelpCircle, Palette, Sparkles, Check, FileText, Eye, Loader2, Trash2, Upload } from 'lucide-react';
 import { THEME_PRESETS, ThemePresetId, resolveCompanyTheme, isValidHex } from '../../core/domain/theme/theme-tokens';
+import { obtenerConfiguracionEmpresaAction, guardarConfiguracionEmpresaAction } from '../actions/empresa';
 
 
 const OPCIONES_MONEDA: MonedaConfig[] = [
@@ -16,6 +17,48 @@ const OPCIONES_MONEDA: MonedaConfig[] = [
   { codigo: 'MXN', locale: 'es-MX', simbolo: '$' },
 ];
 
+/**
+ * Redimensiona una imagen a un tamaño máximo manteniendo el aspect ratio
+ * y la convierte en un Data URI PNG optimizado (<150KB) para evitar exceder
+ * los límites de cuota de localStorage o sobrecargar el renderizado de PDFs.
+ */
+function resizeImageToBase64(file: File, maxWidth = 400, maxHeight = 120): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (readerEvent) => {
+      const img = new window.Image();
+      img.src = readerEvent.target?.result as string;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(readerEvent.target?.result as string);
+          return;
+        }
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL('image/png', 0.92);
+        resolve(compressedBase64);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+}
+
 export default function ConfiguracionPage() {
   const { config, actualizarConfig } = useEmpresaStore();
   const { setTourOpen } = useLayoutStore();
@@ -23,43 +66,104 @@ export default function ConfiguracionPage() {
   
   const [activeTab, setActiveTab] = useState<'empresa' | 'usuarios'>('empresa');
   const [formData, setFormData] = useState(config);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Carga e hidratación inicial desde Supabase Backend
+  useEffect(() => {
+    let isMounted = true;
+    async function cargarConfiguracionRemota() {
+      try {
+        setIsLoading(true);
+        const res = await obtenerConfiguracionEmpresaAction();
+        const cfg = res.config || res.data;
+        if (res.success && cfg && isMounted) {
+          actualizarConfig(cfg);
+          setFormData(cfg);
+        }
+      } catch (err: any) {
+        console.warn("No se pudo cargar la configuración de Supabase, usando local:", err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+    cargarConfiguracionRemota();
+    return () => { isMounted = false; };
+  }, [actualizarConfig]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     setIsSaved(false);
+    setErrorMessage(null);
   };
 
   const handleMonedaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = OPCIONES_MONEDA.find(m => m.codigo === e.target.value);
     if (selected) {
-      setFormData({ ...formData, moneda: selected });
+      setFormData(prev => ({ ...prev, moneda: selected }));
       setIsSaved(false);
+      setErrorMessage(null);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert("El logo es demasiado pesado. El límite máximo es 2MB para no afectar el rendimiento.");
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, logoBase64: reader.result as string });
-        setIsSaved(false);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert("Por favor seleccione un archivo de imagen válido (PNG, JPG, WEBP).");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("El logo es demasiado pesado. El límite máximo es 5MB.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    try {
+      const compressedBase64 = await resizeImageToBase64(file, 400, 120);
+      setFormData(prev => ({ ...prev, logoBase64: compressedBase64 }));
+      setIsSaved(false);
+      setErrorMessage(null);
+    } catch (err) {
+      console.error("Error al procesar el logo con canvas:", err);
+      alert("Ocurrió un error al procesar la imagen del logo.");
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleRemoveLogo = () => {
+    setFormData(prev => ({ ...prev, logoBase64: '' }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setIsSaved(false);
+    setErrorMessage(null);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    actualizarConfig(formData);
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+    setIsSaving(true);
+    setErrorMessage(null);
+    try {
+      // 1. Guardar en Zustand (actualiza inmediatamente la UI y localStorage)
+      actualizarConfig(formData);
+
+      // 2. Persistir en la base de datos Supabase
+      const res = await guardarConfiguracionEmpresaAction(formData);
+      if (!res.success) {
+        throw new Error(res.error || "No se pudo sincronizar la configuración con la base de datos.");
+      }
+
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3500);
+    } catch (err: any) {
+      console.error("Error al guardar configuración empresarial:", err);
+      setErrorMessage(err.message || "Error al sincronizar con el servidor. Se mantuvo la versión local.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -109,13 +213,28 @@ export default function ConfiguracionPage() {
                 ref={fileInputRef} 
                 onChange={handleFileChange} 
               />
-              <button 
-                type="button" 
-                onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
-              >
-                Cambiar Logo
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  type="button" 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
+                >
+                  <Upload className="w-4 h-4 text-slate-500" />
+                  {formData.logoBase64 ? 'Cambiar Logo' : 'Subir Logo'}
+                </button>
+
+                {formData.logoBase64 && (
+                  <button 
+                    type="button" 
+                    onClick={handleRemoveLogo}
+                    className="px-3 py-2 bg-rose-50 text-rose-600 rounded-lg text-sm font-medium hover:bg-rose-100 transition-colors flex items-center gap-1.5"
+                    title="Quitar logo"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Quitar
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -412,10 +531,31 @@ export default function ConfiguracionPage() {
 
 
           {/* Actions */}
-          <div className="flex justify-end gap-4 mt-2">
-            {isSaved && <span className="text-emerald-600 font-medium text-sm self-center">¡Configuración guardada correctamente!</span>}
-            <button type="submit" className="px-6 py-2 bg-brand-salmon text-white rounded-lg font-medium shadow-md shadow-brand-salmon/20 hover:bg-brand-salmonDark transition-colors">
-              Guardar Cambios
+          <div className="flex flex-col sm:flex-row justify-end items-end sm:items-center gap-4 mt-2">
+            {errorMessage && (
+              <span className="text-rose-600 font-medium text-sm bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-lg">
+                {errorMessage}
+              </span>
+            )}
+            {isSaved && (
+              <span className="text-emerald-600 font-medium text-sm bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                <Check className="w-4 h-4" />
+                ¡Configuración guardada y sincronizada con éxito!
+              </span>
+            )}
+            <button 
+              type="submit" 
+              disabled={isSaving}
+              className="px-6 py-2 bg-brand-salmon text-white rounded-lg font-medium shadow-md shadow-brand-salmon/20 hover:bg-brand-salmonDark transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                'Guardar Cambios'
+              )}
             </button>
           </div>
 

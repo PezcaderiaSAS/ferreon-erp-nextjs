@@ -1,20 +1,29 @@
 Reporte de Actualización de Codemaps
 ──────────────────────────────
-Fecha: 2026-09-04
-Archivos modificados desde último escaneo: 
-  - src/app/components/devoluciones/NeuDevolucionWizard.tsx (Nuevo)
-  - src/components/ui/neumorphism/NeuStepper.tsx (Nuevo)
-  - src/app/devoluciones/page.tsx (Modificado)
-  - src/infrastructure/state/alquilerStore.ts (Modificado)
+Fecha: 2026-09-08
+Archivos modificados y creados desde último escaneo: 
+  - src/app/actions/empresa.ts (Nuevo - Server Actions de persistencia corporativa)
+  - tests/unit/cliente-locking-and-pdf-logo.test.ts (Nuevo - Tests de logo y bloqueo de cliente)
+  - src/app/configuracion/page.tsx (Modificado - Compresión canvas y sincronización con Supabase)
+  - src/components/forms/AlquilerForm.tsx (Modificado - Bloqueo poka-yoke y fallbacks resilientes)
+  - src/app/alquileres/page.tsx (Modificado - Clave dinámica, normalización PDF y filtro de edición)
+  - src/components/pdf/ContratoAlquilerPDF.tsx (Modificado - Renderizado vectorial de logo e Image)
+  - src/core/services/pdf-factura-generator.service.ts (Modificado - Layout horizontal de logo)
+  - tests/unit/core-ux-cotizaciones-abonos.test.ts (Modificado - Mocking de RPC reducir_stock_seguro)
 
 Cambios Arquitectónicos Detectados:
-  - Nueva ruta de componentes híbridos (Wizard/Bottom Sheet) para devoluciones.
-  - Sincronización inmutable transaccional en `alquilerStore`.
+  - Persistencia híbrida de identidad corporativa en Supabase (JSONB `empresas.configuracion`) e invalidación de caché Redis.
+  - Bloqueo Poka-Yoke de cliente en modo edición y clave dinámica remount en AlquilerForm.
+  - Sistema dual de emisión y regeneración de PDFs (Vectorial React-PDF + HTML Print Service) con soporte de logo corporativo.
+  - Compresión client-side de imágenes vía Canvas API (<150KB) para proteger localStorage.
 
 Acciones:
-  - docs/CODEMAPS/frontend.md: ACTUALIZADO (Añadido NeuDevolucionWizard y transacciones duales).
-  - docs/CODEMAPS/backend.md: SIN CAMBIOS
-  - docs/CONTRIBUTING.md: SIN CAMBIOS (Sincronizado)
-  - docs/ENV.md: SIN CAMBIOS (Sincronizado con .env.example)
-  - docs/RUNBOOK.md: SIN CAMBIOS (Sincronizado)
+  - docs/CODEMAPS/architecture.md: ACTUALIZADO
+  - docs/CODEMAPS/backend.md: ACTUALIZADO
+  - docs/CODEMAPS/frontend.md: ACTUALIZADO
+  - docs/CODEMAPS/data.md: ACTUALIZADO
+  - docs/CODEMAPS/dependencies.md: ACTUALIZADO
+  - docs/CONTRIBUTING.md: SINCRONIZADO
+  - docs/ENV.md: SINCRONIZADO (Sincronizado con .env.example)
+  - docs/RUNBOOK.md: SINCRONIZADO
 ──────────────────────────────

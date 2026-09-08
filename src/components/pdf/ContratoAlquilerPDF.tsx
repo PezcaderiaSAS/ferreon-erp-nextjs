@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/renderer';
 import { numeroALetras } from '../../core/utils/numero-a-letras';
 import { resolveCompanyTheme, ThemeTokens } from '../../core/domain/theme/theme-tokens';
 import { EmpresaConfig } from '../../core/domain/entities/empresa-config';
@@ -43,22 +43,37 @@ const getStyles = (pageSize: 'LETTER' | 'A5', tokens: ThemeTokens) => {
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       borderBottomWidth: 2,
       borderBottomColor: colors.brandPrimary,
       paddingBottom: isA5 ? 8 : 12,
       marginBottom: isA5 ? 10 : 14,
     },
+    brandInfoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: isA5 ? 8 : 12,
+      maxWidth: '65%',
+    },
+    logo: {
+      maxHeight: isA5 ? 38 : 50,
+      maxWidth: isA5 ? 100 : 135,
+      objectFit: 'contain',
+    },
+    brandTextContainer: {
+      flexDirection: 'column',
+      justifyContent: 'center',
+    },
     brandTitle: {
-      fontSize: isA5 ? 16 : 20,
+      fontSize: isA5 ? 14 : 18,
       fontWeight: 'bold',
       color: colors.brandPrimary,
       letterSpacing: -0.5,
     },
     brandSubtitle: {
-      fontSize: isA5 ? 7.5 : 8.5,
+      fontSize: isA5 ? 7 : 8,
       color: colors.textMuted,
-      marginTop: 2,
+      marginTop: 1,
       fontWeight: 500,
     },
 
@@ -283,6 +298,14 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
   const themeTokens = resolveCompanyTheme(config);
   const styles = getStyles(pageSize, themeTokens);
 
+  // Guarda defensiva para prevenir caídas de @react-pdf/renderer con Base64 inválidos
+  const tieneLogoValido = Boolean(
+    config?.logoBase64 && 
+    typeof config.logoBase64 === 'string' && 
+    config.logoBase64.startsWith('data:image/') && 
+    config.logoBase64.length > 50
+  );
+
 
   const formatearCOP = (valor: number) => {
     return new Intl.NumberFormat('es-CO', { 
@@ -344,12 +367,20 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
         
         {/* CABECERA CORPORATIVA */}
         <View style={styles.header} fixed>
-          <View>
-            <Text style={styles.brandTitle}>{config?.razonSocial || 'Alquileres System'}</Text>
-            <Text style={styles.brandSubtitle}>Gestión y Alquiler de Maquinaria y Equipos para la Construcción</Text>
-            <Text style={[styles.metaText, { marginTop: 2 }]}>
-              {config?.nit ? `NIT: ${config.nit}` : 'NIT: 900.854.123-9'} • Tel: {config?.telefono || '(+57) 310 987 6543'} • {config?.ciudad || 'Bogotá D.C.'}
-            </Text>
+          <View style={styles.brandInfoRow}>
+            {tieneLogoValido && (
+              <Image 
+                src={config!.logoBase64!} 
+                style={styles.logo} 
+              />
+            )}
+            <View style={styles.brandTextContainer}>
+              <Text style={styles.brandTitle}>{config?.razonSocial || 'Alquileres System'}</Text>
+              <Text style={styles.brandSubtitle}>Gestión y Alquiler de Maquinaria y Equipos para la Construcción</Text>
+              <Text style={[styles.metaText, { marginTop: 2 }]}>
+                {config?.nit ? `NIT: ${config.nit}` : 'NIT: 900.854.123-9'} • Tel: {config?.telefono || '(+57) 310 987 6543'} • {config?.ciudad || 'Bogotá D.C.'}
+              </Text>
+            </View>
           </View>
           <View style={styles.metaBox}>
             <Text style={styles.metaText}>CONTRATO DE ALQUILER</Text>
@@ -474,14 +505,14 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
             <Text style={styles.sigSub}>C.C. / NIT: {data.clienteNit || data.nit_cedula || data.nit || '____________________'}</Text>
           </View>
           <View style={styles.sigBox}>
-            <Text style={styles.sigLabel}>Alquileres System</Text>
+            <Text style={styles.sigLabel}>{config?.razonSocial || 'Alquileres System'}</Text>
             <Text style={styles.sigSub}>Firma Autorizada y Sello</Text>
           </View>
         </View>
 
         {/* PIE DE PÁGINA */}
         <Text style={styles.footer} fixed>
-          Documento oficial de control de alquiler expedido por Alquileres System. Horario de corte diario: 5:00 PM. 
+          Documento oficial de control de alquiler expedido por {config?.razonSocial || 'Alquileres System'}. Horario de corte diario: 5:00 PM. 
           Generado el {new Date().toLocaleString('es-CO')}.
         </Text>
       </Page>

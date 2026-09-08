@@ -394,8 +394,8 @@ export class EnterprisePDFService {
     </div>
 
     <div class="header">
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        ${emp.logoBase64 ? `<img src="${emp.logoBase64}" alt="Logo" style="max-height: ${isA5 ? '40px' : '60px'}; object-fit: contain; align-self: flex-start;" />` : ''}
+      <div style="display: flex; flex-direction: row; align-items: center; gap: ${isA5 ? '10px' : '16px'}; max-width: 70%;">
+        ${emp.logoBase64 && emp.logoBase64.startsWith('data:image/') ? `<img src="${emp.logoBase64}" alt="Logo" style="max-height: ${isA5 ? '42px' : '55px'}; max-width: ${isA5 ? '110px' : '150px'}; object-fit: contain;" />` : ''}
         <div>
           <h1 class="brand-title">${emp.razonSocial}</h1>
           <span class="brand-sub">Gestión y Alquiler de Maquinaria y Equipos para la Construcción</span>

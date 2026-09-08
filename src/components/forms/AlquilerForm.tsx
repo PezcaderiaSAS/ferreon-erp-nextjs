@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import * as z from 'zod';
 import { useClienteStore } from '../../infrastructure/state/clienteStore';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
@@ -17,6 +17,7 @@ import { PDFDownloadLink } from '@react-pdf/renderer';
 import { ContratoAlquilerPDF } from '../pdf/ContratoAlquilerPDF';
 import { formatearMonedaConLetras } from '../../core/utils/numero-a-letras';
 import { EnterprisePDFService } from '../../core/services/pdf-factura-generator.service';
+import { Lock, Plus } from 'lucide-react';
 
 const alquilerSchema = z.object({
   clienteId: z.string().min(1, 'Debe seleccionar un cliente'),
@@ -85,7 +86,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
   const todayStr = new Date().toISOString().split("T")[0];
 
   // Sincronización proactiva de catálogos
-  const fetchCatalogsBackground = async () => {
+  const fetchCatalogsBackground = useCallback(async () => {
     try {
       const [resCli, resEq] = await Promise.all([
         fetch('/api/clientes', { cache: 'no-store' }),
@@ -104,7 +105,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
     } catch (err) {
       console.warn('[AlquilerForm] Error al sincronizar catálogos en background:', err);
     }
-  };
+  }, [setClientes, setEquipos]);
 
   useEffect(() => {
     const fetchCatalogs = async () => {
@@ -113,7 +114,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
       setIsLoadingCatalogs(false);
     };
     fetchCatalogs();
-  }, [setClientes, setEquipos]);
+  }, [fetchCatalogsBackground]);
 
   // Form State
   const [clienteId, setClienteId] = useState<string>(initialData?.cliente_id || initialData?.clienteId || '');
@@ -205,6 +206,13 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
   const selectedCliente = useMemo(() => {
     return clientes.find(c => String(c.id) === String(clienteId));
   }, [clientes, clienteId]);
+
+  const isEditMode = Boolean(initialData);
+
+  // Fallbacks resilientes para visualización de cliente cuando el store aún no ha cargado en red
+  const displayClienteNombre = selectedCliente?.nombre || initialData?.clienteNombre || initialData?.cliente?.nombre || '';
+  const displayClienteNit = selectedCliente?.nit_cedula || selectedCliente?.nit || initialData?.clienteNit || initialData?.clienteDocumento || initialData?.cliente?.nit || '';
+  const displayClienteTelefono = selectedCliente?.telefono || selectedCliente?.contacto || initialData?.clienteTelefono || initialData?.cliente?.telefono || '';
 
   // Subtotal de equipos calculado con fórmula estricta
   const subtotalEquipos = useMemo(() => {
@@ -321,9 +329,9 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
       tipo: 'CONTRATO' as const,
       consecutivo,
       cliente_id: clienteId,
-      clienteNombre: selectedCliente?.nombre || 'Consumidor Final',
-      clienteNit: selectedCliente?.nit_cedula || selectedCliente?.nit || 'Sin Registrar',
-      clienteTelefono: selectedCliente?.telefono || selectedCliente?.contacto || '',
+      clienteNombre: displayClienteNombre || 'Consumidor Final',
+      clienteNit: displayClienteNit || 'Sin Registrar',
+      clienteTelefono: displayClienteTelefono,
       flete_entrega: fleteEntrega,
       fleteEntrega,
       flete_recogida: fleteRecogida,
@@ -430,7 +438,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
         const result = await editarAlquilerAction({
           alquilerId: initialData.id,
           clienteId: validation.data.clienteId,
-          clienteNombre: selectedCliente?.nombre,
+          clienteNombre: displayClienteNombre,
           fleteEntrega: validation.data.fleteEntrega,
           fleteRecogida: validation.data.fleteRecogida,
           deposito: validation.data.deposito,
@@ -452,7 +460,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
       } else {
         const result = await crearAlquilerAction({
           clienteId: validation.data.clienteId,
-          clienteNombre: selectedCliente?.nombre,
+          clienteNombre: displayClienteNombre,
           fleteEntrega: validation.data.fleteEntrega,
           fleteRecogida: validation.data.fleteRecogida,
           deposito: validation.data.deposito,
@@ -653,95 +661,131 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Buscador Asistido de Clientes */}
+                {/* Buscador Asistido o Tarjeta Bloqueada de Clientes */}
                 <div className="flex flex-col gap-1.5 relative">
                   <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-slate-700">Cliente / Razón Social *</label>
-                    <button 
-                      type="button" 
-                      onClick={() => setIsCreandoCliente(true)} 
-                      className="text-[10px] bg-teal-50 text-teal-700 px-2.5 py-0.5 rounded-full font-bold hover:bg-teal-100 transition-colors flex items-center gap-1"
-                    >
-                      + Nuevo Cliente
-                    </button>
+                    <label className="text-xs font-bold text-slate-700">
+                      {isEditMode ? "Cliente Vinculado (No modificable en edición)" : "Cliente / Razón Social *"}
+                    </label>
+                    {!isEditMode && (
+                      <button 
+                        type="button" 
+                        onClick={() => setIsCreandoCliente(true)} 
+                        className="text-[10px] bg-teal-50 text-teal-700 px-2.5 py-0.5 rounded-full font-bold hover:bg-teal-100 transition-colors flex items-center gap-1"
+                      >
+                        + Nuevo Cliente
+                      </button>
+                    )}
                   </div>
 
-                  {selectedCliente && !isClientDropdownOpen ? (
-                    <div className="p-3 bg-teal-50/60 border border-teal-200 rounded-xl flex items-center justify-between shadow-sm">
+                  {isEditMode ? (
+                    /* MODO EDICIÓN: Tarjeta Bloqueada Read-Only (Poka-Yoke) */
+                    <div className="p-3 bg-slate-50 border border-slate-200/90 rounded-xl flex items-center justify-between shadow-sm">
                       <div className="flex items-center space-x-3 overflow-hidden">
-                        <div className="w-8 h-8 rounded-full bg-teal-600/10 text-teal-700 flex items-center justify-center font-bold text-xs shrink-0">
-                          👤
+                        <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0">
+                          <Lock className="w-4 h-4 text-slate-500" />
                         </div>
                         <div className="truncate">
-                          <div className="text-xs sm:text-sm font-bold text-slate-800 truncate">{selectedCliente.nombre}</div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-2">
-                            <span>NIT: {selectedCliente.nit_cedula || selectedCliente.nit || 'S/N'}</span>
-                            {(selectedCliente.telefono || selectedCliente.contacto) && (
-                              <span>• Tel: {selectedCliente.telefono || selectedCliente.contacto}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs sm:text-sm font-bold text-slate-800 truncate">
+                              {displayClienteNombre || 'Cliente vinculado'}
+                            </span>
+                            <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-medium shrink-0">
+                              Solo Lectura
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                            <span>NIT: {displayClienteNit || 'S/N'}</span>
+                            {displayClienteTelefono && (
+                              <span>• Tel: {displayClienteTelefono}</span>
                             )}
                           </div>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsClientDropdownOpen(true);
-                          setClientSearchTerm('');
-                        }}
-                        className="px-2.5 py-1 text-[11px] font-bold text-teal-700 hover:bg-teal-100 rounded-lg transition-colors shrink-0 ml-2"
-                      >
-                        Cambiar
-                      </button>
+                      <div className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-slate-400 bg-slate-100 rounded-lg shrink-0 ml-2">
+                        <Lock className="w-3 h-3" />
+                        Bloqueado
+                      </div>
                     </div>
                   ) : (
-                    <div className="relative">
-                      <input 
-                        type="text"
-                        placeholder="Escriba para buscar por nombre o NIT..."
-                        value={clientSearchTerm}
-                        onChange={(e) => {
-                          setClientSearchTerm(e.target.value);
-                          setIsClientDropdownOpen(true);
-                        }}
-                        onFocus={() => setIsClientDropdownOpen(true)}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all"
-                      />
-                      {isClientDropdownOpen && (
-                        <div className="absolute z-30 w-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100">
-                          {filteredClientes.map(c => (
-                            <div 
-                              key={c.id} 
-                              className="px-3.5 py-2.5 text-xs text-slate-700 hover:bg-teal-50 hover:text-teal-800 cursor-pointer flex justify-between items-center transition-colors"
-                              onClick={() => {
-                                setClienteId(String(c.id));
-                                setClientSearchTerm('');
-                                setIsClientDropdownOpen(false);
-                              }}
-                            >
-                              <div className="flex flex-col">
-                                <span className="font-bold text-slate-800">{c.nombre}</span>
-                                <span className="text-[10px] text-slate-400">{c.telefono || c.contacto || ''}</span>
-                              </div>
-                              <span className="text-slate-500 text-[11px] bg-slate-100 px-2 py-0.5 rounded-full font-mono">
-                                NIT: {c.nit_cedula || c.nit}
-                              </span>
+                    /* MODO CREACIÓN: Selector interactivo y búsqueda */
+                    selectedCliente && !isClientDropdownOpen ? (
+                      <div className="p-3 bg-teal-50/60 border border-teal-200 rounded-xl flex items-center justify-between shadow-sm">
+                        <div className="flex items-center space-x-3 overflow-hidden">
+                          <div className="w-8 h-8 rounded-full bg-teal-600/10 text-teal-700 flex items-center justify-center font-bold text-xs shrink-0">
+                            👤
+                          </div>
+                          <div className="truncate">
+                            <div className="text-xs sm:text-sm font-bold text-slate-800 truncate">{selectedCliente.nombre}</div>
+                            <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                              <span>NIT: {selectedCliente.nit_cedula || selectedCliente.nit || 'S/N'}</span>
+                              {(selectedCliente.telefono || selectedCliente.contacto) && (
+                                <span>• Tel: {selectedCliente.telefono || selectedCliente.contacto}</span>
+                              )}
                             </div>
-                          ))}
-                          {filteredClientes.length === 0 && (
-                            <div className="px-4 py-4 text-xs text-slate-400 text-center flex flex-col items-center gap-1.5">
-                              <span>{isLoadingCatalogs ? "Cargando clientes..." : "No se encontraron clientes registrados."}</span>
-                              <button 
-                                type="button" 
-                                onClick={() => setIsCreandoCliente(true)} 
-                                className="text-xs text-teal-700 font-bold hover:underline"
-                              >
-                                + Crear nuevo cliente ahora
-                              </button>
-                            </div>
-                          )}
+                          </div>
                         </div>
-                      )}
-                    </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsClientDropdownOpen(true);
+                            setClientSearchTerm('');
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-bold text-teal-700 hover:bg-teal-100 rounded-lg transition-colors shrink-0 ml-2"
+                        >
+                          Cambiar
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <input 
+                          type="text"
+                          placeholder="Escriba para buscar por nombre o NIT..."
+                          value={clientSearchTerm}
+                          onChange={(e) => {
+                            setClientSearchTerm(e.target.value);
+                            setIsClientDropdownOpen(true);
+                          }}
+                          onFocus={() => setIsClientDropdownOpen(true)}
+                          className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all"
+                        />
+                        {isClientDropdownOpen && (
+                          <div className="absolute z-30 w-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100">
+                            {filteredClientes.map(c => (
+                              <div 
+                                key={c.id} 
+                                className="px-3.5 py-2.5 text-xs text-slate-700 hover:bg-teal-50 hover:text-teal-800 cursor-pointer flex justify-between items-center transition-colors"
+                                onClick={() => {
+                                  setClienteId(String(c.id));
+                                  setClientSearchTerm('');
+                                  setIsClientDropdownOpen(false);
+                                }}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-slate-800">{c.nombre}</span>
+                                  <span className="text-[10px] text-slate-400">{c.telefono || c.contacto || ''}</span>
+                                </div>
+                                <span className="text-slate-500 text-[11px] bg-slate-100 px-2 py-0.5 rounded-full font-mono">
+                                  NIT: {c.nit_cedula || c.nit}
+                                </span>
+                              </div>
+                            ))}
+                            {filteredClientes.length === 0 && (
+                              <div className="px-4 py-4 text-xs text-slate-400 text-center flex flex-col items-center gap-1.5">
+                                <span>{isLoadingCatalogs ? "Cargando clientes..." : "No se encontraron clientes registrados."}</span>
+                                <button 
+                                  type="button" 
+                                  onClick={() => setIsCreandoCliente(true)} 
+                                  className="text-xs text-teal-700 font-bold hover:underline"
+                                >
+                                  + Crear nuevo cliente ahora
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
                   )}
                   {formErrors.clienteId && <span className="text-[11px] text-red-500 font-semibold">{formErrors.clienteId}</span>}
                 </div>
@@ -835,138 +879,167 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
                   </button>
                   <button 
                     type="button" 
-                    onClick={addItemRow} 
-                    className="px-3 py-1.5 bg-teal-50 text-teal-700 hover:bg-teal-100 font-bold rounded-xl text-xs transition-colors flex items-center space-x-1.5"
+                    onClick={() => { addItemRow(); setTimeout(() => { const el = document.getElementById('items-list-end'); el?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 50); }}
+                    className="px-3 py-1.5 bg-teal-600 text-white hover:bg-teal-700 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 shadow-sm"
                   >
-                    <span>+ Agregar Maquinaria</span>
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Agregar Maquinaria</span>
                   </button>
                 </div>
               </div>
 
-              <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                {items.map((field, index) => {
-                  const start = new Date(field.fechaInicio);
-                  const end = new Date(field.fechaFinEstimada);
-                  const diasFila = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-                  const subtotalFila = (field.precioDiario || 0) * (field.cantidad || 1) * diasFila;
+              {/* Lista de items con scroll interno y botón sticky al fondo */}
+              <div className="flex flex-col">
+                <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1 pb-1" id="items-scroll-area">
+                  {items.map((field, index) => {
+                    const start = new Date(field.fechaInicio);
+                    const end = new Date(field.fechaFinEstimada);
+                    const diasFila = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+                    const subtotalFila = (field.precioDiario || 0) * (field.cantidad || 1) * diasFila;
 
-                  return (
-                    <div key={field.id} className="p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200 flex flex-col gap-2">
-                      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-                        <div className="flex-1 min-w-[180px] flex flex-col gap-1">
-                          <label className="text-[11px] font-bold text-slate-600">Equipo *</label>
-                          <select 
-                            value={field.itemId}
-                            onChange={(e) => {
-                              const eqId = e.target.value;
-                              const equipo = equiposActivos.find(eq => String(eq.id) === String(eqId));
-                              const tarifa = equipo ? ((equipo as any).tarifa_diaria ?? equipo.tarifaDiaria ?? 0) : 0;
-                              
-                              // Prevención de ítems duplicados visualmente (Mismo equipo, mismas fechas)
-                              const existingIndex = items.findIndex((it, i) => 
-                                i !== index && String(it.itemId) === String(eqId) && 
-                                it.fechaInicio === field.fechaInicio && 
-                                it.fechaFinEstimada === field.fechaFinEstimada
-                              );
+                    return (
+                      <div key={field.id} className="p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200 flex flex-col gap-2">
+                        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+                          <div className="flex-1 min-w-[180px] flex flex-col gap-1">
+                            <label className="text-[11px] font-bold text-slate-600">Equipo *</label>
+                            <select 
+                              value={field.itemId}
+                              onChange={(e) => {
+                                const eqId = e.target.value;
+                                const equipo = equiposActivos.find(eq => String(eq.id) === String(eqId));
+                                const tarifa = equipo ? ((equipo as any).tarifa_diaria ?? equipo.tarifaDiaria ?? 0) : 0;
+                                
+                                // Prevención de ítems duplicados visualmente (Mismo equipo, mismas fechas)
+                                const existingIndex = items.findIndex((it, i) => 
+                                  i !== index && String(it.itemId) === String(eqId) && 
+                                  it.fechaInicio === field.fechaInicio && 
+                                  it.fechaFinEstimada === field.fechaFinEstimada
+                                );
 
-                              const newItems = [...items];
-                              if (existingIndex !== -1) {
-                                // Consolidar sumando cantidad y eliminar esta fila
-                                newItems[existingIndex].cantidad += field.cantidad;
-                                newItems.splice(index, 1);
-                              } else {
-                                newItems[index] = { 
-                                  ...newItems[index], 
-                                  itemId: eqId, 
-                                  precioDiario: tarifa 
-                                };
-                              }
-                              setItems(newItems);
-                            }}
-                            className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none"
-                          >
-                            <option value="">Seleccione equipo...</option>
-                            {equiposActivos.map(e => {
-                              const stock = (e as any).stock_disponible ?? e.stockDisponible ?? 0;
-                              const isAvailable = stock > 0;
-                              const stockText = isAvailable ? `(${stock} disp.)` : `(Sin stock)`;
-                              return (
-                                <option key={e.id} value={String(e.id)} disabled={!isAvailable}>
-                                  {e.nombre} {stockText}
-                                </option>
-                              );
-                            })}
-                          </select>
-                        </div>
-
-                        <div className="w-28 flex flex-col gap-1">
-                          <label className="text-[11px] font-bold text-slate-600">Valor Diario</label>
-                          <input 
-                            type="number" 
-                            min={0} 
-                            value={field.precioDiario}
-                            onChange={(e) => updateItemRow(index, 'precioDiario', parseFloat(e.target.value) || 0)}
-                            className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-right font-semibold" 
-                          />
-                        </div>
-
-                        <div className="w-20 flex flex-col gap-1">
-                          <label className="text-[11px] font-bold text-slate-600">Cant.</label>
-                          <input 
-                            type="number" 
-                            min={1} 
-                            value={field.cantidad}
-                            onChange={(e) => updateItemRow(index, 'cantidad', parseInt(e.target.value, 10) || 1)}
-                            className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-center font-bold" 
-                          />
-                        </div>
-
-                        <div className="w-36 flex flex-col gap-1">
-                          <label className="text-[11px] font-bold text-slate-600">Fecha Inicio</label>
-                          <input 
-                            type="date" 
-                            value={field.fechaInicio}
-                            onChange={(e) => updateItemRow(index, 'fechaInicio', e.target.value)}
-                            className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none" 
-                          />
-                        </div>
-
-                        <div className="w-36 flex flex-col gap-1">
-                          <label className="text-[11px] font-bold text-slate-600">Fin Estimado</label>
-                          <input 
-                            type="date" 
-                            value={field.fechaFinEstimada}
-                            onChange={(e) => updateItemRow(index, 'fechaFinEstimada', e.target.value)}
-                            className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none" 
-                          />
-                        </div>
-
-                        {items.length > 1 && (
-                          <div className="flex items-end pt-5 md:pt-0">
-                            <button 
-                              type="button" 
-                              onClick={() => removeItemRow(index)} 
-                              className="p-2 text-red-500 hover:bg-red-50 rounded-xl text-xs transition-colors"
-                              title="Eliminar fila"
+                                const newItems = [...items];
+                                if (existingIndex !== -1) {
+                                  // Consolidar sumando cantidad y eliminar esta fila
+                                  newItems[existingIndex].cantidad += field.cantidad;
+                                  newItems.splice(index, 1);
+                                } else {
+                                  newItems[index] = { 
+                                    ...newItems[index], 
+                                    itemId: eqId, 
+                                    precioDiario: tarifa 
+                                  };
+                                }
+                                setItems(newItems);
+                              }}
+                              className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none"
                             >
-                              🗑️
-                            </button>
+                              <option value="">Seleccione equipo...</option>
+                              {equiposActivos.map(e => {
+                                const stock = (e as any).stock_disponible ?? e.stockDisponible ?? 0;
+                                const isAvailable = stock > 0;
+                                const stockText = isAvailable ? `(${stock} disp.)` : `(Sin stock)`;
+                                return (
+                                  <option key={e.id} value={String(e.id)} disabled={!isAvailable}>
+                                    {e.nombre} {stockText}
+                                  </option>
+                                );
+                              })}
+                            </select>
                           </div>
-                        )}
-                      </div>
 
-                      {/* Subtotal de Fila y Ayuda Verbal */}
-                      <div className="flex justify-between items-center text-[11px] px-2 pt-1 border-t border-slate-200/60">
-                        <span className="text-slate-500">
-                          {formatearMonedaConLetras(field.precioDiario)} × {diasFila} día(s)
-                        </span>
-                        <span className="font-bold text-teal-800">
-                          Subtotal Renglón: {formatearCOP(subtotalFila)}
-                        </span>
+                          <div className="w-28 flex flex-col gap-1">
+                            <label className="text-[11px] font-bold text-slate-600">Valor Diario</label>
+                            <input 
+                              type="number" 
+                              min={0} 
+                              value={field.precioDiario}
+                              onChange={(e) => updateItemRow(index, 'precioDiario', parseFloat(e.target.value) || 0)}
+                              className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-right font-semibold" 
+                            />
+                          </div>
+
+                          <div className="w-20 flex flex-col gap-1">
+                            <label className="text-[11px] font-bold text-slate-600">Cant.</label>
+                            <input 
+                              type="number" 
+                              min={1} 
+                              value={field.cantidad}
+                              onChange={(e) => updateItemRow(index, 'cantidad', parseInt(e.target.value, 10) || 1)}
+                              className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-center font-bold" 
+                            />
+                          </div>
+
+                          <div className="w-36 flex flex-col gap-1">
+                            <label className="text-[11px] font-bold text-slate-600">Fecha Inicio</label>
+                            <input 
+                              type="date" 
+                              value={field.fechaInicio}
+                              onChange={(e) => updateItemRow(index, 'fechaInicio', e.target.value)}
+                              className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none" 
+                            />
+                          </div>
+
+                          <div className="w-36 flex flex-col gap-1">
+                            <label className="text-[11px] font-bold text-slate-600">Fin Estimado</label>
+                            <input 
+                              type="date" 
+                              value={field.fechaFinEstimada}
+                              onChange={(e) => updateItemRow(index, 'fechaFinEstimada', e.target.value)}
+                              className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none" 
+                            />
+                          </div>
+
+                          {items.length > 1 && (
+                            <div className="flex items-end pt-5 md:pt-0">
+                              <button 
+                                type="button" 
+                                onClick={() => removeItemRow(index)} 
+                                className="p-2 text-red-500 hover:bg-red-50 rounded-xl text-xs transition-colors"
+                                title="Eliminar fila"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Subtotal de Fila y Ayuda Verbal */}
+                        <div className="flex justify-between items-center text-[11px] px-2 pt-1 border-t border-slate-200/60">
+                          <span className="text-slate-500">
+                            {formatearMonedaConLetras(field.precioDiario)} × {diasFila} día(s)
+                          </span>
+                          <span className="font-bold text-teal-800">
+                            Subtotal Renglón: {formatearCOP(subtotalFila)}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                  {/* Anchor invisible para scroll automático al agregar */}
+                  <div id="items-list-end" />
+                </div>
+
+                {/* Botón Sticky al fondo — siempre visible, con contador de items */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    addItemRow();
+                    // Auto-scroll al nuevo item tras el render
+                    setTimeout(() => {
+                      const el = document.getElementById('items-list-end');
+                      const area = document.getElementById('items-scroll-area');
+                      if (area) area.scrollTop = area.scrollHeight;
+                    }, 60);
+                  }}
+                  className="mt-2 w-full py-2.5 flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-teal-400/60 bg-teal-50/60 text-teal-700 hover:bg-teal-100 hover:border-teal-500 hover:shadow-md font-bold text-xs transition-all group active:scale-[0.98]"
+                >
+                  <span className="w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                    <Plus className="w-3.5 h-3.5" />
+                  </span>
+                  <span>Agregar Maquinaria</span>
+                  <span className="ml-auto text-[10px] text-teal-500 font-semibold bg-teal-100 px-2 py-0.5 rounded-full">
+                    {items.length} en lista
+                  </span>
+                </button>
               </div>
               {formErrors.items && <span className="text-[11px] text-red-500 font-semibold">{formErrors.items}</span>}
             </div>

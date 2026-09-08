@@ -1,7 +1,7 @@
 "use client";
 import { Plus, Search, MoreVertical } from "lucide-react";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
 import { useClienteStore } from '../../infrastructure/state/clienteStore';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
@@ -93,7 +93,7 @@ export default function AlquileresPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     try {
       setLoading(true);
       const [resAlq, resCli, resEq] = await Promise.all([
@@ -120,7 +120,7 @@ export default function AlquileresPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setAlquileres]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -144,7 +144,7 @@ export default function AlquileresPage() {
         window.removeEventListener('focus', handleReconcile);
       }
     };
-  }, [sanitizeStore]);
+  }, [sanitizeStore, fetchAllData]);
 
   // Handlers para Acciones
   const handleRegistrarPago = async (monto: number, metodo: string, referencia: string, efectivoRecibido?: number, cambioEntregado?: number) => {
@@ -286,9 +286,13 @@ export default function AlquileresPage() {
 
 
   const openAction = (contrato: AlquilerUI, action: string) => {
-    // Adapter para compatibilidad temporal con modals viejos
+    // Adapter para compatibilidad temporal con modals y formularios
     const adapter = {
       ...contrato,
+      cliente_id: contrato.cliente_id || (contrato as any).clienteId,
+      clienteNombre: contrato.clienteNombre || (contrato as any).cliente?.nombre,
+      clienteNit: (contrato as any).clienteNit || (contrato as any).clienteDocumento || (contrato as any).cliente?.nit || (contrato as any).cliente?.nit_cedula,
+      clienteTelefono: (contrato as any).clienteTelefono || (contrato as any).cliente?.telefono,
       total: contrato.total, 
       items: contrato.detalles?.map((d: any) => ({
         ...d,
@@ -301,7 +305,15 @@ export default function AlquileresPage() {
     setActiveDropdown(null);
 
     switch(action) {
-      case 'EDITAR': setIsModalOpen(true); break;
+      case 'EDITAR': {
+        const tieneDev = Boolean(contrato.detalles?.some((d: any) => d.devuelto || (d.cantidadDevuelta && d.cantidadDevuelta > 0)));
+        if (contrato.estado === 'FINALIZADO' || contrato.estado === 'CANCELADO' || tieneDev) {
+          alert("Este contrato no puede ser editado porque se encuentra finalizado, cancelado o cuenta con devoluciones registradas.");
+          return;
+        }
+        setIsModalOpen(true);
+        break;
+      }
       case 'APROBAR_COTIZACION': setShowAprobarCotizacionModal(true); break;
       case 'ABONO': setShowAbonoModal(true); break;
       case 'PAGO': setShowPagoModal(true); break;
@@ -318,34 +330,35 @@ export default function AlquileresPage() {
         tipo: contrato.estado === 'COTIZACION' ? 'COTIZACION' : (contrato.estado === 'FINALIZADO' ? 'CUENTA_COBRO' : 'CONTRATO'),
         consecutivo: contrato.consecutivo || parseInt(String(contrato.id || "").replace(/\D/g, '') || "0") || Date.now() % 10000,
         fechaEmision: new Date().toISOString(),
-        fechaInicioGeneral: new Date(contrato.createdAt || Date.now()).toISOString(),
-        clienteNombre: contrato.clienteNombre || "Cliente General",
-        clienteNit: contrato.clienteDocumento || "222222222",
-        items: contrato.detalles.map((d: any) => {
-          const fInicio = new Date(d.fechaInicio || contrato.createdAt || Date.now()).getTime();
-          const fFin = new Date(d.fechaFinEstimada || d.fechaFin || contrato.createdAt || Date.now()).getTime();
+        fechaInicioGeneral: new Date(contrato.createdAt || contrato.created_at || Date.now()).toISOString(),
+        clienteNombre: contrato.clienteNombre || (contrato as any).cliente?.nombre || "Cliente General",
+        clienteNit: contrato.clienteNit || contrato.clienteDocumento || (contrato as any).cliente?.nit || (contrato as any).cliente?.nit_cedula || "222222222",
+        clienteTelefono: contrato.clienteTelefono || (contrato as any).cliente?.telefono || "",
+        items: (contrato.detalles || []).map((d: any) => {
+          const fInicio = new Date(d.fechaInicio || d.fecha_inicio || contrato.createdAt || contrato.created_at || Date.now()).getTime();
+          const fFin = new Date(d.fechaFinEstimada || d.fecha_fin_estimada || d.fechaFin || contrato.createdAt || contrato.created_at || Date.now()).getTime();
           const dias = Math.max(1, Math.ceil((fFin - fInicio) / 86400000));
-          const tarifaDiaria = d.tarifaAplicada || 0;
+          const tarifaDiaria = d.tarifaAplicada || d.valor_unitario || d.tarifaDiaria || 0;
           const equipoReal = useBodegaStore.getState().equipos.find(e => String(e.id) === String(d.itemId || d.equipo_id));
           return {
-            cantidad: d.cantidad,
+            cantidad: d.cantidad || 1,
             nombre: equipoReal?.nombre || d.nombreItem || d.nombre || "Equipo",
             fechaInicio: new Date(fInicio).toISOString(),
             fechaFin: new Date(fFin).toISOString(),
             dias: dias,
             tarifaDiaria: tarifaDiaria,
-            subtotal: d.subtotalLineaReal || d.subtotalLineaEstimado || (tarifaDiaria * dias * d.cantidad) || 0,
+            subtotal: d.subtotalLineaReal || d.subtotalLineaEstimado || (tarifaDiaria * dias * (d.cantidad || 1)) || 0,
           };
         }),
-        subtotalEquipos: contrato.subtotalEquiposEstimado || contrato.subtotalEquipos || 0,
-        fleteEntrega: contrato.costoEnvio || 0,
-        fleteRecogida: contrato.costoRecoleccion || 0,
-        subtotalGeneral: contrato.subtotalGeneralEstimado || contrato.subtotalGeneral || 0,
-        costosDano: contrato.detalles.reduce((acc: number, d: any) => acc + (d.costoDano || 0), 0),
-        depositoAplicado: contrato.totalPagado || 0,
-        totalPagar: contrato.totalEstimado || 0,
-        observaciones: contrato.observacionesGenerales,
-        detallesLogistica: contrato.detallesLogistica,
+        subtotalEquipos: contrato.subtotalEquiposEstimado || contrato.subtotal_equipos || contrato.subtotalEquipos || 0,
+        fleteEntrega: contrato.flete_entrega || contrato.fleteEntrega || contrato.costoEnvio || 0,
+        fleteRecogida: contrato.flete_recogida || contrato.fleteRecogida || contrato.costoRecoleccion || 0,
+        subtotalGeneral: contrato.subtotalGeneralEstimado || contrato.total_general || contrato.subtotalGeneral || 0,
+        costosDano: (contrato.detalles || []).reduce((acc: number, d: any) => acc + (d.costoDano || 0), 0),
+        depositoAplicado: contrato.deposito || contrato.totalPagado || 0,
+        totalPagar: contrato.total || contrato.totalEstimado || 0,
+        observaciones: contrato.observaciones || contrato.observacionesGenerales || "",
+        detallesLogistica: contrato.detalles_logistica || contrato.detallesLogistica || "",
         empresa: empresaConfig,
       };
 
@@ -477,25 +490,31 @@ export default function AlquileresPage() {
                     </button>
                     
                     {/* Dropdown Menu */}
-                    {activeDropdown === alq.id && (
-                      <div className="absolute right-8 top-10 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 py-1.5 flex flex-col text-left">
-                        {alq.estado === 'COTIZACION' && (
-                          <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'APROBAR_COTIZACION'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full">Aprobar Cotización</button>
-                        )}
-                        <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'EDITAR'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full">Editar Contrato</button>
-                        <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'PDF'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full border-b border-slate-100">Generar PDF</button>
-                        
-                        <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'ABONO'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full">Registrar Abono</button>
-                        <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'HISTORIAL_PAGOS'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full border-b border-slate-100">Historial Pagos</button>
-                        
-                        <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'DEVOLUCION'); }} className="px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 text-left w-full">Recibir Equipos</button>
-                        <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'HISTORIAL_DEVOLUCIONES'); }} className="px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 text-left w-full border-b border-slate-100">Historial Devoluciones</button>
-                        
-                        {alq.estado !== 'FINALIZADO' && alq.estado !== 'CANCELADO' && (
-                           <button className="px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 text-left w-full">Cancelar Contrato</button>
-                        )}
-                      </div>
-                    )}
+                    {activeDropdown === alq.id && (() => {
+                      const tieneDevoluciones = Boolean(alq.detalles?.some((d: any) => d.devuelto || (d.cantidadDevuelta && d.cantidadDevuelta > 0)));
+                      const puedeEditar = (alq.estado === 'COTIZACION' || alq.estado === 'ACTIVO') && !tieneDevoluciones;
+                      return (
+                        <div className="absolute right-8 top-10 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 py-1.5 flex flex-col text-left">
+                          {alq.estado === 'COTIZACION' && (
+                            <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'APROBAR_COTIZACION'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full">Aprobar Cotización</button>
+                          )}
+                          {puedeEditar && (
+                            <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'EDITAR'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full">Editar Contrato</button>
+                          )}
+                          <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'PDF'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full border-b border-slate-100">Generar PDF</button>
+                          
+                          <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'ABONO'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full">Registrar Abono</button>
+                          <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'HISTORIAL_PAGOS'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full border-b border-slate-100">Historial Pagos</button>
+                          
+                          <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'DEVOLUCION'); }} className="px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 text-left w-full">Recibir Equipos</button>
+                          <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'HISTORIAL_DEVOLUCIONES'); }} className="px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 text-left w-full border-b border-slate-100">Historial Devoluciones</button>
+                          
+                          {alq.estado !== 'FINALIZADO' && alq.estado !== 'CANCELADO' && (
+                             <button className="px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 text-left w-full">Cancelar Contrato</button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}
@@ -518,6 +537,7 @@ export default function AlquileresPage() {
         maxWidth="4xl"
       >
         <AlquilerForm 
+          key={contratoActivo ? `edit_${contratoActivo.id}` : 'create_new'}
           initialData={contratoActivo}
           onSuccess={(alquiler?: any) => { 
             setIsFormDirty(false);
