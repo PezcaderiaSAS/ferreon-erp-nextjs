@@ -117,7 +117,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
   }, [fetchCatalogsBackground]);
 
   // Form State
-  const [clienteId, setClienteId] = useState<string>(initialData?.cliente_id || initialData?.clienteId || '');
+  const [clienteId, setClienteId] = useState<string>(String(initialData?.cliente_id || initialData?.clienteId || ''));
   const [fechaRegistro, setFechaRegistro] = useState<string>(
     initialData?.created_at ? new Date(initialData.created_at).toISOString().split('T')[0] : 
     (initialData?.createdAt ? new Date(initialData.createdAt).toISOString().split('T')[0] : todayStr)
@@ -383,7 +383,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
     setFormErrors({});
 
     const validation = alquilerSchema.safeParse({
-      clienteId,
+      clienteId: String(clienteId),
       fechaRegistro,
       fleteEntrega: Number(fleteEntrega) || 0,
       fleteRecogida: Number(fleteRecogida) || 0,
