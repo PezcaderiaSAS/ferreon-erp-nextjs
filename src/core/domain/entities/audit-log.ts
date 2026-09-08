@@ -3,18 +3,25 @@ import { RoleType } from "./usuario";
 export type AuditActionType =
   | "LOGIN"
   | "LOGOUT"
+  | "FALLO_ACCESO"
   | "CREAR_EQUIPO"
   | "EDITAR_EQUIPO"
   | "AJUSTAR_STOCK"
   | "CARGA_MASIVA_EQUIPOS"
   | "CREAR_ALQUILER"
   | "EDITAR_ALQUILER"
+  | "ELIMINAR_ALQUILER"
+  | "APROBAR_COTIZACION"
   | "FINALIZAR_ALQUILER"
   | "PROCESAR_DEVOLUCION"
   | "EMITIR_FACTURA"
   | "REGISTRAR_PAGO"
   | "CREAR_CLIENTE"
-  | "EDITAR_CONFIGURACION";
+  | "EDITAR_CLIENTE"
+  | "EDITAR_CONFIGURACION"
+  | "CREAR_EMPRESA"
+  | "EDITAR_EMPRESA"
+  | "CAMBIO_ESTADO_USUARIO";
 
 export type AuditModuloType =
   | "SEGURIDAD"
@@ -24,7 +31,8 @@ export type AuditModuloType =
   | "FACTURACION"
   | "CARTERA"
   | "CLIENTES"
-  | "CONFIGURACION";
+  | "CONFIGURACION"
+  | "TENANTS";
 
 export interface AuditDetalleCambio {
   campo?: string;

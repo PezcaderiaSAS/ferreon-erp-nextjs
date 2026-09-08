@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getTenantCache, setTenantCache, invalidateTenantCache } from "@/lib/redis";
 import { createServerSupabaseClient } from "@/infrastructure/persistence/supabase/server";
 import { ClienteSchema } from "@/infrastructure/dtos/cliente.dto";
+import { validateApiRequest } from "@/lib/security/validation";
 
 export const dynamic = 'force-dynamic';
 
@@ -92,9 +93,13 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const validation = await validateApiRequest(request, CrearClienteSchema);
+  if (!validation.success) {
+    return validation.response!;
+  }
+  const validatedData = validation.data;
+
   try {
-    const body = await request.json();
-    const validatedData = CrearClienteSchema.parse(body);
 
     const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { validateApiRequest } from "@/lib/security/validation";
 
 const CrearFacturaSchema = z.object({
   alquilerId: z.string().min(1),
@@ -21,9 +22,13 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const validation = await validateApiRequest(request, CrearFacturaSchema);
+  if (!validation.success) {
+    return validation.response!;
+  }
+  const validatedData = validation.data;
+
   try {
-    const body = await request.json();
-    const validatedData = CrearFacturaSchema.parse(body);
 
     const nuevaFactura = {
       id: "FAC-" + Date.now(),

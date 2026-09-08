@@ -1,6 +1,32 @@
 import { RoleType, Permission, UsuarioEntity } from "../../core/domain/entities/usuario";
 
 export const PERMISOS_POR_ROL: Record<RoleType, Permission[]> = {
+  ULTRAADMIN: [
+    "dashboard:view",
+    "alquileres:read",
+    "alquileres:create",
+    "alquileres:edit",
+    "alquileres:delete",
+    "bodega:read",
+    "bodega:create",
+    "bodega:edit",
+    "bodega:adjust_stock",
+    "bodega:bulk_import",
+    "devoluciones:read",
+    "devoluciones:process",
+    "facturacion:read",
+    "facturacion:emit",
+    "cartera:read",
+    "cartera:collect",
+    "clientes:read",
+    "clientes:manage",
+    "configuracion:manage",
+    "auditoria:read",
+    "usuarios:manage",
+    "tenants:read_all",
+    "tenants:manage",
+    "global_audit:read",
+  ],
   SUPERADMIN: [
     "dashboard:view",
     "alquileres:read",
@@ -133,6 +159,12 @@ export const USUARIOS_DEMO: DemoUserAccount[] = [
 ];
 
 export const ROLE_INFO: Record<RoleType, { label: string; badgeClass: string; color: string; desc: string }> = {
+  ULTRAADMIN: {
+    label: "Ultra Administrador",
+    badgeClass: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
+    color: "#6366f1",
+    desc: "Control global de plataforma, tenants y auditoría transversal",
+  },
   SUPERADMIN: {
     label: "Super Administrador",
     badgeClass: "bg-rose-500/15 text-rose-300 border-rose-500/30",

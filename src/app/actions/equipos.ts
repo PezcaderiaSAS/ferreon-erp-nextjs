@@ -3,6 +3,9 @@
 import { createServerSupabaseClient, createAdminSupabaseClient } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redis } from '@/lib/redis';
+import { z } from 'zod';
+import { validateActionInput } from '@/lib/security/validation';
+import { AuditLogger } from '@/lib/security/audit-logger';
 
 export interface CrearEquipoInput {
   sku: string;
@@ -14,7 +17,33 @@ export interface CrearEquipoInput {
   idempotency_key?: string;
 }
 
+const CrearEquipoZodSchema = z.object({
+  sku: z.string().min(1, 'El código/SKU es obligatorio'),
+  nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  categoria: z.string().min(1, 'La categoría es obligatoria'),
+  tarifaDiaria: z.number().min(0, 'La tarifa diaria debe ser mayor o igual a cero'),
+  valorReposicion: z.number().min(0, 'El valor de reposición debe ser mayor o igual a cero'),
+  stockInicial: z.number().int().min(0, 'El stock inicial debe ser mayor o igual a cero'),
+  idempotency_key: z.string().optional(),
+});
+
+const EditarEquipoZodSchema = z.object({
+  id: z.union([z.string(), z.number()]),
+  nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  categoria: z.string().min(1, 'La categoría es obligatoria'),
+  tarifaDiaria: z.number().min(0, 'La tarifa diaria debe ser mayor o igual a cero'),
+  valorReposicion: z.number().min(0, 'El valor de reposición debe ser mayor o igual a cero'),
+  estado: z.enum(['Disponible', 'En Alquiler', 'Mantenimiento', 'Activo', 'Inactivo']),
+  idempotency_key: z.string().optional(),
+});
+
 export async function crearEquipoAction(input: CrearEquipoInput) {
+  const validation = validateActionInput(input, CrearEquipoZodSchema);
+  if (!validation.success) {
+    return { success: false, error: validation.error || 'Datos de equipo inválidos' };
+  }
+  const cleanInput = validation.data;
+
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   const userIdentifier = user?.email || user?.id || 'SISTEMA_OPERADOR';
@@ -22,13 +51,13 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
   const { data, error } = await supabase
     .from('equipos')
     .insert([{
-      codigo: input.sku.trim().toUpperCase(),
-      nombre: input.nombre.trim(),
-      categoria: input.categoria.trim(),
-      tarifa_diaria: input.tarifaDiaria,
-      valor_reposicion: input.valorReposicion,
-      stock_total: input.stockInicial,
-      stock_disponible: input.stockInicial,
+      codigo: cleanInput.sku.trim().toUpperCase(),
+      nombre: cleanInput.nombre.trim(),
+      categoria: cleanInput.categoria.trim(),
+      tarifa_diaria: cleanInput.tarifaDiaria,
+      valor_reposicion: cleanInput.valorReposicion,
+      stock_total: cleanInput.stockInicial,
+      stock_disponible: cleanInput.stockInicial,
       stock_en_obra: 0,
       stock_mantenimiento: 0,
       estado: 'Activo'
@@ -38,7 +67,7 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
 
   if (error) {
     if (error.code === '23505') {
-      return { success: false, error: `Error de restricción única: El código/SKU "${input.sku}" ya fue registrado (Código: ${error.code})` };
+      return { success: false, error: `Error de restricción única: El código/SKU "${cleanInput.sku}" ya fue registrado (Código: ${error.code})` };
     }
     console.error('Error Supabase crearEquipoAction:', error);
     return { success: false, error: `Error al guardar equipo en BD: ${error.message}` };
@@ -51,6 +80,23 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
       console.warn('Error invalidando caché de equipos en Redis:', e);
     }
   }
+
+  // Registrar Evento de Auditoría
+  AuditLogger.logAsync({
+    modulo: 'BODEGA',
+    accion: 'CREAR_EQUIPO',
+    descripcion: `Nuevo equipo registrado: ${cleanInput.nombre} (SKU: ${cleanInput.sku}, Stock inicial: ${cleanInput.stockInicial})`,
+    entidadId: data?.id || cleanInput.sku,
+    detalles: {
+      sku: cleanInput.sku,
+      nombre: cleanInput.nombre,
+      categoria: cleanInput.categoria,
+      tarifaDiaria: cleanInput.tarifaDiaria,
+      stockInicial: cleanInput.stockInicial,
+    },
+    userId: user?.id,
+    userEmail: user?.email,
+  });
 
   revalidatePath('/bodega');
   return { success: true, data };
@@ -67,18 +113,24 @@ export interface EditarEquipoInput {
 }
 
 export async function editarEquipoAction(input: EditarEquipoInput) {
-  const supabase = await createServerSupabaseClient();
-  const numericId = typeof input.id === 'string' ? parseInt(input.id, 10) : input.id;
+  const validation = validateActionInput(input, EditarEquipoZodSchema);
+  if (!validation.success) {
+    return { success: false, error: validation.error || 'Datos de equipo inválidos' };
+  }
+  const cleanInput = validation.data;
 
-  const dbEstado = input.estado === 'Inactivo' ? 'Inactivo' : 'Activo';
+  const supabase = await createServerSupabaseClient();
+  const numericId = typeof cleanInput.id === 'string' ? parseInt(cleanInput.id, 10) : cleanInput.id;
+
+  const dbEstado = cleanInput.estado === 'Inactivo' ? 'Inactivo' : 'Activo';
 
   const { data, error } = await supabase
     .from('equipos')
     .update({
-      nombre: input.nombre.trim(),
-      categoria: input.categoria.trim(),
-      tarifa_diaria: input.tarifaDiaria,
-      valor_reposicion: input.valorReposicion,
+      nombre: cleanInput.nombre.trim(),
+      categoria: cleanInput.categoria.trim(),
+      tarifa_diaria: cleanInput.tarifaDiaria,
+      valor_reposicion: cleanInput.valorReposicion,
       estado: dbEstado,
       updated_at: new Date().toISOString()
     })
@@ -98,6 +150,20 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
       console.warn('Error invalidando caché de equipos en Redis:', e);
     }
   }
+
+  // Registrar Evento de Auditoría
+  AuditLogger.logAsync({
+    modulo: 'BODEGA',
+    accion: 'EDITAR_EQUIPO',
+    descripcion: `Equipo modificado: ${cleanInput.nombre} (ID: ${numericId}, Estado: ${dbEstado})`,
+    entidadId: numericId,
+    detalles: {
+      nombre: cleanInput.nombre,
+      categoria: cleanInput.categoria,
+      tarifaDiaria: cleanInput.tarifaDiaria,
+      estado: dbEstado,
+    },
+  });
 
   revalidatePath('/bodega');
   return { success: true, data };

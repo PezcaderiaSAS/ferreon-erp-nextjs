@@ -3,6 +3,9 @@
 import { createServerSupabaseClient } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redis } from '@/lib/redis';
+import { z } from 'zod';
+import { validateActionInput } from '@/lib/security/validation';
+import { AuditLogger } from '@/lib/security/audit-logger';
 
 export interface CrearClienteInput {
   nit_cedula: string;
@@ -14,17 +17,43 @@ export interface CrearClienteInput {
   idempotency_key?: string;
 }
 
+const CrearClienteZodSchema = z.object({
+  nit_cedula: z.string().min(3, 'El NIT o Cédula debe contener al menos 3 caracteres'),
+  nombre: z.string().min(2, 'El nombre o razón social debe contener al menos 2 caracteres'),
+  telefono: z.string().optional(),
+  email: z.string().email('Formato de correo electrónico inválido').optional().or(z.literal('')),
+  direccion: z.string().optional(),
+  nivel_riesgo: z.string().optional(),
+  idempotency_key: z.string().optional(),
+});
+
+const EditarClienteZodSchema = z.object({
+  id: z.union([z.string(), z.number()]),
+  nit_cedula: z.string().min(3).optional(),
+  nombre: z.string().min(2, 'El nombre o razón social debe contener al menos 2 caracteres'),
+  telefono: z.string().optional(),
+  email: z.string().email('Formato de correo electrónico inválido').optional().or(z.literal('')),
+  direccion: z.string().optional(),
+  estado: z.enum(['Activo', 'Inactivo']).optional(),
+});
+
 export async function crearClienteAction(input: CrearClienteInput) {
+  const validation = validateActionInput(input, CrearClienteZodSchema);
+  if (!validation.success) {
+    return { success: false, error: validation.error || 'Datos de cliente inválidos' };
+  }
+  const cleanInput = validation.data;
+
   const supabase = await createServerSupabaseClient();
 
   const { data, error } = await supabase
     .from('clientes')
     .insert([{
-      nit_cedula: input.nit_cedula.trim().toUpperCase(),
-      nombre: input.nombre.trim(),
-      telefono: input.telefono?.trim() || '',
-      email: input.email ? input.email.trim().toLowerCase() : '',
-      direccion: input.direccion?.trim() || '',
+      nit_cedula: cleanInput.nit_cedula.trim().toUpperCase(),
+      nombre: cleanInput.nombre.trim(),
+      telefono: cleanInput.telefono?.trim() || '',
+      email: cleanInput.email ? cleanInput.email.trim().toLowerCase() : '',
+      direccion: cleanInput.direccion?.trim() || '',
       estado: 'Activo',
     }])
     .select()
@@ -32,7 +61,7 @@ export async function crearClienteAction(input: CrearClienteInput) {
 
   if (error) {
     if (error.code === '23505') { // unique_violation
-      return { success: false, error: `Error de restricción única: El NIT/Cédula "${input.nit_cedula}" ya fue registrado (Código: ${error.code})` };
+      return { success: false, error: `Error de restricción única: El NIT/Cédula "${cleanInput.nit_cedula}" ya fue registrado (Código: ${error.code})` };
     }
     console.error('Error Supabase crearClienteAction:', error);
     return { success: false, error: `Error al guardar cliente en BD: ${error.message}` };
@@ -45,6 +74,20 @@ export async function crearClienteAction(input: CrearClienteInput) {
       console.warn('Error invalidando caché de clientes en Redis:', e);
     }
   }
+
+  // Registrar Evento de Auditoría
+  AuditLogger.logAsync({
+    modulo: 'CLIENTES',
+    accion: 'CREAR_CLIENTE',
+    descripcion: `Nuevo cliente registrado: ${cleanInput.nombre} (NIT/Cédula: ${cleanInput.nit_cedula})`,
+    entidadId: data?.id || cleanInput.nit_cedula,
+    detalles: {
+      nit_cedula: cleanInput.nit_cedula,
+      nombre: cleanInput.nombre,
+      telefono: cleanInput.telefono,
+      email: cleanInput.email,
+    },
+  });
 
   revalidatePath('/clientes');
   return { success: true, data };
@@ -61,23 +104,29 @@ export interface EditarClienteInput {
 }
 
 export async function editarClienteAction(input: EditarClienteInput) {
+  const validation = validateActionInput(input, EditarClienteZodSchema);
+  if (!validation.success) {
+    return { success: false, error: validation.error || 'Datos de cliente inválidos' };
+  }
+  const cleanInput = validation.data;
+
   const supabase = await createServerSupabaseClient();
-  const numericId = typeof input.id === 'string' ? parseInt(input.id, 10) : input.id;
+  const numericId = typeof cleanInput.id === 'string' ? parseInt(cleanInput.id, 10) : cleanInput.id;
 
   const updatePayload: any = {
-    nombre: input.nombre.trim(),
-    telefono: input.telefono?.trim() || '',
-    email: input.email ? input.email.trim().toLowerCase() : '',
-    direccion: input.direccion?.trim() || '',
+    nombre: cleanInput.nombre.trim(),
+    telefono: cleanInput.telefono?.trim() || '',
+    email: cleanInput.email ? cleanInput.email.trim().toLowerCase() : '',
+    direccion: cleanInput.direccion?.trim() || '',
     updated_at: new Date().toISOString()
   };
 
-  if (input.nit_cedula) {
-    updatePayload.nit_cedula = input.nit_cedula.trim().toUpperCase();
+  if (cleanInput.nit_cedula) {
+    updatePayload.nit_cedula = cleanInput.nit_cedula.trim().toUpperCase();
   }
 
-  if (input.estado) {
-    updatePayload.estado = input.estado;
+  if (cleanInput.estado) {
+    updatePayload.estado = cleanInput.estado;
   }
 
   const { data, error } = await supabase
@@ -102,6 +151,20 @@ export async function editarClienteAction(input: EditarClienteInput) {
       console.warn('Error invalidando caché de clientes en Redis:', e);
     }
   }
+
+  // Registrar Evento de Auditoría
+  AuditLogger.logAsync({
+    modulo: 'CLIENTES',
+    accion: 'EDITAR_CLIENTE',
+    descripcion: `Cliente actualizado: ${cleanInput.nombre} (ID: ${numericId})`,
+    entidadId: numericId,
+    detalles: {
+      id: numericId,
+      nombre: cleanInput.nombre,
+      nit_cedula: cleanInput.nit_cedula,
+      estado: cleanInput.estado,
+    },
+  });
 
   revalidatePath('/clientes');
   return { success: true, data };

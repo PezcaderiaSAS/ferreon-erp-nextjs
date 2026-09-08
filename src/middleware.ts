@@ -1,20 +1,25 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { checkRateLimit } from './lib/redis';
+import { generateNonce, buildCspHeader, applyBaseSecurityHeaders } from './lib/security/csp';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const isDev = process.env.NODE_ENV === 'development';
 
   // 1. Rate Limiting Perimetral (Sliding Window en Upstash Redis)
   if (pathname.startsWith('/auth') || pathname.startsWith('/api')) {
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '127.0.0.1';
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      '127.0.0.1';
     const isAuthRoute = pathname.startsWith('/auth');
     const limit = isAuthRoute ? 15 : 120;
     const windowSecs = isAuthRoute ? 10 : 60;
-    
+
     const rateLimit = await checkRateLimit(`${ip}:${isAuthRoute ? 'auth' : 'api'}`, limit, windowSecs);
     if (!rateLimit.success) {
-      return new NextResponse(
+      const rateLimitResponse = new NextResponse(
         JSON.stringify({
           error: 'Demasiadas solicitudes. Por favor espera unos segundos antes de reintentar.',
           retryAfter: rateLimit.reset,
@@ -27,32 +32,66 @@ export async function middleware(request: NextRequest) {
           },
         }
       );
+      applyBaseSecurityHeaders(rateLimitResponse.headers);
+      return rateLimitResponse;
     }
   }
 
-  // 2. FAST-PATH: Excluir de inmediato rutas internas, API, Auth y archivos estáticos sin llamadas de red de sesión
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/auth') ||
-    pathname === '/unauthorized' ||
-    pathname === '/suscripcion' ||
-    pathname.includes('.')
-  ) {
+  // 2. Generación de Nonce Criptográfico para Content-Security-Policy (CSP)
+  const nonce = generateNonce();
+  const cspHeader = buildCspHeader(nonce, isDev);
+
+  // Inyectar el nonce en los request headers para que los Server Components y RootLayout lo consuman
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', cspHeader);
+
+  // 3. FAST-PATH: Excluir recursos internos de Next.js y archivos estáticos
+  if (pathname.startsWith('/_next') || pathname.includes('.')) {
     return NextResponse.next();
+  }
+
+  // 4. FAST-PATH PARA APIs: Respuesta con cabeceras de transporte seguro sin llamada a Supabase Auth en middleware
+  if (pathname.startsWith('/api')) {
+    const apiResponse = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+    applyBaseSecurityHeaders(apiResponse.headers);
+    return apiResponse;
+  }
+
+  // 5. FAST-PATH PARA RUTAS PÚBLICAS / AUTH: Inyectar cabeceras perimetrales completas y CSP
+  if (pathname.startsWith('/auth') || pathname === '/unauthorized' || pathname === '/suscripcion') {
+    const publicResponse = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+    applyBaseSecurityHeaders(publicResponse.headers);
+    publicResponse.headers.set('Content-Security-Policy', cspHeader);
+    return publicResponse;
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Si no hay credenciales de Supabase configuradas, permitir navegación segura
+  // Si no hay credenciales de Supabase configuradas, permitir navegación segura con headers
   if (!supabaseUrl || !supabaseAnonKey) {
-    return NextResponse.next();
+    const fallbackResponse = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+    applyBaseSecurityHeaders(fallbackResponse.headers);
+    fallbackResponse.headers.set('Content-Security-Policy', cspHeader);
+    return fallbackResponse;
   }
 
   let response = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: requestHeaders,
     },
   });
 
@@ -64,7 +103,9 @@ export async function middleware(request: NextRequest) {
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({
-          request,
+          request: {
+            headers: requestHeaders,
+          },
         });
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options)
@@ -73,13 +114,13 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // 2. Verificación de sesión con Timeout Guard (máximo 1200ms para prevenir 504 MIDDLEWARE_INVOCATION_TIMEOUT)
+  // 6. Verificación de sesión con Timeout Guard (1200ms para prevenir 504 MIDDLEWARE_INVOCATION_TIMEOUT)
   let user = null;
   try {
     const timeoutPromise = new Promise<{ data: { user: null } }>((resolve) =>
       setTimeout(() => resolve({ data: { user: null } }), 1200)
     );
-    
+
     const { data } = await Promise.race([
       supabase.auth.getUser(),
       timeoutPromise,
@@ -89,34 +130,49 @@ export async function middleware(request: NextRequest) {
     console.warn('[Middleware] Supabase auth check warning:', error);
   }
 
-  // 3. Redirección condicional a login
+  // 7. Redirección condicional a login
   if (!user) {
-    // Verificar si existe cookie de sesión de Supabase para evitar falsos positivos por latencia
-    const hasAuthCookie = request.cookies.getAll().some(c => c.name.includes('sb-') && c.name.includes('-auth-token'));
+    const hasAuthCookie = request.cookies.getAll().some(
+      (c) => c.name.includes('sb-') && c.name.includes('-auth-token')
+    );
     if (!hasAuthCookie) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = '/auth/login';
       loginUrl.searchParams.set('redirectTo', pathname);
-      return NextResponse.redirect(loginUrl);
+      const redirectResponse = NextResponse.redirect(loginUrl);
+      applyBaseSecurityHeaders(redirectResponse.headers);
+      return redirectResponse;
     }
     // Si tiene cookie pero hubo timeout de red, permitir que los Server Components resuelvan la sesión
+    applyBaseSecurityHeaders(response.headers);
+    response.headers.set('Content-Security-Policy', cspHeader);
     return response;
   }
 
-  // 4. Inyección de Cabeceras de Seguridad Perimetral (Three-Tier Boundary System)
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-
-  // 5. Control de acceso por roles (RBAC)
+  // 8. Control de acceso por roles (RBAC & UltraAdmin)
   const userRole = user.user_metadata?.rol;
-  if (pathname.startsWith('/configuracion')) {
-    if (userRole !== 'SUPERADMIN' && userRole !== 'ADMIN') {
-      return NextResponse.rewrite(new URL('/unauthorized', request.url));
+
+  // Protección del módulo global UltraAdmin
+  if (pathname.startsWith('/admin')) {
+    if (userRole !== 'ULTRAADMIN' && userRole !== 'SUPERADMIN') {
+      const unauthorizedResponse = NextResponse.rewrite(new URL('/unauthorized', request.url));
+      applyBaseSecurityHeaders(unauthorizedResponse.headers);
+      return unauthorizedResponse;
     }
   }
+
+  // Protección de Configuración
+  if (pathname.startsWith('/configuracion')) {
+    if (userRole !== 'ULTRAADMIN' && userRole !== 'SUPERADMIN' && userRole !== 'ADMIN') {
+      const unauthorizedResponse = NextResponse.rewrite(new URL('/unauthorized', request.url));
+      applyBaseSecurityHeaders(unauthorizedResponse.headers);
+      return unauthorizedResponse;
+    }
+  }
+
+  // 9. Inyección Definitiva de Cabeceras Perimetrales y Content-Security-Policy
+  applyBaseSecurityHeaders(response.headers);
+  response.headers.set('Content-Security-Policy', cspHeader);
 
   return response;
 }

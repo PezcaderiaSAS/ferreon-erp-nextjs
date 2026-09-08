@@ -3,6 +3,9 @@
 import { createServerSupabaseClient } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { invalidateTenantCache } from '../../lib/redis';
+import { z } from 'zod';
+import { validateActionInput } from '@/lib/security/validation';
+import { AuditLogger } from '@/lib/security/audit-logger';
 
 export interface AlquilerItemInput {
   itemId: string | number;
@@ -60,6 +63,58 @@ export interface AprobarCotizacionInput {
   alquilerId: string | number;
 }
 
+const AlquilerItemZodSchema = z.object({
+  itemId: z.union([z.string(), z.number()]),
+  nombreItem: z.string().optional(),
+  cantidad: z.number().int().min(1, 'La cantidad debe ser al menos 1'),
+  tarifaAplicada: z.number().min(0, 'La tarifa debe ser mayor o igual a cero'),
+  fechaInicio: z.string().min(1, 'Fecha de inicio requerida'),
+  fechaFinEstimada: z.string().min(1, 'Fecha estimada de fin requerida'),
+});
+
+const CrearAlquilerZodSchema = z.object({
+  clienteId: z.union([z.string(), z.number()]),
+  clienteNombre: z.string().optional(),
+  fechaRegistro: z.string().optional(),
+  fleteEntrega: z.number().min(0).default(0),
+  fleteRecogida: z.number().min(0).default(0),
+  deposito: z.number().min(0).default(0),
+  garantiaMonto: z.number().min(0).default(0),
+  garantiaTipo: z.string().default('Efectivo'),
+  observaciones: z.string().optional(),
+  detallesLogistica: z.string().optional(),
+  items: z.array(AlquilerItemZodSchema).min(1, 'Debe incluir al menos un equipo en el contrato'),
+  estado: z.string().optional(),
+  idempotency_key: z.string().optional(),
+});
+
+const EditarAlquilerZodSchema = z.object({
+  alquilerId: z.union([z.string(), z.number()]),
+  clienteId: z.union([z.string(), z.number()]).optional(),
+  clienteNombre: z.string().optional(),
+  fechaRegistro: z.string().optional(),
+  fleteEntrega: z.number().min(0).default(0),
+  fleteRecogida: z.number().min(0).default(0),
+  deposito: z.number().min(0).default(0),
+  garantiaMonto: z.number().min(0).default(0),
+  garantiaTipo: z.string().default('Efectivo'),
+  observaciones: z.string().optional(),
+  detallesLogistica: z.string().optional(),
+  items: z.array(AlquilerItemZodSchema).min(1, 'Debe incluir al menos un equipo en el contrato'),
+  estado: z.string().optional(),
+});
+
+const DevolucionItemZodSchema = z.object({
+  detalleId: z.union([z.string(), z.number()]),
+  cantidadDevuelta: z.number().int().min(1, 'La cantidad devuelta debe ser al menos 1'),
+  costoDano: z.number().min(0).optional(),
+});
+
+const ProcesarDevolucionZodSchema = z.object({
+  alquilerId: z.union([z.string(), z.number()]),
+  devoluciones: z.array(DevolucionItemZodSchema).min(1, 'Debe procesar al menos una devolución'),
+});
+
 export interface RegistrarAbonoInput {
   alquilerId: string | number;
   montoAbono: number;
@@ -68,13 +123,19 @@ export interface RegistrarAbonoInput {
 }
 
 export async function crearAlquilerAction(input: CrearAlquilerInput) {
+  const validation = validateActionInput(input, CrearAlquilerZodSchema);
+  if (!validation.success) {
+    return { success: false, error: validation.error || 'Datos de alquiler inválidos' };
+  }
+  const cleanInput = validation.data;
+
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   const userIdentifier = user?.email || user?.id || 'SISTEMA_OPERADOR';
 
   // 1. Calcular subtotales
   let subtotalEquipos = 0;
-  const itemsPayload = input.items.map(item => {
+  const itemsPayload = cleanInput.items.map(item => {
     const start = new Date(item.fechaInicio);
     const end = new Date(item.fechaFinEstimada);
     const diffMs = end.getTime() - start.getTime();
@@ -94,25 +155,25 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
     };
   });
 
-  const fleteEntrega = Number(input.fleteEntrega || 0);
-  const fleteRecogida = Number(input.fleteRecogida || 0);
+  const fleteEntrega = Number(cleanInput.fleteEntrega || 0);
+  const fleteRecogida = Number(cleanInput.fleteRecogida || 0);
   const subtotalGeneral = subtotalEquipos + fleteEntrega + fleteRecogida;
-  const deposito = Number(input.deposito || 0);
+  const deposito = Number(cleanInput.deposito || 0);
   const total = subtotalGeneral;
 
   const payload = {
-    cliente_id: typeof input.clienteId === 'string' ? parseInt(input.clienteId, 10) : input.clienteId,
-    estado: input.estado || 'ACTIVO',
+    cliente_id: typeof cleanInput.clienteId === 'string' ? parseInt(cleanInput.clienteId, 10) : cleanInput.clienteId,
+    estado: cleanInput.estado || 'ACTIVO',
     subtotal_equipos: subtotalEquipos,
     flete_entrega: fleteEntrega,
     flete_recogida: fleteRecogida,
     subtotal_general: subtotalGeneral,
     total: total,
     deposito: deposito,
-    garantia_monto: Number(input.garantiaMonto || 0),
-    garantia_tipo: input.garantiaTipo || 'Efectivo',
-    observaciones: input.observaciones || '',
-    detalles_logistica: input.detallesLogistica || '',
+    garantia_monto: Number(cleanInput.garantiaMonto || 0),
+    garantia_tipo: cleanInput.garantiaTipo || 'Efectivo',
+    observaciones: cleanInput.observaciones || '',
+    detalles_logistica: cleanInput.detallesLogistica || '',
     creado_por: userIdentifier,
     items: itemsPayload
   };
@@ -130,7 +191,25 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
     return { success: false, error: `Error al crear contrato en BD: ${error.message || JSON.stringify(error)}` };
   }
 
-  // 3. Invalidar Caché Multi-Tenant
+  // 3. Registrar Evento de Auditoría
+  AuditLogger.logAsync({
+    modulo: 'ALQUILERES',
+    accion: 'CREAR_ALQUILER',
+    descripcion: `Contrato de alquiler creado para cliente ID ${cleanInput.clienteId} con ${cleanInput.items.length} items. Total: $${total.toLocaleString('es-CO')}`,
+    entidadId: data?.id || undefined,
+    detalles: {
+      clienteId: cleanInput.clienteId,
+      total,
+      deposito,
+      fleteEntrega,
+      fleteRecogida,
+      itemsCount: cleanInput.items.length,
+    },
+    userId: user?.id,
+    userEmail: user?.email,
+  });
+
+  // 4. Invalidar Caché Multi-Tenant
   try {
     await invalidateTenantCache(user?.id, ['alquileres', 'equipos']);
   } catch (cErr) {
@@ -143,12 +222,18 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
 }
 
 export async function editarAlquilerAction(input: EditarAlquilerInput) {
+  const validation = validateActionInput(input, EditarAlquilerZodSchema);
+  if (!validation.success) {
+    return { success: false, error: validation.error || 'Datos de edición de alquiler inválidos' };
+  }
+  const cleanInput = validation.data;
+
   const supabase = await createServerSupabaseClient();
-  const numericAlquilerId = typeof input.alquilerId === 'string' ? parseInt(input.alquilerId, 10) : input.alquilerId;
+  const numericAlquilerId = typeof cleanInput.alquilerId === 'string' ? parseInt(cleanInput.alquilerId, 10) : cleanInput.alquilerId;
 
   // 1. Calcular subtotales
   let subtotalEquipos = 0;
-  const itemsProcesados = input.items.map(item => {
+  const itemsProcesados = cleanInput.items.map(item => {
     const start = new Date(item.fechaInicio);
     const end = new Date(item.fechaFinEstimada);
     const diffMs = end.getTime() - start.getTime();
@@ -169,10 +254,10 @@ export async function editarAlquilerAction(input: EditarAlquilerInput) {
     };
   });
 
-  const fleteEntrega = Number(input.fleteEntrega || 0);
-  const fleteRecogida = Number(input.fleteRecogida || 0);
+  const fleteEntrega = Number(cleanInput.fleteEntrega || 0);
+  const fleteRecogida = Number(cleanInput.fleteRecogida || 0);
   const subtotalGeneral = subtotalEquipos + fleteEntrega + fleteRecogida;
-  const deposito = Number(input.deposito || 0);
+  const deposito = Number(cleanInput.deposito || 0);
   const total = subtotalGeneral;
   const saldoPendiente = Math.max(0, total - deposito);
 
@@ -296,12 +381,18 @@ export async function editarAlquilerAction(input: EditarAlquilerInput) {
 }
 
 export async function procesarDevolucionAction(input: ProcesarDevolucionInput) {
+  const validation = validateActionInput(input, ProcesarDevolucionZodSchema);
+  if (!validation.success) {
+    return { success: false, error: validation.error || 'Datos de devolución inválidos' };
+  }
+  const cleanInput = validation.data;
+
   const supabase = await createServerSupabaseClient();
-  const numericAlquilerId = typeof input.alquilerId === 'string' ? parseInt(input.alquilerId, 10) : input.alquilerId;
+  const numericAlquilerId = typeof cleanInput.alquilerId === 'string' ? parseInt(cleanInput.alquilerId, 10) : cleanInput.alquilerId;
 
   const payload = {
     alquiler_id: numericAlquilerId,
-    devoluciones: input.devoluciones.map(d => ({
+    devoluciones: cleanInput.devoluciones.map(d => ({
       detalle_id: typeof d.detalleId === 'string' ? parseInt(d.detalleId, 10) : d.detalleId,
       cantidad_devuelta: d.cantidadDevuelta,
       costo_dano: d.costoDano || 0
@@ -316,6 +407,18 @@ export async function procesarDevolucionAction(input: ProcesarDevolucionInput) {
     console.error('Error Supabase procesar_devolucion_alquiler:', error);
     return { success: false, error: `Error al procesar devolución en BD: ${error.message || JSON.stringify(error)}` };
   }
+
+  // Registrar Evento de Auditoría
+  AuditLogger.logAsync({
+    modulo: 'DEVOLUCIONES',
+    accion: 'PROCESAR_DEVOLUCION',
+    descripcion: `Devolución procesada para contrato ID ${numericAlquilerId} con ${cleanInput.devoluciones.length} item(s)`,
+    entidadId: numericAlquilerId,
+    detalles: {
+      alquilerId: numericAlquilerId,
+      devoluciones: cleanInput.devoluciones,
+    },
+  });
 
   // Invalidar Caché Multi-Tenant
   try {

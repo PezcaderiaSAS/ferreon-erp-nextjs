@@ -1,6 +1,7 @@
 import { BaseAuditableEntity } from "./base-auditable.entity";
 
 export type RoleType = 
+  | "ULTRAADMIN"
   | "SUPERADMIN" 
   | "ADMIN" 
   | "OPERADOR_BODEGA" 
@@ -28,7 +29,10 @@ export type Permission =
   | "clientes:manage"
   | "configuracion:manage"
   | "auditoria:read"
-  | "usuarios:manage";
+  | "usuarios:manage"
+  | "tenants:read_all"
+  | "tenants:manage"
+  | "global_audit:read";
 
 export class UsuarioEntity extends BaseAuditableEntity {
   constructor(

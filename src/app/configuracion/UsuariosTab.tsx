@@ -30,6 +30,7 @@ const AVATARS = [
 ];
 
 const ROLES: { value: RoleType; label: string; desc: string }[] = [
+  { value: 'ULTRAADMIN', label: 'Ultra Administrador (Plataforma)', desc: 'Control global de la plataforma, todos los tenants y auditoría transversal' },
   { value: 'SUPERADMIN', label: 'Super Administrador', desc: 'Control total de la empresa, facturación y usuarios' },
   { value: 'ADMIN', label: 'Administrador', desc: 'Gestión de bodega, clientes, contratos y reportes' },
   { value: 'OPERADOR_BODEGA', label: 'Operador de Bodega', desc: 'Gestión de stock, entregas y devoluciones de equipos' },
