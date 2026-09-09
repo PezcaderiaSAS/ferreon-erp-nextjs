@@ -1,21 +1,21 @@
 Reporte de Actualización de Codemaps
 ──────────────────────────────
-Fecha: 2026-09-08
+Fecha: 2026-09-09
 Archivos modificados y creados desde último escaneo: 
-  - src/app/actions/empresa.ts (Nuevo - Server Actions de persistencia corporativa)
-  - tests/unit/cliente-locking-and-pdf-logo.test.ts (Nuevo - Tests de logo y bloqueo de cliente)
-  - src/app/configuracion/page.tsx (Modificado - Compresión canvas y sincronización con Supabase)
-  - src/components/forms/AlquilerForm.tsx (Modificado - Bloqueo poka-yoke y fallbacks resilientes)
-  - src/app/alquileres/page.tsx (Modificado - Clave dinámica, normalización PDF y filtro de edición)
-  - src/components/pdf/ContratoAlquilerPDF.tsx (Modificado - Renderizado vectorial de logo e Image)
-  - src/core/services/pdf-factura-generator.service.ts (Modificado - Layout horizontal de logo)
-  - tests/unit/core-ux-cotizaciones-abonos.test.ts (Modificado - Mocking de RPC reducir_stock_seguro)
+  - src/components/ui/EquipoCombobox.tsx (Nuevo - Buscador typeahead accesible WAI-ARIA 1.2, atajos y colisión de viewport)
+  - src/components/forms/AlquilerForm.tsx (Modificado - Fechas maestras en Paso 1, propagación automática, atajo F2 y 10 ítems visibles)
+  - src/lib/security/csp.ts (Nuevo - Content Security Policy dinámico con Nonces)
+  - src/lib/security/validation.ts (Nuevo - Dual-Layer Zod Validation para APIs y Actions)
+  - src/lib/security/audit-logger.ts (Nuevo - Servicio no bloqueante de auditoría inmutable)
+  - src/app/actions/ultraadmin.ts (Nuevo - Acciones de supervisión multi-tenant para UltraAdmin)
+  - src/app/admin/empresas/page.tsx (Nuevo - Panel de control UltraAdmin)
+  - supabase/migrations/20260908_audit_logs_and_ultraadmin.sql (Nuevo - Migración de auditoría y rol ULTRAADMIN)
 
 Cambios Arquitectónicos Detectados:
-  - Persistencia híbrida de identidad corporativa en Supabase (JSONB `empresas.configuracion`) e invalidación de caché Redis.
-  - Bloqueo Poka-Yoke de cliente en modo edición y clave dinámica remount en AlquilerForm.
-  - Sistema dual de emisión y regeneración de PDFs (Vectorial React-PDF + HTML Print Service) con soporte de logo corporativo.
-  - Compresión client-side de imágenes vía Canvas API (<150KB) para proteger localStorage.
+  - Asistente de búsqueda rápida de equipos (EquipoCombobox) con normalización NFD de texto (<5ms), navegación por teclado y densidad visual de 10 ítems simultáneos.
+  - Rango maestro de fechas en cabecera de contratos (Paso 1) con corrección reactiva Poka-Yoke y propagación en cascada a todos los renglones de maquinaria.
+  - Atajo global de teclado F2 con transición automática entre pasos y autofocus instantáneo en combobox.
+  - Blindaje perimetral de ciberseguridad: CSP estricto con nonces criptográficos, saneamiento de cabeceras HSTS/XFO y auditoría inmutable en `audit_logs`.
 
 Acciones:
   - docs/CODEMAPS/architecture.md: ACTUALIZADO
@@ -24,6 +24,6 @@ Acciones:
   - docs/CODEMAPS/data.md: ACTUALIZADO
   - docs/CODEMAPS/dependencies.md: ACTUALIZADO
   - docs/CONTRIBUTING.md: SINCRONIZADO
-  - docs/ENV.md: SINCRONIZADO (Sincronizado con .env.example)
+  - docs/ENV.md: SINCRONIZADO
   - docs/RUNBOOK.md: SINCRONIZADO
 ──────────────────────────────

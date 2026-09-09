@@ -18,10 +18,13 @@ import { ContratoAlquilerPDF } from '../pdf/ContratoAlquilerPDF';
 import { formatearMonedaConLetras } from '../../core/utils/numero-a-letras';
 import { EnterprisePDFService } from '../../core/services/pdf-factura-generator.service';
 import { Lock, Plus } from 'lucide-react';
+import { EquipoCombobox } from '../ui/EquipoCombobox';
 
 const alquilerSchema = z.object({
   clienteId: z.string().min(1, 'Debe seleccionar un cliente'),
   fechaRegistro: z.string().min(1, 'La fecha de registro es requerida'),
+  fechaInicioContrato: z.string().min(1, 'La fecha de inicio del alquiler es requerida').optional(),
+  fechaFinEstimadaContrato: z.string().min(1, 'La fecha fin estimada es requerida').optional(),
   fleteEntrega: z.number().min(0),
   fleteRecogida: z.number().min(0),
   deposito: z.number().min(0),
@@ -82,6 +85,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
   
   const [isSuccess, setIsSuccess] = useState(false);
   const [savedAlquilerData, setSavedAlquilerData] = useState<any>(null);
+  const [autoFocusRowId, setAutoFocusRowId] = useState<string | null>(null);
 
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -122,6 +126,24 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
     initialData?.created_at ? new Date(initialData.created_at).toISOString().split('T')[0] : 
     (initialData?.createdAt ? new Date(initialData.createdAt).toISOString().split('T')[0] : todayStr)
   );
+
+  // Rango Maestro de Fechas para todo el contrato
+  const [fechaInicioContrato, setFechaInicioContrato] = useState<string>(() => {
+    if (initialData?.fecha_inicio) return new Date(initialData.fecha_inicio).toISOString().split('T')[0];
+    if (initialData?.fechaInicio) return new Date(initialData.fechaInicio).toISOString().split('T')[0];
+    if (initialData?.detalles?.[0]?.fecha_inicio) return new Date(initialData.detalles[0].fecha_inicio).toISOString().split('T')[0];
+    if (initialData?.detalles?.[0]?.fechaInicio) return new Date(initialData.detalles[0].fechaInicio).toISOString().split('T')[0];
+    return todayStr;
+  });
+
+  const [fechaFinEstimadaContrato, setFechaFinEstimadaContrato] = useState<string>(() => {
+    if (initialData?.fecha_fin_estimada) return new Date(initialData.fecha_fin_estimada).toISOString().split('T')[0];
+    if (initialData?.fechaFinEstimada) return new Date(initialData.fechaFinEstimada).toISOString().split('T')[0];
+    if (initialData?.detalles?.[0]?.fecha_fin_estimada) return new Date(initialData.detalles[0].fecha_fin_estimada).toISOString().split('T')[0];
+    if (initialData?.detalles?.[0]?.fechaFinEstimada) return new Date(initialData.detalles[0].fechaFinEstimada).toISOString().split('T')[0];
+    return todayStr;
+  });
+
   const [fleteEntrega, setFleteEntrega] = useState<number>(initialData ? (initialData.flete_entrega || initialData.fleteEntrega || 0) : 30000);
   const [fleteRecogida, setFleteRecogida] = useState<number>(initialData ? (initialData.flete_recogida || initialData.fleteRecogida || 0) : 30000);
   const [deposito, setDeposito] = useState<number>(initialData ? (initialData.deposito || 0) : 50000);
@@ -142,40 +164,109 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
         fechaFinEstimada: d.fecha_fin_estimada ? new Date(d.fecha_fin_estimada).toISOString().split('T')[0] : (d.fechaFinEstimada ? new Date(d.fechaFinEstimada).toISOString().split('T')[0] : todayStr),
       }));
     }
-    return [{ id: `row_0_${Date.now()}`, itemId: '', cantidad: 1, precioDiario: 0, fechaInicio: todayStr, fechaFinEstimada: todayStr }];
+    return [{ id: `row_0_${Date.now()}`, itemId: '', cantidad: 1, precioDiario: 0, fechaInicio: fechaInicioContrato, fechaFinEstimada: fechaFinEstimadaContrato }];
   });
+
+  // Manejadores Poka-Yoke con sincronización en cascada
+  const handleFechaInicioMasterChange = (newStart: string) => {
+    setFechaInicioContrato(newStart);
+    let targetEnd = fechaFinEstimadaContrato;
+    if (targetEnd < newStart) {
+      targetEnd = newStart;
+      setFechaFinEstimadaContrato(newStart);
+    }
+    if (!initialData) {
+      setItems(prev => prev.map(item => ({
+        ...item,
+        fechaInicio: newStart,
+        fechaFinEstimada: targetEnd
+      })));
+    }
+  };
+
+  const handleFechaFinMasterChange = (newEnd: string) => {
+    let targetEnd = newEnd;
+    if (targetEnd < fechaInicioContrato) {
+      targetEnd = fechaInicioContrato;
+    }
+    setFechaFinEstimadaContrato(targetEnd);
+    if (!initialData) {
+      setItems(prev => prev.map(item => ({
+        ...item,
+        fechaFinEstimada: targetEnd
+      })));
+    }
+  };
 
   const initialStateStr = useMemo(() => {
     return JSON.stringify({
-      clienteId, fechaRegistro, fleteEntrega, fleteRecogida,
-      deposito, garantiaMonto, garantiaTipo, observaciones,
-      detallesLogistica, items, estadoDocumento
+      clienteId, fechaRegistro, fechaInicioContrato, fechaFinEstimadaContrato,
+      fleteEntrega, fleteRecogida, deposito, garantiaMonto, garantiaTipo,
+      observaciones, detallesLogistica, items, estadoDocumento
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     const currentDataStr = JSON.stringify({
-      clienteId, fechaRegistro, fleteEntrega, fleteRecogida,
-      deposito, garantiaMonto, garantiaTipo, observaciones,
-      detallesLogistica, items, estadoDocumento
+      clienteId, fechaRegistro, fechaInicioContrato, fechaFinEstimadaContrato,
+      fleteEntrega, fleteRecogida, deposito, garantiaMonto, garantiaTipo,
+      observaciones, detallesLogistica, items, estadoDocumento
     });
     if (onDirtyChange) {
       onDirtyChange(currentDataStr !== initialStateStr);
     }
   }, [
-    clienteId, fechaRegistro, fleteEntrega, fleteRecogida,
-    deposito, garantiaMonto, garantiaTipo, observaciones,
-    detallesLogistica, items, estadoDocumento, initialStateStr, onDirtyChange
+    clienteId, fechaRegistro, fechaInicioContrato, fechaFinEstimadaContrato,
+    fleteEntrega, fleteRecogida, deposito, garantiaMonto, garantiaTipo,
+    observaciones, detallesLogistica, items, estadoDocumento, initialStateStr, onDirtyChange
   ]);
 
 
   const addItemRow = () => {
+    const newRowId = `row_${Date.now()}_${Math.random()}`;
+    setAutoFocusRowId(newRowId);
     setItems(prev => [
       ...prev,
-      { id: `row_${Date.now()}_${Math.random()}`, itemId: '', cantidad: 1, precioDiario: 0, fechaInicio: todayStr, fechaFinEstimada: todayStr }
+      { id: newRowId, itemId: '', cantidad: 1, precioDiario: 0, fechaInicio: fechaInicioContrato, fechaFinEstimada: fechaFinEstimadaContrato }
     ]);
   };
+
+  // Atajo de teclado global F2 para añadir renglón de equipo
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        // Bloqueo de seguridad: omitir si hay modales secundarios abiertos o envío en curso
+        if (isCreandoCliente || isCreandoEquipo || isPreviewModalOpen || isSubmitting) {
+          return;
+        }
+
+        e.preventDefault();
+
+        if (currentStep === 1) {
+          if (!clienteId) {
+            setFormErrors(prev => ({ ...prev, clienteId: 'Seleccione un cliente antes de agregar maquinaria' }));
+            return;
+          }
+          setCurrentStep(2);
+          setTimeout(() => {
+            addItemRow();
+            const el = document.getElementById('items-list-end');
+            el?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          }, 80);
+        } else if (currentStep === 2) {
+          addItemRow();
+          setTimeout(() => {
+            const el = document.getElementById('items-list-end');
+            el?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          }, 80);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [currentStep, clienteId, isCreandoCliente, isCreandoEquipo, isPreviewModalOpen, isSubmitting, fechaInicioContrato, fechaFinEstimadaContrato]);
 
   const removeItemRow = (index: number) => {
     if (items.length <= 1) return;
@@ -268,6 +359,18 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
         setFormErrors(prev => ({ ...prev, fechaRegistro: 'La fecha de registro es requerida' }));
         return false;
       }
+      if (!fechaInicioContrato) {
+        setFormErrors(prev => ({ ...prev, fechaInicioContrato: 'La fecha de inicio es requerida' }));
+        return false;
+      }
+      if (!fechaFinEstimadaContrato) {
+        setFormErrors(prev => ({ ...prev, fechaFinEstimadaContrato: 'La fecha fin estimada es requerida' }));
+        return false;
+      }
+      if (fechaFinEstimadaContrato < fechaInicioContrato) {
+        setFormErrors(prev => ({ ...prev, fechaFinEstimadaContrato: 'La fecha final no puede ser menor a la de inicio' }));
+        return false;
+      }
     } else if (currentStep === 2) {
       const hasEmptyItem = items.some(it => !it.itemId);
       if (hasEmptyItem) {
@@ -357,6 +460,10 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
       saldoPendiente: totalEstimado,
       created_at: fechaRegistro,
       fechaEmision: fechaRegistro,
+      fechaInicio: fechaInicioContrato,
+      fecha_inicio: fechaInicioContrato,
+      fechaFinEstimada: fechaFinEstimadaContrato,
+      fecha_fin_estimada: fechaFinEstimadaContrato,
       estado: estadoDocumento,
       empresa: empresaConfig,
       formatoPapel: 'LETTER' as 'LETTER' | 'A5',
@@ -385,6 +492,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
     const validation = alquilerSchema.safeParse({
       clienteId: String(clienteId),
       fechaRegistro,
+      fechaInicioContrato,
+      fechaFinEstimadaContrato,
       fleteEntrega: Number(fleteEntrega) || 0,
       fleteRecogida: Number(fleteRecogida) || 0,
       deposito: Number(deposito) || 0,
@@ -802,6 +911,44 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
                   {formErrors.fechaRegistro && <span className="text-[11px] text-red-500 font-semibold">{formErrors.fechaRegistro}</span>}
                 </div>
               </div>
+
+              {/* Rango Maestro de Alquiler (Propagación a Ítems) */}
+              <div className="pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-teal-50/50 p-4 rounded-xl border border-teal-100/80">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-teal-950 flex items-center gap-1.5">
+                    <span>📅</span>
+                    <span>Fecha Inicio del Alquiler *</span>
+                  </label>
+                  <input 
+                    type="date" 
+                    value={fechaInicioContrato}
+                    onChange={(e) => handleFechaInicioMasterChange(e.target.value)}
+                    className="px-3.5 py-2.5 bg-white border border-teal-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all font-medium shadow-sm" 
+                  />
+                  {formErrors.fechaInicioContrato && (
+                    <span className="text-[11px] text-red-500 font-semibold">{formErrors.fechaInicioContrato}</span>
+                  )}
+                  <span className="text-[10.5px] text-teal-700">Se asigna automáticamente a cada equipo agregado</span>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-teal-950 flex items-center gap-1.5">
+                    <span>🏁</span>
+                    <span>Fecha Fin Estimada *</span>
+                  </label>
+                  <input 
+                    type="date" 
+                    value={fechaFinEstimadaContrato}
+                    min={fechaInicioContrato}
+                    onChange={(e) => handleFechaFinMasterChange(e.target.value)}
+                    className="px-3.5 py-2.5 bg-white border border-teal-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all font-medium shadow-sm" 
+                  />
+                  {formErrors.fechaFinEstimadaContrato && (
+                    <span className="text-[11px] text-red-500 font-semibold">{formErrors.fechaFinEstimadaContrato}</span>
+                  )}
+                  <span className="text-[10.5px] text-teal-700">Duración base estimada para cálculo de tarifas</span>
+                </div>
+              </div>
             </div>
 
             {/* Garantías y Depósito con Ayuda Verbal */}
@@ -866,8 +1013,14 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
             <div className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4 shadow-sm">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">Maquinaria y Equipos Solicitados</h3>
-                  <p className="text-[11px] text-slate-400">Asigne fechas de inicio y fin estimadas para cada máquina.</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-900">Maquinaria y Equipos Solicitados</h3>
+                    <span className="inline-flex items-center gap-1 text-[10.5px] bg-teal-50 text-teal-800 px-2 py-0.5 rounded-md font-mono border border-teal-200">
+                      <kbd className="bg-white px-1 py-0.2 rounded font-bold shadow-2xs">F2</kbd>
+                      <span>Nueva fila</span>
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Asigne fechas de inicio y fin estimadas para cada máquina.</p>
                 </div>
                 <div className="flex gap-2">
                   <button 
@@ -881,16 +1034,18 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
                     type="button" 
                     onClick={() => { addItemRow(); setTimeout(() => { const el = document.getElementById('items-list-end'); el?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 50); }}
                     className="px-3 py-1.5 bg-teal-600 text-white hover:bg-teal-700 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+                    title="Atajo de teclado: Tecla F2"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Agregar Maquinaria</span>
+                    <span className="hidden sm:inline-block text-[10px] bg-teal-800/30 px-1 py-0.2 rounded font-mono font-normal">F2</span>
                   </button>
                 </div>
               </div>
 
-              {/* Lista de items con scroll interno y botón sticky al fondo */}
+              {/* Lista de items con scroll interno para 10 ítems visibles */}
               <div className="flex flex-col">
-                <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1 pb-1" id="items-scroll-area">
+                <div className="space-y-3 max-h-[600px] sm:max-h-[640px] overflow-y-auto pr-1 pb-8" id="items-scroll-area">
                   {items.map((field, index) => {
                     const start = new Date(field.fechaInicio);
                     const end = new Date(field.fechaFinEstimada);
@@ -898,16 +1053,33 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
                     const subtotalFila = (field.precioDiario || 0) * (field.cantidad || 1) * diasFila;
 
                     return (
-                      <div key={field.id} className="p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200 flex flex-col gap-2">
+                      <div 
+                        key={field.id} 
+                        className="p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200 flex flex-col gap-2 relative"
+                        style={{ zIndex: Math.max(1, 40 - index) }}
+                      >
                         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-                          <div className="flex-1 min-w-[180px] flex flex-col gap-1">
+                          <div className="flex-1 min-w-[220px] flex flex-col gap-1">
                             <label className="text-[11px] font-bold text-slate-600">Equipo *</label>
-                            <select 
+                            <EquipoCombobox
+                              equipos={equiposActivos}
                               value={field.itemId}
-                              onChange={(e) => {
-                                const eqId = e.target.value;
-                                const equipo = equiposActivos.find(eq => String(eq.id) === String(eqId));
-                                const tarifa = equipo ? ((equipo as any).tarifa_diaria ?? equipo.tarifaDiaria ?? 0) : 0;
+                              placeholder="Escriba nombre o código..."
+                              autoFocus={autoFocusRowId === field.id}
+                              onCrearNuevo={() => setIsCreandoEquipo(true)}
+                              onChange={(eqId, equipo) => {
+                                if (!equipo) {
+                                  const newItems = [...items];
+                                  newItems[index] = { 
+                                    ...newItems[index], 
+                                    itemId: '', 
+                                    precioDiario: 0 
+                                  };
+                                  setItems(newItems);
+                                  return;
+                                }
+
+                                const tarifa = equipo.tarifa_diaria ?? equipo.tarifaDiaria ?? 0;
                                 
                                 // Prevención de ítems duplicados visualmente (Mismo equipo, mismas fechas)
                                 const existingIndex = items.findIndex((it, i) => 
@@ -930,20 +1102,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
                                 }
                                 setItems(newItems);
                               }}
-                              className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none"
-                            >
-                              <option value="">Seleccione equipo...</option>
-                              {equiposActivos.map(e => {
-                                const stock = (e as any).stock_disponible ?? e.stockDisponible ?? 0;
-                                const isAvailable = stock > 0;
-                                const stockText = isAvailable ? `(${stock} disp.)` : `(Sin stock)`;
-                                return (
-                                  <option key={e.id} value={String(e.id)} disabled={!isAvailable}>
-                                    {e.nombre} {stockText}
-                                  </option>
-                                );
-                              })}
-                            </select>
+                            />
                           </div>
 
                           <div className="w-28 flex flex-col gap-1">
