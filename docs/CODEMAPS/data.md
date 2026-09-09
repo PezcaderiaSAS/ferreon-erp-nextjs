@@ -1,4 +1,4 @@
-<!-- Generated: 2026-09-09 | Files scanned: ~10 | Token estimate: ~580 -->
+<!-- Generated: 2026-09-09 | Files scanned: ~12 | Token estimate: ~590 -->
 # Data Architecture (Supabase)
 
 ## Tables

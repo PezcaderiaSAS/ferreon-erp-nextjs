@@ -1,29 +1,20 @@
-Reporte de Actualización de Codemaps
-──────────────────────────────
-Fecha: 2026-09-09
-Archivos modificados y creados desde último escaneo: 
-  - src/components/ui/EquipoCombobox.tsx (Nuevo - Buscador typeahead accesible WAI-ARIA 1.2, atajos y colisión de viewport)
-  - src/components/forms/AlquilerForm.tsx (Modificado - Fechas maestras en Paso 1, propagación automática, atajo F2 y 10 ítems visibles)
-  - src/lib/security/csp.ts (Nuevo - Content Security Policy dinámico con Nonces)
-  - src/lib/security/validation.ts (Nuevo - Dual-Layer Zod Validation para APIs y Actions)
-  - src/lib/security/audit-logger.ts (Nuevo - Servicio no bloqueante de auditoría inmutable)
-  - src/app/actions/ultraadmin.ts (Nuevo - Acciones de supervisión multi-tenant para UltraAdmin)
-  - src/app/admin/empresas/page.tsx (Nuevo - Panel de control UltraAdmin)
-  - supabase/migrations/20260908_audit_logs_and_ultraadmin.sql (Nuevo - Migración de auditoría y rol ULTRAADMIN)
+Codemap Analysis Report
+Generated: 2026-09-09
+Scanned Directory: src/, docs/
+==================================================
 
-Cambios Arquitectónicos Detectados:
-  - Asistente de búsqueda rápida de equipos (EquipoCombobox) con normalización NFD de texto (<5ms), navegación por teclado y densidad visual de 10 ítems simultáneos.
-  - Rango maestro de fechas en cabecera de contratos (Paso 1) con corrección reactiva Poka-Yoke y propagación en cascada a todos los renglones de maquinaria.
-  - Atajo global de teclado F2 con transición automática entre pasos y autofocus instantáneo en combobox.
-  - Blindaje perimetral de ciberseguridad: CSP estricto con nonces criptográficos, saneamiento de cabeceras HSTS/XFO y auditoría inmutable en `audit_logs`.
+1. ARCHITECTURE CHANGES:
+- Security Perimeter (CSP 3): Sanitized `src/lib/security/csp.ts` to omit `strict-dynamic` and `nonce` from `script-src` and `script-src-elem`. This prevents W3C CSP2/3 compliant browsers (Apple WebKit, Chromium) from ignoring `unsafe-inline`, enabling unblocked streaming hydration (`self.__next_f.push`) in Next.js 14 App Router.
+- Apple iOS WebKit Compatibility: Injected `worker-src 'self' blob:`, `child-src 'self' blob:`, explicit `script-src-elem`/`style-src-elem`, image blob support, and WebSockets `wss://*.supabase.co`.
+- Boolean Directive Conformity: `upgrade-insecure-requests` strictly delivered as a standalone keyword with no argument value (only in production HTTPS, omitted in local dev).
 
-Acciones:
-  - docs/CODEMAPS/architecture.md: ACTUALIZADO
-  - docs/CODEMAPS/backend.md: ACTUALIZADO
-  - docs/CODEMAPS/frontend.md: ACTUALIZADO
-  - docs/CODEMAPS/data.md: ACTUALIZADO
-  - docs/CODEMAPS/dependencies.md: ACTUALIZADO
-  - docs/CONTRIBUTING.md: SINCRONIZADO
-  - docs/ENV.md: SINCRONIZADO
-  - docs/RUNBOOK.md: SINCRONIZADO
-──────────────────────────────
+2. FRONTEND & UX CHANGES:
+- Dynamic Stacking Context in Modals: Added `openComboboxRowId` in `AlquilerForm.tsx` to elevate the active combobox row to `zIndex: 100` (`border-teal-500 shadow-xl ring-2 ring-teal-500/20 bg-white`). This prevents preceding rows (e.g. Row 0 `zIndex: 40`) from rendering over the active search dropdown.
+- Typeahead Search Ergonomics: Refined `EquipoCombobox.tsx` upward collision threshold to `220px` (lowered from `500px`), making options naturally open downwards under the user's cursor.
+- Visual Polish & 10-Item Density: Solid background `bg-white dark:bg-slate-900 shadow-2xl`, dimensions `min-w-[300px] sm:min-w-[420px]` and `max-h-[340px] sm:max-h-[380px]`, and `pb-36` bottom breathing room in `#items-scroll-area`.
+- React Hook Stabilization: Wrapped `addItemRow` (`AlquilerForm.tsx`), `fetchEquipos` (`bodega/page.tsx`), and `fetchClientes` (`clientes/page.tsx`) in `useCallback` with explicit dependency arrays.
+- Resilient Concurrent Hydration: `fetchAllData` in `alquileres/page.tsx` now uses `Promise.allSettled` to prevent single-endpoint delays from stalling the entire UI.
+
+3. BUILD & DEPENDENCY VERIFICATION:
+- Next.js 14.2.35 `npm run build` exits with code 0 (19/19 routes compiled, 0 errors).
+- Clean Vercel production deployment pipeline.
