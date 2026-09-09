@@ -223,14 +223,14 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
   ]);
 
 
-  const addItemRow = () => {
+  const addItemRow = useCallback(() => {
     const newRowId = `row_${Date.now()}_${Math.random()}`;
     setAutoFocusRowId(newRowId);
     setItems(prev => [
       ...prev,
       { id: newRowId, itemId: '', cantidad: 1, precioDiario: 0, fechaInicio: fechaInicioContrato, fechaFinEstimada: fechaFinEstimadaContrato }
     ]);
-  };
+  }, [fechaInicioContrato, fechaFinEstimadaContrato]);
 
   // Atajo de teclado global F2 para añadir renglón de equipo
   useEffect(() => {
@@ -266,7 +266,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [currentStep, clienteId, isCreandoCliente, isCreandoEquipo, isPreviewModalOpen, isSubmitting, fechaInicioContrato, fechaFinEstimadaContrato]);
+  }, [currentStep, clienteId, isCreandoCliente, isCreandoEquipo, isPreviewModalOpen, isSubmitting, addItemRow]);
 
   const removeItemRow = (index: number) => {
     if (items.length <= 1) return;

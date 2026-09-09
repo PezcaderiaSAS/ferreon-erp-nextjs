@@ -18,7 +18,7 @@ export default function BodegaPage() {
 
   const [isMounted, setIsMounted] = useState(false);
 
-  const fetchEquipos = async () => {
+  const fetchEquipos = React.useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch('/api/equipos', { cache: 'no-store' });
@@ -31,7 +31,7 @@ export default function BodegaPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setEquipos]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -54,7 +54,7 @@ export default function BodegaPage() {
         window.removeEventListener('focus', handleReconcile);
       }
     };
-  }, []);
+  }, [fetchEquipos]);
 
   if (!isMounted) {
     return <div className="p-8 text-center text-slate-500">Cargando inventario...</div>;

@@ -369,6 +369,7 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
         <View style={styles.header} fixed>
           <View style={styles.brandInfoRow}>
             {tieneLogoValido && (
+              /* eslint-disable-next-line jsx-a11y/alt-text */
               <Image 
                 src={config!.logoBase64!} 
                 style={styles.logo} 

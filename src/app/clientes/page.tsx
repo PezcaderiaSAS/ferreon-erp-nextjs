@@ -42,7 +42,7 @@ export default function ClientesPage() {
   const [loading, setLoading] = useState(false);
   const setClientes = useClienteStore((state) => state.setClientes);
 
-  const fetchClientes = async () => {
+  const fetchClientes = React.useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch('/api/clientes', { cache: 'no-store' });
@@ -55,7 +55,7 @@ export default function ClientesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setClientes]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -78,7 +78,7 @@ export default function ClientesPage() {
         window.removeEventListener('focus', handleReconcile);
       }
     };
-  }, []);
+  }, [fetchClientes]);
 
   if (!isMounted) {
     return <div className="p-8 text-center text-slate-500">Cargando directorio de clientes...</div>;
