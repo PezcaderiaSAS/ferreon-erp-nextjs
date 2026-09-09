@@ -12,6 +12,7 @@ export interface EquipoComboboxProps {
   placeholder?: string;
   autoFocus?: boolean;
   onCrearNuevo?: () => void;
+  onOpenChange?: (isOpen: boolean) => void;
   className?: string;
 }
 
@@ -45,6 +46,7 @@ export function EquipoCombobox({
   placeholder = 'Buscar equipo por nombre o código...',
   autoFocus = false,
   onCrearNuevo,
+  onOpenChange,
   className = '',
 }: EquipoComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -58,13 +60,19 @@ export function EquipoCombobox({
   const listRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Detectar espacio en viewport para abrir hacia arriba si es necesario (umbral para 10 ítems)
+  // Notificar al componente padre cuando el desplegable se abre o cierra
+  useEffect(() => {
+    onOpenChange?.(isOpen);
+  }, [isOpen, onOpenChange]);
+
+  // Detectar espacio en viewport para abrir hacia arriba solo cuando abajo es insuficiente
   useEffect(() => {
     if (isOpen && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
-      const threshold = 500;
+      // Umbral ergonómico: abrir hacia arriba solo si abajo hay menos de 220px y arriba hay suficiente espacio
+      const threshold = 220;
       if (spaceBelow < threshold && spaceAbove > spaceBelow) {
         setOpenUpwards(true);
       } else {
@@ -274,13 +282,13 @@ export function EquipoCombobox({
         </div>
       </div>
 
-      {/* Popover / Dropdown con Posicionamiento Absoluto y Glassmorphism */}
+      {/* Popover / Dropdown con Posicionamiento Absoluto y Z-Index Elevado */}
       {isOpen && (
         <div
           ref={listRef}
           id={listboxId}
           role="listbox"
-          className={`absolute z-50 left-0 w-full min-w-[280px] sm:min-w-[340px] max-h-[460px] sm:max-h-[500px] overflow-y-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl divide-y divide-slate-100 dark:divide-slate-800/60 animate-in fade-in duration-150 ${
+          className={`absolute z-[100] left-0 w-full min-w-[300px] sm:min-w-[420px] max-h-[340px] sm:max-h-[380px] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl ring-1 ring-slate-900/10 divide-y divide-slate-100 dark:divide-slate-800/60 animate-in fade-in duration-150 custom-scrollbar ${
             openUpwards ? 'bottom-full mb-1.5 slide-in-from-bottom-2' : 'top-full mt-1.5 slide-in-from-top-2'
           }`}
         >

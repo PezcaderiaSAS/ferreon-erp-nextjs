@@ -86,6 +86,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
   const [isSuccess, setIsSuccess] = useState(false);
   const [savedAlquilerData, setSavedAlquilerData] = useState<any>(null);
   const [autoFocusRowId, setAutoFocusRowId] = useState<string | null>(null);
+  const [openComboboxRowId, setOpenComboboxRowId] = useState<string | null>(null);
 
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -1045,18 +1046,23 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
 
               {/* Lista de items con scroll interno para 10 ítems visibles */}
               <div className="flex flex-col">
-                <div className="space-y-3 max-h-[600px] sm:max-h-[640px] overflow-y-auto pr-1 pb-8" id="items-scroll-area">
+                <div className="space-y-3 max-h-[600px] sm:max-h-[640px] overflow-y-auto pr-1 pb-36" id="items-scroll-area">
                   {items.map((field, index) => {
                     const start = new Date(field.fechaInicio);
                     const end = new Date(field.fechaFinEstimada);
                     const diasFila = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
                     const subtotalFila = (field.precioDiario || 0) * (field.cantidad || 1) * diasFila;
+                    const isComboboxOpen = openComboboxRowId === field.id;
 
                     return (
                       <div 
                         key={field.id} 
-                        className="p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200 flex flex-col gap-2 relative"
-                        style={{ zIndex: Math.max(1, 40 - index) }}
+                        className={`p-3.5 rounded-2xl border transition-all ${
+                          isComboboxOpen 
+                            ? 'bg-white border-teal-500 shadow-xl ring-2 ring-teal-500/20' 
+                            : 'bg-slate-50/90 border-slate-200'
+                        } flex flex-col gap-2 relative`}
+                        style={{ zIndex: isComboboxOpen ? 100 : Math.max(1, 40 - index) }}
                       >
                         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
                           <div className="flex-1 min-w-[220px] flex flex-col gap-1">
@@ -1067,6 +1073,9 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
                               placeholder="Escriba nombre o código..."
                               autoFocus={autoFocusRowId === field.id}
                               onCrearNuevo={() => setIsCreandoEquipo(true)}
+                              onOpenChange={(isOpen) => {
+                                setOpenComboboxRowId(isOpen ? field.id : null);
+                              }}
                               onChange={(eqId, equipo) => {
                                 if (!equipo) {
                                   const newItems = [...items];
