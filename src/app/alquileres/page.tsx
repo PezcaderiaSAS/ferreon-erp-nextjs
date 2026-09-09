@@ -96,24 +96,20 @@ export default function AlquileresPage() {
   const fetchAllData = useCallback(async () => {
     try {
       setLoading(true);
-      const [resAlq, resCli, resEq] = await Promise.all([
-        fetch('/api/alquileres', { cache: 'no-store' }),
-        fetch('/api/clientes', { cache: 'no-store' }),
-        fetch('/api/equipos', { cache: 'no-store' })
+      const [alqResult, cliResult, eqResult] = await Promise.allSettled([
+        fetch('/api/alquileres', { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch('/api/clientes', { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch('/api/equipos', { cache: 'no-store' }).then(r => r.ok ? r.json() : null)
       ]);
-      const [jsonAlq, jsonCli, jsonEq] = await Promise.all([
-        resAlq.json(),
-        resCli.json(),
-        resEq.json()
-      ]);
-      if (jsonAlq.success && Array.isArray(jsonAlq.data)) {
-        setAlquileres(jsonAlq.data.map(alquilerEntityToAlquilerUI));
+
+      if (alqResult.status === 'fulfilled' && alqResult.value?.success && Array.isArray(alqResult.value.data)) {
+        setAlquileres(alqResult.value.data.map(alquilerEntityToAlquilerUI));
       }
-      if (jsonCli.success && Array.isArray(jsonCli.data)) {
-        useClienteStore.getState().setClientes(jsonCli.data);
+      if (cliResult.status === 'fulfilled' && cliResult.value?.success && Array.isArray(cliResult.value.data)) {
+        useClienteStore.getState().setClientes(cliResult.value.data);
       }
-      if (jsonEq.success && Array.isArray(jsonEq.data)) {
-        useBodegaStore.getState().setEquipos(jsonEq.data.map(equipoToEquipoUI));
+      if (eqResult.status === 'fulfilled' && eqResult.value?.success && Array.isArray(eqResult.value.data)) {
+        useBodegaStore.getState().setEquipos(eqResult.value.data.map(equipoToEquipoUI));
       }
     } catch (e) {
       console.warn('[AlquileresPage] Error cargando catálogos desde DB:', e);
