@@ -20,43 +20,52 @@ export function generateNonce(): string {
 }
 
 export function buildCspHeader(nonce: string, isDev: boolean = false): string {
-  // En desarrollo permitimos 'unsafe-eval' exclusivamente para el Hot Module Replacement (HMR) de Next.js
-  const scriptSrcDirectives = isDev
-    ? `'self' 'unsafe-eval' 'nonce-${nonce}' 'strict-dynamic' https://js.stripe.com`
-    : `'self' 'nonce-${nonce}' 'strict-dynamic' https://js.stripe.com`;
+  // Directivas de script seguras y 100% compatibles con Next.js 14 App Router y Vercel
+  // Se elimina 'strict-dynamic' porque invalida 'unsafe-inline' y los host allowlists en CSP 3,
+  // bloqueando los scripts de hidratación en línea de Next.js (self.__next_f.push) y deteniendo React.
+  const scriptSrcDirectives = [
+    "'self'",
+    "'unsafe-inline'",
+    "'unsafe-eval'",
+    `'nonce-${nonce}'`,
+    'https://js.stripe.com',
+    'https://*.supabase.co',
+    'https://vercel.live',
+  ].join(' ');
 
-  const directives: Record<string, string> = {
-    'default-src': "'self'",
-    'script-src': scriptSrcDirectives,
-    // Permite estilos en línea necesarios para Tailwind, animaciones GPU y tooltips dinámicos
-    'style-src': "'self' 'unsafe-inline' https://fonts.googleapis.com",
-    'font-src': "'self' https://fonts.gstatic.com data:",
-    'img-src': "'self' data: blob: https://*.supabase.co https://images.unsplash.com",
-    // Dominios autorizados para APIs, WebSockets de Supabase, Stripe y pasarelas de pago
-    'connect-src': [
-      "'self'",
-      'https://*.supabase.co',
-      'wss://*.supabase.co',
-      'https://api.stripe.com',
-      'https://*.upstash.io',
-      'https://*.wompi.co',
-      'https://*.bold.co',
-      isDev ? 'ws://localhost:* http://localhost:*' : '',
-    ]
-      .filter(Boolean)
-      .join(' '),
-    'frame-src': "'self' https://js.stripe.com https://hooks.stripe.com",
-    'frame-ancestors': "'none'",
-    'base-uri': "'self'",
-    'form-action': "'self'",
-    'object-src': "'none'",
-    'upgrade-insecure-requests': isDev ? '' : 'upgrade-insecure-requests',
-  };
-
-  return Object.entries(directives)
-    .filter(([_, value]) => value && value.trim().length > 0)
-    .map(([key, value]) => `${key} ${value.trim()};`)
+  const connectSrcDirectives = [
+    "'self'",
+    'https://*.supabase.co',
+    'wss://*.supabase.co',
+    'https://api.stripe.com',
+    'https://*.upstash.io',
+    'https://*.wompi.co',
+    'https://*.bold.co',
+    'https://vercel.live',
+    isDev ? 'ws://localhost:* http://localhost:* ws://127.0.0.1:* http://127.0.0.1:*' : '',
+  ]
+    .filter(Boolean)
     .join(' ');
+
+  const directives: string[] = [
+    "default-src 'self'",
+    `script-src ${scriptSrcDirectives}`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://vercel.com",
+    `connect-src ${connectSrcDirectives}`,
+    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://vercel.live",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ];
+
+  if (!isDev) {
+    directives.push("upgrade-insecure-requests");
+  }
+
+  return directives.join('; ');
 }
 
 /**
