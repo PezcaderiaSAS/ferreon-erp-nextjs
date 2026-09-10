@@ -26,6 +26,7 @@ export function equipoToEquipoUI(equipo: any): EquipoUI {
     nombre: equipo.nombre,
     categoria: equipo.categoria,
     tarifa_diaria: equipo.tarifaDiaria ?? equipo.tarifa_diaria ?? 0,
+    valor_reposicion: equipo.valorReposicion ?? equipo.valor_reposicion ?? 0,
     stock_total: equipo.stockTotal ?? equipo.stock_total ?? 0,
     stock_disponible: equipo.stockDisponible ?? equipo.stock_disponible ?? 0,
     stock_en_obra: equipo.stockEnObra ?? equipo.stock_en_obra ?? 0,
@@ -34,6 +35,7 @@ export function equipoToEquipoUI(equipo: any): EquipoUI {
     // Retrocompatibilidad camelCase
     sku: equipo.sku ?? equipo.codigo,
     tarifaDiaria: equipo.tarifaDiaria ?? equipo.tarifa_diaria ?? 0,
+    valorReposicion: equipo.valorReposicion ?? equipo.valor_reposicion ?? 0,
     stockTotal: equipo.stockTotal ?? equipo.stock_total ?? 0,
     stockDisponible: equipo.stockDisponible ?? equipo.stock_disponible ?? 0,
     stockEnObra: equipo.stockEnObra ?? equipo.stock_en_obra ?? 0,
@@ -65,19 +67,19 @@ export function equipoUIToEquipo(ui: EquipoUI): Equipo {
 /**
  * Convierte un Cliente (dominio/Supabase) → ClienteUI (Zustand store).
  */
-export function clienteToClienteUI(cliente: Cliente): ClienteUI {
+export function clienteToClienteUI(cliente: any): ClienteUI {
   return {
     id: cliente.id,
-    nit_cedula: cliente.nit ?? '',
-    nombre: cliente.nombre,
-    telefono: cliente.contacto ?? '',
+    nit_cedula: cliente.nit_cedula ?? cliente.nit ?? '',
+    nombre: cliente.nombre || '',
+    telefono: cliente.telefono ?? cliente.contacto ?? '',
     email: cliente.email ?? '',
     direccion: cliente.direccion ?? '',
-    estado: 'Activo',
-    created_at: cliente.creado_en ? new Date(cliente.creado_en).toISOString() : new Date().toISOString(),
+    estado: cliente.estado || 'Activo',
+    created_at: (cliente.creado_en || cliente.created_at) ? new Date(cliente.creado_en || cliente.created_at).toISOString() : new Date().toISOString(),
     // Retrocompatibilidad
-    nit: cliente.nit,
-    contacto: cliente.contacto,
+    nit: cliente.nit_cedula ?? cliente.nit ?? '',
+    contacto: cliente.telefono ?? cliente.contacto ?? '',
     nivel_riesgo: cliente.nivel_riesgo,
   };
 }

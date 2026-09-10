@@ -20,22 +20,22 @@ export interface CrearClienteInput {
 const CrearClienteZodSchema = z.object({
   nit_cedula: z.string().min(3, 'El NIT o Cédula debe contener al menos 3 caracteres'),
   nombre: z.string().min(2, 'El nombre o razón social debe contener al menos 2 caracteres'),
-  telefono: z.string().optional(),
-  email: z.string().email('Formato de correo electrónico inválido').optional().or(z.literal('')),
-  direccion: z.string().optional(),
-  nivel_riesgo: z.string().optional(),
-  idempotency_key: z.string().optional(),
-});
+  telefono: z.string().optional().nullable(),
+  email: z.string().email('Formato de correo electrónico inválido').optional().nullable().or(z.literal('')),
+  direccion: z.string().optional().nullable(),
+  nivel_riesgo: z.string().optional().nullable(),
+  idempotency_key: z.string().optional().nullable(),
+}).passthrough();
 
 const EditarClienteZodSchema = z.object({
   id: z.union([z.string(), z.number()]),
-  nit_cedula: z.string().min(3).optional(),
+  nit_cedula: z.string().min(3).optional().nullable(),
   nombre: z.string().min(2, 'El nombre o razón social debe contener al menos 2 caracteres'),
-  telefono: z.string().optional(),
-  email: z.string().email('Formato de correo electrónico inválido').optional().or(z.literal('')),
-  direccion: z.string().optional(),
-  estado: z.enum(['Activo', 'Inactivo']).optional(),
-});
+  telefono: z.string().optional().nullable(),
+  email: z.string().email('Formato de correo electrónico inválido').optional().nullable().or(z.literal('')),
+  direccion: z.string().optional().nullable(),
+  estado: z.string().optional().nullable(),
+}).passthrough();
 
 export async function crearClienteAction(input: CrearClienteInput) {
   const validation = validateActionInput(input, CrearClienteZodSchema);

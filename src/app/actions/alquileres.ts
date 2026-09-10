@@ -128,14 +128,14 @@ const EditarAlquilerZodSchema = z.object({
 
 const DevolucionItemZodSchema = z.object({
   detalleId: z.union([z.string(), z.number()]),
-  cantidadDevuelta: z.number().int().min(1, 'La cantidad devuelta debe ser al menos 1'),
-  costoDano: z.number().min(0).optional(),
-});
+  cantidadDevuelta: z.coerce.number().int().min(1, 'La cantidad devuelta debe ser al menos 1'),
+  costoDano: z.coerce.number().min(0).optional().nullable(),
+}).passthrough();
 
 const ProcesarDevolucionZodSchema = z.object({
   alquilerId: z.union([z.string(), z.number()]),
   devoluciones: z.array(DevolucionItemZodSchema).min(1, 'Debe procesar al menos una devolución'),
-});
+}).passthrough();
 
 export interface RegistrarAbonoInput {
   alquilerId: string | number;

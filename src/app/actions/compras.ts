@@ -38,27 +38,27 @@ export interface CrearCompraInput {
 
 const ItemCompraZodSchema = z.object({
   equipoId: z.union([z.string(), z.number()]),
-  cantidad: z.number().int().min(1, 'La cantidad debe ser al menos 1 unidad'),
-  precioUnitario: z.number().min(0, 'El precio unitario no puede ser negativo'),
-});
+  cantidad: z.coerce.number().int().min(1, 'La cantidad debe ser al menos 1 unidad'),
+  precioUnitario: z.coerce.number().min(0, 'El precio unitario no puede ser negativo'),
+}).passthrough();
 
 const CrearCompraZodSchema = z.object({
-  numeroOrden: z.string().optional(),
-  proveedorId: z.string().optional(),
+  numeroOrden: z.string().optional().nullable(),
+  proveedorId: z.string().optional().nullable(),
   proveedorNombre: z.string().min(2, 'El nombre del proveedor es obligatorio'),
-  proveedorNit: z.string().optional(),
-  proveedorTelefono: z.string().optional(),
-  proveedorEmail: z.string().email('Email de proveedor inválido').optional().or(z.literal('')),
-  fechaCompra: z.string().optional(),
+  proveedorNit: z.string().optional().nullable(),
+  proveedorTelefono: z.string().optional().nullable(),
+  proveedorEmail: z.string().email('Email de proveedor inválido').optional().nullable().or(z.literal('')),
+  fechaCompra: z.string().optional().nullable(),
   metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'CREDITO']),
-  observaciones: z.string().optional(),
+  observaciones: z.string().optional().nullable(),
   aplicaIva: z.boolean().optional().default(false),
   aplicaRetefuente: z.boolean().optional().default(false),
-  porcentajeRetefuente: z.number().min(0).optional().default(0),
+  porcentajeRetefuente: z.coerce.number().min(0).optional().default(0),
   aplicaReteica: z.boolean().optional().default(false),
-  porcentajeReteica: z.number().min(0).optional().default(0),
+  porcentajeReteica: z.coerce.number().min(0).optional().default(0),
   items: z.array(ItemCompraZodSchema).min(1, 'Debe incluir al menos un equipo en la compra'),
-});
+}).passthrough();
 
 export interface CompraDetalleUI {
   id: string;

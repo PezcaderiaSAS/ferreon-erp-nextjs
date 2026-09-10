@@ -46,35 +46,35 @@ export interface ConvertirCotizacionInput {
 
 const CotizacionItemZodSchema = z.object({
   equipoId: z.union([z.string(), z.number()]),
-  nombre: z.string().optional(),
-  cantidad: z.number().int().min(1, 'La cantidad debe ser al menos 1'),
-  dias: z.number().int().min(1, 'La duración debe ser de al menos 1 día'),
-  tarifaDiaria: z.number().min(0, 'La tarifa diaria debe ser mayor o igual a cero'),
-});
+  nombre: z.string().optional().nullable(),
+  cantidad: z.coerce.number().int().min(1, 'La cantidad debe ser al menos 1'),
+  dias: z.coerce.number().int().min(1, 'La duración debe ser de al menos 1 día'),
+  tarifaDiaria: z.coerce.number().min(0, 'La tarifa diaria debe ser mayor o igual a cero'),
+}).passthrough();
 
 const CrearCotizacionZodSchema = z.object({
   clienteId: z.union([z.string(), z.number()]).nullable().optional(),
   clienteNombre: z.string().min(2, 'El nombre del cliente o razón social es obligatorio'),
-  clienteDocumento: z.string().optional(),
-  clienteTelefono: z.string().optional(),
-  clienteEmail: z.string().email('Email inválido').optional().or(z.literal('')),
-  fechaEmision: z.string().optional(),
-  fechaVencimiento: z.string().optional(),
-  obraNombre: z.string().optional(),
-  obraDireccion: z.string().optional(),
+  clienteDocumento: z.string().optional().nullable(),
+  clienteTelefono: z.string().optional().nullable(),
+  clienteEmail: z.string().email('Email inválido').optional().nullable().or(z.literal('')),
+  fechaEmision: z.string().optional().nullable(),
+  fechaVencimiento: z.string().optional().nullable(),
+  obraNombre: z.string().optional().nullable(),
+  obraDireccion: z.string().optional().nullable(),
 
   aplicaIva: z.boolean().default(true),
-  tasaIva: z.number().min(0).default(19.0),
+  tasaIva: z.coerce.number().min(0).default(19.0),
   aplicaRetefuente: z.boolean().default(false),
-  tasaRetefuente: z.number().min(0).default(2.5),
+  tasaRetefuente: z.coerce.number().min(0).default(2.5),
   aplicaReteica: z.boolean().default(false),
-  tasaReteica: z.number().min(0).default(0.966),
+  tasaReteica: z.coerce.number().min(0).default(0.966),
 
-  valorTransporte: z.number().min(0).default(0),
-  depositoGarantia: z.number().min(0).default(0),
-  observaciones: z.string().optional(),
+  valorTransporte: z.coerce.number().min(0).default(0),
+  depositoGarantia: z.coerce.number().min(0).default(0),
+  observaciones: z.string().optional().nullable(),
   items: z.array(CotizacionItemZodSchema).min(1, 'Debe incluir al menos un equipo en la cotización'),
-});
+}).passthrough();
 
 /**
  * Genera un código consecutivo amigable y correlativo único (ej: COT-1001)

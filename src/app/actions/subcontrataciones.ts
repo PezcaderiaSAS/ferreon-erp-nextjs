@@ -30,27 +30,27 @@ export interface CrearSubcontratacionInput {
 }
 
 const SubcontratacionItemZodSchema = z.object({
-  equipoId: z.union([z.string(), z.number()]).optional(),
+  equipoId: z.union([z.string(), z.number()]).optional().nullable(),
   descripcionItem: z.string().min(2, 'La descripción del ítem es requerida'),
-  cantidad: z.number().int().min(1, 'La cantidad debe ser al menos 1'),
-  diasPactados: z.number().int().min(1, 'Los días pactados deben ser al menos 1'),
-  costoDiarioUnitario: z.number().min(0, 'El costo diario no puede ser negativo'),
-  tarifaDiariaCliente: z.number().min(0).optional().default(0),
-  alquilerDetalleId: z.union([z.string(), z.number()]).optional(),
-});
+  cantidad: z.coerce.number().int().min(1, 'La cantidad debe ser al menos 1'),
+  diasPactados: z.coerce.number().int().min(1, 'Los días pactados deben ser al menos 1'),
+  costoDiarioUnitario: z.coerce.number().min(0, 'El costo diario no puede ser negativo'),
+  tarifaDiariaCliente: z.coerce.number().min(0).optional().default(0),
+  alquilerDetalleId: z.union([z.string(), z.number()]).optional().nullable(),
+}).passthrough();
 
 const CrearSubcontratacionZodSchema = z.object({
   proveedorId: z.string().min(1, 'Debe seleccionar un proveedor aliado'),
   proveedorNombre: z.string().min(2, 'El nombre del proveedor es requerido'),
   proveedorNit: z.string().min(3, 'El NIT del proveedor es requerido'),
-  proveedorTelefono: z.string().optional(),
+  proveedorTelefono: z.string().optional().nullable(),
   fechaRecepcionEstimada: z.string().min(1, 'La fecha estimada de recepción es requerida'),
   fechaDevolucionEstimada: z.string().min(1, 'La fecha estimada de devolución es requerida'),
-  alquilerId: z.union([z.string(), z.number()]).optional(),
-  depositoGarantiaProveedor: z.number().min(0).optional().default(0),
-  observaciones: z.string().optional(),
+  alquilerId: z.union([z.string(), z.number()]).optional().nullable(),
+  depositoGarantiaProveedor: z.coerce.number().min(0).optional().default(0),
+  observaciones: z.string().optional().nullable(),
   items: z.array(SubcontratacionItemZodSchema).min(1, 'Debe incluir al menos un equipo en la orden de subcontratación'),
-});
+}).passthrough();
 
 const CambiarEstadoSubcontratacionZodSchema = z.object({
   subcontratacionId: z.string().min(1, 'ID de subcontratación requerido'),

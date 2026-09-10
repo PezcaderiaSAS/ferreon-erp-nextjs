@@ -17,6 +17,7 @@ export interface EquipoUI {
   // Campos por retrocompatibilidad
   sku?: string;
   tarifaDiaria?: number;
+  valorReposicion?: number;
   stockTotal?: number;
   stockDisponible?: number;
   stockEnObra?: number;

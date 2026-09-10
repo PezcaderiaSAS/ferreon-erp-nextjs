@@ -39,18 +39,18 @@ export interface CrearProveedorInput {
 const CrearProveedorZodSchema = z.object({
   nombre: z.string().min(2, 'La razón social o nombre del proveedor debe tener al menos 2 caracteres'),
   nit: z.string().min(3, 'El NIT o documento debe tener al menos 3 caracteres'),
-  contacto: z.string().optional(),
-  telefono: z.string().optional(),
-  email: z.string().email('Correo electrónico inválido').optional().or(z.literal('')),
-  direccion: z.string().optional(),
-  ciudad: z.string().optional(),
-  diasCredito: z.number().int().min(0, 'Los días de crédito no pueden ser negativos').default(0),
-  observaciones: z.string().optional()
-});
+  contacto: z.string().optional().nullable(),
+  telefono: z.string().optional().nullable(),
+  email: z.string().email('Correo electrónico inválido').optional().nullable().or(z.literal('')),
+  direccion: z.string().optional().nullable(),
+  ciudad: z.string().optional().nullable(),
+  diasCredito: z.coerce.number().int().min(0, 'Los días de crédito no pueden ser negativos').default(0),
+  observaciones: z.string().optional().nullable()
+}).passthrough();
 
 const ActualizarProveedorZodSchema = CrearProveedorZodSchema.partial().extend({
-  estado: z.enum(['ACTIVO', 'INACTIVO']).optional()
-});
+  estado: z.string().optional()
+}).passthrough();
 
 // Semillas iniciales por si la tabla en Supabase está en proceso de creación
 const PROVEEDORES_INICIALES: ProveedorUI[] = [
