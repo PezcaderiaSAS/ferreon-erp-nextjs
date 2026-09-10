@@ -1,0 +1,21 @@
+Codemap Update Summary - 2026-09-10
+====================================
+Files Scanned: ~55
+Architecture Changes:
+  - Added Purchases & Suppliers Subsystem (/compras, /cotizaciones)
+  - Added Real-time Tax Engine (IVA 19%, ReteFuente 2.5%/3.5%, ReteICA 9.66‰)
+  - Integrated Balanced Double-Entry Bookkeeping in Ledger (journal_entries)
+  - Injected Financial Accounts (1520, 2408, 2365, 2368, 2205)
+  - Added Assisted Supplier Typeahead (SelectorProveedorAsistido.tsx)
+  - Integrated Official PDF Purchase Order Generator (ComprobanteEntradaPDFModal.tsx)
+
+Updated Codemaps:
+  - docs/CODEMAPS/architecture.md: Updated with purchases, suppliers, and accounting ledger boundaries.
+  - docs/CODEMAPS/backend.md: Added actions/proveedores.ts, actions/compras.ts, actions/cotizaciones.ts, actions/facturacion.ts.
+  - docs/CODEMAPS/frontend.md: Added /compras (tabs: orders/suppliers), /cotizaciones, assisted selector, and PDF modals.
+  - docs/CODEMAPS/data.md: Added proveedores, compras, compras_detalles, cotizaciones, and new financial_accounts.
+  - docs/CODEMAPS/dependencies.md: Added Upstash Redis keys for purchases/suppliers and tax domain services.
+
+Diff Percentage: ~22% (Updated in-place according to workflow policy)
+Production Build Status: 22/22 routes passing clean (Exit code 0).
+Unit Tests Status: 26 files passed, 94 tests passed (100% green).

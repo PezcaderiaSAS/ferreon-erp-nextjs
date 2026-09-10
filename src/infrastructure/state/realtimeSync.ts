@@ -3,6 +3,7 @@ import { supabaseClient } from '../persistence/supabase/client';
 import { useBodegaStore } from './bodegaStore';
 import { useAlquilerStore } from './alquilerStore';
 import { useClienteStore } from './clienteStore';
+import { useToastStore } from './toastStore';
 import { EquipoUI } from './bodegaStore';
 import { AlquilerUI } from './alquilerStore';
 import { ClienteUI } from './clienteStore';
@@ -51,6 +52,9 @@ export function setupRealtimeSubscriptions() {
             bodegaState.agregarEquipo(equipo);
           }
         } else if (eventType === 'UPDATE' && newRecord) {
+          const previous = bodegaState.equipos.find((e) => String(e.id) === String(newRecord.id));
+          const stockAnterior = previous ? (previous.stock_disponible ?? previous.stockDisponible) : undefined;
+
           const updatedEquipo: EquipoUI = {
             id: newRecord.id,
             codigo: newRecord.sku || newRecord.codigo || 'EQ-UP',
@@ -69,11 +73,25 @@ export function setupRealtimeSubscriptions() {
             created_at: newRecord.created_at || new Date().toISOString(),
           };
           bodegaState.updateEquipo(updatedEquipo);
+
+          // Notificación toast sutil de actualización de stock
+          const nuevoStockDisp = updatedEquipo.stock_disponible;
+          if (stockAnterior !== undefined && stockAnterior !== nuevoStockDisp) {
+            const delta = nuevoStockDisp - stockAnterior;
+            const deltaLabel = delta > 0 ? `+${delta}` : `${delta}`;
+            useToastStore.getState().addToast({
+              type: 'info',
+              title: 'Stock Sincronizado',
+              message: `"${updatedEquipo.nombre}": ${nuevoStockDisp} unidades disponibles (${deltaLabel})`,
+              duration: 4000,
+            });
+          }
         } else if (eventType === 'DELETE' && oldRecord) {
           bodegaState.setEquipos(bodegaState.equipos.filter((e) => e.id !== oldRecord.id));
         }
       }
     )
+
     .on(
       'postgres_changes',
       {

@@ -1,36 +1,63 @@
 # Runbook Operativo - FerreOn ERP
 
 ## Procedimientos de Despliegue
-1. **Verificación de Tipos y Tests:** Asegurarse de que `npm run typecheck` y `npm run test` pasen exitosamente.
-2. **Compilación de Producción:** Ejecutar `npm run build` para validar que las 19 rutas y el middleware compilen con código 0.
+1. **Verificación de Tipos y Tests:** Asegurarse de que `npm run typecheck` reporte 0 errores y `npm run test` apruebe las 26 suites de pruebas unitarias (94 tests).
+2. **Compilación de Producción:** Ejecutar `npm run build` para validar que las 22 rutas estáticas/dinámicas y el middleware de seguridad compilen con código 0.
 3. **Migración de Base de Datos (Supabase):**
-   Cualquier script SQL nuevo (ej. tablas `kardex_inventario`, `sesiones_caja`) debe empujarse al entorno de producción:
-   `supabase db push` o ejecutar el SQL manualmente en el SQL Editor de Supabase.
-4. **Build Vercel:** Al hacer push a la rama `main`, Vercel despliega automáticamente mediante CI/CD.
+   Las migraciones deben ejecutarse en orden cronológico en el SQL Editor del dashboard de Supabase o mediante CLI:
+   - `supabase/migrations/20260910_cotizaciones_y_facturas_pdf.sql` (Cotizaciones de obra, columnas tributarias y facturas).
+   - `supabase/migrations/20260910_modulo_compras_y_asientos_contables.sql` (Estructura base de órdenes de compra y detalles).
+   - `supabase/migrations/20260910_proveedores_y_retenciones_compras.sql` (Catálogo maestro de proveedores, retenciones comerciales y cuentas contables auxiliares).
+4. **Despliegue Continuo (CI/CD):** Al hacer push o merge a la rama `main`, Vercel ejecuta la compilación y despliegue a los edge networks automáticamente.
 
-## Mantenimiento y Poka-Yoke Operativo
-- **Cierre de Caja Forzado:** Si un cajero olvidó cerrar sesión y se fue, un admin debe poder forzar el estado a `CERRADA` directamente en Supabase o a través de una UI de SuperAdmin, para evitar bloqueos al día siguiente.
-- **Sincronización de Identidad Corporativa y Caché:** Al actualizar el logo o datos de la empresa desde `/configuracion`, la acción invalida automáticamente la clave de caché del tenant en Upstash Redis (`invalidateTenantCache(tenantId, ['empresa', 'alquileres'])`). Si los documentos emitidos muestran datos antiguos tras un fallo de red, limpiar la clave `tenant:{id}:empresa` en Upstash Redis.
-- **Resolución de Bloqueos en Edición de Contratos:** Si un contrato tiene devoluciones procesadas o se encuentra `FINALIZADO` o `CANCELADO`, el sistema inhabilita su edición en la interfaz para proteger la integridad del Kardex y la facturación. Cualquier ajuste posterior debe registrarse como nuevo movimiento o documento contable.
-- **Auditoría y Supervisión UltraAdmin:** El panel administrativo en `/admin/empresas` permite a los usuarios autorizados con rol `ULTRAADMIN` (evaluado por la función SQL `is_ultra_admin()`) auditar eventos inmutables en `audit_logs`, inspeccionar tenants y activar/suspender accesos de usuarios de manera centralizada.
+---
+
+## Mantenimiento y Operaciones Críticas
+
+### 1. Gestión del Ledger Contable y Cuentas Financieras
+- Si una orden de compra o factura presenta fallos de asiento en `journal_entries`, verificar que las cuentas maestras existan en `financial_accounts`:
+  - `1520 - Equipos y Maquinaria` (ASSET)
+  - `2408 - IVA Descontable en Compras` (ASSET / Pasivo fiscal)
+  - `2365 - ReteFuente por Pagar (Compras)` (LIABILITY)
+  - `2368 - ReteICA por Pagar (Compras)` (LIABILITY)
+  - `2205 - Cuentas por Pagar (Proveedores)` (LIABILITY)
+  - `1105 - Caja Principal` (ASSET)
+  - `1110 - Bancolombia Ahorros` (ASSET)
+- La función de liquidación (`calculo-compras-tributario.ts`) rechaza automáticamente transacciones descuadradas ($\sum D \neq \sum C$) para blindar la contabilidad de la empresa.
+
+### 2. Caché Distribuida y Resiliencia (Upstash Redis)
+- **Invalidación Atómica:** Al registrar una compra o proveedor, las Server Actions invalidan automáticamente las claves `compras:${tenantId}`, `proveedores:${tenantId}` y `cache:equipos`.
+- **Modo Resiliente:** Si la base de datos de Supabase no tiene creadas físicamente las tablas nuevas en un entorno local, el sistema mantiene persistencia y lectura fluida a través de Upstash Redis, evitando caídas del servicio para los operadores.
+
+### 3. Emisión de Documentos PDF y Formatos de Impresión
+- **Órdenes de Compra y Entradas:** El componente `ComprobanteEntradaPDFModal.tsx` genera el documento corporativo optimizado para impresión térmica o formato Carta/A4 mediante estilos `@media print`.
+- **Facturas y Cotizaciones:** El componente `VisorDocumentoPDFModal.tsx` permite previsualizar y descargar documentos fiscales con desglose de IVA (19%) y retenciones comerciales.
+
+### 4. Supervisión y Seguridad UltraAdmin
+- El panel `/admin/empresas` permite a los usuarios con rol `ULTRAADMIN` (evaluado con `public.is_ultra_admin()`) auditar eventos inmutables en `audit_logs`, suspender usuarios o cambiar membresías de tenants de forma centralizada.
+
+---
 
 ## Troubleshooting Común
+
 - **Caché de Cabeceras de Seguridad (CSP):**
-  - *Síntoma:* La consola arroja bloqueos de scripts en línea o advertencias sobre `upgrade-insecure-requests`.
-  - *Causa:* El navegador o CDN retiene la versión anterior de la cabecera CSP en caché HTTP.
-  - *Solución:* Aplicar recarga forzada (`Ctrl + F5` en Windows/Linux, `Cmd + Shift + R` en Mac/iOS) o limpiar historial de Safari en iOS. En `src/lib/security/csp.ts`, verificar que `script-src` mantenga `'unsafe-inline'` y no contenga `nonce` ni `strict-dynamic`.
-- **Apilamiento de Menús en Modales:**
-  - *Síntoma:* Un desplegable de búsqueda se muestra cortado o tapado por la fila de arriba.
-  - *Causa:* Contexto de apilamiento CSS fijo donde la fila anterior tiene mayor `z-index`.
-  - *Solución:* El formulario de alquileres usa `openComboboxRowId` para elevar la fila en uso a `zIndex: 100` y `EquipoCombobox` usa un umbral de colisión de 220px para abrir hacia abajo.
+  - *Síntoma:* Consola arroja bloqueos de scripts o advertencias sobre `upgrade-insecure-requests`.
+  - *Solución:* Recarga forzada (`Ctrl + F5` o `Cmd + Shift + R`). Verificar que `src/lib/security/csp.ts` mantenga `'unsafe-inline'` para Next.js streaming hydration.
+- **Apilamiento de Desplegables en Grillas:**
+  - *Síntoma:* Un popover o combobox se renderiza por debajo de la fila siguiente.
+  - *Solución:* La grilla utiliza elevación dinámica `zIndex: 100` en la fila activa y umbral de colisión de 220px para abrir hacia abajo de forma ergonómica.
+
+---
 
 <!-- AUTO-GENERATED: Variables de Entorno -->
 ## Variables de Entorno Requeridas
-| Variable | Descripción |
-|----------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto Supabase (Requerido) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Llave anónima pública de Supabase (Requerido) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Llave secreta para operaciones administrativas/bypassing RLS (Requerido) |
-| `STRIPE_SECRET_KEY` | Llave privada de Stripe (Requerido para pagos) |
-| `UPSTASH_REDIS_REST_URL` | URL de la caché Redis (Requerido) |
+| Variable | Requerido | Descripción |
+|----------|:---------:|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Sí | URL del proyecto Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sí | Llave anónima pública de Supabase |
+| `SUPABASE_SECRET_KEY` | Sí | Clave de servidor para SDK `@supabase/server` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Sí | Clave service_role para operaciones administrativas/bypass RLS |
+| `UPSTASH_REDIS_REST_URL` | Sí | Endpoint REST de Upstash Redis |
+| `UPSTASH_REDIS_REST_TOKEN` | Sí | Token de autenticación de Upstash Redis |
+| `STRIPE_SECRET_KEY` | No | Llave privada de Stripe para facturación SaaS |
 <!-- AUTO-GENERATED END -->

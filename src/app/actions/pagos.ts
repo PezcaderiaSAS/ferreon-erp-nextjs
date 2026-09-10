@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerSupabaseClient } from '../../infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient, createAdminSupabaseClient } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { validateActionInput } from '@/lib/security/validation';
@@ -84,6 +84,25 @@ export async function registrarPagoAction(input: RegistrarPagoInput) {
     sesionCajaId = sesionCaja.id;
   }
 
+  const supabaseAdmin = createAdminSupabaseClient();
+
+  // Consultar datos actuales del alquiler para calcular saldos y consecutivos
+  let alqActual: any = null;
+  try {
+    const { data: alq } = await supabaseAdmin
+      .from('alquileres')
+      .select('id, consecutivo, total, total_pagado, saldo_pendiente, cliente_id, clientes (nombre, documento, telefono)')
+      .eq('id', numericAlquilerId)
+      .single();
+    alqActual = alq;
+  } catch (e) {
+    console.warn('[Pagos] Error al consultar datos del alquiler:', e);
+  }
+
+  const saldoAnterior = alqActual?.saldo_pendiente ?? (alqActual ? (alqActual.total - (alqActual.total_pagado || 0)) : cleanInput.monto);
+  const nuevoTotalPagado = (alqActual?.total_pagado || 0) + cleanInput.monto;
+  const nuevoSaldoPendiente = Math.max(0, (alqActual?.total || cleanInput.monto) - nuevoTotalPagado);
+
   const { data, error } = await supabase
     .from('pagos')
     .insert([{
@@ -106,6 +125,70 @@ export async function registrarPagoAction(input: RegistrarPagoInput) {
     return { success: false, error: `Error al registrar abono en BD: ${error.message}` };
   }
 
+  // Actualizar saldos en el contrato de alquiler
+  try {
+    await supabaseAdmin
+      .from('alquileres')
+      .update({
+        total_pagado: nuevoTotalPagado,
+        saldo_pendiente: nuevoSaldoPendiente,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', numericAlquilerId);
+  } catch (alqUpdErr) {
+    console.warn('[Pagos] Error actualizando saldo en alquileres:', alqUpdErr);
+  }
+
+  // Registrar Asiento Contable en el Ledger (Partida Doble)
+  let transactionId: string | null = null;
+  try {
+    const { data: accounts } = await supabaseAdmin
+      .from('financial_accounts')
+      .select('id, name, type, is_cash_equivalent');
+
+    let cuentaCajaOBanco = safeMetodo === 'EFECTIVO'
+      ? accounts?.find(a => a.name === 'Caja Principal' || a.is_cash_equivalent)
+      : accounts?.find(a => a.name === 'Bancolombia Ahorros' || a.name === 'Nequi' || a.is_cash_equivalent);
+
+    let cuentaCartera = accounts?.find(a => a.name === 'Cuentas por Cobrar (Cartera)' || a.name === 'Ingresos por Alquileres' || a.type === 'ASSET');
+
+    if (cuentaCajaOBanco && cuentaCartera && cleanInput.monto > 0) {
+      const consecutivoRecibo = `RC-${String(data?.id || Date.now()).slice(0, 8).toUpperCase()}`;
+      const { data: txn } = await supabaseAdmin
+        .from('transactions')
+        .insert([{
+          description: `Recaudo Abono Alquiler ALQ-${alqActual?.consecutivo || numericAlquilerId} (${safeMetodo})`,
+          reference_id: consecutivoRecibo,
+          created_by: user?.id,
+          idempotency_key: `recaudo_${data.id}_${Date.now()}`,
+          timestamp: new Date().toISOString()
+        }])
+        .select('id')
+        .single();
+
+      if (txn) {
+        transactionId = txn.id;
+        // Asiento:
+        // 1. Débito (+monto): Caja Principal / Bancos (Entrada de dinero)
+        // 2. Crédito (-monto): Cuentas por Cobrar Cartera (Disminución de activo exigible)
+        await supabaseAdmin.from('journal_entries').insert([
+          {
+            transaction_id: txn.id,
+            account_id: cuentaCajaOBanco.id,
+            amount: cleanInput.monto
+          },
+          {
+            transaction_id: txn.id,
+            account_id: cuentaCartera.id,
+            amount: -cleanInput.monto
+          }
+        ]);
+      }
+    }
+  } catch (ledgerErr) {
+    console.warn('[Pagos] Error al registrar asiento en Ledger:', ledgerErr);
+  }
+
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({
     modulo: 'CARTERA',
@@ -119,15 +202,38 @@ export async function registrarPagoAction(input: RegistrarPagoInput) {
       metodoPago: safeMetodo,
       referencia: cleanInput.referencia,
       sesionCajaId,
+      transactionId,
+      saldoAnterior,
+      nuevoSaldoPendiente
     },
     userId: user?.id,
     userEmail: user?.email,
   });
 
   // Revalidar rutas para refrescar saldos en UI
+  revalidatePath('/facturacion');
   revalidatePath('/alquileres');
   revalidatePath('/clientes');
-  return { success: true, data };
+
+  const reciboInfo = {
+    pagoId: data.id,
+    consecutivoRecibo: `RC-${String(data.id).slice(0, 8).toUpperCase()}`,
+    consecutivoAlquiler: alqActual?.consecutivo || String(numericAlquilerId),
+    clienteNombre: alqActual?.clientes?.nombre || 'Cliente General',
+    clienteDocumento: alqActual?.clientes?.documento || '',
+    clienteTelefono: alqActual?.clientes?.telefono || '',
+    monto: cleanInput.monto,
+    metodoPago: safeMetodo,
+    saldoAnterior,
+    nuevoSaldoPendiente,
+    efectivoRecibido: cleanInput.efectivo_recibido,
+    cambioEntregado: cleanInput.cambio_entregado,
+    fecha: data.fecha || new Date().toISOString(),
+    registradoPor: userIdentifier,
+    transactionId
+  };
+
+  return { success: true, data, recibo: reciboInfo };
 }
 
 export async function obtenerPagosPorAlquilerAction(alquilerId: string | number) {

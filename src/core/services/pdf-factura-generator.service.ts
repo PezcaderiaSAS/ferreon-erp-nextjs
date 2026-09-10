@@ -18,14 +18,18 @@ export interface DetalleItemPDF {
 export type FormatoPapelPDF = "LETTER" | "A5";
 
 export interface DocumentoPDFPayload {
-  tipo: "COTIZACION" | "CONTRATO" | "CUENTA_COBRO";
+  tipo: "COTIZACION" | "CONTRATO" | "CUENTA_COBRO" | "FACTURA";
   consecutivo: number | string;
   fechaEmision: string;
+  fechaVencimiento?: string;
   fechaInicioGeneral?: string;
   clienteNombre: string;
   clienteNit: string;
   clienteDireccion?: string;
   clienteTelefono?: string;
+  clienteEmail?: string;
+  obraNombre?: string;
+  obraDireccion?: string;
   detallesLogistica?: string;
   garantiaTipo?: string;
   garantiaMonto?: number;
@@ -35,6 +39,18 @@ export interface DocumentoPDFPayload {
   fleteRecogida: number;
   subtotalGeneral: number;
   costosDano?: number;
+
+  // Impuestos seleccionables
+  aplicaIva?: boolean;
+  tasaIva?: number;
+  valorIva?: number;
+  aplicaRetefuente?: boolean;
+  tasaRetefuente?: number;
+  valorRetefuente?: number;
+  aplicaReteica?: boolean;
+  tasaReteica?: number;
+  valorReteica?: number;
+
   depositoAplicado: number;
   totalPagar: number;
   saldoPendiente?: number;
@@ -79,17 +95,30 @@ export class EnterprisePDFService {
     const fleteRecogida = Number(payload.fleteRecogida || 0);
     const totalFletes = fleteEntrega + fleteRecogida;
     const deposito = Number(payload.depositoAplicado || 0);
-    const totalGeneral = subtotalEquiposCalc + totalFletes + (payload.costosDano || 0);
+    const valorIva = payload.valorIva !== undefined ? payload.valorIva : (payload.aplicaIva ? Math.round(subtotalEquiposCalc * ((payload.tasaIva || 19) / 100)) : 0);
+    const valorRetefuente = payload.valorRetefuente !== undefined ? payload.valorRetefuente : (payload.aplicaRetefuente ? Math.round(subtotalEquiposCalc * ((payload.tasaRetefuente || 2.5) / 100)) : 0);
+    const valorReteica = payload.valorReteica !== undefined ? payload.valorReteica : (payload.aplicaReteica ? Math.round(subtotalEquiposCalc * ((payload.tasaReteica || 0.966) / 100)) : 0);
+    const totalGeneral = subtotalEquiposCalc + totalFletes + (payload.costosDano || 0) + valorIva - valorRetefuente - valorReteica;
     const saldoPendiente = Math.max(0, totalGeneral - deposito);
     const totalEnLetras = numeroALetras(saldoPendiente);
 
     const tituloDoc =
       payload.tipo === "COTIZACION"
-        ? "COTIZACIÓN COMERCIAL"
+        ? "COTIZACIÓN COMERCIAL DE OBRA"
+        : payload.tipo === "FACTURA"
+        ? "FACTURA COMERCIAL DE VENTA"
+        : payload.tipo === "CONTRATO"
+        ? "CONTRATO DE ALQUILER"
         : "CUENTA DE COBRO";
 
     const badgePrefijo =
-      payload.tipo === "COTIZACION" ? "COT" : "CC";
+      payload.tipo === "COTIZACION"
+        ? "COT"
+        : payload.tipo === "FACTURA"
+        ? "FAC"
+        : payload.tipo === "CONTRATO"
+        ? "ALQ"
+        : "CC";
 
     const themeTokens = resolveCompanyTheme(emp);
     const badgeColor = themeTokens.base;
@@ -474,14 +503,11 @@ export class EnterprisePDFService {
           <td>Subtotal Equipos:</td>
           <td class="text-right font-bold">${formatearMonedaCOP(subtotalEquiposCalc)}</td>
         </tr>
-        <tr>
-          <td>Flete Entrega en Obra:</td>
-          <td class="text-right">${formatearMonedaCOP(fleteEntrega)}</td>
-        </tr>
-        <tr>
-          <td>Flete Retorno / Recogida:</td>
-          <td class="text-right">${formatearMonedaCOP(fleteRecogida)}</td>
-        </tr>
+        ${fleteEntrega > 0 ? `<tr><td>Flete Entrega en Obra:</td><td class="text-right">${formatearMonedaCOP(fleteEntrega)}</td></tr>` : ''}
+        ${fleteRecogida > 0 ? `<tr><td>Flete Retorno / Recogida:</td><td class="text-right">${formatearMonedaCOP(fleteRecogida)}</td></tr>` : ''}
+        ${valorIva > 0 ? `<tr><td style="color:#1e40af;">(+) IVA (${payload.tasaIva || 19}%):</td><td class="text-right font-bold" style="color:#1e40af;">+ ${formatearMonedaCOP(valorIva)}</td></tr>` : ''}
+        ${valorRetefuente > 0 ? `<tr><td style="color:#b45309;">(-) ReteFuente (${payload.tasaRetefuente || 2.5}%):</td><td class="text-right font-bold" style="color:#b45309;">- ${formatearMonedaCOP(valorRetefuente)}</td></tr>` : ''}
+        ${valorReteica > 0 ? `<tr><td style="color:#047857;">(-) ReteICA (${payload.tasaReteica || 0.966}%):</td><td class="text-right font-bold" style="color:#047857;">- ${formatearMonedaCOP(valorReteica)}</td></tr>` : ''}
         ${
           payload.costosDano && payload.costosDano > 0
             ? `<tr>
@@ -490,12 +516,9 @@ export class EnterprisePDFService {
                </tr>`
             : ""
         }
-        <tr>
-          <td>Anticipo / Depósito Aplicado:</td>
-          <td class="text-right font-bold" style="color:#dc2626;">- ${formatearMonedaCOP(deposito)}</td>
-        </tr>
+        ${deposito > 0 ? `<tr><td>Anticipo / Depósito Aplicado:</td><td class="text-right font-bold" style="color:#dc2626;">- ${formatearMonedaCOP(deposito)}</td></tr>` : ''}
         <tr class="total-row">
-          <td><strong>SALDO PENDIENTE:</strong></td>
+          <td><strong>${payload.tipo === 'COTIZACION' ? 'TOTAL ESTIMADO:' : 'TOTAL NETO / SALDO PENDIENTE:'}</strong></td>
           <td class="text-right"><strong>${formatearMonedaCOP(saldoPendiente)}</strong></td>
         </tr>
       </table>

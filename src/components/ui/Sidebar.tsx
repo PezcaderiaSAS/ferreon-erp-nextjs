@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, Package, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X, LogOut, Palette } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, FileSpreadsheet, Package, ShoppingBag, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X, LogOut, Palette } from 'lucide-react';
 import { useEmpresaStore, applyThemeToDOM } from '../../infrastructure/state/empresaStore';
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';
 import { useTenantStore } from '../../infrastructure/state/tenantStore';
@@ -57,7 +57,9 @@ export function Sidebar() {
   const links = [
     { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/alquileres', icon: CalendarDays, label: 'Alquileres' },
+    { href: '/cotizaciones', icon: FileSpreadsheet, label: 'Cotizaciones' },
     { href: '/bodega', icon: Package, label: 'Bodega' },
+    { href: '/compras', icon: ShoppingBag, label: 'Compras' },
     { href: '/devoluciones', icon: ArrowLeftRight, label: 'Devoluciones' },
     { href: '/facturacion', icon: FileText, label: 'Facturación' },
     { href: '/clientes', icon: Users, label: 'Clientes' },

@@ -31,6 +31,7 @@ interface BodegaState {
   agregarEquipo: (equipo: EquipoUI, idempotencyKey?: string) => boolean;
   updateEquipo: (equipo: EquipoUI, idempotencyKey?: string) => boolean;
   ajustarStock: (equipoId: string | number, nuevoStockDisponible: number, motivo?: string) => boolean;
+  actualizarStock: (equipoId: string | number, nuevoStock: number) => boolean;
   descontarStock: (equipoId: string | number, cantidad: number) => boolean;
   incrementarStock: (equipoId: string | number, cantidad: number) => boolean;
   incrementarStockMantenimiento: (equipoId: string | number, cantidad: number) => boolean;
@@ -38,6 +39,7 @@ interface BodegaState {
   inactivarEquipo: (id: string | number) => Promise<void>;
   restoreSnapshot: (previousEquipos: EquipoUI[]) => void;
 }
+
 
 const MAX_IDEMPOTENCY_KEYS = 50;
 
@@ -129,6 +131,10 @@ export const useBodegaStore = create<BodegaState>()(
           console.info(`[BodegaStore] Stock ajustado para equipo ${equipoId}: disponible=${nuevoStockDisponible}. Motivo: ${motivo}`);
         }
         return true;
+      },
+
+      actualizarStock: (equipoId, nuevoStock) => {
+        return get().ajustarStock(equipoId, nuevoStock);
       },
 
       descontarStock: (equipoId, cantidad) => {

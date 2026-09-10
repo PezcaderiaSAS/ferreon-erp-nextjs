@@ -170,11 +170,19 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
 }
 
 export async function ajustarStockEquipoAction(equipoId: string | number, delta: number, motivo: string = 'Ajuste Manual', tipoMovimiento: string = 'AJUSTE_AUDITORIA', idempotencyKey?: string) {
+  if (delta === 0) {
+    return { success: false, error: 'El ajuste de stock (delta) no puede ser cero.' };
+  }
+  if (!motivo || !motivo.trim()) {
+    return { success: false, error: 'El motivo del ajuste es obligatorio para auditoría y trazabilidad en Kardex.' };
+  }
+
   const supabaseAdmin = createAdminSupabaseClient();
   const numericEquipoId = typeof equipoId === 'string' ? parseInt(equipoId, 10) : equipoId;
 
   // 1. Validar Idempotencia Fuerte si existe la llave
   if (idempotencyKey) {
+
     const { error: idempError } = await supabaseAdmin
       .from('idempotency_logs')
       .insert([{

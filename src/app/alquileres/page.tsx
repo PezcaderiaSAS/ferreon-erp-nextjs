@@ -1,23 +1,66 @@
 "use client";
-import { Plus, Search, MoreVertical } from "lucide-react";
+import { Plus, Search, MoreVertical, FileSpreadsheet, FileText, ArrowRightCircle, Sparkles, Printer, CheckCircle } from "lucide-react";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
 import { useClienteStore } from '../../infrastructure/state/clienteStore';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
-import { AlquilerForm } from '../../components/forms/AlquilerForm';
+import dynamic from 'next/dynamic';
 import { Modal } from '../../components/ui/Modal';
+import { ModalSkeleton } from '../../components/ui/ModalSkeleton';
 import { useDirtyFormGuard } from '../../hooks/useDirtyFormGuard';
 import { DiscardChangesModal } from '../../components/ui/DiscardChangesModal';
-import { RegistrarDevolucionModal } from '../components/devoluciones/RegistrarDevolucionModal';
-import { HistorialDevolucionesModal } from '../components/devoluciones/HistorialDevolucionesModal';
-import { RegistrarPagoModal } from '../components/cartera/RegistrarPagoModal';
-import { HistorialPagosModal } from '../components/cartera/HistorialPagosModal';
-import { DetalleAlquilerModal } from '../components/alquileres/DetalleAlquilerModal';
-import { TicketAlquilerModal } from '../components/alquileres/TicketAlquilerModal';
-import { AprobarCotizacionModal } from '../components/alquileres/AprobarCotizacionModal';
-import { RegistrarAbonoModal } from '../components/cartera/RegistrarAbonoModal';
+import { obtenerCotizacionesAction, convertirCotizacionAContratoAction } from '../actions/cotizaciones';
+import { CrearCotizacionModal } from '../components/cotizaciones/CrearCotizacionModal';
+import { VisorDocumentoPDFModal } from '../components/pdf/VisorDocumentoPDFModal';
+import { DocumentoPDFPayload } from '../../core/services/pdf-factura-generator.service';
+
+const AlquilerForm = dynamic(
+  () => import('../../components/forms/AlquilerForm').then((m) => m.AlquilerForm),
+  { ssr: false, loading: () => <ModalSkeleton message="Cargando formulario de contrato..." /> }
+);
+
+const RegistrarDevolucionModal = dynamic(
+  () => import('../components/devoluciones/RegistrarDevolucionModal').then((m) => m.RegistrarDevolucionModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Cargando módulo de devoluciones..." /> }
+);
+
+const HistorialDevolucionesModal = dynamic(
+  () => import('../components/devoluciones/HistorialDevolucionesModal').then((m) => m.HistorialDevolucionesModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Cargando historial de devoluciones..." /> }
+);
+
+const RegistrarPagoModal = dynamic(
+  () => import('../components/cartera/RegistrarPagoModal').then((m) => m.RegistrarPagoModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Cargando liquidación y pagos..." /> }
+);
+
+const HistorialPagosModal = dynamic(
+  () => import('../components/cartera/HistorialPagosModal').then((m) => m.HistorialPagosModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Consultando historial de pagos..." /> }
+);
+
+const DetalleAlquilerModal = dynamic(
+  () => import('../components/alquileres/DetalleAlquilerModal').then((m) => m.DetalleAlquilerModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Cargando detalle 360°..." /> }
+);
+
+const TicketAlquilerModal = dynamic(
+  () => import('../components/alquileres/TicketAlquilerModal').then((m) => m.TicketAlquilerModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Preparando ticket de alquiler..." /> }
+);
+
+const AprobarCotizacionModal = dynamic(
+  () => import('../components/alquileres/AprobarCotizacionModal').then((m) => m.AprobarCotizacionModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Cargando aprobación de cotización..." /> }
+);
+
+const RegistrarAbonoModal = dynamic(
+  () => import('../components/cartera/RegistrarAbonoModal').then((m) => m.RegistrarAbonoModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Cargando registro de abono..." /> }
+);
+
 import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
 import { AlquilerEntity } from '../../core/domain/entities/alquiler';
 import { alquilerUIToAlquilerEntity, alquilerEntityToAlquilerUI, equipoToEquipoUI } from '../../lib/mappers';
@@ -58,12 +101,18 @@ export default function AlquileresPage() {
   const [devolucionesGlobal, setDevolucionesGlobal] = useState<any[]>([]);
   const [pagosGlobal, setPagosGlobal] = useState<any[]>([]);
 
+  // Estados del Flujo Integrado de Cotizaciones y Visor PDF
+  const [cotizacionesList, setCotizacionesList] = useState<any[]>([]);
+  const [showCrearCotizacionModal, setShowCrearCotizacionModal] = useState<boolean>(false);
+  const [documentoParaPDF, setDocumentoParaPDF] = useState<DocumentoPDFPayload | null>(null);
+  const [convertiendoCotizacionId, setConvertiendoCotizacionId] = useState<string | null>(null);
+
   // Ordenamiento Descendente por ID y Filtro
   const alquileresFiltrados = useMemo(() => {
     let filtrados = alquileres.filter(a => {
       if (filtroEstado === 'Todos') return true;
       if (filtroEstado === 'Contratos Activos') return a.estado === 'ACTIVO';
-      if (filtroEstado === 'Cotizaciones') return a.estado === 'COTIZACION';
+      if (filtroEstado === 'Cotizaciones') return false; // Se muestran en su propia vista integrada
       if (filtroEstado === 'Finalizados') return a.estado === 'FINALIZADO';
       return true;
     });
@@ -96,10 +145,11 @@ export default function AlquileresPage() {
   const fetchAllData = useCallback(async () => {
     try {
       setLoading(true);
-      const [alqResult, cliResult, eqResult] = await Promise.allSettled([
+      const [alqResult, cliResult, eqResult, cotResult] = await Promise.allSettled([
         fetch('/api/alquileres', { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
         fetch('/api/clientes', { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-        fetch('/api/equipos', { cache: 'no-store' }).then(r => r.ok ? r.json() : null)
+        fetch('/api/equipos', { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        obtenerCotizacionesAction()
       ]);
 
       if (alqResult.status === 'fulfilled' && alqResult.value?.success && Array.isArray(alqResult.value.data)) {
@@ -111,12 +161,83 @@ export default function AlquileresPage() {
       if (eqResult.status === 'fulfilled' && eqResult.value?.success && Array.isArray(eqResult.value.data)) {
         useBodegaStore.getState().setEquipos(eqResult.value.data.map(equipoToEquipoUI));
       }
+      if (cotResult.status === 'fulfilled' && cotResult.value?.success && Array.isArray(cotResult.value.data)) {
+        setCotizacionesList(cotResult.value.data);
+      }
     } catch (e) {
       console.warn('[AlquileresPage] Error cargando catálogos desde DB:', e);
     } finally {
       setLoading(false);
     }
   }, [setAlquileres]);
+
+  const handleConvertirCotizacion = async (cotizacionId: string) => {
+    if (!confirm('¿Desea convertir esta cotización en un Contrato de Alquiler activo? Se verificará el stock disponible en bodega y se creará el contrato inmediatamente.')) {
+      return;
+    }
+
+    setConvertiendoCotizacionId(cotizacionId);
+    try {
+      const res = await convertirCotizacionAContratoAction({ cotizacionId });
+      if (!res.success) {
+        alert(`No se pudo convertir la cotización:\n\n${res.error}`);
+        return;
+      }
+
+      await fetchAllData();
+      alert(`¡Cotización convertida con éxito!\n\nSe ha generado el Contrato ALQ-${res.data?.consecutivo || res.data?.alquilerId} y se ha descontado el stock de bodega.`);
+      setFiltroEstado('Contratos Activos');
+    } catch (err: any) {
+      console.error('Error al convertir cotización:', err);
+      alert('Ocurrió un error inesperado al convertir la cotización.');
+    } finally {
+      setConvertiendoCotizacionId(null);
+    }
+  };
+
+  const handleVerPDFCotizacion = (cot: any) => {
+    const payload: DocumentoPDFPayload = {
+      tipo: 'COTIZACION',
+      consecutivo: cot.consecutivo,
+      fechaEmision: cot.fecha_emision || cot.created_at || new Date().toISOString(),
+      fechaVencimiento: cot.fecha_vencimiento,
+      clienteNombre: cot.cliente_nombre || 'Cliente',
+      clienteNit: cot.cliente_documento || 'Sin NIT',
+      clienteTelefono: cot.cliente_telefono || '',
+      clienteEmail: cot.cliente_email || '',
+      obraNombre: cot.obra_nombre || '',
+      obraDireccion: cot.obra_direccion || '',
+      items: (cot.cotizaciones_detalles || []).map((d: any) => ({
+        cantidad: d.cantidad,
+        nombre: d.equipos?.nombre || 'Equipo',
+        codigo: d.equipos?.codigo || '',
+        fechaInicio: cot.fecha_emision || new Date().toISOString(),
+        fechaFin: new Date(Date.now() + (d.dias || 1) * 24 * 60 * 60 * 1000).toISOString(),
+        dias: d.dias || 1,
+        tarifaDiaria: Number(d.tarifa_diaria || 0),
+        subtotal: Number(d.subtotal || 0),
+      })),
+      subtotalEquipos: Number(cot.subtotal || 0),
+      fleteEntrega: Number(cot.valor_transporte || 0),
+      fleteRecogida: 0,
+      subtotalGeneral: Number(cot.subtotal || 0) + Number(cot.valor_transporte || 0),
+      aplicaIva: cot.aplica_iva,
+      tasaIva: Number(cot.tasa_iva || 19),
+      valorIva: Number(cot.valor_iva || 0),
+      aplicaRetefuente: cot.aplica_retefuente,
+      tasaRetefuente: Number(cot.tasa_retefuente || 2.5),
+      valorRetefuente: Number(cot.valor_retefuente || 0),
+      aplicaReteica: cot.aplica_reteica,
+      tasaReteica: Number(cot.tasa_reteica || 0.966),
+      valorReteica: Number(cot.valor_reteica || 0),
+      depositoAplicado: Number(cot.deposito_garantia || 0),
+      totalPagar: Number(cot.total || 0),
+      observaciones: cot.observaciones || '',
+      empresa: empresaConfig,
+    };
+
+    setDocumentoParaPDF(payload);
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -385,14 +506,27 @@ export default function AlquileresPage() {
           <h2 className="text-3xl font-semibold text-slate-900 mb-1">Contratos de Alquiler</h2>
           <p className="text-base text-slate-600">Gestiona y supervisa los alquileres de maquinaria y equipos.</p>
         </div>
-        <button 
-          id="tour-nuevo-alquiler"
-          onClick={() => { setContratoActivo(null); setIsModalOpen(true); }}
-          className="bg-brand-salmonLight text-brand-salmonDark hover:bg-brand-salmon hover:text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm w-full sm:w-auto"
-        >
-          <Plus className="w-5 h-5" />
-          Nuevo Contrato
-        </button>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <button 
+            type="button"
+            onClick={() => setShowCrearCotizacionModal(true)}
+            className="bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white border border-blue-200 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-xs w-full sm:w-auto"
+            aria-label="Crear nueva cotización de obra"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            Nueva Cotización
+          </button>
+          <button 
+            type="button"
+            id="tour-nuevo-alquiler"
+            onClick={() => { setContratoActivo(null); setIsModalOpen(true); }}
+            className="bg-brand-salmonLight text-brand-salmonDark hover:bg-brand-salmon hover:text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm w-full sm:w-auto"
+            aria-label="Crear nuevo contrato de alquiler"
+          >
+            <Plus className="w-5 h-5" />
+            Nuevo Contrato
+          </button>
+        </div>
       </div>
 
       {/* Controls Section */}
@@ -400,19 +534,27 @@ export default function AlquileresPage() {
         <div id="tour-filtros-alquileres" className="p-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50">
           <div className="flex gap-2">
             <button 
+              type="button"
               onClick={() => setFiltroEstado('Todos')}
+              aria-pressed={filtroEstado === 'Todos'}
               className={`px-4 py-2 rounded-lg text-sm font-medium border shadow-sm transition-colors ${filtroEstado === 'Todos' ? 'bg-white text-slate-900 border-slate-200' : 'bg-transparent text-slate-600 border-transparent hover:bg-slate-100'}`}
             >Todos</button>
             <button 
+              type="button"
               onClick={() => setFiltroEstado('Contratos Activos')}
+              aria-pressed={filtroEstado === 'Contratos Activos'}
               className={`px-4 py-2 rounded-lg text-sm font-medium border shadow-sm transition-colors ${filtroEstado === 'Contratos Activos' ? 'bg-white text-slate-900 border-slate-200' : 'bg-transparent text-slate-600 border-transparent hover:bg-slate-100'}`}
             >Contratos Activos</button>
             <button 
+              type="button"
               onClick={() => setFiltroEstado('Cotizaciones')}
+              aria-pressed={filtroEstado === 'Cotizaciones'}
               className={`px-4 py-2 rounded-lg text-sm font-medium border shadow-sm transition-colors ${filtroEstado === 'Cotizaciones' ? 'bg-white text-slate-900 border-slate-200' : 'bg-transparent text-slate-600 border-transparent hover:bg-slate-100'}`}
             >Cotizaciones</button>
             <button 
+              type="button"
               onClick={() => setFiltroEstado('Finalizados')}
+              aria-pressed={filtroEstado === 'Finalizados'}
               className={`px-4 py-2 rounded-lg text-sm font-medium border shadow-sm transition-colors ${filtroEstado === 'Finalizados' ? 'bg-white text-slate-900 border-slate-200' : 'bg-transparent text-slate-600 border-transparent hover:bg-slate-100'}`}
             >Finalizados</button>
           </div>
@@ -428,101 +570,253 @@ export default function AlquileresPage() {
 
         {/* Data Table */}
         <div className="flex-1 overflow-auto min-h-[400px]">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-white sticky top-0 z-10 border-b border-slate-200 shadow-sm">
-              <tr>
-                <th className="py-3 px-4 text-sm text-slate-600 font-semibold">ID</th>
-                <th className="py-3 px-4 text-sm text-slate-600 font-semibold">Cliente</th>
-                <th className="py-3 px-4 text-sm text-slate-600 font-semibold">Fecha Inicio</th>
-                <th className="py-3 px-4 text-sm text-slate-600 font-semibold">Total Estimado</th>
-                <th className="py-3 px-4 text-sm text-slate-600 font-semibold">Equipos</th>
-                <th className="py-3 px-4 text-sm text-slate-600 font-semibold">Estado</th>
-                <th className="py-3 px-4 text-sm text-slate-600 font-semibold text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {alquileresFiltrados.map((alq: any) => (
-                <tr 
-                  key={alq.id} 
-                  onClick={() => {
-                    setSelectedAlquilerForDetalle(alq);
-                    setShowDetalleModal(true);
-                  }}
-                  className="hover:bg-slate-50/80 transition-colors group cursor-pointer relative"
-                >
-                  <td className="py-3 px-4 text-sm text-slate-900 font-medium">
-                    <span className="font-mono font-bold text-slate-800 bg-slate-100 group-hover:bg-slate-200 px-2 py-0.5 rounded transition-colors">
-                      #{alq.id}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-sm text-slate-900 font-semibold group-hover:text-brand-salmon transition-colors">
-                    {alq.clienteNombre || 'Sin Nombre'}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-slate-600">{new Date(alq.created_at || Date.now()).toLocaleDateString('es-CO')}</td>
-                  <td className="py-3 px-4 text-sm font-bold text-slate-800">{formatearMoneda(alq.total || 0)}</td>
-                  <td className="py-3 px-4">
-                    <div className="flex flex-wrap gap-1">
-                      <span className="px-2 py-1 bg-slate-100 rounded text-[11px] font-medium text-slate-600">
-                        {alq.detalles?.length || 0} Equipo(s)
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-semibold ${
-                      alq.estado === 'ACTIVO' ? 'bg-emerald-50 text-emerald-700' :
-                      alq.estado === 'COTIZACION' ? 'bg-amber-50 text-amber-700' :
-                      'bg-slate-100 text-slate-700'
-                    }`}>
-                      {alq.estado}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right relative">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); toggleDropdown(alq.id!); }}
-                      className="text-slate-400 hover:text-brand-salmon transition-colors p-1.5 rounded-lg hover:bg-slate-100"
-                      title="Menú de acciones"
-                    >
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                    
-                    {/* Dropdown Menu */}
-                    {activeDropdown === alq.id && (() => {
-                      const tieneDevoluciones = Boolean(alq.detalles?.some((d: any) => d.devuelto || (d.cantidadDevuelta && d.cantidadDevuelta > 0)));
-                      const puedeEditar = (alq.estado === 'COTIZACION' || alq.estado === 'ACTIVO') && !tieneDevoluciones;
-                      return (
-                        <div className="absolute right-8 top-10 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 py-1.5 flex flex-col text-left">
-                          {alq.estado === 'COTIZACION' && (
-                            <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'APROBAR_COTIZACION'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full">Aprobar Cotización</button>
+          {filtroEstado === 'Cotizaciones' ? (
+            /* TABLA ESPECIALIZADA DE COTIZACIONES */
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 text-xs text-slate-700 font-semibold shadow-2xs">
+                <tr>
+                  <th className="py-3 px-4">Consecutivo</th>
+                  <th className="py-3 px-4">Cliente / Obra</th>
+                  <th className="py-3 px-4">Fecha Emisión</th>
+                  <th className="py-3 px-4 text-right">Subtotal</th>
+                  <th className="py-3 px-4">Impuestos</th>
+                  <th className="py-3 px-4 text-right">Total Cotizado</th>
+                  <th className="py-3 px-4">Estado</th>
+                  <th className="py-3 px-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white text-xs">
+                {cotizacionesList.map((cot: any) => {
+                  const tieneIva = Boolean(cot.aplica_iva && cot.valor_iva > 0);
+                  const tieneRetefuente = Boolean(cot.aplica_retefuente && cot.valor_retefuente > 0);
+                  const tieneReteica = Boolean(cot.aplica_reteica && cot.valor_reteica > 0);
+                  const isConvertida = cot.estado === 'CONVERTIDA';
+                  const isProcessing = convertiendoCotizacionId === cot.id;
+
+                  return (
+                    <tr key={cot.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 px-4 font-medium">
+                        <span className="font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-md">
+                          {cot.consecutivo}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-slate-900 text-sm">{cot.cliente_nombre}</div>
+                        {cot.obra_nombre && (
+                          <div className="text-[11px] text-slate-500 font-medium">Obra: {cot.obra_nombre}</div>
+                        )}
+                        <div className="text-[10px] text-slate-400">
+                          {cot.cotizaciones_detalles?.length || 0} equipo(s) cotizado(s)
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-slate-600">
+                        {new Date(cot.fecha_emision || cot.created_at).toLocaleDateString('es-CO')}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-medium text-slate-700">
+                        {formatearMoneda(cot.subtotal || 0)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          {tieneIva && (
+                            <span className="px-1.5 py-0.5 rounded bg-blue-100/70 text-blue-800 text-[10px] font-bold">
+                              IVA 19%
+                            </span>
                           )}
-                          {puedeEditar && (
-                            <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'EDITAR'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full">Editar Contrato</button>
+                          {tieneRetefuente && (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-100/70 text-amber-800 text-[10px] font-bold">
+                              ReteFuente
+                            </span>
                           )}
-                          <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'PDF'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full border-b border-slate-100">Generar PDF</button>
-                          
-                          <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'ABONO'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full">Registrar Abono</button>
-                          <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'HISTORIAL_PAGOS'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full border-b border-slate-100">Historial Pagos</button>
-                          
-                          <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'DEVOLUCION'); }} className="px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 text-left w-full">Recibir Equipos</button>
-                          <button onClick={(e) => { e.stopPropagation(); openAction(alq, 'HISTORIAL_DEVOLUCIONES'); }} className="px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 text-left w-full border-b border-slate-100">Historial Devoluciones</button>
-                          
-                          {alq.estado !== 'FINALIZADO' && alq.estado !== 'CANCELADO' && (
-                             <button className="px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 text-left w-full">Cancelar Contrato</button>
+                          {tieneReteica && (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-100/70 text-emerald-800 text-[10px] font-bold">
+                              ReteICA
+                            </span>
+                          )}
+                          {!tieneIva && !tieneRetefuente && !tieneReteica && (
+                            <span className="text-[11px] text-slate-400">Sin impuestos</span>
                           )}
                         </div>
-                      );
-                    })()}
-                  </td>
-                </tr>
-              ))}
-              {alquileresFiltrados.length === 0 && (
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 text-sm">
+                        {formatearMoneda(cot.total || 0)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                          cot.estado === 'CONVERTIDA'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : cot.estado === 'APROBADA'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {cot.estado}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleVerPDFCotizacion(cot)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-xs font-semibold shadow-2xs transition-colors"
+                            title="Ver e Imprimir PDF"
+                          >
+                            <Printer className="w-3.5 h-3.5 text-blue-600" />
+                            <span>PDF</span>
+                          </button>
+
+                          {!isConvertida ? (
+                            <button
+                              type="button"
+                              disabled={isProcessing}
+                              onClick={() => handleConvertirCotizacion(cot.id)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-xs transition-colors disabled:opacity-50"
+                              title="Formalizar y convertir en contrato de alquiler activo"
+                            >
+                              {isProcessing ? (
+                                <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+                              ) : (
+                                <ArrowRightCircle className="w-3.5 h-3.5" />
+                              )}
+                              <span>Convertir a Contrato</span>
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                              <CheckCircle className="w-3 h-3" />
+                              <span>Contrato ALQ-{cot.alquiler_id}</span>
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {cotizacionesList.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-slate-500">
+                      <FileSpreadsheet className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+                      <p className="font-semibold text-slate-700">No hay cotizaciones registradas aún.</p>
+                      <p className="text-xs text-slate-400 mt-1">Crea una cotización de obra con impuestos discriminados para empezar.</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowCrearCotizacionModal(true)}
+                        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Crear Primera Cotización
+                      </button>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          ) : (
+            /* TABLA HABITUAL DE CONTRATOS */
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-white sticky top-0 z-10 border-b border-slate-200 shadow-sm">
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-500">
-                    No hay contratos de alquiler para mostrar.
-                  </td>
+                  <th className="py-3 px-4 text-sm text-slate-600 font-semibold">ID</th>
+                  <th className="py-3 px-4 text-sm text-slate-600 font-semibold">Cliente</th>
+                  <th className="py-3 px-4 text-sm text-slate-600 font-semibold">Fecha Inicio</th>
+                  <th className="py-3 px-4 text-sm text-slate-600 font-semibold">Total Estimado</th>
+                  <th className="py-3 px-4 text-sm text-slate-600 font-semibold">Equipos</th>
+                  <th className="py-3 px-4 text-sm text-slate-600 font-semibold">Estado</th>
+                  <th className="py-3 px-4 text-sm text-slate-600 font-semibold text-right">Acciones</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {alquileresFiltrados.map((alq: any) => (
+                  <tr 
+                    key={alq.id} 
+                    onClick={() => {
+                      setSelectedAlquilerForDetalle(alq);
+                      setShowDetalleModal(true);
+                    }}
+                    className="hover:bg-slate-50/80 transition-colors group cursor-pointer relative"
+                  >
+                    <td className="py-3 px-4 text-sm text-slate-900 font-medium">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-slate-800 bg-slate-100 group-hover:bg-slate-200 px-2 py-0.5 rounded transition-colors">
+                          #{alq.id}
+                        </span>
+                        {alq.cotizacion_origen_id && (
+                          <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded border border-blue-200" title="Generado desde cotización de obra">
+                            COT
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-sm text-slate-900 font-semibold group-hover:text-brand-salmon transition-colors">
+                      {alq.clienteNombre || 'Sin Nombre'}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-slate-600">{new Date(alq.created_at || Date.now()).toLocaleDateString('es-CO')}</td>
+                    <td className="py-3 px-4 text-sm font-bold text-slate-800">{formatearMoneda(alq.total || 0)}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-wrap gap-1">
+                        <span className="px-2 py-1 bg-slate-100 rounded text-[11px] font-medium text-slate-600">
+                          {alq.detalles?.length || 0} Equipo(s)
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-semibold ${
+                        alq.estado === 'ACTIVO' ? 'bg-emerald-50 text-emerald-700' :
+                        alq.estado === 'COTIZACION' ? 'bg-amber-50 text-amber-700' :
+                        'bg-slate-100 text-slate-700'
+                      }`}>
+                        {alq.estado}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right relative">
+                      <button 
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); toggleDropdown(alq.id!); }}
+                        className="text-slate-400 hover:text-brand-salmon transition-colors p-1.5 rounded-lg hover:bg-slate-100"
+                        title="Menú de acciones"
+                        aria-label={`Opciones y acciones para contrato #${alq.id}`}
+                        aria-haspopup="true"
+                        aria-expanded={activeDropdown === alq.id}
+                      >
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                      
+                      {/* Dropdown Menu */}
+                      {activeDropdown === alq.id && (() => {
+                        const tieneDevoluciones = Boolean(alq.detalles?.some((d: any) => d.devuelto || (d.cantidadDevuelta && d.cantidadDevuelta > 0)));
+                        const puedeEditar = (alq.estado === 'COTIZACION' || alq.estado === 'ACTIVO') && !tieneDevoluciones;
+                        return (
+                          <div className="absolute right-8 top-10 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 py-1.5 flex flex-col text-left">
+                            {alq.estado === 'COTIZACION' && (
+                              <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'APROBAR_COTIZACION'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full">Aprobar Cotización</button>
+                            )}
+                            {puedeEditar && (
+                              <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'EDITAR'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full">Editar Contrato</button>
+                            )}
+                            <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'PDF'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-brand-salmonLight hover:text-brand-salmonDark text-left w-full border-b border-slate-100">Generar PDF</button>
+                            
+                            <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'ABONO'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full">Registrar Abono</button>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'HISTORIAL_PAGOS'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full border-b border-slate-100">Historial Pagos</button>
+                            
+                            <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'DEVOLUCION'); }} className="px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 text-left w-full">Recibir Equipos</button>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'HISTORIAL_DEVOLUCIONES'); }} className="px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 text-left w-full border-b border-slate-100">Historial Devoluciones</button>
+                            
+                            {alq.estado !== 'FINALIZADO' && alq.estado !== 'CANCELADO' && (
+                               <button type="button" className="px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 text-left w-full">Cancelar Contrato</button>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </td>
+                  </tr>
+                ))}
+                {alquileresFiltrados.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-slate-500">
+                      No hay contratos de alquiler para mostrar.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
@@ -618,6 +912,26 @@ export default function AlquileresPage() {
         contratoParaDevolucion={contratoActivo}
         devoluciones={devolucionesGlobal.filter(d => d.alquilerId === contratoActivo?.id)}
       />
+
+      <CrearCotizacionModal
+        isOpen={showCrearCotizacionModal}
+        onClose={() => setShowCrearCotizacionModal(false)}
+        onCotizacionCreada={(nuevaCot) => {
+          fetchAllData();
+          setFiltroEstado('Cotizaciones');
+          if (nuevaCot) {
+            handleVerPDFCotizacion(nuevaCot);
+          }
+        }}
+      />
+
+      {documentoParaPDF && (
+        <VisorDocumentoPDFModal
+          isOpen={true}
+          onClose={() => setDocumentoParaPDF(null)}
+          documento={documentoParaPDF}
+        />
+      )}
 
       {/* Tour Módulo Alquileres */}
       <AutoTourTrigger tourId="alquileres-core" delay={1000} forceMode={true} />

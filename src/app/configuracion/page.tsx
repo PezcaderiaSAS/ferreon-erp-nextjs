@@ -1,14 +1,28 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';
 import { MonedaConfig } from '../../core/domain/entities/empresa-config';
 import { UsuariosTab } from './UsuariosTab';
-import { HelpCircle, Palette, Sparkles, Check, FileText, Eye, Loader2, Trash2, Upload } from 'lucide-react';
+import { HelpCircle, Palette, Sparkles, Check, FileText, Eye, Loader2, Trash2, Upload, ShieldAlert } from 'lucide-react';
 import { THEME_PRESETS, ThemePresetId, resolveCompanyTheme, isValidHex } from '../../core/domain/theme/theme-tokens';
 import { obtenerConfiguracionEmpresaAction, guardarConfiguracionEmpresaAction } from '../actions/empresa';
+import { supabaseClient } from '../../infrastructure/persistence/supabase/client';
 
+const AuditoriaTab = dynamic(
+  () => import('./AuditoriaTab').then((mod) => mod.AuditoriaTab),
+  { 
+    ssr: false, 
+    loading: () => (
+      <div className="p-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
+        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-brand-salmon" />
+        <p className="text-sm">Cargando consola de auditoría...</p>
+      </div>
+    ) 
+  }
+);
 
 const OPCIONES_MONEDA: MonedaConfig[] = [
   { codigo: 'COP', locale: 'es-CO', simbolo: '$' },
@@ -64,12 +78,31 @@ export default function ConfiguracionPage() {
   const { setTourOpen } = useLayoutStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [activeTab, setActiveTab] = useState<'empresa' | 'usuarios'>('empresa');
+  const [activeTab, setActiveTab] = useState<'empresa' | 'usuarios' | 'auditoria'>('empresa');
   const [formData, setFormData] = useState(config);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string>('');
+
+  useEffect(() => {
+    supabaseClient.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        const rol = (data.user.user_metadata?.rol || data.user.user_metadata?.role || '').toUpperCase();
+        setCurrentUserRole(rol);
+      }
+    });
+  }, []);
+
+  const esSuperAdmin = [
+    'SUPERADMIN', 
+    'ADMIN_ENTERPRISE', 
+    'OWNER', 
+    'DEVELOPER', 
+    'ULTRAADMIN',
+    'ADMIN'
+  ].includes(currentUserRole) || !currentUserRole; // Si es local dev sin rol explícito, permitir acceso administrativo
 
   // Carga e hidratación inicial desde Supabase Backend
   useEffect(() => {
@@ -188,6 +221,23 @@ export default function ConfiguracionPage() {
         >
           Usuarios y Accesos
         </button>
+        {esSuperAdmin && (
+          <button 
+            type="button"
+            onClick={() => setActiveTab('auditoria')}
+            className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 ${
+              activeTab === 'auditoria' 
+                ? 'border-brand-salmon text-brand-salmon' 
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4 text-amber-500" />
+            Auditoría y Seguridad
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">
+              RBAC
+            </span>
+          </button>
+        )}
       </div>
 
       {activeTab === 'empresa' ? (
@@ -560,8 +610,10 @@ export default function ConfiguracionPage() {
           </div>
 
         </form>
-      ) : (
+      ) : activeTab === 'usuarios' ? (
         <UsuariosTab />
+      ) : (
+        <AuditoriaTab />
       )}
     </div>
   );

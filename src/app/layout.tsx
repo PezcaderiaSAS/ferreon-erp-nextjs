@@ -2,16 +2,16 @@ import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import "./globals.css";
 
-import { Sidebar } from "../components/ui/Sidebar";
-import { TopNav } from "../components/ui/TopNav";
+import { AppShell } from "../components/layout/AppShell";
 import { RealtimeProvider } from "../components/providers/RealtimeProvider";
 import { GlobalTourWrapper } from "../components/ui/GlobalTourWrapper";
+import { ToastNotification } from "../components/ui/ToastNotification";
 
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
-  title: "Alquileres ERP — Gestión Integral de Maquinaria y Construcción",
-  description: "Sistema de Gestión de Alquiler de Equipos de Construcción, Control de Stock, Cartera y Facturación",
+  title: "FerreOn ERP & AppFrios Pezca — Gestión Integral y Presets de Diseño",
+  description: "Sistema Empresarial Ferretero y Frío Industrial con Soporte Multiestilo y Gobernanza de Tokens",
 };
 
 export default function RootLayout({
@@ -23,16 +23,14 @@ export default function RootLayout({
     <html lang="es" className={`${outfit.variable}`}>
       <body className="antialiased font-sans bg-slate-50 text-slate-900 min-h-screen flex">
         <RealtimeProvider>
-          <Sidebar />
-          <div className="flex-1 flex flex-col min-h-screen transition-all duration-300 md:ml-64 w-full overflow-hidden">
-            <TopNav />
-            <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto overflow-x-hidden">
-              {children}
-            </main>
-          </div>
+          <AppShell>
+            {children}
+          </AppShell>
           <GlobalTourWrapper />
+          <ToastNotification />
         </RealtimeProvider>
       </body>
     </html>
   );
 }
+

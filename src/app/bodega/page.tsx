@@ -1,20 +1,34 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { PlusSquare, Package, CheckCircle, Wrench, Warehouse, Pen } from "lucide-react";
+import { PlusSquare, Package, CheckCircle, Wrench, Warehouse, Pen, History } from "lucide-react";
+import dynamic from 'next/dynamic';
 import { Modal } from '../../components/ui/Modal';
+import { ModalSkeleton } from '../../components/ui/ModalSkeleton';
 import { BodegaForm } from '../../components/forms/BodegaForm';
-import { EditarEquipoModal } from '../components/bodega/EditarEquipoModal';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { EquipoUI } from '../../infrastructure/state/bodegaStore';
 import { equipoToEquipoUI } from '../../lib/mappers';
 
+const EditarEquipoModal = dynamic(
+  () => import('../components/bodega/EditarEquipoModal').then((m) => m.EditarEquipoModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Cargando editor de equipo..." /> }
+);
+
+const KardexEquipoModal = dynamic(
+  () => import('../components/bodega/KardexEquipoModal').then((m) => m.KardexEquipoModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Cargando historial de Kardex..." /> }
+);
+
 export default function BodegaPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isKardexModalOpen, setIsKardexModalOpen] = useState(false);
   const [selectedEquipo, setSelectedEquipo] = useState<EquipoUI | null>(null);
+  const [equipoKardex, setEquipoKardex] = useState<EquipoUI | null>(null);
   const { equipos, setEquipos } = useBodegaStore();
   const [loading, setLoading] = useState(false);
+
 
   const [isMounted, setIsMounted] = useState(false);
 
@@ -64,6 +78,12 @@ export default function BodegaPage() {
     setSelectedEquipo(equipo);
     setIsEditModalOpen(true);
   };
+
+  const handleOpenKardex = (equipo: EquipoUI) => {
+    setEquipoKardex(equipo);
+    setIsKardexModalOpen(true);
+  };
+
 
   // KPIs
   const totalModelos = equipos.length;
@@ -219,18 +239,35 @@ export default function BodegaPage() {
                     </span>
                   </td>
                   <td className="py-4 px-4 text-right">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenEdit(equipo);
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-brand-salmon hover:text-white text-slate-700 text-xs font-semibold rounded-lg transition-colors shadow-xs"
-                      title="Editar datos y ajustar stock"
-                    >
-                      <Pen className="w-4 h-4" />
-                      <span>Ajustar / Editar</span>
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenKardex(equipo);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-800 hover:text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors shadow-xs"
+                        title="Consultar historial inmutable de Kardex"
+                        aria-label={`Ver historial de Kardex para ${equipo.nombre}`}
+                      >
+                        <History className="w-3.5 h-3.5 text-brand-salmon" />
+                        <span>Kardex</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEdit(equipo);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-brand-salmon hover:text-white text-slate-700 text-xs font-semibold rounded-lg transition-colors shadow-xs"
+                        title="Editar datos y ajustar stock"
+                        aria-label={`Editar equipo ${equipo.nombre}`}
+                      >
+                        <Pen className="w-3.5 h-3.5" />
+                        <span>Ajustar / Editar</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -269,7 +306,18 @@ export default function BodegaPage() {
         }}
         equipo={selectedEquipo}
       />
+
+      {/* Modal para Consultar Historial Inmutable de Kardex */}
+      <KardexEquipoModal
+        isOpen={isKardexModalOpen}
+        onClose={() => {
+          setIsKardexModalOpen(false);
+          setEquipoKardex(null);
+        }}
+        equipo={equipoKardex}
+      />
     </div>
   );
 }
+
 

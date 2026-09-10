@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createServerSupabaseClient } from '@/infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient, createAdminSupabaseClient } from '@/infrastructure/persistence/supabase/server';
 import { AuditLogger } from '@/lib/security/audit-logger';
 import { validateApiRequest } from '@/lib/security/validation';
 import { AuditActionType, AuditModuloType } from '@/core/domain/entities/audit-log';
 
 export const dynamic = 'force-dynamic';
+
+const ROLES_AUDITORIA_AUTORIZADOS = [
+  'SUPERADMIN', 
+  'ADMIN_ENTERPRISE', 
+  'OWNER', 
+  'DEVELOPER', 
+  'ULTRAADMIN',
+  'superadmin',
+  'admin'
+];
 
 const auditLogSchema = z.object({
   userId: z.string().optional(),
@@ -15,6 +25,7 @@ const auditLogSchema = z.object({
   modulo: z.enum([
     'SEGURIDAD',
     'BODEGA',
+    'COMPRAS',
     'ALQUILERES',
     'DEVOLUCIONES',
     'FACTURACION',
@@ -39,6 +50,33 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
     }
 
+    // RBAC: Validar rol del usuario (Metadata o tabla empresa_usuarios)
+    const rolMetadata = (user.user_metadata?.rol || user.user_metadata?.role || '').toUpperCase();
+    let esAutorizado = ROLES_AUDITORIA_AUTORIZADOS.includes(user.user_metadata?.rol) || 
+                       ROLES_AUDITORIA_AUTORIZADOS.includes(rolMetadata);
+
+    const supabaseAdmin = createAdminSupabaseClient();
+
+    if (!esAutorizado) {
+      const { data: membership } = await supabaseAdmin
+        .from('empresa_usuarios')
+        .select('rol')
+        .eq('user_id', user.id)
+        .eq('estado', 'ACTIVO')
+        .maybeSingle();
+
+      if (membership && ROLES_AUDITORIA_AUTORIZADOS.includes(membership.rol.toUpperCase())) {
+        esAutorizado = true;
+      }
+    }
+
+    if (!esAutorizado) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Acceso denegado: Se requieren privilegios de Superadministrador para consultar la bitácora de auditoría.' 
+      }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const limit = Math.min(100, Math.max(5, parseInt(searchParams.get('limit') || '25', 10)));
@@ -47,7 +85,7 @@ export async function GET(request: Request) {
     const modulo = searchParams.get('modulo');
     const search = searchParams.get('search');
 
-    let query = supabase
+    let query = supabaseAdmin
       .from('audit_logs')
       .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })

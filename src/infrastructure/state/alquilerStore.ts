@@ -25,6 +25,13 @@ export interface AlquilerUI {
   saldoPendiente?: number;
   created_at: string;
   fecha_vencimiento?: string;
+  aplica_iva?: boolean;
+  valor_iva?: number;
+  aplica_retefuente?: boolean;
+  valor_retefuente?: number;
+  aplica_reteica?: boolean;
+  valor_reteica?: number;
+  cotizacion_origen_id?: string;
 }
 
 export interface ItemDevolucionPayload {

@@ -76,12 +76,22 @@ export function EditarEquipoModal({ isOpen, onClose, equipo }: EditarEquipoModal
   };
 
   const handleConfirmStockAdjustment = async () => {
+    if (stockDelta === 0) {
+      setFeedbackMsg('El nuevo stock no presenta variación frente al disponible actual.');
+      return;
+    }
+    if (!motivoAjuste || !motivoAjuste.trim()) {
+      setFeedbackMsg('Debe especificar o seleccionar un motivo para el ajuste de inventario.');
+      return;
+    }
+
     setIsAdjustingStock(true);
     const equipoOriginal = { ...equipo };
     try {
       const idempotencyKey = generateIdempotencyKey('stock_adj');
       // 1. Optimistic UI (0 Latency)
       ajustarStock(equipo.id, nuevoStock, motivoAjuste);
+
       
       // Mapeo Poka-Yoke del tipo_movimiento
       let tipoMovimiento = 'AJUSTE_AUDITORIA';

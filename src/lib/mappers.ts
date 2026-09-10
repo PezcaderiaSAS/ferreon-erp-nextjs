@@ -160,6 +160,13 @@ export function alquilerEntityToAlquilerUI(entity: any): AlquilerUI {
     detalles_logistica: entity.detallesLogistica ?? entity.detalles_logistica ?? '',
     detalles: detallesMapeados,
     created_at: entity.createdAt ? new Date(entity.createdAt).toISOString() : (entity.created_at ? new Date(entity.created_at).toISOString() : new Date().toISOString()),
+    aplica_iva: entity.aplica_iva ?? false,
+    valor_iva: entity.valor_iva ?? 0,
+    aplica_retefuente: entity.aplica_retefuente ?? false,
+    valor_retefuente: entity.valor_retefuente ?? 0,
+    aplica_reteica: entity.aplica_reteica ?? false,
+    valor_reteica: entity.valor_reteica ?? 0,
+    cotizacion_origen_id: entity.cotizacion_origen_id,
   };
 }
 

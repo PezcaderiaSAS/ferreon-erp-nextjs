@@ -3,13 +3,25 @@
 import { Box, Receipt, TrendingUp, ArrowUp, Clock, AlertTriangle, Search, FileBox, Mail, CircleDollarSign, ChevronLeft, ChevronRight, Inbox } from 'lucide-react';
 
 import React, { useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { RegistrarPagoModal } from '../components/cartera/RegistrarPagoModal';
 import { useCurrencyFormatter } from '../../lib/hooks/useCurrencyFormatter';
+import { useToastStore } from '../../infrastructure/state/toastStore';
+import { registrarPagoAction } from '../actions/pagos';
 
 import { AutoTourTrigger } from '../../components/ui/AutoTourTrigger';
 import { InteractiveTour } from '../../components/ui/InteractiveTour';
 import { FACTURACION_STEPS } from '../../config/tours/TourConfigs';
 import { useAlquilerStore, AlquilerUI } from '../../infrastructure/state/alquilerStore';
+import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
+import { VisorDocumentoPDFModal } from '../components/pdf/VisorDocumentoPDFModal';
+import { DocumentoPDFPayload } from '../../core/services/pdf-factura-generator.service';
+import { emitirFacturaLedgerAction } from '../actions/facturacion';
+
+const ReciboPagoModal = dynamic(
+  () => import('../components/facturacion/ReciboPagoModal').then((mod) => mod.ReciboPagoModal),
+  { ssr: false }
+);
 
 type EstadoFactura = 'Pagada' | 'Pendiente' | 'Vencida';
 
@@ -26,10 +38,15 @@ interface Factura {
 }
 
 export default function FacturacionPage() {
-  const { alquileres } = useAlquilerStore();
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'info' | 'warning' }>({ visible: false, message: '', type: 'info' });
+  const { alquileres, setAlquileres } = useAlquilerStore();
+  const { config: empresaConfig } = useEmpresaStore();
+  const { showSuccessToast, showErrorToast, showInfoToast, showWarningToast } = useToastStore();
   const [isPagoModalOpen, setIsPagoModalOpen] = useState(false);
+  const [isReciboModalOpen, setIsReciboModalOpen] = useState(false);
+  const [reciboGenerado, setReciboGenerado] = useState<any>(null);
+  const [isProcesandoPago, setIsProcesandoPago] = useState(false);
   const [facturaSeleccionada, setFacturaSeleccionada] = useState<Factura | null>(null);
+  const [documentoPDFSeleccionado, setDocumentoPDFSeleccionado] = useState<DocumentoPDFPayload | null>(null);
   
   const [filtroActivo, setFiltroActivo] = useState<'Todas' | 'Pagadas' | 'Pendientes' | 'Vencidas'>('Todas');
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,9 +55,16 @@ export default function FacturacionPage() {
 
   const { formatearMoneda } = useCurrencyFormatter();
 
-  const showToast = (message: string, type: 'success' | 'info' | 'warning' = 'success') => {
-    setToast({ visible: true, message, type });
-    setTimeout(() => setToast((prev) => ({ ...prev, visible: false })), 3000);
+  const recargarAlquileres = async () => {
+    try {
+      const res = await fetch('/api/alquileres', { cache: 'no-store' });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setAlquileres(json.data);
+      }
+    } catch (e) {
+      console.warn('Error recargando alquileres:', e);
+    }
   };
 
   // Mapeo dinámico de Alquileres a Facturas
@@ -125,17 +149,75 @@ export default function FacturacionPage() {
 
   const handleDescargarPDF = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    showToast(`Generando y descargando PDF para la factura ${id}...`, 'info');
+    const factura = todasLasFacturas.find(f => f.id === id);
+    if (!factura) {
+      showErrorToast('Factura no encontrada.');
+      return;
+    }
+
+    const alq = factura.alquilerOriginal;
+    const detallesList = alq.detalles || [];
+    const subtotalCalc = alq.subtotal_general || alq.subtotal_equipos || factura.total;
+    const valorIva = alq.valor_iva || (alq.aplica_iva ? Math.round(subtotalCalc * 0.19) : 0);
+    const valorRetefuente = alq.valor_retefuente || 0;
+    const valorReteica = alq.valor_reteica || 0;
+
+    const payload: DocumentoPDFPayload = {
+      tipo: 'FACTURA',
+      consecutivo: factura.id,
+      fechaEmision: factura.fechaEmision || new Date().toISOString(),
+      fechaVencimiento: factura.vencimiento,
+      clienteNombre: factura.cliente,
+      clienteNit: (alq as any).clienteNit || (alq as any).clienteDocumento || 'Sin Registrar',
+      clienteTelefono: (alq as any).clienteTelefono || '',
+      clienteEmail: (alq as any).clienteEmail || '',
+      detallesLogistica: alq.detalles_logistica || (alq as any).detallesLogistica || '',
+      items: detallesList.map((d: any) => ({
+        cantidad: d.cantidad || 1,
+        nombre: d.nombreItem || d.nombre || 'Equipo de Alquiler',
+        codigo: d.codigo || '',
+        fechaInicio: d.fecha_inicio || factura.fechaEmision,
+        fechaFin: d.fecha_fin || factura.vencimiento,
+        dias: d.dias_contratados || d.dias || 1,
+        tarifaDiaria: Number(d.tarifa_aplicada || d.tarifaDiaria || 0),
+        subtotal: Number(d.subtotal_linea || d.subtotal || 0),
+      })),
+      subtotalEquipos: Number(alq.subtotal_equipos || subtotalCalc),
+      fleteEntrega: Number(alq.flete_entrega || 0),
+      fleteRecogida: Number(alq.flete_recogida || 0),
+      subtotalGeneral: Number(subtotalCalc),
+      aplicaIva: alq.aplica_iva ?? (valorIva > 0),
+      tasaIva: 19,
+      valorIva,
+      aplicaRetefuente: alq.aplica_retefuente ?? (valorRetefuente > 0),
+      tasaRetefuente: 2.5,
+      valorRetefuente,
+      aplicaReteica: alq.aplica_reteica ?? (valorReteica > 0),
+      tasaReteica: 0.966,
+      valorReteica,
+      depositoAplicado: Number(factura.totalPagado || 0),
+      totalPagar: Number(factura.total || 0),
+      saldoPendiente: Number(factura.saldoPendiente || 0),
+      observaciones: alq.observaciones || '',
+      empresa: empresaConfig,
+    };
+
+    // Asentar en Ledger en background
+    emitirFacturaLedgerAction({ alquilerId: factura.id }).catch((err) =>
+      console.warn('Error emitiendo factura en Ledger:', err)
+    );
+
+    setDocumentoPDFSeleccionado(payload);
   };
 
   const handleEnviarCorreo = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    showToast(`Correo enviado exitosamente con la factura ${id}.`, 'success');
+    showSuccessToast(`Correo enviado exitosamente con la factura ${id}.`);
   };
 
   const handleNotificarAtraso = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    showToast(`Notificación de cobro enviada al cliente por la factura ${id}.`, 'warning');
+    showWarningToast(`Notificación de cobro enviada al cliente por la factura ${id}.`);
   };
 
   const abrirModalPago = (e: React.MouseEvent, factura: Factura) => {
@@ -144,30 +226,55 @@ export default function FacturacionPage() {
     setIsPagoModalOpen(true);
   };
 
-  const handleConfirmarPago = (monto: number, metodo: string, referencia: string, efectivoRecibido?: number, cambioEntregado?: number) => {
+  const handleConfirmarPago = async (
+    monto: number, 
+    metodo: string, 
+    referencia: string, 
+    efectivoRecibido?: number, 
+    cambioEntregado?: number
+  ) => {
     if (!facturaSeleccionada) return;
-    setIsPagoModalOpen(false);
-    setFacturaSeleccionada(null);
-    if (metodo === 'EFECTIVO' && cambioEntregado !== undefined && cambioEntregado > 0) {
-      showToast(`¡Pago registrado! Entregar cambio: ${formatearMoneda(cambioEntregado)}`, 'success');
-    } else {
-      showToast(`¡Pago de ${formatearMoneda(monto)} registrado correctamente!`, 'success');
+    setIsProcesandoPago(true);
+
+    try {
+      const res = await registrarPagoAction({
+        alquilerId: facturaSeleccionada.id,
+        monto,
+        metodoPago: metodo,
+        referencia,
+        efectivo_recibido: efectivoRecibido,
+        cambio_entregado: cambioEntregado
+      });
+
+      if (res.success) {
+        setIsPagoModalOpen(false);
+
+        recargarAlquileres();
+
+        const msgExito = (metodo === 'EFECTIVO' && cambioEntregado !== undefined && cambioEntregado > 0)
+          ? `Abono registrado. Entregar cambio: ${formatearMoneda(cambioEntregado)}`
+          : `Abono de ${formatearMoneda(monto)} registrado y contabilizado en el Ledger.`;
+
+        showSuccessToast(msgExito);
+
+        if (res.recibo) {
+          setReciboGenerado(res.recibo);
+          setIsReciboModalOpen(true);
+        }
+
+        setFacturaSeleccionada(null);
+      } else {
+        showErrorToast(res.error || 'No se pudo registrar el pago.');
+      }
+    } catch (err: any) {
+      showErrorToast(err.message || 'Error de conexión al registrar pago.');
+    } finally {
+      setIsProcesandoPago(false);
     }
   };
 
   return (
     <div className="flex flex-col gap-8 h-full relative">
-      {/* Toast Notification */}
-      {toast.visible && (
-        <div className={`fixed bottom-8 right-8 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg border animate-fadeIn
-          ${toast.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 
-            toast.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800' : 
-            'bg-blue-50 border-blue-200 text-blue-800'}`}
-        >
-          <Box className="text-[20px] w-5 h-5" />
-          <p className="text-sm font-semibold">{toast.message}</p>
-        </div>
-      )}
 
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -177,11 +284,17 @@ export default function FacturacionPage() {
         </div>
         <button 
           id="tour-btn-generar-factura"
-          onClick={() => showToast('Abriendo generador de facturas...', 'info')}
+          onClick={(e) => {
+            if (todasLasFacturas.length > 0) {
+              handleDescargarPDF(e, todasLasFacturas[0].id);
+            } else {
+              showInfoToast('No hay contratos ni facturas activas para generar.');
+            }
+          }}
           className="flex items-center justify-center gap-2 bg-brand-salmonLight text-brand-salmonDark hover:bg-brand-salmon hover:text-white disabled:opacity-50 pointer-events-auto transition-colors px-6 py-2 rounded-lg text-sm font-semibold shadow-sm"
         >
           <Receipt className="text-[20px] w-5 h-5" />
-          Generar Factura
+          Generar Factura Oficial
         </button>
       </div>
 
@@ -391,6 +504,22 @@ export default function FacturacionPage() {
         } : null}
         onConfirmarPago={handleConfirmarPago}
       />
+
+      {/* Modal de Recibo de Caja Imprimible (@media print) */}
+      <ReciboPagoModal
+        isOpen={isReciboModalOpen}
+        onClose={() => setIsReciboModalOpen(false)}
+        recibo={reciboGenerado}
+      />
+
+      {/* Visor Oficial de Facturas Comerciales en PDF */}
+      {documentoPDFSeleccionado && (
+        <VisorDocumentoPDFModal
+          isOpen={true}
+          onClose={() => setDocumentoPDFSeleccionado(null)}
+          documento={documentoPDFSeleccionado}
+        />
+      )}
 
       {/* Tour Módulo Facturación */}
       <AutoTourTrigger tourId="facturacion-core" delay={1000} forceMode={true} />

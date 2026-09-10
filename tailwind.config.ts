@@ -9,6 +9,36 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        /* Tokens Semánticos Dinámicos de Preset */
+        preset: {
+          bg: 'hsl(var(--preset-bg) / <alpha-value>)',
+          fg: 'hsl(var(--preset-fg) / <alpha-value>)',
+          card: 'hsl(var(--preset-card) / <alpha-value>)',
+          cardFg: 'hsl(var(--preset-card-fg) / <alpha-value>)',
+          border: 'hsl(var(--preset-border) / <alpha-value>)',
+          primary: 'hsl(var(--preset-primary) / <alpha-value>)',
+          primaryFg: 'hsl(var(--preset-primary-fg) / <alpha-value>)',
+          secondary: 'hsl(var(--preset-secondary) / <alpha-value>)',
+          secondaryFg: 'hsl(var(--preset-secondary-fg) / <alpha-value>)',
+          muted: 'hsl(var(--preset-muted) / <alpha-value>)',
+          mutedFg: 'hsl(var(--preset-muted-fg) / <alpha-value>)',
+          accent: 'hsl(var(--preset-accent) / <alpha-value>)',
+        },
+        /* Compatibilidad Canónica shadcn/ui */
+        background: 'hsl(var(--background) / <alpha-value>)',
+        foreground: 'hsl(var(--foreground) / <alpha-value>)',
+        card: {
+          DEFAULT: 'hsl(var(--card) / <alpha-value>)',
+          foreground: 'hsl(var(--card-foreground) / <alpha-value>)',
+        },
+        primary: {
+          DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
+          foreground: 'hsl(var(--primary-foreground) / <alpha-value>)',
+        },
+        border: 'hsl(var(--border) / <alpha-value>)',
+        ring: 'hsl(var(--ring) / <alpha-value>)',
+
+        /* Paleta Previa del ERP (Preservada al 100%) */
         brand: {
           salmon: 'var(--brand-base)',
           salmonDark: 'var(--brand-dark)',
@@ -21,11 +51,23 @@ const config: Config = {
           active: '#FFF4F1',
         }
       },
+      borderRadius: {
+        preset: 'var(--preset-radius)',
+      },
       fontFamily: {
-        sans: ['Outfit', 'Inter', 'sans-serif'],
-        display: ['Outfit', 'Inter', 'sans-serif'],
+        sans: ['var(--preset-font-body)', 'Outfit', 'Inter', 'sans-serif'],
+        display: ['var(--preset-font-display)', 'Outfit', 'Inter', 'sans-serif'],
+        jakarta: ['"Plus Jakarta Sans"', 'sans-serif'],
+        roboto: ['Roboto', 'sans-serif'],
+        calistoga: ['Calistoga', 'Georgia', 'serif'],
+        mono: ['"JetBrains Mono"', 'Fira Code', 'monospace'],
       },
       boxShadow: {
+        /* Sombras Semánticas Dinámicas de Preset */
+        'preset': 'var(--preset-shadow)',
+        'preset-hover': 'var(--preset-shadow-hover)',
+
+        /* Sombras Preexistentes del ERP */
         'card': '0 4px 6px -1px rgba(15, 23, 42, 0.05)',
         'modal': '0 10px 15px -3px rgba(15, 23, 42, 0.08)',
         'glow-brand': '0 0 35px -5px var(--brand-glow)',

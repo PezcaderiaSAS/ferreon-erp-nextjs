@@ -26,13 +26,15 @@ const getRedisClient = () => {
 
 export const redis = getRedisClient();
 
+export type TenantResource = 'equipos' | 'clientes' | 'alquileres' | 'facturas' | 'empresa' | 'cotizaciones';
+
 /**
  * Genera claves de caché aisladas por empresa (Multi-Tenant).
  * Formato: tenant:{empresaId}:{resource} o tenant:{empresaId}:{resource}:{id}
  */
 export function getTenantCacheKey(
   tenantId: string | null | undefined,
-  resource: 'equipos' | 'clientes' | 'alquileres' | 'facturas' | 'empresa',
+  resource: TenantResource,
   id?: string | number
 ): string {
   const safeTenant = tenantId || 'default';
@@ -44,7 +46,7 @@ export function getTenantCacheKey(
  */
 export async function getTenantCache<T>(
   tenantId: string | null | undefined,
-  resource: 'equipos' | 'clientes' | 'alquileres' | 'facturas' | 'empresa',
+  resource: TenantResource,
   id?: string | number
 ): Promise<T | null> {
   if (!redis) return null;
@@ -73,7 +75,7 @@ export async function getTenantCache<T>(
  */
 export async function setTenantCache(
   tenantId: string | null | undefined,
-  resource: 'equipos' | 'clientes' | 'alquileres' | 'facturas' | 'empresa',
+  resource: TenantResource,
   data: any,
   ttlSeconds: number = 3600,
   id?: string | number
@@ -93,7 +95,7 @@ export async function setTenantCache(
  */
 export async function invalidateTenantCache(
   tenantId: string | null | undefined,
-  resources: Array<'equipos' | 'clientes' | 'alquileres' | 'facturas' | 'empresa'>,
+  resources: Array<TenantResource>,
   id?: string | number
 ): Promise<void> {
   if (!redis) return;

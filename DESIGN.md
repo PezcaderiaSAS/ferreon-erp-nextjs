@@ -76,8 +76,9 @@ El ERP ofrece una experiencia táctil, moderna y vibrante, combinando fondos osc
    - Soporte obligatorio para `isLoading` (spinner SVG animado sin descolocar el layout).
    - Prevención física de doble click (`pointer-events-none disabled:opacity-50`).
 2. **Tablas de Datos (`DataTable`):**
-   - Alineación numérica a la derecha para valores monetarios, pesajes y stocks.
+   - Alineación numérica a la derecha para valores monetarios, tarifas y cantidades de stock.
    - Paginación o virtualización para listados mayores a 50 registros.
+
 3. **Skeletons de Carga:**
    - Prohibido el uso de spinners globales que congelen toda la pantalla.
    - Usar cajas grises con gradiente shimmer en pulso continuo durante la carga asíncrona.
