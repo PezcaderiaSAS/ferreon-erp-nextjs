@@ -536,23 +536,26 @@ export async function aprobarCotizacionAction(input: AprobarCotizacionInput) {
   // 1. Obtener detalles del alquiler
   const { data: detalles, error: detErr } = await supabase
     .from('alquiler_detalles')
-    .select('equipo_id, cantidad')
+    .select('equipo_id, cantidad, es_subcontratado')
     .eq('alquiler_id', numericAlquilerId);
 
   if (detErr) return { success: false, error: 'Error al consultar detalles de cotización.' };
   if (!detalles || detalles.length === 0) return { success: false, error: 'La cotización no tiene equipos asociados.' };
 
   // 2 y 3. Validación Pesimista y Descuento Atómico (RPC - Optimistic Locking)
-  // Utilizamos el candado SQL 'reducir_stock_seguro' para asegurar que nadie más tome el equipo
+  // Utilizamos el candado SQL 'reducir_stock_seguro' para asegurar que nadie más tome el equipo propio
   for (const det of detalles) {
+    // Si el ítem es subcontratado con aliado externo, no consume activos propios de bodega
+    if (det.es_subcontratado) {
+      continue;
+    }
+
     const { data: rpcSuccess, error: rpcErr } = await supabase.rpc('reducir_stock_seguro', {
       p_equipo_id: det.equipo_id,
       p_cantidad_requerida: det.cantidad
     });
 
     if (rpcErr || !rpcSuccess) {
-      // Poka-Yoke: En caso de error, el RPC aborta y Next.js recibe la excepción SQL.
-      // Sería ideal hacer rollback de los que ya pasaron si esto fuera una transacción única.
       return { 
         success: false, 
         error: `Error de concurrencia al alquilar equipo ID: ${det.equipo_id}. Posible Overbooking: ${rpcErr?.message || 'Stock Insuficiente.'}`
@@ -574,13 +577,14 @@ export async function aprobarCotizacionAction(input: AprobarCotizacionInput) {
   // 5. Invalidar Caché Multi-Tenant
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    await invalidateTenantCache(user?.id, ['alquileres', 'equipos']);
+    await invalidateTenantCache(user?.id, ['alquileres', 'equipos', 'subcontrataciones']);
   } catch (cErr) {
     console.warn('[aprobarCotizacionAction] Cache clear error:', cErr);
   }
 
   revalidatePath('/alquileres');
   revalidatePath('/bodega');
+  revalidatePath('/cotizaciones');
   return { success: true };
 }
 
