@@ -89,8 +89,12 @@ export type Database = {
       }
       alquileres: {
         Row: {
+          aplica_iva: boolean | null
+          aplica_retefuente: boolean | null
+          aplica_reteica: boolean | null
           cliente_id: number
           consecutivo: number
+          cotizacion_origen_id: string | null
           creado_por: string | null
           created_at: string
           deleted_at: string | null
@@ -112,10 +116,18 @@ export type Database = {
           total: number
           total_pagado: number
           updated_at: string
+          valor_iva: number | null
+          valor_retefuente: number | null
+          valor_reteica: number | null
+          valor_transporte: number | null
         }
         Insert: {
+          aplica_iva?: boolean | null
+          aplica_retefuente?: boolean | null
+          aplica_reteica?: boolean | null
           cliente_id: number
           consecutivo?: number
+          cotizacion_origen_id?: string | null
           creado_por?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -137,10 +149,18 @@ export type Database = {
           total?: number
           total_pagado?: number
           updated_at?: string
+          valor_iva?: number | null
+          valor_retefuente?: number | null
+          valor_reteica?: number | null
+          valor_transporte?: number | null
         }
         Update: {
+          aplica_iva?: boolean | null
+          aplica_retefuente?: boolean | null
+          aplica_reteica?: boolean | null
           cliente_id?: number
           consecutivo?: number
+          cotizacion_origen_id?: string | null
           creado_por?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -162,6 +182,10 @@ export type Database = {
           total?: number
           total_pagado?: number
           updated_at?: string
+          valor_iva?: number | null
+          valor_retefuente?: number | null
+          valor_reteica?: number | null
+          valor_transporte?: number | null
         }
         Relationships: [
           {
@@ -172,7 +196,70 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "alquileres_cotizacion_origen_id_fkey"
+            columns: ["cotizacion_origen_id"]
+            isOneToOne: false
+            referencedRelation: "cotizaciones"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "alquileres_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_logs: {
+        Row: {
+          accion: string
+          created_at: string
+          descripcion: string
+          detalles: Json | null
+          empresa_id: string | null
+          entidad_id: string | null
+          id: string
+          ip_address: string | null
+          modulo: string
+          usuario_email: string
+          usuario_id: string | null
+          usuario_nombre: string
+          usuario_rol: string
+        }
+        Insert: {
+          accion: string
+          created_at?: string
+          descripcion: string
+          detalles?: Json | null
+          empresa_id?: string | null
+          entidad_id?: string | null
+          id?: string
+          ip_address?: string | null
+          modulo: string
+          usuario_email?: string
+          usuario_id?: string | null
+          usuario_nombre?: string
+          usuario_rol?: string
+        }
+        Update: {
+          accion?: string
+          created_at?: string
+          descripcion?: string
+          detalles?: Json | null
+          empresa_id?: string | null
+          entidad_id?: string | null
+          id?: string
+          ip_address?: string | null
+          modulo?: string
+          usuario_email?: string
+          usuario_id?: string | null
+          usuario_nombre?: string
+          usuario_rol?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
@@ -229,6 +316,341 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compras: {
+        Row: {
+          aplica_iva: boolean
+          aplica_retefuente: boolean
+          aplica_reteica: boolean
+          created_at: string | null
+          empresa_id: string | null
+          estado: string
+          fecha_compra: string
+          id: string
+          impuestos: number
+          metodo_pago: string
+          neto_pagar: number
+          numero_orden: string
+          observaciones: string | null
+          porcentaje_retefuente: number
+          porcentaje_reteica: number
+          proveedor_email: string | null
+          proveedor_id: string | null
+          proveedor_nit: string | null
+          proveedor_nombre: string
+          proveedor_telefono: string | null
+          subtotal: number
+          tenant_id: string | null
+          total: number
+          transaction_id: string | null
+          usuario_id: string | null
+          valor_iva: number
+          valor_retefuente: number
+          valor_reteica: number
+        }
+        Insert: {
+          aplica_iva?: boolean
+          aplica_retefuente?: boolean
+          aplica_reteica?: boolean
+          created_at?: string | null
+          empresa_id?: string | null
+          estado?: string
+          fecha_compra?: string
+          id?: string
+          impuestos?: number
+          metodo_pago?: string
+          neto_pagar?: number
+          numero_orden: string
+          observaciones?: string | null
+          porcentaje_retefuente?: number
+          porcentaje_reteica?: number
+          proveedor_email?: string | null
+          proveedor_id?: string | null
+          proveedor_nit?: string | null
+          proveedor_nombre: string
+          proveedor_telefono?: string | null
+          subtotal?: number
+          tenant_id?: string | null
+          total?: number
+          transaction_id?: string | null
+          usuario_id?: string | null
+          valor_iva?: number
+          valor_retefuente?: number
+          valor_reteica?: number
+        }
+        Update: {
+          aplica_iva?: boolean
+          aplica_retefuente?: boolean
+          aplica_reteica?: boolean
+          created_at?: string | null
+          empresa_id?: string | null
+          estado?: string
+          fecha_compra?: string
+          id?: string
+          impuestos?: number
+          metodo_pago?: string
+          neto_pagar?: number
+          numero_orden?: string
+          observaciones?: string | null
+          porcentaje_retefuente?: number
+          porcentaje_reteica?: number
+          proveedor_email?: string | null
+          proveedor_id?: string | null
+          proveedor_nit?: string | null
+          proveedor_nombre?: string
+          proveedor_telefono?: string | null
+          subtotal?: number
+          tenant_id?: string | null
+          total?: number
+          transaction_id?: string | null
+          usuario_id?: string | null
+          valor_iva?: number
+          valor_retefuente?: number
+          valor_reteica?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compras_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compras_proveedor_id_fkey"
+            columns: ["proveedor_id"]
+            isOneToOne: false
+            referencedRelation: "proveedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compras_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compras_detalles: {
+        Row: {
+          cantidad: number
+          compra_id: string
+          created_at: string | null
+          equipo_id: number
+          id: string
+          precio_unitario: number
+          subtotal: number
+        }
+        Insert: {
+          cantidad: number
+          compra_id: string
+          created_at?: string | null
+          equipo_id: number
+          id?: string
+          precio_unitario: number
+          subtotal: number
+        }
+        Update: {
+          cantidad?: number
+          compra_id?: string
+          created_at?: string | null
+          equipo_id?: number
+          id?: string
+          precio_unitario?: number
+          subtotal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compras_detalles_compra_id_fkey"
+            columns: ["compra_id"]
+            isOneToOne: false
+            referencedRelation: "compras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compras_detalles_equipo_id_fkey"
+            columns: ["equipo_id"]
+            isOneToOne: false
+            referencedRelation: "equipos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cotizaciones: {
+        Row: {
+          alquiler_id: number | null
+          aplica_iva: boolean
+          aplica_retefuente: boolean
+          aplica_reteica: boolean
+          cliente_documento: string | null
+          cliente_email: string | null
+          cliente_id: number | null
+          cliente_nombre: string
+          cliente_telefono: string | null
+          consecutivo: string
+          created_at: string
+          created_by: string | null
+          deposito_garantia: number
+          empresa_id: string | null
+          estado: string
+          fecha_emision: string
+          fecha_vencimiento: string | null
+          id: string
+          obra_direccion: string | null
+          obra_nombre: string | null
+          observaciones: string | null
+          subtotal: number
+          tasa_iva: number
+          tasa_retefuente: number
+          tasa_reteica: number
+          tenant_id: string | null
+          total: number
+          updated_at: string
+          valor_iva: number
+          valor_retefuente: number
+          valor_reteica: number
+          valor_transporte: number
+        }
+        Insert: {
+          alquiler_id?: number | null
+          aplica_iva?: boolean
+          aplica_retefuente?: boolean
+          aplica_reteica?: boolean
+          cliente_documento?: string | null
+          cliente_email?: string | null
+          cliente_id?: number | null
+          cliente_nombre: string
+          cliente_telefono?: string | null
+          consecutivo: string
+          created_at?: string
+          created_by?: string | null
+          deposito_garantia?: number
+          empresa_id?: string | null
+          estado?: string
+          fecha_emision?: string
+          fecha_vencimiento?: string | null
+          id?: string
+          obra_direccion?: string | null
+          obra_nombre?: string | null
+          observaciones?: string | null
+          subtotal?: number
+          tasa_iva?: number
+          tasa_retefuente?: number
+          tasa_reteica?: number
+          tenant_id?: string | null
+          total?: number
+          updated_at?: string
+          valor_iva?: number
+          valor_retefuente?: number
+          valor_reteica?: number
+          valor_transporte?: number
+        }
+        Update: {
+          alquiler_id?: number | null
+          aplica_iva?: boolean
+          aplica_retefuente?: boolean
+          aplica_reteica?: boolean
+          cliente_documento?: string | null
+          cliente_email?: string | null
+          cliente_id?: number | null
+          cliente_nombre?: string
+          cliente_telefono?: string | null
+          consecutivo?: string
+          created_at?: string
+          created_by?: string | null
+          deposito_garantia?: number
+          empresa_id?: string | null
+          estado?: string
+          fecha_emision?: string
+          fecha_vencimiento?: string | null
+          id?: string
+          obra_direccion?: string | null
+          obra_nombre?: string | null
+          observaciones?: string | null
+          subtotal?: number
+          tasa_iva?: number
+          tasa_retefuente?: number
+          tasa_reteica?: number
+          tenant_id?: string | null
+          total?: number
+          updated_at?: string
+          valor_iva?: number
+          valor_retefuente?: number
+          valor_reteica?: number
+          valor_transporte?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cotizaciones_alquiler_id_fkey"
+            columns: ["alquiler_id"]
+            isOneToOne: false
+            referencedRelation: "alquileres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cotizaciones_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cotizaciones_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cotizaciones_detalles: {
+        Row: {
+          cantidad: number
+          cotizacion_id: string
+          created_at: string
+          dias: number
+          equipo_id: number
+          id: string
+          subtotal: number
+          tarifa_diaria: number
+        }
+        Insert: {
+          cantidad: number
+          cotizacion_id: string
+          created_at?: string
+          dias: number
+          equipo_id: number
+          id?: string
+          subtotal?: number
+          tarifa_diaria: number
+        }
+        Update: {
+          cantidad?: number
+          cotizacion_id?: string
+          created_at?: string
+          dias?: number
+          equipo_id?: number
+          id?: string
+          subtotal?: number
+          tarifa_diaria?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cotizaciones_detalles_cotizacion_id_fkey"
+            columns: ["cotizacion_id"]
+            isOneToOne: false
+            referencedRelation: "cotizaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cotizaciones_detalles_equipo_id_fkey"
+            columns: ["equipo_id"]
+            isOneToOne: false
+            referencedRelation: "equipos"
             referencedColumns: ["id"]
           },
         ]
@@ -463,6 +885,36 @@ export type Database = {
           },
         ]
       }
+      financial_accounts: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_cash_equivalent: boolean | null
+          name: string
+          type: Database["public"]["Enums"]["account_type"]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_cash_equivalent?: boolean | null
+          name: string
+          type: Database["public"]["Enums"]["account_type"]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_cash_equivalent?: boolean | null
+          name?: string
+          type?: Database["public"]["Enums"]["account_type"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       idempotency_logs: {
         Row: {
           action_type: string
@@ -492,13 +944,111 @@ export type Database = {
           },
         ]
       }
+      journal_entries: {
+        Row: {
+          account_id: string
+          amount: number
+          created_at: string | null
+          id: string
+          transaction_id: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          created_at?: string | null
+          id?: string
+          transaction_id: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          created_at?: string | null
+          id?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "financial_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entries_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kardex_inventario: {
+        Row: {
+          cantidad_delta: number
+          creado_en: string
+          empresa_id: string | null
+          equipo_id: number
+          id: string
+          motivo: string | null
+          referencia_documento: string | null
+          stock_resultante: number
+          tenant_id: string | null
+          tipo_movimiento: string
+          usuario_id: string
+        }
+        Insert: {
+          cantidad_delta: number
+          creado_en?: string
+          empresa_id?: string | null
+          equipo_id: number
+          id?: string
+          motivo?: string | null
+          referencia_documento?: string | null
+          stock_resultante: number
+          tenant_id?: string | null
+          tipo_movimiento: string
+          usuario_id?: string
+        }
+        Update: {
+          cantidad_delta?: number
+          creado_en?: string
+          empresa_id?: string | null
+          equipo_id?: number
+          id?: string
+          motivo?: string | null
+          referencia_documento?: string | null
+          stock_resultante?: number
+          tenant_id?: string | null
+          tipo_movimiento?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kardex_inventario_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kardex_inventario_equipo_id_fkey"
+            columns: ["equipo_id"]
+            isOneToOne: false
+            referencedRelation: "equipos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pagos: {
         Row: {
           alquiler_id: number
+          cambio_entregado: number | null
           cliente_id: number
           created_at: string
           deleted_at: string | null
           deleted_by: string | null
+          efectivo_recibido: number | null
           empresa_id: string | null
           fecha: string
           id: number
@@ -506,13 +1056,16 @@ export type Database = {
           monto: number
           referencia: string | null
           registrado_por: string | null
+          sesion_caja_id: string | null
         }
         Insert: {
           alquiler_id: number
+          cambio_entregado?: number | null
           cliente_id: number
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
+          efectivo_recibido?: number | null
           empresa_id?: string | null
           fecha?: string
           id?: number
@@ -520,13 +1073,16 @@ export type Database = {
           monto: number
           referencia?: string | null
           registrado_por?: string | null
+          sesion_caja_id?: string | null
         }
         Update: {
           alquiler_id?: number
+          cambio_entregado?: number | null
           cliente_id?: number
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
+          efectivo_recibido?: number | null
           empresa_id?: string | null
           fecha?: string
           id?: number
@@ -534,6 +1090,7 @@ export type Database = {
           monto?: number
           referencia?: string | null
           registrado_por?: string | null
+          sesion_caja_id?: string | null
         }
         Relationships: [
           {
@@ -557,7 +1114,150 @@ export type Database = {
             referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pagos_sesion_caja_id_fkey"
+            columns: ["sesion_caja_id"]
+            isOneToOne: false
+            referencedRelation: "sesiones_caja"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      proveedores: {
+        Row: {
+          ciudad: string | null
+          contacto: string | null
+          created_at: string | null
+          dias_credito: number
+          direccion: string | null
+          email: string | null
+          empresa_id: string | null
+          estado: string
+          id: string
+          nit: string
+          nombre: string
+          observaciones: string | null
+          telefono: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ciudad?: string | null
+          contacto?: string | null
+          created_at?: string | null
+          dias_credito?: number
+          direccion?: string | null
+          email?: string | null
+          empresa_id?: string | null
+          estado?: string
+          id?: string
+          nit: string
+          nombre: string
+          observaciones?: string | null
+          telefono?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ciudad?: string | null
+          contacto?: string | null
+          created_at?: string | null
+          dias_credito?: number
+          direccion?: string | null
+          email?: string | null
+          empresa_id?: string | null
+          estado?: string
+          id?: string
+          nit?: string
+          nombre?: string
+          observaciones?: string | null
+          telefono?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proveedores_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sesiones_caja: {
+        Row: {
+          empresa_id: string | null
+          estado: string
+          fecha_apertura: string | null
+          fecha_cierre: string | null
+          id: string
+          monto_apertura: number
+          monto_cierre: number | null
+          observaciones: string | null
+          tenant_id: string | null
+          usuario_id: string
+        }
+        Insert: {
+          empresa_id?: string | null
+          estado?: string
+          fecha_apertura?: string | null
+          fecha_cierre?: string | null
+          id?: string
+          monto_apertura?: number
+          monto_cierre?: number | null
+          observaciones?: string | null
+          tenant_id?: string | null
+          usuario_id: string
+        }
+        Update: {
+          empresa_id?: string | null
+          estado?: string
+          fecha_apertura?: string | null
+          fecha_cierre?: string | null
+          id?: string
+          monto_apertura?: number
+          monto_cierre?: number | null
+          observaciones?: string | null
+          tenant_id?: string | null
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sesiones_caja_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          created_by: string | null
+          description: string
+          id: string
+          idempotency_key: string
+          reference_id: string | null
+          timestamp: string | null
+        }
+        Insert: {
+          created_by?: string | null
+          description: string
+          id?: string
+          idempotency_key: string
+          reference_id?: string | null
+          timestamp?: string | null
+        }
+        Update: {
+          created_by?: string | null
+          description?: string
+          id?: string
+          idempotency_key?: string
+          reference_id?: string | null
+          timestamp?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -570,10 +1270,21 @@ export type Database = {
       }
       crear_alquiler_transaccional: { Args: { p_payload: Json }; Returns: Json }
       get_current_tenant_id: { Args: never; Returns: string }
+      insert_transaction: {
+        Args: {
+          p_created_by: string
+          p_description: string
+          p_entries: Json
+          p_idempotency_key: string
+          p_reference_id: string
+        }
+        Returns: string
+      }
+      is_ultra_admin: { Args: never; Returns: boolean }
       procesar_devolucion_alquiler: { Args: { p_payload: Json }; Returns: Json }
     }
     Enums: {
-      [_ in never]: never
+      account_type: "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -700,7 +1411,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      account_type: ["ASSET", "LIABILITY", "EQUITY", "REVENUE", "EXPENSE"],
+    },
   },
 } as const
-

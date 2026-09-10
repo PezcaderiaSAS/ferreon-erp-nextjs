@@ -168,6 +168,24 @@ INSERT INTO public.financial_accounts (name, type, is_cash_equivalent, descripti
 SELECT 'ReteICA por Pagar (Compras)', 'LIABILITY', false, 'Retención de Industria y Comercio practicada a proveedores (Cuenta 2368)'
 WHERE NOT EXISTS (SELECT 1 FROM public.financial_accounts WHERE name = 'ReteICA por Pagar (Compras)');
 
+-- Habilitar RLS y Políticas Seguras en Contabilidad
+ALTER TABLE public.financial_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.journal_entries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow read financial_accounts" ON public.financial_accounts;
+CREATE POLICY "Allow read financial_accounts" ON public.financial_accounts 
+    FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow all transactions" ON public.transactions;
+CREATE POLICY "Allow all transactions" ON public.transactions 
+    FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Allow all journal_entries" ON public.journal_entries;
+CREATE POLICY "Allow all journal_entries" ON public.journal_entries 
+    FOR ALL USING (true);
+
+
 -- ------------------------------------------------------------------------------
 -- 4. TABLA KARDEX_INVENTARIO (Trazabilidad Inmutable de Bodega)
 -- ------------------------------------------------------------------------------
