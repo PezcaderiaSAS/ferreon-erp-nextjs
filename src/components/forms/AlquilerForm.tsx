@@ -301,8 +301,10 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
 
   // Fallbacks resilientes para visualización de cliente cuando el store aún no ha cargado en red
   const displayClienteNombre = selectedCliente?.nombre || initialData?.clienteNombre || initialData?.cliente?.nombre || '';
-  const displayClienteNit = selectedCliente?.nit_cedula || selectedCliente?.nit || initialData?.clienteNit || initialData?.clienteDocumento || initialData?.cliente?.nit || '';
+  const displayClienteNit = selectedCliente?.nit_cedula || selectedCliente?.nit || (selectedCliente as any)?.nitCedula || initialData?.clienteNit || initialData?.clienteDocumento || initialData?.cliente?.nit || '';
   const displayClienteTelefono = selectedCliente?.telefono || selectedCliente?.contacto || initialData?.clienteTelefono || initialData?.cliente?.telefono || '';
+  const displayClienteDireccion = selectedCliente?.direccion || initialData?.clienteDireccion || initialData?.cliente?.direccion || '';
+  const displayClienteEmail = selectedCliente?.email || initialData?.clienteEmail || initialData?.cliente?.email || '';
 
   // Subtotal de equipos calculado con fórmula estricta
   const subtotalEquipos = useMemo(() => {
@@ -421,9 +423,12 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
       tipo: 'CONTRATO' as const,
       consecutivo,
       cliente_id: clienteId,
+      clienteId: clienteId,
       clienteNombre: displayClienteNombre || 'Consumidor Final',
       clienteNit: displayClienteNit || 'Sin Registrar',
       clienteTelefono: displayClienteTelefono,
+      clienteDireccion: displayClienteDireccion,
+      clienteEmail: displayClienteEmail,
       flete_entrega: fleteEntrega,
       fleteEntrega,
       flete_recogida: fleteRecogida,
@@ -466,6 +471,10 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
     if (savedAlquilerData) {
       if (savedAlquilerData.consecutivo) payload.consecutivo = savedAlquilerData.consecutivo;
       if (savedAlquilerData.clienteNombre) payload.clienteNombre = savedAlquilerData.clienteNombre;
+      if (savedAlquilerData.clienteNit) payload.clienteNit = savedAlquilerData.clienteNit;
+      if (savedAlquilerData.clienteTelefono) payload.clienteTelefono = savedAlquilerData.clienteTelefono;
+      if (savedAlquilerData.clienteDireccion) payload.clienteDireccion = savedAlquilerData.clienteDireccion;
+      if (savedAlquilerData.clienteEmail) payload.clienteEmail = savedAlquilerData.clienteEmail;
     }
     const htmlContent = EnterprisePDFService.generarHTMLDocumento(payload);
     
@@ -592,6 +601,13 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
           ...alquilerUi, 
           id: nuevoAlquilerDB.id, 
           consecutivo: nuevoAlquilerDB.consecutivo,
+          clienteId: validation.data.clienteId,
+          cliente_id: validation.data.clienteId,
+          clienteNombre: displayClienteNombre || nuevoAlquilerDB.cliente_nombre,
+          clienteNit: displayClienteNit,
+          clienteTelefono: displayClienteTelefono,
+          clienteDireccion: displayClienteDireccion,
+          clienteEmail: displayClienteEmail,
           subtotal_equipos: subtotalEquipos,
           total: totalEstimado,
           saldo_pendiente: totalEstimado

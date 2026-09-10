@@ -43,9 +43,12 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
 
   // Inyección Dinámica del Cliente
   const esAlquilerAbierto = alquiler.estado !== 'DEVUELTO' && alquiler.estado !== 'CERRADO' && alquiler.estado !== 'PAGADO';
-  const clienteActualizado = clientes.find((c: any) => c.id === alquiler.clienteId);
+  const rawClienteId = alquiler.clienteId || alquiler.cliente_id;
+  const clienteActualizado = clientes.find((c: any) => String(c.id) === String(rawClienteId));
   const clienteNombreFinal = esAlquilerAbierto && clienteActualizado ? clienteActualizado.nombre : (alquiler.clienteNombre || "Cliente Mostrador");
   const clienteNitFinal = esAlquilerAbierto && clienteActualizado ? (clienteActualizado.nit_cedula || clienteActualizado.nit) : (alquiler.clienteNit || "");
+  const clienteTelefonoFinal = clienteActualizado?.telefono || alquiler.clienteTelefono || "";
+  const clienteDireccionFinal = clienteActualizado?.direccion || alquiler.clienteDireccion || "";
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Documento Soporte de Alquiler" maxWidth="3xl">
@@ -109,9 +112,11 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
         <div className="mb-6 bg-slate-50 rounded-lg p-4 border border-slate-100">
           <h3 className="text-xs uppercase font-bold text-slate-400 tracking-wider mb-2">Datos del Cliente</h3>
           <p className="text-base font-bold text-slate-800">{clienteNombreFinal}</p>
-          <div className="flex gap-4">
-            <p className="text-sm text-slate-600 mt-1 font-semibold">NIT/Cédula: {clienteNitFinal || "N/A"}</p>
-            {alquiler.clienteId && <p className="text-sm text-slate-600 mt-1">ID Ref: {alquiler.clienteId}</p>}
+          <div className="flex flex-wrap gap-4 mt-1">
+            <p className="text-sm text-slate-600 font-semibold">NIT/Cédula: {clienteNitFinal || "N/A"}</p>
+            {clienteTelefonoFinal && <p className="text-sm text-slate-600">Tel: {clienteTelefonoFinal}</p>}
+            {clienteDireccionFinal && <p className="text-sm text-slate-600">Dir: {clienteDireccionFinal}</p>}
+            {(alquiler.clienteId || alquiler.cliente_id) && <p className="text-sm text-slate-400">ID Ref: {alquiler.clienteId || alquiler.cliente_id}</p>}
           </div>
         </div>
 

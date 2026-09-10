@@ -443,14 +443,26 @@ export default function AlquileresPage() {
 
   const handleGenerarPDF = async (contrato: any) => {
     try {
+      // Búsqueda proactiva del cliente real en el store local si no viene pre-cargado
+      const rawClienteId = contrato.cliente_id || contrato.clienteId;
+      const clienteEnStore = useClienteStore.getState().clientes.find(c => String(c.id) === String(rawClienteId));
+
+      const clienteNombre = contrato.clienteNombre || (contrato as any).cliente?.nombre || clienteEnStore?.nombre || "Consumidor Final";
+      const clienteNit = contrato.clienteNit || contrato.clienteDocumento || (contrato as any).cliente?.nit || (contrato as any).cliente?.nit_cedula || clienteEnStore?.nit_cedula || clienteEnStore?.nit || "Sin Registrar";
+      const clienteTelefono = contrato.clienteTelefono || (contrato as any).cliente?.telefono || clienteEnStore?.telefono || "";
+      const clienteDireccion = contrato.clienteDireccion || (contrato as any).cliente?.direccion || clienteEnStore?.direccion || "";
+      const clienteEmail = contrato.clienteEmail || (contrato as any).cliente?.email || clienteEnStore?.email || "";
+
       const payload: any = {
         tipo: contrato.estado === 'COTIZACION' ? 'COTIZACION' : (contrato.estado === 'FINALIZADO' ? 'CUENTA_COBRO' : 'CONTRATO'),
         consecutivo: contrato.consecutivo || parseInt(String(contrato.id || "").replace(/\D/g, '') || "0") || Date.now() % 10000,
         fechaEmision: new Date().toISOString(),
         fechaInicioGeneral: new Date(contrato.createdAt || contrato.created_at || Date.now()).toISOString(),
-        clienteNombre: contrato.clienteNombre || (contrato as any).cliente?.nombre || "Cliente General",
-        clienteNit: contrato.clienteNit || contrato.clienteDocumento || (contrato as any).cliente?.nit || (contrato as any).cliente?.nit_cedula || "222222222",
-        clienteTelefono: contrato.clienteTelefono || (contrato as any).cliente?.telefono || "",
+        clienteNombre,
+        clienteNit,
+        clienteTelefono,
+        clienteDireccion,
+        clienteEmail,
         items: (contrato.detalles || []).map((d: any) => {
           const fInicio = new Date(d.fechaInicio || d.fecha_inicio || contrato.createdAt || contrato.created_at || Date.now()).getTime();
           const fFin = new Date(d.fechaFinEstimada || d.fecha_fin_estimada || d.fechaFin || contrato.createdAt || contrato.created_at || Date.now()).getTime();
