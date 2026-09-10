@@ -13,11 +13,9 @@ import { idempotencyManager } from '../../lib/idempotency';
 import { Modal } from '../ui/Modal';
 import { ClienteForm } from './ClienteForm';
 import { BodegaForm } from './BodegaForm';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import { ContratoAlquilerPDF } from '../pdf/ContratoAlquilerPDF';
 import { formatearMonedaConLetras } from '../../core/utils/numero-a-letras';
 import { EnterprisePDFService } from '../../core/services/pdf-factura-generator.service';
-import { Lock, Plus } from 'lucide-react';
+import { Lock, Plus, Printer, FileText, CheckCircle, ArrowRight } from 'lucide-react';
 import { EquipoCombobox } from '../ui/EquipoCombobox';
 
 const alquilerSchema = z.object({
@@ -337,17 +335,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Math.round(valor || 0));
   };
 
-  // Helper para generar nombre de archivo normalizado y sanitizado
-  const generarNombreArchivoPDF = (consecutivo: string | number, clienteNombre: string, fecha: string, formato: string) => {
-    const clienteLimpio = (clienteNombre || 'Cliente')
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-zA-Z0-9]/g, "_")
-      .replace(/_+/g, "_")
-      .trim();
-    const formatoLabel = formato === 'A5' ? 'A5' : 'Carta';
-    return `Contrato_Alquiler_#${consecutivo || 'Draft'}_${clienteLimpio}_${fecha}_${formatoLabel}.pdf`;
-  };
+
 
   const validateCurrentStep = (): boolean => {
     setFormErrors({});
@@ -474,14 +462,27 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
   const handleAbrirImpresionHTML = (formato: 'LETTER' | 'A5' = 'LETTER') => {
     const payload: any = construirPayloadDocumento(savedAlquilerData?.consecutivo || 'Borrador');
     payload.formatoPapel = formato;
+    payload.empresa = empresaConfig;
+    if (savedAlquilerData) {
+      if (savedAlquilerData.consecutivo) payload.consecutivo = savedAlquilerData.consecutivo;
+      if (savedAlquilerData.clienteNombre) payload.clienteNombre = savedAlquilerData.clienteNombre;
+    }
     const htmlContent = EnterprisePDFService.generarHTMLDocumento(payload);
     
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(htmlContent);
       printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        try {
+          printWindow.print();
+        } catch (printErr) {
+          console.warn('[Impresión] No se pudo lanzar print() automáticamente:', printErr);
+        }
+      }, 350);
     } else {
-      alert("Por favor habilita las ventanas emergentes para visualizar el documento.");
+      alert("Por favor habilita las ventanas emergentes para visualizar e imprimir el documento.");
     }
   };
 
@@ -611,65 +612,61 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
     }
   };
 
-  // Pantalla de Éxito y Descarga Multiformato
+  // Pantalla de Éxito y Emisión de Documentos
   if (isSuccess && savedAlquilerData) {
     const consecutivoDisplay = savedAlquilerData.consecutivo || '101';
     const nombreCliente = savedAlquilerData.clienteNombre || 'Cliente';
-    const fechaActual = todayStr;
 
     return (
       <div className="flex flex-col items-center justify-center py-8 space-y-6 text-center animate-fadeIn">
         <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl shadow-inner">
-          ✓
+          <CheckCircle className="w-9 h-9 text-emerald-600" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-slate-800">¡Contrato Guardado Exitosamente!</h2>
+          <h2 className="text-xl font-bold text-slate-800">
+            {initialData ? "¡Contrato Actualizado Exitosamente!" : "¡Contrato Guardado Exitosamente!"}
+          </h2>
           <p className="text-sm text-slate-500 mt-1">
-            El contrato <span className="font-bold text-slate-700">#{consecutivoDisplay}</span> ha sido registrado en la base de datos de Alquileres System.
+            El contrato <span className="font-bold text-slate-700">#{consecutivoDisplay}</span> ({nombreCliente}) ha sido registrado en el sistema.
           </p>
         </div>
 
-        {/* Opciones de Descarga e Impresión */}
+        {/* Opciones de Emisión e Impresión Oficial */}
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 w-full max-w-lg space-y-4 shadow-sm">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Opciones de Emisión de Documento</span>
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+            Emisión y Descarga del Documento (PDF)
+          </span>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Descarga Carta */}
-            <PDFDownloadLink
-              document={<ContratoAlquilerPDF data={savedAlquilerData} pageSize="LETTER" />}
-              fileName={generarNombreArchivoPDF(consecutivoDisplay, nombreCliente, fechaActual, 'LETTER')}
-              className="px-4 py-3 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 text-xs"
-            >
-              <span>📄</span>
-              <span>Descargar Carta (PDF)</span>
-            </PDFDownloadLink>
-
-            {/* Descarga A5 */}
-            <PDFDownloadLink
-              document={<ContratoAlquilerPDF data={savedAlquilerData} pageSize="A5" />}
-              fileName={generarNombreArchivoPDF(consecutivoDisplay, nombreCliente, fechaActual, 'A5')}
-              className="px-4 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 text-xs"
-            >
-              <span>📑</span>
-              <span>Descargar Media Carta / A5</span>
-            </PDFDownloadLink>
-          </div>
-
-          <div className="pt-2 border-t border-slate-200 flex justify-center gap-3">
+            {/* Emisión Formato Carta */}
             <button
               type="button"
               onClick={() => handleAbrirImpresionHTML('LETTER')}
-              className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold rounded-xl text-xs transition-all flex items-center space-x-1.5"
+              className="px-4 py-3 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 text-xs cursor-pointer active:scale-[0.98]"
             >
-              <span>🖨️</span>
-              <span>Impresión Rápida HTML</span>
+              <FileText className="w-4 h-4" />
+              <span>Ver / Imprimir Carta (PDF)</span>
             </button>
+
+            {/* Emisión Formato A5 / Media Carta */}
+            <button
+              type="button"
+              onClick={() => handleAbrirImpresionHTML('A5')}
+              className="px-4 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 text-xs cursor-pointer active:scale-[0.98]"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Media Carta / A5 (PDF)</span>
+            </button>
+          </div>
+
+          <div className="pt-3 border-t border-slate-200 flex justify-center gap-3">
             <button
               type="button"
               onClick={() => onSuccess(savedAlquilerData)}
-              className="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl text-xs transition-all"
+              className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
             >
-              Finalizar y Ver Listado
+              <span>Continuar y Ver en Listado</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
