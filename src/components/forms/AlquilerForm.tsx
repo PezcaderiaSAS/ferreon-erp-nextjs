@@ -328,7 +328,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
       if (i !== index) return item;
       const updated = { ...item, [field]: value };
 
-      // Auto-detección reactiva de stock si cambia la cantidad
+      // Auto-detección reactiva de stock si cambia la cantidad:
+      // Solo se activa subcontratación cuando la cantidad requerida supera el stock disponible o es <= 0
       if (field === 'cantidad' && updated.itemId) {
         const eq = equipos.find(e => String(e.id) === String(updated.itemId));
         if (eq) {
@@ -336,6 +337,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
           updated.stockPropio = stock;
           if (stock < (value as number) || stock <= 0) {
             updated.esSubcontratado = true;
+          } else {
+            updated.esSubcontratado = false;
           }
         }
       }
@@ -1221,8 +1224,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
                                     precioDiario: tarifa,
                                     nombreItem: equipo.nombre || (equipo as any).codigo || '',
                                     stockPropio,
-                                    esSubcontratado: requiereSub ? true : newItems[index].esSubcontratado,
-                                    costoDiarioProveedor: newItems[index].costoDiarioProveedor ?? Math.round(tarifa * 0.8)
+                                    esSubcontratado: Boolean(requiereSub),
+                                    costoDiarioProveedor: requiereSub ? (newItems[index].costoDiarioProveedor || Math.round(tarifa * 0.8)) : 0
                                   };
                                 }
                                 setItems(newItems);
@@ -1393,14 +1396,21 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
                           </div>
                         ) : (
                           <div className="flex items-center justify-between text-[11px] px-1 pt-0.5">
-                            <button
-                              type="button"
-                              onClick={() => updateItemRow(index, 'esSubcontratado', true)}
-                              className="text-amber-700 hover:text-amber-800 flex items-center gap-1 font-semibold hover:underline"
-                            >
-                              <Handshake className="w-3.5 h-3.5 text-amber-600" />
-                              <span>Subcontratar este equipo a un aliado</span>
-                            </button>
+                            {field.stockPropio !== undefined && field.stockPropio >= field.cantidad && field.stockPropio > 0 ? (
+                              <span className="text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Stock propio disponible ({field.stockPropio} disp. en bodega)
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => updateItemRow(index, 'esSubcontratado', true)}
+                                className="text-amber-700 hover:text-amber-800 flex items-center gap-1 font-semibold hover:underline"
+                              >
+                                <Handshake className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Subcontratar este equipo por falta de stock</span>
+                              </button>
+                            )}
                             {field.stockPropio !== undefined && (
                               <span className="text-slate-400 font-mono text-[10.5px]">
                                 Stock propio en bodega: {field.stockPropio}

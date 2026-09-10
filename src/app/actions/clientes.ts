@@ -111,7 +111,11 @@ export async function editarClienteAction(input: EditarClienteInput) {
   const cleanInput = validation.data;
 
   const supabase = await createServerSupabaseClient();
-  const numericId = typeof cleanInput.id === 'string' ? parseInt(cleanInput.id, 10) : cleanInput.id;
+  const targetId = (typeof cleanInput.id === 'string' && !isNaN(Number(cleanInput.id))) ? Number(cleanInput.id) : cleanInput.id;
+
+  if (targetId === undefined || targetId === null || (typeof targetId === 'number' && isNaN(targetId))) {
+    return { success: false, error: 'Identificador de cliente no válido.' };
+  }
 
   const updatePayload: any = {
     nombre: cleanInput.nombre.trim(),
@@ -132,7 +136,7 @@ export async function editarClienteAction(input: EditarClienteInput) {
   const { data, error } = await supabase
     .from('clientes')
     .update(updatePayload)
-    .eq('id', numericId)
+    .eq('id', targetId)
     .select()
     .single();
 
@@ -156,10 +160,10 @@ export async function editarClienteAction(input: EditarClienteInput) {
   AuditLogger.logAsync({
     modulo: 'CLIENTES',
     accion: 'EDITAR_CLIENTE',
-    descripcion: `Cliente actualizado: ${cleanInput.nombre} (ID: ${numericId})`,
-    entidadId: numericId,
+    descripcion: `Cliente actualizado: ${cleanInput.nombre} (ID: ${targetId})`,
+    entidadId: targetId,
     detalles: {
-      id: numericId,
+      id: targetId,
       nombre: cleanInput.nombre,
       nit_cedula: cleanInput.nit_cedula,
       estado: cleanInput.estado,

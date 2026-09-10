@@ -19,14 +19,14 @@ export interface RegistrarPagoInput {
 
 const RegistrarPagoZodSchema = z.object({
   alquilerId: z.union([z.string(), z.number()]),
-  clienteId: z.union([z.string(), z.number()]).optional(),
-  monto: z.number().positive('El monto del abono debe ser mayor a cero'),
+  clienteId: z.union([z.string(), z.number()]).optional().nullable(),
+  monto: z.coerce.number().positive('El monto del abono debe ser mayor a cero'),
   metodoPago: z.string().min(1, 'El método de pago es obligatorio'),
-  referencia: z.string().optional(),
-  efectivo_recibido: z.number().min(0).optional(),
-  cambio_entregado: z.number().min(0).optional(),
-  idempotency_key: z.string().optional(),
-});
+  referencia: z.string().optional().nullable(),
+  efectivo_recibido: z.coerce.number().min(0).optional().nullable(),
+  cambio_entregado: z.coerce.number().min(0).optional().nullable(),
+  idempotency_key: z.string().optional().nullable(),
+}).passthrough();
 
 export async function registrarPagoAction(input: RegistrarPagoInput) {
   const validation = validateActionInput(input, RegistrarPagoZodSchema);
@@ -39,9 +39,11 @@ export async function registrarPagoAction(input: RegistrarPagoInput) {
   const { data: { user } } = await supabase.auth.getUser();
   const userIdentifier = user?.email || user?.id || 'SISTEMA_OPERADOR';
 
-  const numericAlquilerId = typeof cleanInput.alquilerId === 'string' ? parseInt(cleanInput.alquilerId, 10) : cleanInput.alquilerId;
+  const numericAlquilerId = typeof cleanInput.alquilerId === 'string' 
+    ? (parseInt(cleanInput.alquilerId.replace(/\D/g, ''), 10) || parseInt(cleanInput.alquilerId, 10))
+    : cleanInput.alquilerId;
 
-  if (isNaN(numericAlquilerId)) {
+  if (!numericAlquilerId || isNaN(Number(numericAlquilerId))) {
     return { success: false, error: 'ID de alquiler inválido.' };
   }
 
@@ -238,7 +240,9 @@ export async function registrarPagoAction(input: RegistrarPagoInput) {
 
 export async function obtenerPagosPorAlquilerAction(alquilerId: string | number) {
   const supabase = await createServerSupabaseClient();
-  const numericAlquilerId = typeof alquilerId === 'string' ? parseInt(alquilerId, 10) : alquilerId;
+  const numericAlquilerId = typeof alquilerId === 'string' 
+    ? (parseInt(alquilerId.replace(/\D/g, ''), 10) || parseInt(alquilerId, 10))
+    : alquilerId;
 
   const { data, error } = await supabase
     .from('pagos')

@@ -96,8 +96,8 @@ export function CrearCotizacionModal({
       if (eq) {
         current.equipoId = eq.id;
         current.nombre = eq.nombre;
-        current.tarifaDiaria = (eq as any).precio_dia || (eq as any).tarifa_dia || (eq as any).tarifaDiaria || 0;
-        current.stockDisponible = (eq as any).stock_disponible !== undefined ? (eq as any).stock_disponible : (eq as any).stockDisponible || 0;
+        current.tarifaDiaria = (eq as any).tarifa_diaria ?? (eq as any).tarifaDiaria ?? (eq as any).precio_dia ?? (eq as any).tarifa_dia ?? 0;
+        current.stockDisponible = (eq as any).stock_disponible !== undefined ? (eq as any).stock_disponible : ((eq as any).stockDisponible ?? 0);
       } else {
         current.equipoId = '';
         current.nombre = '';

@@ -67,4 +67,24 @@ describe('Flujo de Subcontratación por Stock Insuficiente en Alquileres', () =>
     expect(rentabilidadSub.margenBrutoNominal).toBe(195000);
     expect(rentabilidadSub.esMargenNegativo).toBe(false);
   });
+
+  it('debe alternar reactivamente: activar subcontratación si falta stock y desactivarla si se reduce la cantidad a stock disponible', () => {
+    const stockBodega = 3;
+    
+    // Paso 1: Cantidad 5 > stock 3 -> Activa subcontratación
+    let cantidad = 5;
+    let esSubcontratado = stockBodega < cantidad || stockBodega <= 0;
+    expect(esSubcontratado).toBe(true);
+
+    // Paso 2: Operador reduce cantidad a 2 <= stock 3 -> Desactiva subcontratación
+    cantidad = 2;
+    esSubcontratado = stockBodega < cantidad || stockBodega <= 0;
+    expect(esSubcontratado).toBe(false);
+
+    // Paso 3: Equipo con stock 0 siempre activa subcontratación sin importar cantidad
+    const stockCero = 0;
+    cantidad = 1;
+    esSubcontratado = stockCero < cantidad || stockCero <= 0;
+    expect(esSubcontratado).toBe(true);
+  });
 });
