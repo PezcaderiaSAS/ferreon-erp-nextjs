@@ -54,7 +54,10 @@ const CrearSubcontratacionZodSchema = z.object({
 
 const CambiarEstadoSubcontratacionZodSchema = z.object({
   subcontratacionId: z.string().min(1, 'ID de subcontratación requerido'),
-  nuevoEstado: z.enum(['ORDENADA', 'RECIBIDA_EN_BODEGA', 'EN_CLIENTE', 'DEVUELTA_A_PROVEEDOR', 'CANCELADA']),
+  nuevoEstado: z.enum([
+    'ORDENADA', 'RECIBIDA_EN_BODEGA', 'EN_CLIENTE', 'DEVUELTA_A_PROVEEDOR', 'CANCELADA',
+    'BORRADOR', 'SOLICITADA', 'ACTIVA', 'DEVUELTA'
+  ]),
   observaciones: z.string().optional(),
 });
 
