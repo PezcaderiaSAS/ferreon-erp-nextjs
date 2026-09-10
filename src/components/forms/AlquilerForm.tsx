@@ -20,27 +20,38 @@ import { EnterprisePDFService } from '../../core/services/pdf-factura-generator.
 import { Lock, Plus, Printer, FileText, CheckCircle, ArrowRight, Handshake, UserPlus, AlertTriangle, TrendingUp, Building2 } from 'lucide-react';
 import { EquipoCombobox } from '../ui/EquipoCombobox';
 
+function safeFormatDate(dateVal: any, fallback: string): string {
+  if (!dateVal) return fallback;
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return fallback;
+    return d.toISOString().split('T')[0];
+  } catch {
+    return fallback;
+  }
+}
+
 const alquilerSchema = z.object({
-  clienteId: z.string().min(1, 'Debe seleccionar un cliente'),
+  clienteId: z.string().optional().nullable(),
   fechaRegistro: z.string().min(1, 'La fecha de registro es requerida'),
   fechaInicioContrato: z.string().min(1, 'La fecha de inicio del alquiler es requerida').optional(),
   fechaFinEstimadaContrato: z.string().min(1, 'La fecha fin estimada es requerida').optional(),
-  fleteEntrega: z.number().min(0),
-  fleteRecogida: z.number().min(0),
-  deposito: z.number().min(0),
-  garantiaMonto: z.number().min(0),
-  garantiaTipo: z.string(),
-  observaciones: z.string().optional(),
-  detallesLogistica: z.string().optional(),
+  fleteEntrega: z.coerce.number().min(0).default(0),
+  fleteRecogida: z.coerce.number().min(0).default(0),
+  deposito: z.coerce.number().min(0).default(0),
+  garantiaMonto: z.coerce.number().min(0).default(0),
+  garantiaTipo: z.string().default('Efectivo'),
+  observaciones: z.string().optional().nullable(),
+  detallesLogistica: z.string().optional().nullable(),
   items: z.array(z.object({
-    itemId: z.string().min(1, 'Seleccione un equipo'),
-    cantidad: z.number().min(1, 'Cantidad mínima 1'),
-    precioDiario: z.number().min(0, 'El precio no puede ser negativo'),
+    itemId: z.union([z.string(), z.number()]).transform(val => String(val)).refine(val => val.trim().length > 0, 'Seleccione un equipo'),
+    cantidad: z.coerce.number().min(1, 'Cantidad mínima 1'),
+    precioDiario: z.coerce.number().min(0, 'El precio no puede ser negativo'),
     fechaInicio: z.string().min(1, 'Fecha inicio requerida'),
     fechaFinEstimada: z.string().min(1, 'Fecha fin estimada requerida'),
-    esSubcontratado: z.boolean().optional(),
-    proveedorSubcontratadoId: z.string().optional(),
-    costoDiarioProveedor: z.number().optional(),
+    esSubcontratado: z.boolean().optional().nullable(),
+    proveedorSubcontratadoId: z.string().optional().nullable(),
+    costoDiarioProveedor: z.coerce.number().optional().nullable(),
   })).min(1, 'Debe agregar al menos un equipo')
 });
 
@@ -133,48 +144,75 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
   }, [fetchCatalogsBackground]);
 
   // Form State
-  const [clienteId, setClienteId] = useState<string>(String(initialData?.cliente_id || initialData?.clienteId || ''));
-  const [fechaRegistro, setFechaRegistro] = useState<string>(
-    initialData?.created_at ? new Date(initialData.created_at).toISOString().split('T')[0] : 
-    (initialData?.createdAt ? new Date(initialData.createdAt).toISOString().split('T')[0] : todayStr)
-  );
+  const [clienteId, setClienteId] = useState<string>(() => {
+    const raw = initialData?.cliente_id || initialData?.clienteId || initialData?.cliente?.id || initialData?.clientes?.id || '';
+    return String(raw || '');
+  });
+  const [fechaRegistro, setFechaRegistro] = useState<string>(() => {
+    return safeFormatDate(initialData?.created_at || initialData?.createdAt, todayStr);
+  });
 
   // Rango Maestro de Fechas para todo el contrato
   const [fechaInicioContrato, setFechaInicioContrato] = useState<string>(() => {
-    if (initialData?.fecha_inicio) return new Date(initialData.fecha_inicio).toISOString().split('T')[0];
-    if (initialData?.fechaInicio) return new Date(initialData.fechaInicio).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fecha_inicio) return new Date(initialData.detalles[0].fecha_inicio).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fechaInicio) return new Date(initialData.detalles[0].fechaInicio).toISOString().split('T')[0];
+    if (initialData?.fecha_inicio) return safeFormatDate(initialData.fecha_inicio, todayStr);
+    if (initialData?.fechaInicio) return safeFormatDate(initialData.fechaInicio, todayStr);
+    const primerDetalle = initialData?.detalles?.[0] || initialData?.items?.[0] || initialData?.alquiler_detalles?.[0];
+    if (primerDetalle?.fecha_inicio) return safeFormatDate(primerDetalle.fecha_inicio, todayStr);
+    if (primerDetalle?.fechaInicio) return safeFormatDate(primerDetalle.fechaInicio, todayStr);
     return todayStr;
   });
 
   const [fechaFinEstimadaContrato, setFechaFinEstimadaContrato] = useState<string>(() => {
-    if (initialData?.fecha_fin_estimada) return new Date(initialData.fecha_fin_estimada).toISOString().split('T')[0];
-    if (initialData?.fechaFinEstimada) return new Date(initialData.fechaFinEstimada).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fecha_fin_estimada) return new Date(initialData.detalles[0].fecha_fin_estimada).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fechaFinEstimada) return new Date(initialData.detalles[0].fechaFinEstimada).toISOString().split('T')[0];
+    if (initialData?.fecha_fin_estimada) return safeFormatDate(initialData.fecha_fin_estimada, todayStr);
+    if (initialData?.fechaFinEstimada) return safeFormatDate(initialData.fechaFinEstimada, todayStr);
+    if (initialData?.fecha_fin) return safeFormatDate(initialData.fecha_fin, todayStr);
+    if (initialData?.fechaFin) return safeFormatDate(initialData.fechaFin, todayStr);
+    const primerDetalle = initialData?.detalles?.[0] || initialData?.items?.[0] || initialData?.alquiler_detalles?.[0];
+    if (primerDetalle?.fecha_fin) return safeFormatDate(primerDetalle.fecha_fin, todayStr);
+    if (primerDetalle?.fecha_fin_estimada) return safeFormatDate(primerDetalle.fecha_fin_estimada, todayStr);
+    if (primerDetalle?.fechaFinEstimada) return safeFormatDate(primerDetalle.fechaFinEstimada, todayStr);
+    if (primerDetalle?.fechaFin) return safeFormatDate(primerDetalle.fechaFin, todayStr);
     return todayStr;
   });
 
-  const [fleteEntrega, setFleteEntrega] = useState<number>(initialData ? (initialData.flete_entrega || initialData.fleteEntrega || 0) : 30000);
-  const [fleteRecogida, setFleteRecogida] = useState<number>(initialData ? (initialData.flete_recogida || initialData.fleteRecogida || 0) : 30000);
-  const [deposito, setDeposito] = useState<number>(initialData ? (initialData.deposito || 0) : 50000);
-  const [garantiaMonto, setGarantiaMonto] = useState<number>(initialData ? (initialData.garantia_monto || initialData.garantiaMonto || 0) : 300000);
+  const [fleteEntrega, setFleteEntrega] = useState<number>(initialData ? (initialData.flete_entrega ?? initialData.fleteEntrega ?? 0) : 30000);
+  const [fleteRecogida, setFleteRecogida] = useState<number>(initialData ? (initialData.flete_recogida ?? initialData.fleteRecogida ?? 0) : 30000);
+  const [deposito, setDeposito] = useState<number>(initialData ? (initialData.deposito ?? 0) : 50000);
+  const [garantiaMonto, setGarantiaMonto] = useState<number>(initialData ? (initialData.garantia_monto ?? initialData.garantiaMonto ?? 0) : 300000);
   const [garantiaTipo, setGarantiaTipo] = useState<string>(initialData?.garantia_tipo || initialData?.garantiaTipo || 'Efectivo');
   const [observaciones, setObservaciones] = useState<string>(initialData?.observaciones || initialData?.observacionesGenerales || '');
   const [detallesLogistica, setDetallesLogistica] = useState<string>(initialData?.detalles_logistica || initialData?.detallesLogistica || '');
   const [estadoDocumento, setEstadoDocumento] = useState<'COTIZACION' | 'ACTIVO'>(initialData?.estado || 'ACTIVO');
 
   const [items, setItems] = useState<ItemRow[]>(() => {
-    if (initialData?.detalles && initialData.detalles.length > 0) {
-      return initialData.detalles.map((d: any, idx: number) => ({
-        id: `init_${idx}_${Date.now()}`,
-        itemId: String(d.equipo_id || d.itemId || ''),
-        cantidad: d.cantidad || 1,
-        precioDiario: d.valor_unitario || d.tarifaDiaria || d.precioDiario || d.valorUnitario || 0,
-        fechaInicio: d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (d.fechaInicio ? new Date(d.fechaInicio).toISOString().split('T')[0] : todayStr),
-        fechaFinEstimada: d.fecha_fin_estimada ? new Date(d.fecha_fin_estimada).toISOString().split('T')[0] : (d.fechaFinEstimada ? new Date(d.fechaFinEstimada).toISOString().split('T')[0] : todayStr),
-      }));
+    const rawList = (initialData?.detalles && initialData.detalles.length > 0)
+      ? initialData.detalles
+      : ((initialData?.items && initialData.items.length > 0)
+          ? initialData.items
+          : ((initialData?.alquiler_detalles && initialData.alquiler_detalles.length > 0)
+              ? initialData.alquiler_detalles
+              : null));
+
+    if (rawList && rawList.length > 0) {
+      return rawList.map((d: any, idx: number) => {
+        const itemIdStr = String(d.equipo_id || d.itemId || d.equipoId || '');
+        const fInicio = safeFormatDate(d.fecha_inicio || d.fechaInicio, todayStr);
+        const fFin = safeFormatDate(d.fecha_fin || d.fecha_fin_estimada || d.fechaFinEstimada || d.fechaFin, todayStr);
+        const precio = Number(d.tarifa_aplicada ?? d.tarifaAplicada ?? d.tarifaDiaria ?? d.valor_unitario ?? d.precioDiario ?? d.valorUnitario ?? 0);
+
+        return {
+          id: `init_${idx}_${Date.now()}`,
+          itemId: itemIdStr,
+          nombreItem: d.nombreItem || d.nombre || (Array.isArray(d.equipos) ? d.equipos[0]?.nombre : d.equipos?.nombre) || '',
+          cantidad: Number(d.cantidad) || 1,
+          precioDiario: precio,
+          fechaInicio: fInicio,
+          fechaFinEstimada: fFin,
+          esSubcontratado: Boolean(d.es_subcontratado ?? d.esSubcontratado),
+          proveedorSubcontratadoId: d.proveedor_id ? String(d.proveedor_id) : (d.proveedorSubcontratadoId ? String(d.proveedorSubcontratadoId) : ''),
+          costoDiarioProveedor: Number(d.costo_subcontratacion_diario ?? d.costoDiarioProveedor ?? 0),
+        };
+      });
     }
     return [{ id: `row_0_${Date.now()}`, itemId: '', cantidad: 1, precioDiario: 0, fechaInicio: fechaInicioContrato, fechaFinEstimada: fechaFinEstimadaContrato }];
   });
@@ -445,7 +483,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
         subtotal: subtotalLinea,
         subtotalLineaEstimado: subtotalLinea,
         esSubcontratado: Boolean(item.esSubcontratado),
-        proveedorSubcontratadoId: item.proveedorSubcontratadoId || null,
+        proveedorSubcontratadoId: item.proveedorSubcontratadoId || undefined,
         costoDiarioProveedor: Number(item.costoDiarioProveedor || 0),
       };
     });
@@ -532,8 +570,16 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
     setErrorMsg(null);
     setFormErrors({});
 
+    const resolvedClienteId = clienteId || (initialData ? String(initialData.cliente_id || initialData.clienteId || initialData.cliente?.id || '') : '');
+
+    if (!initialData && (!resolvedClienteId || resolvedClienteId.trim().length === 0)) {
+      setFormErrors({ clienteId: 'Debe seleccionar un cliente' });
+      setErrorMsg('Por favor seleccione un cliente antes de continuar.');
+      return;
+    }
+
     const validation = alquilerSchema.safeParse({
-      clienteId: String(clienteId),
+      clienteId: resolvedClienteId,
       fechaRegistro,
       fechaInicioContrato,
       fechaFinEstimadaContrato,
@@ -588,11 +634,23 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
         store.addAlquiler(alquilerUi as any);
       }
 
+      const itemsParaBackend = alquilerUi.detalles.map(d => ({
+        itemId: d.itemId,
+        nombreItem: d.nombreItem,
+        cantidad: Number(d.cantidad) || 1,
+        tarifaAplicada: Number(d.tarifaAplicada) || 0,
+        fechaInicio: d.fechaInicio,
+        fechaFinEstimada: d.fechaFinEstimada,
+        esSubcontratado: Boolean(d.esSubcontratado),
+        proveedorSubcontratadoId: d.proveedorSubcontratadoId || undefined,
+        costoDiarioProveedor: Number(d.costoDiarioProveedor || 0),
+      }));
+
       // Persistencia mediante Server Action
       if (initialData) {
         const result = await editarAlquilerAction({
           alquilerId: initialData.id,
-          clienteId: validation.data.clienteId,
+          clienteId: resolvedClienteId || undefined,
           clienteNombre: displayClienteNombre,
           fleteEntrega: validation.data.fleteEntrega,
           fleteRecogida: validation.data.fleteRecogida,
@@ -602,7 +660,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
           observaciones: validation.data.observaciones,
           detallesLogistica: validation.data.detallesLogistica,
           estado: estadoDocumento,
-          items: alquilerUi.detalles,
+          items: itemsParaBackend,
         });
         
         if (!result.success) {
@@ -624,7 +682,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
           observaciones: validation.data.observaciones,
           detallesLogistica: validation.data.detallesLogistica,
           estado: estadoDocumento,
-          items: alquilerUi.detalles
+          items: itemsParaBackend
         });
         
         if (!result.success) {
@@ -1118,6 +1176,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
                             <EquipoCombobox
                               equipos={equiposActivos}
                               value={field.itemId}
+                              initialName={field.nombreItem}
                               placeholder="Escriba nombre o código..."
                               autoFocus={autoFocusRowId === field.id}
                               onCrearNuevo={() => setIsCreandoEquipo(true)}

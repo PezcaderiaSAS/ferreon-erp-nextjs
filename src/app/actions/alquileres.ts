@@ -63,49 +63,68 @@ export interface AprobarCotizacionInput {
   alquilerId: string | number;
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function toSafeUUID(val: any): string | null {
+  if (typeof val === 'string' && UUID_REGEX.test(val.trim())) {
+    return val.trim();
+  }
+  return null;
+}
+
+function toSafeISOString(val: any): string {
+  if (!val) return new Date().toISOString();
+  try {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
+}
+
 const AlquilerItemZodSchema = z.object({
   itemId: z.union([z.string(), z.number()]),
-  nombreItem: z.string().optional(),
-  cantidad: z.number().int().min(1, 'La cantidad debe ser al menos 1'),
-  tarifaAplicada: z.number().min(0, 'La tarifa debe ser mayor o igual a cero'),
+  nombreItem: z.string().optional().nullable(),
+  cantidad: z.coerce.number().int().min(1, 'La cantidad debe ser al menos 1'),
+  tarifaAplicada: z.coerce.number().min(0, 'La tarifa debe ser mayor o igual a cero'),
   fechaInicio: z.string().min(1, 'Fecha de inicio requerida'),
   fechaFinEstimada: z.string().min(1, 'Fecha estimada de fin requerida'),
-  esSubcontratado: z.boolean().optional(),
-  proveedorSubcontratadoId: z.string().optional(),
-  costoDiarioProveedor: z.number().min(0).optional(),
-});
+  esSubcontratado: z.boolean().optional().nullable(),
+  proveedorSubcontratadoId: z.string().optional().nullable(),
+  costoDiarioProveedor: z.coerce.number().min(0).optional().nullable(),
+}).passthrough();
 
 const CrearAlquilerZodSchema = z.object({
   clienteId: z.union([z.string(), z.number()]),
-  clienteNombre: z.string().optional(),
-  fechaRegistro: z.string().optional(),
-  fleteEntrega: z.number().min(0).default(0),
-  fleteRecogida: z.number().min(0).default(0),
-  deposito: z.number().min(0).default(0),
-  garantiaMonto: z.number().min(0).default(0),
+  clienteNombre: z.string().optional().nullable(),
+  fechaRegistro: z.string().optional().nullable(),
+  fleteEntrega: z.coerce.number().min(0).default(0),
+  fleteRecogida: z.coerce.number().min(0).default(0),
+  deposito: z.coerce.number().min(0).default(0),
+  garantiaMonto: z.coerce.number().min(0).default(0),
   garantiaTipo: z.string().default('Efectivo'),
-  observaciones: z.string().optional(),
-  detallesLogistica: z.string().optional(),
+  observaciones: z.string().optional().nullable(),
+  detallesLogistica: z.string().optional().nullable(),
   items: z.array(AlquilerItemZodSchema).min(1, 'Debe incluir al menos un equipo en el contrato'),
-  estado: z.string().optional(),
-  idempotency_key: z.string().optional(),
-});
+  estado: z.string().optional().nullable(),
+  idempotency_key: z.string().optional().nullable(),
+}).passthrough();
 
 const EditarAlquilerZodSchema = z.object({
   alquilerId: z.union([z.string(), z.number()]),
-  clienteId: z.union([z.string(), z.number()]).optional(),
-  clienteNombre: z.string().optional(),
-  fechaRegistro: z.string().optional(),
-  fleteEntrega: z.number().min(0).default(0),
-  fleteRecogida: z.number().min(0).default(0),
-  deposito: z.number().min(0).default(0),
-  garantiaMonto: z.number().min(0).default(0),
+  clienteId: z.union([z.string(), z.number()]).optional().nullable(),
+  clienteNombre: z.string().optional().nullable(),
+  fechaRegistro: z.string().optional().nullable(),
+  fleteEntrega: z.coerce.number().min(0).default(0),
+  fleteRecogida: z.coerce.number().min(0).default(0),
+  deposito: z.coerce.number().min(0).default(0),
+  garantiaMonto: z.coerce.number().min(0).default(0),
   garantiaTipo: z.string().default('Efectivo'),
-  observaciones: z.string().optional(),
-  detallesLogistica: z.string().optional(),
+  observaciones: z.string().optional().nullable(),
+  detallesLogistica: z.string().optional().nullable(),
   items: z.array(AlquilerItemZodSchema).min(1, 'Debe incluir al menos un equipo en el contrato'),
-  estado: z.string().optional(),
-});
+  estado: z.string().optional().nullable(),
+}).passthrough();
 
 const DevolucionItemZodSchema = z.object({
   detalleId: z.union([z.string(), z.number()]),
@@ -324,14 +343,21 @@ export async function editarAlquilerAction(input: EditarAlquilerInput) {
   }
   const cleanInput = validation.data;
 
+  const numericAlquilerId = typeof cleanInput.alquilerId === 'string' 
+    ? (parseInt(cleanInput.alquilerId.replace(/\D/g, ''), 10) || parseInt(cleanInput.alquilerId, 10))
+    : cleanInput.alquilerId;
+
+  if (!numericAlquilerId || isNaN(Number(numericAlquilerId))) {
+    return { success: false, error: 'ID de contrato de alquiler inválido para edición.' };
+  }
+
   const supabase = await createServerSupabaseClient();
-  const numericAlquilerId = typeof cleanInput.alquilerId === 'string' ? parseInt(cleanInput.alquilerId, 10) : cleanInput.alquilerId;
 
   // 1. Calcular subtotales
   let subtotalEquipos = 0;
   const itemsProcesados = cleanInput.items.map(item => {
-    const start = new Date(item.fechaInicio);
-    const end = new Date(item.fechaFinEstimada);
+    const start = new Date(toSafeISOString(item.fechaInicio));
+    const end = new Date(toSafeISOString(item.fechaFinEstimada));
     const diffMs = end.getTime() - start.getTime();
     let dias = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
     const tarifa = Number(item.tarifaAplicada || 0);
@@ -339,14 +365,21 @@ export async function editarAlquilerAction(input: EditarAlquilerInput) {
     const subtotalLinea = tarifa * cant * dias;
     subtotalEquipos += subtotalLinea;
 
+    const rawItemId = String(item.itemId || '').trim();
+    const equipoId = parseInt(rawItemId.replace(/\D/g, ''), 10) || parseInt(rawItemId, 10);
+
     return {
-      equipo_id: typeof item.itemId === 'string' ? parseInt(item.itemId, 10) : item.itemId,
+      equipo_id: isNaN(equipoId) ? item.itemId : equipoId,
       cantidad: cant,
       tarifa_aplicada: tarifa,
       dias_contratados: dias,
       subtotal_linea: subtotalLinea,
-      fecha_inicio: item.fechaInicio,
-      fecha_fin: item.fechaFinEstimada
+      fecha_inicio: toSafeISOString(item.fechaInicio),
+      fecha_fin: toSafeISOString(item.fechaFinEstimada),
+      es_subcontratado: Boolean(item.esSubcontratado),
+      proveedor_id: toSafeUUID(item.proveedorSubcontratadoId),
+      costo_subcontratacion_diario: Number(item.costoDiarioProveedor || 0),
+      nombreItem: item.nombreItem || ''
     };
   });
 
@@ -366,16 +399,20 @@ export async function editarAlquilerAction(input: EditarAlquilerInput) {
     total: total,
     deposito: deposito,
     saldo_pendiente: saldoPendiente,
-    garantia_monto: Number(input.garantiaMonto || 0),
-    garantia_tipo: input.garantiaTipo || 'Efectivo',
-    observaciones: input.observaciones || '',
-    detalles_logistica: input.detallesLogistica || '',
-    estado: input.estado || 'ACTIVO',
+    garantia_monto: Number(cleanInput.garantiaMonto || 0),
+    garantia_tipo: cleanInput.garantiaTipo || 'Efectivo',
+    observaciones: cleanInput.observaciones || '',
+    detalles_logistica: cleanInput.detallesLogistica || '',
+    estado: cleanInput.estado || 'ACTIVO',
     updated_at: new Date().toISOString()
   };
 
-  if (input.clienteId) {
-    updatePayload.cliente_id = typeof input.clienteId === 'string' ? parseInt(input.clienteId, 10) : input.clienteId;
+  if (cleanInput.clienteId && cleanInput.clienteId !== 'undefined' && cleanInput.clienteId !== 'null') {
+    const rawVal = String(cleanInput.clienteId).trim();
+    const parsed = parseInt(rawVal.replace(/\D/g, ''), 10) || parseInt(rawVal, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      updatePayload.cliente_id = parsed;
+    }
   }
 
   const { data: cabeceraData, error: cabeceraError } = await supabase
@@ -394,12 +431,13 @@ export async function editarAlquilerAction(input: EditarAlquilerInput) {
   try {
     const { data: detallesPrevios } = await supabase
       .from('alquiler_detalles')
-      .select('id, equipo_id, cantidad')
+      .select('id, equipo_id, cantidad, es_subcontratado')
       .eq('alquiler_id', numericAlquilerId);
 
-    // 3.1 Revertir stock anterior de equipos
+    // 3.1 Revertir stock anterior de equipos propios únicamente
     if (detallesPrevios && detallesPrevios.length > 0) {
       for (const dp of detallesPrevios) {
+        if (dp.es_subcontratado) continue; // No alterar stock propio para ítems subcontratados
         const { data: eq } = await supabase
           .from('equipos')
           .select('stock_disponible, stock_en_obra')
@@ -424,26 +462,28 @@ export async function editarAlquilerAction(input: EditarAlquilerInput) {
         .eq('alquiler_id', numericAlquilerId);
     }
 
-    // 3.2 Insertar nuevos detalles y descontar nuevo inventario
+    // 3.2 Insertar nuevos detalles y descontar nuevo inventario propio
     for (const it of itemsProcesados) {
-      const { data: eq } = await supabase
-        .from('equipos')
-        .select('stock_disponible, stock_en_obra')
-        .eq('id', it.equipo_id)
-        .single();
-
-      if (eq) {
-        await supabase
+      if (!it.es_subcontratado) {
+        const { data: eq } = await supabase
           .from('equipos')
-          .update({
-            stock_disponible: Math.max(0, eq.stock_disponible - it.cantidad),
-            stock_en_obra: eq.stock_en_obra + it.cantidad,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', it.equipo_id);
+          .select('stock_disponible, stock_en_obra')
+          .eq('id', it.equipo_id)
+          .single();
+
+        if (eq) {
+          await supabase
+            .from('equipos')
+            .update({
+              stock_disponible: Math.max(0, eq.stock_disponible - it.cantidad),
+              stock_en_obra: eq.stock_en_obra + it.cantidad,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', it.equipo_id);
+        }
       }
 
-      await supabase
+      const { error: insertDetError } = await supabase
         .from('alquiler_detalles')
         .insert([{
           alquiler_id: numericAlquilerId,
@@ -452,26 +492,105 @@ export async function editarAlquilerAction(input: EditarAlquilerInput) {
           tarifa_aplicada: it.tarifa_aplicada,
           dias_contratados: it.dias_contratados,
           subtotal_linea: it.subtotal_linea,
-          fecha_inicio: it.fecha_inicio ? new Date(it.fecha_inicio).toISOString() : new Date().toISOString(),
-          fecha_fin: it.fecha_fin ? new Date(it.fecha_fin).toISOString() : new Date().toISOString(),
+          fecha_inicio: toSafeISOString(it.fecha_inicio),
+          fecha_fin: toSafeISOString(it.fecha_fin),
           devuelto: false,
           cantidad_devuelta: 0,
-          costo_dano: 0
+          costo_dano: 0,
+          es_subcontratado: it.es_subcontratado,
+          proveedor_id: toSafeUUID(it.proveedor_id),
+          costo_subcontratacion_diario: it.costo_subcontratacion_diario,
+          empresa_id: cabeceraData?.empresa_id
         }]);
+
+      if (insertDetError) {
+        console.error('[editarAlquilerAction] Error insertando detalle:', insertDetError);
+      }
     }
   } catch (detError: any) {
     console.error('Error al sincronizar detalles en editarAlquilerAction:', detError);
   }
 
+  // 3.3 Sincronizar subcontrataciones si existen ítems tercerizados
+  const subItems = itemsProcesados.filter(it => it.es_subcontratado && toSafeUUID(it.proveedor_id));
+  if (subItems.length > 0 && numericAlquilerId) {
+    try {
+      const provMap = new Map<string, typeof subItems>();
+      for (const it of subItems) {
+        const pId = toSafeUUID(it.proveedor_id)!;
+        if (!provMap.has(pId)) provMap.set(pId, []);
+        provMap.get(pId)!.push(it);
+      }
+
+      for (const [provId, groupItems] of Array.from(provMap.entries())) {
+        const { data: provData } = await supabase
+          .from('proveedores')
+          .select('nombre, nit, telefono, contacto')
+          .eq('id', provId)
+          .maybeSingle();
+
+        const fechaMin = groupItems.reduce((min, it) => it.fecha_inicio < min ? it.fecha_inicio : min, groupItems[0].fecha_inicio);
+        const fechaMax = groupItems.reduce((max, it) => it.fecha_fin > max ? it.fecha_fin : max, groupItems[0].fecha_fin);
+
+        let costoTotal = 0;
+        let ingresoTotal = 0;
+        const detallesPayload = groupItems.map(it => {
+          const start = new Date(toSafeISOString(it.fecha_inicio));
+          const end = new Date(toSafeISOString(it.fecha_fin));
+          const dias = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+          const costo = (it.costo_subcontratacion_diario || 0) * it.cantidad * dias;
+          const ingreso = (it.tarifa_aplicada || 0) * it.cantidad * dias;
+          costoTotal += costo;
+          ingresoTotal += ingreso;
+          return {
+            equipo_id: it.equipo_id,
+            equipo_nombre: it.nombreItem || 'Equipo Subcontratado',
+            cantidad: it.cantidad,
+            costo_unitario_diario: it.costo_subcontratacion_diario || 0,
+            precio_alquiler_diario: it.tarifa_aplicada,
+            dias,
+            costo_total_linea: costo,
+            ingreso_total_linea: ingreso,
+            margen_bruto_linea: ingreso - costo,
+          };
+        });
+
+        const ordenSubcontratacion = {
+          alquiler_id: numericAlquilerId,
+          proveedor_id: provId,
+          proveedor_nombre: provData?.nombre || 'Aliado Comercial Externo',
+          proveedor_nit: provData?.nit || 'S/N',
+          proveedor_telefono: provData?.telefono || provData?.contacto || '',
+          estado: 'ACTIVA',
+          fecha_inicio: toSafeISOString(fechaMin),
+          fecha_fin_estimada: toSafeISOString(fechaMax),
+          costo_total_estimado: costoTotal,
+          ingreso_total_estimado: ingresoTotal,
+          margen_bruto_estimado: ingresoTotal - costoTotal,
+          detalles_equipos: detallesPayload,
+          observaciones: `Orden generada/actualizada automáticamente desde Contrato #${numericAlquilerId}`,
+          empresa_id: cabeceraData?.empresa_id
+        };
+
+        await supabase
+          .from('subcontrataciones')
+          .upsert([ordenSubcontratacion], { onConflict: 'alquiler_id,proveedor_id' });
+      }
+    } catch (subErr) {
+      console.warn('[editarAlquilerAction] Advertencia al sincronizar subcontrataciones:', subErr);
+    }
+  }
+
   // 4. Invalidar Caché Multi-Tenant
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    await invalidateTenantCache(user?.id, ['alquileres', 'equipos']);
+    await invalidateTenantCache(user?.id, ['alquileres', 'equipos', 'subcontrataciones']);
   } catch (cErr) {
     console.warn('[editarAlquilerAction] Cache clear error:', cErr);
   }
 
   revalidatePath('/alquileres');
+  revalidatePath('/subcontrataciones');
   revalidatePath('/bodega');
   return { success: true, data: cabeceraData };
 }
