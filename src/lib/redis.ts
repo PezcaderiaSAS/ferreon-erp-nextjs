@@ -26,7 +26,7 @@ const getRedisClient = () => {
 
 export const redis = getRedisClient();
 
-export type TenantResource = 'equipos' | 'clientes' | 'alquileres' | 'facturas' | 'empresa' | 'cotizaciones';
+export type TenantResource = 'equipos' | 'clientes' | 'alquileres' | 'facturas' | 'empresa' | 'cotizaciones' | 'subcontrataciones';
 
 /**
  * Genera claves de caché aisladas por empresa (Multi-Tenant).

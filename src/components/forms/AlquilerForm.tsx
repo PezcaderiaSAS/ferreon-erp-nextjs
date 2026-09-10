@@ -6,6 +6,7 @@ import { useClienteStore } from '../../infrastructure/state/clienteStore';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
 import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
+import { useProveedorStore } from '../../infrastructure/state/proveedorStore';
 import { crearAlquilerAction, editarAlquilerAction } from '../../app/actions/alquileres';
 import { equipoToEquipoUI } from '../../lib/mappers';
 import { Button } from '../ui/Button';
@@ -13,9 +14,10 @@ import { idempotencyManager } from '../../lib/idempotency';
 import { Modal } from '../ui/Modal';
 import { ClienteForm } from './ClienteForm';
 import { BodegaForm } from './BodegaForm';
+import { CrearProveedorModal } from '../../app/components/subcontrataciones/CrearProveedorModal';
 import { formatearMonedaConLetras } from '../../core/utils/numero-a-letras';
 import { EnterprisePDFService } from '../../core/services/pdf-factura-generator.service';
-import { Lock, Plus, Printer, FileText, CheckCircle, ArrowRight } from 'lucide-react';
+import { Lock, Plus, Printer, FileText, CheckCircle, ArrowRight, Handshake, UserPlus, AlertTriangle, TrendingUp, Building2 } from 'lucide-react';
 import { EquipoCombobox } from '../ui/EquipoCombobox';
 
 const alquilerSchema = z.object({
@@ -36,6 +38,9 @@ const alquilerSchema = z.object({
     precioDiario: z.number().min(0, 'El precio no puede ser negativo'),
     fechaInicio: z.string().min(1, 'Fecha inicio requerida'),
     fechaFinEstimada: z.string().min(1, 'Fecha fin estimada requerida'),
+    esSubcontratado: z.boolean().optional(),
+    proveedorSubcontratadoId: z.string().optional(),
+    costoDiarioProveedor: z.number().optional(),
   })).min(1, 'Debe agregar al menos un equipo')
 });
 
@@ -46,6 +51,11 @@ interface ItemRow {
   precioDiario: number;
   fechaInicio: string;
   fechaFinEstimada: string;
+  esSubcontratado?: boolean;
+  proveedorSubcontratadoId?: string;
+  costoDiarioProveedor?: number;
+  stockPropio?: number;
+  nombreItem?: string;
 }
 
 interface Props {
@@ -65,6 +75,7 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
   const { clientes, setClientes } = useClienteStore();
   const { equipos, setEquipos } = useBodegaStore();
   const { config: empresaConfig } = useEmpresaStore();
+  const { proveedores, setProveedores } = useProveedorStore();
 
   const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -78,6 +89,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
   
   const [isCreandoCliente, setIsCreandoCliente] = useState(false);
   const [isCreandoEquipo, setIsCreandoEquipo] = useState(false);
+  const [isCreandoProveedor, setIsCreandoProveedor] = useState(false);
+  const [proveedorModalRowIndex, setProveedorModalRowIndex] = useState<number | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [previewPaperSize, setPreviewPaperSize] = useState<'LETTER' | 'A5'>('LETTER');
   
@@ -273,7 +286,23 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
   };
 
   const updateItemRow = (index: number, field: keyof ItemRow, value: any) => {
-    setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
+    setItems(prev => prev.map((item, i) => {
+      if (i !== index) return item;
+      const updated = { ...item, [field]: value };
+
+      // Auto-detección reactiva de stock si cambia la cantidad
+      if (field === 'cantidad' && updated.itemId) {
+        const eq = equipos.find(e => String(e.id) === String(updated.itemId));
+        if (eq) {
+          const stock = Number((eq as any).stockDisponible ?? (eq as any).stock_disponible ?? (eq as any).disponible ?? 0);
+          updated.stockPropio = stock;
+          if (stock < (value as number) || stock <= 0) {
+            updated.esSubcontratado = true;
+          }
+        }
+      }
+      return updated;
+    }));
   };
 
   const filteredClientes = useMemo(() => {
@@ -320,60 +349,60 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
     }, 0);
   }, [items]);
 
-  const totalFletes = (fleteEntrega || 0) + (fleteRecogida || 0);
-  const totalGeneral = subtotalEquipos + totalFletes;
-  const totalEstimado = Math.max(0, totalGeneral - (deposito || 0));
-
-  // POKA-YOKE: Calcular Valor de Reposición Total para regla del 10%
-  const valorReposicionTotal = useMemo(() => {
+  // Peso total calculado
+  const pesoTotalKg = useMemo(() => {
     return items.reduce((acc, item) => {
-      if (!item.itemId) return acc;
-      const equipo = equiposActivos.find(e => String(e.id) === String(item.itemId));
-      return acc + ((equipo?.valor_reposicion || 0) * (item.cantidad || 1));
+      const eq = equiposActivos.find(e => String(e.id) === String(item.itemId));
+      const pesoUnitario = (eq as any)?.peso || (eq as any)?.peso_kg || 0;
+      return acc + (pesoUnitario * (item.cantidad || 1));
     }, 0);
   }, [items, equiposActivos]);
+
+  const totalEstimado = useMemo(() => {
+    return subtotalEquipos + (Number(fleteEntrega) || 0) + (Number(fleteRecogida) || 0);
+  }, [subtotalEquipos, fleteEntrega, fleteRecogida]);
+
+  const saldoPendiente = useMemo(() => {
+    return Math.max(0, totalEstimado - (Number(deposito) || 0));
+  }, [totalEstimado, deposito]);
+
+  const totalFletes = (Number(fleteEntrega) || 0) + (Number(fleteRecogida) || 0);
 
   const formatearCOP = (valor: number) => {
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Math.round(valor || 0));
   };
 
-
-
-  const validateCurrentStep = (): boolean => {
-    setFormErrors({});
+  // Validación de pasos con Poka-Yoke
+  const validateCurrentStep = () => {
     if (currentStep === 1) {
       if (!clienteId) {
-        setFormErrors(prev => ({ ...prev, clienteId: 'Debe seleccionar un cliente' }));
-        return false;
-      }
-      if (!fechaRegistro) {
-        setFormErrors(prev => ({ ...prev, fechaRegistro: 'La fecha de registro es requerida' }));
-        return false;
-      }
-      if (!fechaInicioContrato) {
-        setFormErrors(prev => ({ ...prev, fechaInicioContrato: 'La fecha de inicio es requerida' }));
-        return false;
-      }
-      if (!fechaFinEstimadaContrato) {
-        setFormErrors(prev => ({ ...prev, fechaFinEstimadaContrato: 'La fecha fin estimada es requerida' }));
-        return false;
-      }
-      if (fechaFinEstimadaContrato < fechaInicioContrato) {
-        setFormErrors(prev => ({ ...prev, fechaFinEstimadaContrato: 'La fecha final no puede ser menor a la de inicio' }));
+        setFormErrors({ clienteId: 'Debe seleccionar un cliente para continuar' });
+        setErrorMsg('Por favor seleccione un cliente antes de avanzar.');
         return false;
       }
     } else if (currentStep === 2) {
       const hasEmptyItem = items.some(it => !it.itemId);
       if (hasEmptyItem) {
         setFormErrors(prev => ({ ...prev, items: 'Seleccione un equipo para cada fila' }));
+        setErrorMsg('Todas las filas deben tener un equipo asignado.');
         return false;
       }
-      
-      // POKA-YOKE: Validación del 10% del Valor de Reposición (Restricción Global)
-      const minimoRequerido = valorReposicionTotal * 0.1;
-      const garantiaTotal = Number(deposito) + Number(garantiaMonto);
-      if (garantiaTotal < minimoRequerido) {
-        setErrorMsg(`Bloqueo de Seguridad: Se requiere un colateral (Depósito + Garantía) mínimo del 10% del valor de los equipos (${formatearCOP(minimoRequerido)}). El colateral actual es ${formatearCOP(garantiaTotal)}. Por favor regrese al Paso 1.`);
+      const hasInvalidQty = items.some(it => !it.cantidad || it.cantidad < 1);
+      if (hasInvalidQty) {
+        setFormErrors(prev => ({ ...prev, items: 'La cantidad debe ser mayor o igual a 1' }));
+        setErrorMsg('Verifique las cantidades de los equipos.');
+        return false;
+      }
+      const hasInvalidDates = items.some(it => it.fechaInicio > it.fechaFinEstimada);
+      if (hasInvalidDates) {
+        setFormErrors(prev => ({ ...prev, items: 'La fecha fin no puede ser anterior a la de inicio' }));
+        setErrorMsg('Las fechas de inicio y fin estimadas no son coherentes.');
+        return false;
+      }
+      const subSinProveedor = items.find(it => it.esSubcontratado && !it.proveedorSubcontratadoId);
+      if (subSinProveedor) {
+        const eq = equiposActivos.find(e => String(e.id) === String(subSinProveedor.itemId));
+        setErrorMsg(`Debe seleccionar el aliado comercial para el equipo subcontratado "${eq?.nombre || 'sin nombre'}".`);
         return false;
       }
     }
@@ -403,8 +432,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
 
       return {
         itemId: item.itemId,
-        nombre: equipo?.nombre || 'Equipo de Construcción',
-        nombreItem: equipo?.nombre || 'Equipo de Construcción',
+        nombre: equipo?.nombre || item.nombreItem || 'Equipo de Construcción',
+        nombreItem: equipo?.nombre || item.nombreItem || 'Equipo de Construcción',
         codigo: (equipo as any)?.codigo || (equipo as any)?.sku || '',
         cantidad: item.cantidad,
         tarifaDiaria: item.precioDiario,
@@ -415,6 +444,9 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
         dias,
         subtotal: subtotalLinea,
         subtotalLineaEstimado: subtotalLinea,
+        esSubcontratado: Boolean(item.esSubcontratado),
+        proveedorSubcontratadoId: item.proveedorSubcontratadoId || null,
+        costoDiarioProveedor: Number(item.costoDiarioProveedor || 0),
       };
     });
 
@@ -446,8 +478,8 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
       detalles: itemsConDetalles,
       subtotal_equipos: subtotalEquipos,
       subtotalEquipos,
-      total_general: totalGeneral,
-      subtotalGeneral: totalGeneral,
+      total_general: totalEstimado,
+      subtotalGeneral: totalEstimado,
       total: totalEstimado,
       totalPagar: totalEstimado,
       saldo_pendiente: totalEstimado,
@@ -517,7 +549,10 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
         cantidad: Number(it.cantidad) || 1,
         precioDiario: Number(it.precioDiario) || 0,
         fechaInicio: it.fechaInicio,
-        fechaFinEstimada: it.fechaFinEstimada
+        fechaFinEstimada: it.fechaFinEstimada,
+        esSubcontratado: Boolean(it.esSubcontratado),
+        proveedorSubcontratadoId: it.proveedorSubcontratadoId || undefined,
+        costoDiarioProveedor: Number(it.costoDiarioProveedor || 0),
       }))
     });
 
@@ -1095,13 +1130,18 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
                                   newItems[index] = { 
                                     ...newItems[index], 
                                     itemId: '', 
-                                    precioDiario: 0 
+                                    precioDiario: 0,
+                                    nombreItem: '',
+                                    stockPropio: undefined,
+                                    esSubcontratado: false
                                   };
                                   setItems(newItems);
                                   return;
                                 }
 
                                 const tarifa = equipo.tarifa_diaria ?? equipo.tarifaDiaria ?? 0;
+                                const stockPropio = Number((equipo as any).stockDisponible ?? (equipo as any).stock_disponible ?? (equipo as any).disponible ?? 0);
+                                const requiereSub = stockPropio < field.cantidad || stockPropio <= 0;
                                 
                                 // Prevención de ítems duplicados visualmente (Mismo equipo, mismas fechas)
                                 const existingIndex = items.findIndex((it, i) => 
@@ -1119,7 +1159,11 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
                                   newItems[index] = { 
                                     ...newItems[index], 
                                     itemId: eqId, 
-                                    precioDiario: tarifa 
+                                    precioDiario: tarifa,
+                                    nombreItem: equipo.nombre || (equipo as any).codigo || '',
+                                    stockPropio,
+                                    esSubcontratado: requiereSub ? true : newItems[index].esSubcontratado,
+                                    costoDiarioProveedor: newItems[index].costoDiarioProveedor ?? Math.round(tarifa * 0.8)
                                   };
                                 }
                                 setItems(newItems);
@@ -1182,6 +1226,129 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
                             </div>
                           )}
                         </div>
+
+                        {/* Sub-panel de Subcontratación Asistida */}
+                        {field.esSubcontratado ? (
+                          <div className="mt-1 p-3 bg-gradient-to-r from-amber-50 to-orange-50/50 dark:from-amber-950/30 dark:to-slate-900/50 rounded-xl border border-amber-300 dark:border-amber-700/60 space-y-2.5 animate-fadeIn">
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                              <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-300">
+                                <Handshake className="w-4 h-4 text-amber-600 shrink-0" />
+                                <span>Subcontratación Requerida (Atención con Proveedor Aliado)</span>
+                                {field.stockPropio !== undefined && field.stockPropio <= 0 && (
+                                  <span className="text-[10px] px-2 py-0.5 bg-rose-100 text-rose-700 font-bold rounded-full border border-rose-200">
+                                    Stock propio: 0 disp.
+                                  </span>
+                                )}
+                                {field.stockPropio !== undefined && field.stockPropio > 0 && field.stockPropio < field.cantidad && (
+                                  <span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-800 font-bold rounded-full border border-amber-200">
+                                    Stock propio: {field.stockPropio} / Solicitado: {field.cantidad}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => updateItemRow(index, 'esSubcontratado', false)}
+                                className="text-[11px] text-slate-500 hover:text-slate-800 underline"
+                              >
+                                Omitir subcontratación
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
+                              {/* Selector de Aliado */}
+                              <div className="sm:col-span-6 flex flex-col gap-1">
+                                <div className="flex items-center justify-between">
+                                  <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                                    <Building2 className="w-3.5 h-3.5 text-amber-600" />
+                                    Proveedor / Aliado Comercial *
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setProveedorModalRowIndex(index);
+                                      setIsCreandoProveedor(true);
+                                    }}
+                                    className="text-[10.5px] font-bold text-amber-700 hover:underline flex items-center gap-0.5"
+                                  >
+                                    <UserPlus className="w-3 h-3" />
+                                    <span>+ Nuevo Aliado</span>
+                                  </button>
+                                </div>
+                                <select
+                                  value={field.proveedorSubcontratadoId || ''}
+                                  onChange={(e) => updateItemRow(index, 'proveedorSubcontratadoId', e.target.value)}
+                                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-amber-500/20 font-medium"
+                                >
+                                  <option value="">-- Seleccionar Aliado Comercial --</option>
+                                  {proveedores.map(prov => (
+                                    <option key={prov.id} value={prov.id}>
+                                      {prov.nombre} (NIT: {prov.nit})
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Costo Diario Aliado */}
+                              <div className="sm:col-span-3 flex flex-col gap-1">
+                                <label className="text-[11px] font-bold text-slate-700">
+                                  Costo Diario Aliado ($) *
+                                </label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={field.costoDiarioProveedor ?? 0}
+                                  onChange={(e) => updateItemRow(index, 'costoDiarioProveedor', parseFloat(e.target.value) || 0)}
+                                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-right font-mono font-bold outline-none focus:ring-2 focus:ring-amber-500/20"
+                                />
+                              </div>
+
+                              {/* Margen Estimado */}
+                              <div className="sm:col-span-3 flex flex-col justify-end">
+                                {(() => {
+                                  const costoProv = Number(field.costoDiarioProveedor || 0);
+                                  const tarifaCli = Number(field.precioDiario || 0);
+                                  const margenDiario = tarifaCli - costoProv;
+                                  const margenTotalLinea = margenDiario * (field.cantidad || 1) * diasFila;
+                                  const esPerdida = margenDiario < 0;
+
+                                  return (
+                                    <div className={`p-1.5 rounded-lg border text-center ${
+                                      esPerdida 
+                                        ? 'bg-rose-50 border-rose-300 text-rose-700' 
+                                        : 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                                    }`}>
+                                      <span className="text-[10px] block font-bold uppercase tracking-wider">
+                                        {esPerdida ? '⚠️ Pérdida' : 'Margen Renglón'}
+                                      </span>
+                                      <span className="font-mono font-black text-xs">
+                                        ${margenTotalLinea.toLocaleString('es-CO')}
+                                      </span>
+                                      <span className="text-[10px] block opacity-80 font-mono">
+                                        (${margenDiario.toLocaleString('es-CO')}/día)
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between text-[11px] px-1 pt-0.5">
+                            <button
+                              type="button"
+                              onClick={() => updateItemRow(index, 'esSubcontratado', true)}
+                              className="text-amber-700 hover:text-amber-800 flex items-center gap-1 font-semibold hover:underline"
+                            >
+                              <Handshake className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Subcontratar este equipo a un aliado</span>
+                            </button>
+                            {field.stockPropio !== undefined && (
+                              <span className="text-slate-400 font-mono text-[10.5px]">
+                                Stock propio en bodega: {field.stockPropio}
+                              </span>
+                            )}
+                          </div>
+                        )}
 
                         {/* Subtotal de Fila y Ayuda Verbal */}
                         <div className="flex justify-between items-center text-[11px] px-2 pt-1 border-t border-slate-200/60">
@@ -1572,6 +1739,22 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
           onCancel={() => setIsCreandoEquipo(false)} 
         />
       </Modal>
+
+      {/* Modal de Creación On-The-Fly de Aliado / Proveedor */}
+      <CrearProveedorModal
+        isOpen={isCreandoProveedor}
+        onClose={() => {
+          setIsCreandoProveedor(false);
+          setProveedorModalRowIndex(null);
+        }}
+        onSuccess={(nuevoProv) => {
+          if (proveedorModalRowIndex !== null) {
+            updateItemRow(proveedorModalRowIndex, 'proveedorSubcontratadoId', nuevoProv.id);
+          }
+          setIsCreandoProveedor(false);
+          setProveedorModalRowIndex(null);
+        }}
+      />
     </>
   );
 }

@@ -70,6 +70,9 @@ const AlquilerItemZodSchema = z.object({
   tarifaAplicada: z.number().min(0, 'La tarifa debe ser mayor o igual a cero'),
   fechaInicio: z.string().min(1, 'Fecha de inicio requerida'),
   fechaFinEstimada: z.string().min(1, 'Fecha estimada de fin requerida'),
+  esSubcontratado: z.boolean().optional(),
+  proveedorSubcontratadoId: z.string().optional(),
+  costoDiarioProveedor: z.number().min(0).optional(),
 });
 
 const CrearAlquilerZodSchema = z.object({
@@ -151,7 +154,10 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
       tarifa_aplicada: tarifa,
       dias_contratados: dias,
       fecha_inicio: item.fechaInicio,
-      fecha_fin: item.fechaFinEstimada
+      fecha_fin: item.fechaFinEstimada,
+      es_subcontratado: Boolean(item.esSubcontratado),
+      proveedor_subcontratado_id: item.proveedorSubcontratadoId || null,
+      costo_diario_proveedor: Number(item.costoDiarioProveedor || 0)
     };
   });
 
@@ -209,14 +215,104 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
     userEmail: user?.email,
   });
 
+  // 3.1 Si hay ítems subcontratados con proveedor, registrar automáticamente la orden de subcontratación
+  const subItems = cleanInput.items.filter(it => it.esSubcontratado && it.proveedorSubcontratadoId);
+  if (subItems.length > 0 && data?.id) {
+    try {
+      const provMap = new Map<string, typeof subItems>();
+      for (const it of subItems) {
+        const pId = it.proveedorSubcontratadoId!;
+        if (!provMap.has(pId)) provMap.set(pId, []);
+        provMap.get(pId)!.push(it);
+      }
+
+      for (const [provId, groupItems] of Array.from(provMap.entries())) {
+        const { data: provData } = await supabase
+          .from('proveedores')
+          .select('nombre, nit, telefono, contacto')
+          .eq('id', provId)
+          .maybeSingle();
+
+        const fechaMin = groupItems.reduce((min, it) => it.fechaInicio < min ? it.fechaInicio : min, groupItems[0].fechaInicio);
+        const fechaMax = groupItems.reduce((max, it) => it.fechaFinEstimada > max ? it.fechaFinEstimada : max, groupItems[0].fechaFinEstimada);
+
+        let costoTotal = 0;
+        let ingresoTotal = 0;
+        const detallesPayload = groupItems.map(it => {
+          const start = new Date(it.fechaInicio);
+          const end = new Date(it.fechaFinEstimada);
+          const dias = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+          const costo = (it.costoDiarioProveedor || 0) * it.cantidad * dias;
+          const ingreso = (it.tarifaAplicada || 0) * it.cantidad * dias;
+          costoTotal += costo;
+          ingresoTotal += ingreso;
+          return {
+            equipo_id: typeof it.itemId === 'string' ? parseInt(it.itemId, 10) : it.itemId,
+            equipo_nombre: it.nombreItem || 'Equipo Subcontratado',
+            cantidad: it.cantidad,
+            dias_contratados: dias,
+            tarifa_diaria_proveedor: it.costoDiarioProveedor || 0,
+            tarifa_diaria_cliente: it.tarifaAplicada || 0,
+            margen_bruto_estimado: ingreso - costo,
+          };
+        });
+
+        const consecutivo = `SUB-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+        const { data: nuevaSub } = await supabase
+          .from('subcontrataciones')
+          .insert({
+            empresa_id: (data as any)?.empresa_id || undefined,
+            consecutivo,
+            alquiler_id: data.id,
+            proveedor_id: provId,
+            proveedor_nombre: provData?.nombre || 'Proveedor Aliado',
+            proveedor_nit: provData?.nit || 'N/A',
+            proveedor_telefono: provData?.telefono || null,
+            proveedor_contacto: provData?.contacto || null,
+            fecha_recepcion_estimada: fechaMin,
+            fecha_devolucion_estimada: fechaMax,
+            estado: 'SOLICITADA',
+            costo_total_estimado: costoTotal,
+            ingreso_total_estimado: ingresoTotal,
+            margen_bruto_estimado: ingresoTotal - costoTotal,
+            deposito_garantia_proveedor: 0,
+            creado_por: userIdentifier
+          })
+          .select()
+          .single();
+
+        if (nuevaSub?.id) {
+          await supabase
+            .from('subcontrataciones_detalles')
+            .insert(detallesPayload.map(d => ({
+              ...d,
+              subcontratacion_id: nuevaSub.id,
+              empresa_id: (nuevaSub as any).empresa_id
+            })));
+
+          await supabase
+            .from('alquiler_detalles')
+            .update({ subcontratacion_id: nuevaSub.id })
+            .eq('alquiler_id', data.id)
+            .eq('es_subcontratado', true)
+            .eq('proveedor_subcontratado_id', provId);
+        }
+      }
+    } catch (subErr) {
+      console.warn('[crearAlquilerAction] No se pudo auto-generar subcontratacion:', subErr);
+    }
+  }
+
   // 4. Invalidar Caché Multi-Tenant
   try {
-    await invalidateTenantCache(user?.id, ['alquileres', 'equipos']);
-  } catch (cErr) {
-    console.warn('[crearAlquilerAction] Cache clear error:', cErr);
+    await invalidateTenantCache(user?.id, ['alquileres', 'equipos', 'subcontrataciones']);
+  } catch (cacheErr) {
+    console.warn('[crearAlquilerAction] Error al invalidar caché:', cacheErr);
   }
 
   revalidatePath('/alquileres');
+  revalidatePath('/subcontrataciones');
   revalidatePath('/bodega');
   return { success: true, data };
 }
