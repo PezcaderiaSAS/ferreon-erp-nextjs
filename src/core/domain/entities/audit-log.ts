@@ -29,7 +29,9 @@ export type AuditActionType =
   | "ACTUALIZAR_ESTADO_COTIZACION"
   | "CONVERTIR_COTIZACION_A_CONTRATO"
   | "CREAR_PROVEEDOR"
-  | "EDITAR_PROVEEDOR";
+  | "EDITAR_PROVEEDOR"
+  | "CREAR_ORDEN_SUBCONTRATACION"
+  | "CAMBIO_ESTADO_SUBCONTRATACION";
 
 export type AuditModuloType =
   | "SEGURIDAD"
@@ -42,7 +44,8 @@ export type AuditModuloType =
   | "CARTERA"
   | "CLIENTES"
   | "CONFIGURACION"
-  | "TENANTS";
+  | "TENANTS"
+  | "SUBCONTRATACIONES";
 
 export interface AuditDetalleCambio {
   campo?: string;
