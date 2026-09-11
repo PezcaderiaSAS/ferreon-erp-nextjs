@@ -182,13 +182,22 @@ export function alquilerEntityToAlquilerUI(entity: any): AlquilerUI {
     clientes: entity.clientes || entity.cliente,
     estado: entity.estado || 'ACTIVO',
     subtotal_equipos: subtotalEquipos,
+    subtotalEquipos,
     flete_entrega: fleteEntrega,
+    fleteEntrega,
     flete_recogida: fleteRecogida,
+    fleteRecogida,
+    valor_transporte: fleteEntrega + fleteRecogida,
     subtotal_general: subtotalGeneral,
+    subtotalGeneral,
     total,
+    totalEstimado: total,
     deposito,
+    depositoAplicado: deposito,
     garantia_monto: entity.garantiaMonto ?? entity.garantia_monto ?? 0,
+    garantiaMonto: entity.garantiaMonto ?? entity.garantia_monto ?? 0,
     garantia_tipo: entity.garantiaTipo ?? entity.garantia_tipo ?? 'Efectivo',
+    garantiaTipo: entity.garantiaTipo ?? entity.garantia_tipo ?? 'Efectivo',
     garantia_estado: entity.garantiaEstado ?? entity.garantia_estado ?? 'Activa',
     total_pagado: totalPagado,
     saldo_pendiente: saldoPendiente,
@@ -213,25 +222,31 @@ export function alquilerEntityToAlquilerUI(entity: any): AlquilerUI {
  * Convierte un AlquilerUI (Zustand store) → AlquilerEntity (dominio).
  */
 export function alquilerUIToAlquilerEntity(ui: AlquilerUI): AlquilerEntity {
+  const fleteEntrega = ui.flete_entrega ?? ui.fleteEntrega ?? 0;
+  const fleteRecogida = ui.flete_recogida ?? ui.fleteRecogida ?? 0;
+  const deposito = ui.deposito ?? (ui as any).depositoAplicado ?? 0;
+  const garantiaMonto = ui.garantia_monto ?? ui.garantiaMonto ?? 0;
+  const garantiaTipo = ui.garantia_tipo ?? ui.garantiaTipo ?? 'Efectivo';
+
   return new AlquilerEntity(
     ui.id,
     ui.consecutivo,
     String(ui.cliente_id),
     ui.clienteNombre,
     ui.estado as AlquilerEntity['estado'],
-    ui.subtotal_equipos ?? 0,
-    ui.flete_entrega ?? 0,
-    ui.flete_recogida ?? 0,
-    ui.subtotal_general ?? 0,
-    ui.total ?? 0,
-    ui.deposito ?? 0,
-    ui.garantia_monto ?? 0,
-    ui.garantia_tipo ?? '',
-    ui.garantia_estado ?? '',
+    ui.subtotal_equipos ?? ui.subtotalEquipos ?? 0,
+    fleteEntrega,
+    fleteRecogida,
+    ui.subtotal_general ?? ui.subtotalGeneral ?? 0,
+    ui.total ?? ui.totalEstimado ?? 0,
+    deposito,
+    garantiaMonto,
+    garantiaTipo,
+    ui.garantia_estado ?? 'Activa',
     ui.observaciones,
     ui.detalles_logistica,
     undefined,
-    ui.detalles ?? [],
+    ui.detalles ?? ui.items ?? [],
     undefined, // totalReal
     undefined, // subtotalEquiposReal
     undefined, // subtotalGeneralReal

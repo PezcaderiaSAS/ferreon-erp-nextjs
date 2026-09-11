@@ -37,9 +37,11 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
   // Lectura pasiva de datos (Single Source of Truth)
   const consecutivo = alquiler.consecutivo || alquiler.id;
   const fechaStr = alquiler.createdAt ? new Date(alquiler.createdAt).toLocaleDateString() : new Date().toLocaleDateString();
-  const fletes = (alquiler.fleteEntrega || 0) + (alquiler.fleteRecogida || 0);
-  const deposito = Number(alquiler.deposito || 0);
-  const garantiaMonto = Number(alquiler.garantiaMonto || alquiler.garantia_monto || 0);
+  const fleteEntrega = Number(alquiler.fleteEntrega ?? alquiler.flete_entrega ?? alquiler.valor_transporte ?? 0);
+  const fleteRecogida = Number(alquiler.fleteRecogida ?? alquiler.flete_recogida ?? 0);
+  const fletes = fleteEntrega + fleteRecogida;
+  const deposito = Number(alquiler.deposito ?? alquiler.depositoAplicado ?? alquiler.deposito_garantia ?? 0);
+  const garantiaMonto = Number(alquiler.garantiaMonto ?? alquiler.garantia_monto ?? 0);
 
   // Inyección Dinámica del Cliente
   const esAlquilerAbierto = alquiler.estado !== 'DEVUELTO' && alquiler.estado !== 'CERRADO' && alquiler.estado !== 'PAGADO';

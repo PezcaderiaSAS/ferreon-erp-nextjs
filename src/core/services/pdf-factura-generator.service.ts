@@ -134,10 +134,12 @@ export class EnterprisePDFService {
       ? subtotalEquiposCalc 
       : Number(payload.subtotalEquipos || (payload as any).subtotal_equipos || payload.subtotalEquiposEstimado || 0);
 
-    const fleteEntrega = Number(payload.fleteEntrega || (payload as any).flete_entrega || 0);
-    const fleteRecogida = Number(payload.fleteRecogida || (payload as any).flete_recogida || 0);
+    const fleteEntrega = Number(payload.fleteEntrega ?? (payload as any).flete_entrega ?? (payload as any).valorTransporte ?? (payload as any).valor_transporte ?? (payload as any).costoEnvio ?? 0);
+    const fleteRecogida = Number(payload.fleteRecogida ?? (payload as any).flete_recogida ?? (payload as any).costoRecoleccion ?? 0);
     const totalFletes = fleteEntrega + fleteRecogida;
-    const deposito = Number(payload.depositoAplicado || (payload as any).deposito || 0);
+    const deposito = Number(payload.depositoAplicado ?? (payload as any).deposito ?? (payload as any).deposito_garantia ?? (payload as any).depositoGarantia ?? (payload as any).totalPagado ?? 0);
+    const garantiaMonto = Number(payload.garantiaMonto ?? (payload as any).garantia_monto ?? (payload as any).garantia ?? 0);
+    const garantiaTipo = payload.garantiaTipo || (payload as any).garantia_tipo || 'Efectivo';
     const valorIva = payload.valorIva !== undefined ? payload.valorIva : (payload.aplicaIva ? Math.round(subtotalEquipos * ((payload.tasaIva || 19) / 100)) : 0);
     const valorRetefuente = payload.valorRetefuente !== undefined ? payload.valorRetefuente : (payload.aplicaRetefuente ? Math.round(subtotalEquipos * ((payload.tasaRetefuente || 2.5) / 100)) : 0);
     const valorReteica = payload.valorReteica !== undefined ? payload.valorReteica : (payload.aplicaReteica ? Math.round(subtotalEquipos * ((payload.tasaReteica || 0.966) / 100)) : 0);
@@ -506,8 +508,9 @@ export class EnterprisePDFService {
       </div>
       <div class="info-block">
         <h4>Logística y Respaldo</h4>
-        <p><strong>Destino / Obra:</strong> ${payload.detallesLogistica || (payload as any).detalles_logistica || clienteDireccion || "Entrega en bodega"}</p>
-        <p><strong>Garantía (${payload.garantiaTipo || (payload as any).garantia_tipo || "Efectivo"}):</strong> ${formatearMonedaCOP(payload.garantiaMonto || (payload as any).garantia_monto || 0)}</p>
+        <p><strong>Destino / Obra:</strong> ${payload.detallesLogistica || (payload as any).detalles_logistica || (payload as any).obraDireccion || (payload as any).obra_direccion || clienteDireccion || "Entrega en obra / bodega"}</p>
+        <p><strong>Depósito / Anticipo:</strong> ${formatearMonedaCOP(deposito)}</p>
+        <p><strong>Garantía (${garantiaTipo}):</strong> ${formatearMonedaCOP(garantiaMonto)}</p>
         ${payload.observaciones ? `<p><strong>Obs:</strong> ${payload.observaciones}</p>` : ""}
       </div>
     </div>
@@ -560,8 +563,14 @@ export class EnterprisePDFService {
           <td>Subtotal Equipos:</td>
           <td class="text-right font-bold">${formatearMonedaCOP(subtotalEquiposCalc)}</td>
         </tr>
-        ${fleteEntrega > 0 ? `<tr><td>Flete Entrega en Obra:</td><td class="text-right">${formatearMonedaCOP(fleteEntrega)}</td></tr>` : ''}
-        ${fleteRecogida > 0 ? `<tr><td>Flete Retorno / Recogida:</td><td class="text-right">${formatearMonedaCOP(fleteRecogida)}</td></tr>` : ''}
+        ${fleteEntrega > 0 
+          ? `<tr><td>Transporte / Flete Entrega en Obra:</td><td class="text-right font-bold">${formatearMonedaCOP(fleteEntrega)}</td></tr>` 
+          : `<tr><td>Transporte Entrega:</td><td class="text-right text-slate-500" style="font-size:7pt;">$ 0 (Retiro en bodega)</td></tr>`
+        }
+        ${fleteRecogida > 0 
+          ? `<tr><td>Transporte / Flete Retorno (Recogida):</td><td class="text-right font-bold">${formatearMonedaCOP(fleteRecogida)}</td></tr>` 
+          : `<tr><td>Transporte Retorno:</td><td class="text-right text-slate-500" style="font-size:7pt;">$ 0 (Devolución en bodega)</td></tr>`
+        }
         ${valorIva > 0 ? `<tr><td style="color:#1e40af;">(+) IVA (${payload.tasaIva || 19}%):</td><td class="text-right font-bold" style="color:#1e40af;">+ ${formatearMonedaCOP(valorIva)}</td></tr>` : ''}
         ${valorRetefuente > 0 ? `<tr><td style="color:#b45309;">(-) ReteFuente (${payload.tasaRetefuente || 2.5}%):</td><td class="text-right font-bold" style="color:#b45309;">- ${formatearMonedaCOP(valorRetefuente)}</td></tr>` : ''}
         ${valorReteica > 0 ? `<tr><td style="color:#047857;">(-) ReteICA (${payload.tasaReteica || 0.966}%):</td><td class="text-right font-bold" style="color:#047857;">- ${formatearMonedaCOP(valorReteica)}</td></tr>` : ''}
@@ -573,7 +582,15 @@ export class EnterprisePDFService {
                </tr>`
             : ""
         }
-        ${deposito > 0 ? `<tr><td>Anticipo / Depósito Aplicado:</td><td class="text-right font-bold" style="color:#dc2626;">- ${formatearMonedaCOP(deposito)}</td></tr>` : ''}
+        <tr>
+          <td style="color:${deposito > 0 ? '#dc2626' : '#64748b'}; font-weight:600;">
+            (-) Anticipo / Depósito Recibido:
+          </td>
+          <td class="text-right font-bold font-mono" style="color:${deposito > 0 ? '#dc2626' : '#64748b'};">
+            ${deposito > 0 ? `- ${formatearMonedaCOP(deposito)}` : '$ 0'}
+          </td>
+        </tr>
+        ${garantiaMonto > 0 ? `<tr><td style="color:#64748b; font-size:7pt;">Garantía / Colateral (${garantiaTipo}):</td><td class="text-right font-mono" style="color:#64748b; font-size:7pt;">${formatearMonedaCOP(garantiaMonto)} (Respaldo)</td></tr>` : ''}
         <tr class="total-row">
           <td><strong>${payload.tipo === 'COTIZACION' ? 'TOTAL ESTIMADO:' : 'TOTAL NETO / SALDO PENDIENTE:'}</strong></td>
           <td class="text-right"><strong>${formatearMonedaCOP(saldoPendiente)}</strong></td>

@@ -21,10 +21,14 @@ export interface AlquilerUI {
   fleteEntrega?: number;
   flete_recogida: number;
   fleteRecogida?: number;
+  valor_transporte?: number;
+  valorTransporte?: number;
   subtotal_general: number;
+  subtotalGeneral?: number;
   total: number;
   totalEstimado?: number;
   deposito: number;
+  depositoAplicado?: number;
   garantia_monto: number;
   garantiaMonto?: number;
   garantia_tipo: string;

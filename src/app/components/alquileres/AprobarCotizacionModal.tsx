@@ -20,8 +20,8 @@ export function AprobarCotizacionModal({ isOpen, onClose, cotizacion, onConfirma
 
   useEffect(() => {
     if (cotizacion && isOpen) {
-      setFleteEntrega(cotizacion.flete_entrega || cotizacion.fleteEntrega || 0);
-      setFleteRecogida(cotizacion.flete_recogida || cotizacion.fleteRecogida || 0);
+      setFleteEntrega(Number(cotizacion.flete_entrega ?? cotizacion.fleteEntrega ?? cotizacion.valor_transporte ?? 0));
+      setFleteRecogida(Number(cotizacion.flete_recogida ?? cotizacion.fleteRecogida ?? 0));
       
       // Intentar obtener la primera fecha de inicio como referencia
       let fInicio = new Date().toISOString().split('T')[0];

@@ -372,11 +372,11 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
   });
 
   const subtotalEquipos = Number(data.subtotal_equipos || data.subtotalEquipos || data.subtotalEquiposEstimado || detallesProcesados.reduce((acc: number, it: any) => acc + it.subtotal, 0));
-  const fleteEntrega = Number(data.flete_entrega || data.fleteEntrega || 0);
-  const fleteRecogida = Number(data.flete_recogida || data.fleteRecogida || 0);
+  const fleteEntrega = Number(data.flete_entrega ?? data.fleteEntrega ?? (data as any).valor_transporte ?? (data as any).valorTransporte ?? (data as any).costoEnvio ?? 0);
+  const fleteRecogida = Number(data.flete_recogida ?? data.fleteRecogida ?? (data as any).costoRecoleccion ?? 0);
   const totalFletes = fleteEntrega + fleteRecogida;
-  const deposito = Number(data.deposito || 0);
-  const garantiaMonto = Number(data.garantia_monto || data.garantiaMonto || 0);
+  const deposito = Number(data.deposito ?? (data as any).depositoAplicado ?? (data as any).deposito_garantia ?? 0);
+  const garantiaMonto = Number(data.garantia_monto ?? data.garantiaMonto ?? 0);
   const garantiaTipo = data.garantia_tipo || data.garantiaTipo || 'Efectivo';
   
   const totalGeneral = Number(data.total || data.total_general || data.totalEstimado || (subtotalEquipos + totalFletes));

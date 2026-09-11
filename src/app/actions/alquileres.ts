@@ -64,6 +64,10 @@ export interface ProcesarDevolucionInput {
 
 export interface AprobarCotizacionInput {
   alquilerId: string | number;
+  fleteEntrega?: number;
+  fleteRecogida?: number;
+  deposito?: number;
+  fechaInicioGlobal?: string;
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -696,16 +700,38 @@ export async function aprobarCotizacionAction(input: AprobarCotizacionInput) {
     }
   }
 
-  // 4. Actualizar estado del alquiler a ACTIVO
+  // 4. Actualizar estado del alquiler a ACTIVO y sincronizar fletes / depósitos ajustados
+  const { data: alqActual } = await supabase
+    .from('alquileres')
+    .select('subtotal_equipos, flete_entrega, flete_recogida, deposito, total')
+    .eq('id', numericAlquilerId)
+    .single();
+
+  const fleteEntregaFinal = input.fleteEntrega !== undefined ? Number(input.fleteEntrega) : Number(alqActual?.flete_entrega || 0);
+  const fleteRecogidaFinal = input.fleteRecogida !== undefined ? Number(input.fleteRecogida) : Number(alqActual?.flete_recogida || 0);
+  const subtotalEquipos = Number(alqActual?.subtotal_equipos || 0);
+  const subtotalGeneral = subtotalEquipos + fleteEntregaFinal + fleteRecogidaFinal;
+  const depositoFinal = input.deposito !== undefined ? Number(input.deposito) : Number(alqActual?.deposito || 0);
+  const totalFinal = subtotalGeneral;
+  const saldoPendienteFinal = Math.max(0, totalFinal - depositoFinal);
+
+  const updatePayload: any = { 
+    estado: 'ACTIVO',
+    flete_entrega: fleteEntregaFinal,
+    flete_recogida: fleteRecogidaFinal,
+    subtotal_general: subtotalGeneral,
+    total: totalFinal,
+    deposito: depositoFinal,
+    saldo_pendiente: saldoPendienteFinal,
+    updated_at: new Date().toISOString()
+  };
+
   const { error: updErr } = await supabase
     .from('alquileres')
-    .update({ 
-      estado: 'ACTIVO',
-      updated_at: new Date().toISOString()
-    })
+    .update(updatePayload)
     .eq('id', numericAlquilerId);
 
-  if (updErr) return { success: false, error: 'Error al activar el contrato.' };
+  if (updErr) return { success: false, error: `Error al activar el contrato: ${updErr.message}` };
 
   // 5. Invalidar Caché Multi-Tenant
   try {

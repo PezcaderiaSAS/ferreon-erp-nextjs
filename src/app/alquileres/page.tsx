@@ -478,7 +478,11 @@ export default function AlquileresPage() {
 
     const subtotalCalc = items.reduce((acc: number, it: any) => acc + (it.subtotal || 0), 0);
     const subtotalEquipos = Number(cot.subtotal || cot.subtotal_equipos || subtotalCalc || 0);
-    const fleteEntrega = Number(cot.valor_transporte || cot.flete_entrega || cot.fleteEntrega || 0);
+    const fleteEntrega = Number(cot.valor_transporte ?? cot.flete_entrega ?? cot.fleteEntrega ?? 0);
+    const fleteRecogida = Number(cot.flete_recogida ?? cot.fleteRecogida ?? 0);
+    const depositoAplicado = Number(cot.deposito_garantia ?? cot.deposito ?? 0);
+    const garantiaMonto = Number(cot.garantia_monto ?? cot.garantiaMonto ?? cot.deposito_garantia ?? 0);
+    const garantiaTipo = cot.garantia_tipo || cot.garantiaTipo || 'Efectivo';
 
     const payload: DocumentoPDFPayload = {
       tipo: 'COTIZACION',
@@ -494,8 +498,8 @@ export default function AlquileresPage() {
       items,
       subtotalEquipos,
       fleteEntrega,
-      fleteRecogida: 0,
-      subtotalGeneral: subtotalEquipos + fleteEntrega,
+      fleteRecogida,
+      subtotalGeneral: subtotalEquipos + fleteEntrega + fleteRecogida,
       aplicaIva: cot.aplica_iva,
       tasaIva: Number(cot.tasa_iva || 19),
       valorIva: Number(cot.valor_iva || 0),
@@ -505,8 +509,10 @@ export default function AlquileresPage() {
       aplicaReteica: cot.aplica_reteica,
       tasaReteica: Number(cot.tasa_reteica || 0.966),
       valorReteica: Number(cot.valor_reteica || 0),
-      depositoAplicado: Number(cot.deposito_garantia || 0),
-      totalPagar: Number(cot.total || (subtotalEquipos + fleteEntrega)),
+      depositoAplicado,
+      garantiaMonto,
+      garantiaTipo,
+      totalPagar: Number(cot.total || (subtotalEquipos + fleteEntrega + fleteRecogida)),
       observaciones: cot.observaciones || '',
       empresa: empresaConfig,
     };
@@ -596,10 +602,14 @@ export default function AlquileresPage() {
   };
 
   const handleAprobarCotizacion = async (alquilerId: string, ajustes: any) => {
-    // Si necesitas aplicar los ajustes (fleteEntrega, etc.) podrías hacer un update antes o junto con la aprobación.
-    // Por simplicidad para el alcance, llamaremos a la aprobación directamente.
     try {
-      const res = await aprobarCotizacionAction({ alquilerId });
+      const res = await aprobarCotizacionAction({ 
+        alquilerId,
+        fleteEntrega: ajustes?.fleteEntrega !== undefined ? Number(ajustes.fleteEntrega) : undefined,
+        fleteRecogida: ajustes?.fleteRecogida !== undefined ? Number(ajustes.fleteRecogida) : undefined,
+        deposito: ajustes?.deposito !== undefined ? Number(ajustes.deposito) : undefined,
+        fechaInicioGlobal: ajustes?.fechaInicioGlobal
+      });
       
       if (!res.success) {
         alert(`No se pudo aprobar la cotización: ${res.error}`);
@@ -608,7 +618,7 @@ export default function AlquileresPage() {
 
       await fetchAllData();
       setShowAprobarCotizacionModal(false);
-      alert("Cotización aprobada y stock reservado correctamente.");
+      alert("Cotización aprobada, fletes actualizados y stock reservado correctamente.");
     } catch (error: any) {
       console.error('Error al aprobar cotización:', error);
       alert('Ocurrió un error inesperado al aprobar la cotización.');
@@ -685,6 +695,16 @@ export default function AlquileresPage() {
       clienteNombre: contrato.clienteNombre || (contrato as any).cliente?.nombre,
       clienteNit: (contrato as any).clienteNit || (contrato as any).clienteDocumento || (contrato as any).cliente?.nit || (contrato as any).cliente?.nit_cedula,
       clienteTelefono: (contrato as any).clienteTelefono || (contrato as any).cliente?.telefono,
+      flete_entrega: Number(contrato.flete_entrega ?? contrato.fleteEntrega ?? (contrato as any).valor_transporte ?? 0),
+      fleteEntrega: Number(contrato.fleteEntrega ?? contrato.flete_entrega ?? (contrato as any).valor_transporte ?? 0),
+      flete_recogida: Number(contrato.flete_recogida ?? contrato.fleteRecogida ?? 0),
+      fleteRecogida: Number(contrato.fleteRecogida ?? contrato.flete_recogida ?? 0),
+      deposito: Number(contrato.deposito ?? (contrato as any).deposito_garantia ?? (contrato as any).depositoAplicado ?? 0),
+      depositoAplicado: Number(contrato.deposito ?? (contrato as any).deposito_garantia ?? (contrato as any).depositoAplicado ?? 0),
+      garantia_monto: Number(contrato.garantia_monto ?? contrato.garantiaMonto ?? 0),
+      garantiaMonto: Number(contrato.garantiaMonto ?? contrato.garantia_monto ?? 0),
+      garantia_tipo: contrato.garantia_tipo || contrato.garantiaTipo || 'Efectivo',
+      garantiaTipo: contrato.garantiaTipo || contrato.garantia_tipo || 'Efectivo',
       total: contrato.total, 
       items: contrato.detalles?.map((d: any) => ({
         ...d,
@@ -760,13 +780,15 @@ export default function AlquileresPage() {
       });
 
       const subtotalItemsCalc = itemsMapeados.reduce((acc: number, it: any) => acc + (it.subtotal || 0), 0);
-      const fleteEntrega = Number(contrato.flete_entrega || contrato.fleteEntrega || contrato.costoEnvio || 0);
-      const fleteRecogida = Number(contrato.flete_recogida || contrato.fleteRecogida || contrato.costoRecoleccion || 0);
+      const fleteEntrega = Number(contrato.flete_entrega ?? contrato.fleteEntrega ?? (contrato as any).valor_transporte ?? (contrato as any).valorTransporte ?? contrato.costoEnvio ?? 0);
+      const fleteRecogida = Number(contrato.flete_recogida ?? contrato.fleteRecogida ?? contrato.costoRecoleccion ?? 0);
       const totalFletes = fleteEntrega + fleteRecogida;
       const costosDano = Number(rawItems.reduce((acc: number, d: any) => acc + Number(d.costo_dano || d.costoDano || 0), 0));
       const subtotalEquipos = Number(contrato.subtotalEquiposEstimado || contrato.subtotal_equipos || contrato.subtotalEquipos || subtotalItemsCalc || 0);
       const subtotalGeneral = Number(contrato.subtotalGeneralEstimado || contrato.total_general || contrato.subtotalGeneral || (subtotalEquipos + totalFletes + costosDano));
-      const depositoAplicado = Number(contrato.deposito || contrato.totalPagado || 0);
+      const depositoAplicado = Number(contrato.deposito ?? (contrato as any).deposito_garantia ?? (contrato as any).depositoGarantia ?? (contrato as any).depositoAplicado ?? contrato.totalPagado ?? 0);
+      const garantiaMonto = Number(contrato.garantia_monto ?? contrato.garantiaMonto ?? 0);
+      const garantiaTipo = contrato.garantia_tipo || contrato.garantiaTipo || 'Efectivo';
       const totalPagar = Number(contrato.total || contrato.totalEstimado || (subtotalGeneral - depositoAplicado) || 0);
 
       const payload: any = {
@@ -786,6 +808,8 @@ export default function AlquileresPage() {
         subtotalGeneral,
         costosDano,
         depositoAplicado,
+        garantiaMonto,
+        garantiaTipo,
         totalPagar,
         observaciones: contrato.observaciones || contrato.observacionesGenerales || "",
         detallesLogistica: contrato.detalles_logistica || contrato.detallesLogistica || "",

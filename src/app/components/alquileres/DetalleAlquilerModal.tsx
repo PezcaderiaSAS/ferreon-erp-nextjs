@@ -33,7 +33,9 @@ export function DetalleAlquilerModal({
 
   const consecutivoFormatted = `#CTR-${String(alquiler.consecutivo || 1).padStart(4, '0')}`;
   const totalEquipos = (alquiler.detalles || []).reduce((acc, d) => acc + (d.cantidad || 0), 0);
-  const totalFletes = (alquiler.flete_entrega || 0) + (alquiler.flete_recogida || 0);
+  const fleteEntrega = Number(alquiler.flete_entrega ?? alquiler.fleteEntrega ?? alquiler.valor_transporte ?? 0);
+  const fleteRecogida = Number(alquiler.flete_recogida ?? alquiler.fleteRecogida ?? 0);
+  const totalFletes = fleteEntrega + fleteRecogida;
 
   return (
     <Modal
