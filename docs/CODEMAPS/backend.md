@@ -1,4 +1,4 @@
-<!-- Generated: 2026-09-10 | Files scanned: ~35 | Token estimate: ~680 -->
+<!-- Generated: 2026-09-11 | Files scanned: ~40 | Token estimate: ~720 -->
 # Backend Architecture (Server Actions & API Routes)
 
 ## Core Actions (`src/app/actions/`)
@@ -6,9 +6,9 @@
 - `proveedores.ts`: Catálogo maestro de proveedores (`obtenerProveedoresAction`, `crearProveedorAction`, `actualizarProveedorAction`). Valida datos con Zod, resuelve `tenant_id` y administra caché distribuida en Redis (`cacheKey: proveedores:${tenantId}`).
 - `cotizaciones.ts`: Emisión y ciclo de vida de cotizaciones de obra (`crearCotizacionAction`, `obtenerCotizacionesAction`, `convertirCotizacionAContratoAction`). Soporta casillas tributarias interactivas y conversión 1-clic con bloqueo pesimista contra sobreventa.
 - `facturacion.ts`: Emisión de facturas comerciales formales (`emitirFacturaLedgerAction`) con asientos contables de venta (`1305 Clientes`, `1355 Anticipos`, `2408 IVA Generado`, `4155 Ingresos por Alquileres`).
-- `alquileres.ts`: Contratos de alquiler y devoluciones (`crearAlquilerAction`, `editarAlquilerAction`, `procesarDevolucionAction`). Bloquea edición si el contrato está FINALIZADO o cuenta con devoluciones.
+- `alquileres.ts`: Contratos de alquiler y devoluciones (`crearAlquilerAction`, `editarAlquilerAction`, `procesarDevolucionAction`, `aprobarCotizacionAction`). Ejecuta RPCs atómicos en PostgreSQL (`crear_alquiler_transaccional`, `procesar_devolucion_alquiler`) con bloqueo `FOR UPDATE`, restitución automática de stock en obra a disponible y cambio de estado a FINALIZADO.
 - `equipos.ts`: Inventario (Kardex) y ajustes Poka-Yoke con RPC `ajustar_stock_equipo` y `reducir_stock_seguro`.
-- `pagos.ts`: Abonos e ingresos con validación contra sesiones de caja ABIERTAS.
+- `pagos.ts`: Abonos e ingresos con validación contra sesiones de caja ABIERTAS (`registrarPagoAction`).
 - `ultraadmin.ts`: Supervisión global multi-tenant protegida por `is_ultra_admin()`.
 
 ## API Endpoints (`src/app/api/`)
