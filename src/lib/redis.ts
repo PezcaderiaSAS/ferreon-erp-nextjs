@@ -26,7 +26,7 @@ const getRedisClient = () => {
 
 export const redis = getRedisClient();
 
-export type TenantResource = 'equipos' | 'clientes' | 'alquileres' | 'facturas' | 'empresa' | 'cotizaciones' | 'subcontrataciones';
+export type TenantResource = 'equipos' | 'clientes' | 'alquileres' | 'proveedores' | 'facturas' | 'empresa' | 'cotizaciones' | 'subcontrataciones';
 
 /**
  * Genera claves de caché aisladas por empresa (Multi-Tenant).
@@ -91,7 +91,7 @@ export async function setTenantCache(
 }
 
 /**
- * Invalida de forma atómica las claves de caché de un tenant.
+ * Invalida de forma atómica y completa las claves de caché de un recurso (tanto tenant específico como default y legacy).
  */
 export async function invalidateTenantCache(
   tenantId: string | null | undefined,
@@ -103,8 +103,14 @@ export async function invalidateTenantCache(
     const keysToDelete: string[] = [];
     for (const resource of resources) {
       keysToDelete.push(getTenantCacheKey(tenantId, resource));
+      keysToDelete.push(getTenantCacheKey('default', resource));
+      keysToDelete.push(`cache:${resource}`);
+      keysToDelete.push(`${resource}:global`);
+      keysToDelete.push(`proveedores:global`);
+
       if (id) {
         keysToDelete.push(getTenantCacheKey(tenantId, resource, id));
+        keysToDelete.push(getTenantCacheKey('default', resource, id));
       }
     }
     

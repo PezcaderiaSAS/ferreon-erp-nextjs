@@ -15,6 +15,21 @@ vi.mock('next/headers', () => ({
 }));
 
 vi.mock('../src/infrastructure/persistence/supabase/server', () => ({
+  DEFAULT_EMPRESA_ID: 'ac8719ea-f16a-4538-b308-40d9511a14cb',
+  resolveEmpresaId: async () => 'ac8719ea-f16a-4538-b308-40d9511a14cb',
+  createAdminSupabaseClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          eq: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({ data: { empresa_id: 'ac8719ea-f16a-4538-b308-40d9511a14cb' } })
+            })
+          })
+        })
+      })
+    })
+  }),
   createServerSupabaseClient: async () => {
     return {
       auth: {

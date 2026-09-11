@@ -643,9 +643,11 @@ export function useAlquilerForm({
         subtotalLineaEstimado: subtotalLinea,
         // Subcontratación de maquinaria (Re-Renting)
         esSubcontratado: Boolean(item.esSubcontratado),
+        proveedorSubcontratadoId: (item as any).proveedorSubcontratadoId || (item as any).proveedorId || null,
         proveedorAliadoNombre: item.proveedorAliadoNombre || null,
         proveedorAliadoNit: item.proveedorAliadoNit || null,
         costoSubcontrato: Number(item.costoSubcontrato) || 0,
+        costoDiarioProveedor: Number(item.costoSubcontrato || (item as any).costoDiarioProveedor || 0),
         fechaRecepcionMuelleTercero: item.fechaRecepcionMuelleTercero || null,
       };
     });

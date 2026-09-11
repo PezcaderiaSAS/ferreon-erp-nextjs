@@ -1,8 +1,8 @@
 'use server';
 
-import { createServerSupabaseClient, createAdminSupabaseClient } from '../../infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient, createAdminSupabaseClient, resolveEmpresaId } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { redis } from '@/lib/redis';
+import { redis, invalidateTenantCache } from '@/lib/redis';
 import { z } from 'zod';
 import { validateActionInput } from '@/lib/security/validation';
 import { AuditLogger } from '@/lib/security/audit-logger';
@@ -47,10 +47,12 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   const userIdentifier = user?.email || user?.id || 'SISTEMA_OPERADOR';
+  const empresaId = await resolveEmpresaId(user?.id);
 
   const { data, error } = await supabase
     .from('equipos')
     .insert([{
+      empresa_id: empresaId,
       codigo: cleanInput.sku.trim().toUpperCase(),
       nombre: cleanInput.nombre.trim(),
       categoria: cleanInput.categoria.trim(),
@@ -73,13 +75,8 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
     return { success: false, error: `Error al guardar equipo en BD: ${error.message}` };
   }
 
-  if (redis) {
-    try {
-      await redis.del('cache:equipos');
-    } catch (e) {
-      console.warn('Error invalidando caché de equipos en Redis:', e);
-    }
-  }
+  // Invalida caché multi-tenant y legacy
+  await invalidateTenantCache(user?.id, ['equipos']);
 
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({
@@ -143,13 +140,8 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
     return { success: false, error: `Error al editar equipo en BD: ${error.message || JSON.stringify(error)}` };
   }
 
-  if (redis) {
-    try {
-      await redis.del('cache:equipos');
-    } catch (e) {
-      console.warn('Error invalidando caché de equipos en Redis:', e);
-    }
-  }
+  // Invalida caché multi-tenant y legacy
+  await invalidateTenantCache(null, ['equipos'], numericId);
 
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({

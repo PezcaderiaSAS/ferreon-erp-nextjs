@@ -59,3 +59,38 @@ export function createAdminSupabaseClient() {
     },
   });
 }
+
+/**
+ * Empresa ID por defecto (FerreOn Principal)
+ */
+export const DEFAULT_EMPRESA_ID = 'ac8719ea-f16a-4538-b308-40d9511a14cb';
+
+/**
+ * Resuelve el empresa_id activo para operaciones multi-tenant.
+ * Si el usuario está autenticado, consulta su empresa activa en empresa_usuarios.
+ * Si no está autenticado o no tiene empresa asignada, retorna la empresa principal de FerreOn.
+ */
+export async function resolveEmpresaId(userId?: string | null): Promise<string> {
+  if (!userId) {
+    return DEFAULT_EMPRESA_ID;
+  }
+
+  try {
+    const admin = createAdminSupabaseClient();
+    const { data } = await admin
+      .from('empresa_usuarios')
+      .select('empresa_id')
+      .eq('user_id', userId)
+      .eq('es_empresa_activa', true)
+      .eq('estado', 'ACTIVO')
+      .maybeSingle();
+
+    if (data?.empresa_id) {
+      return data.empresa_id;
+    }
+  } catch (err) {
+    console.warn('[resolveEmpresaId] Error buscando empresa de usuario, usando fallback:', err);
+  }
+
+  return DEFAULT_EMPRESA_ID;
+}

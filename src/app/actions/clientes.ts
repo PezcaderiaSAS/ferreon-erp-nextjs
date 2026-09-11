@@ -1,8 +1,8 @@
 'use server';
 
-import { createServerSupabaseClient } from '../../infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient, resolveEmpresaId } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { redis } from '@/lib/redis';
+import { redis, invalidateTenantCache } from '@/lib/redis';
 import { z } from 'zod';
 import { validateActionInput } from '@/lib/security/validation';
 import { AuditLogger } from '@/lib/security/audit-logger';
@@ -45,10 +45,13 @@ export async function crearClienteAction(input: CrearClienteInput) {
   const cleanInput = validation.data;
 
   const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const empresaId = await resolveEmpresaId(user?.id);
 
   const { data, error } = await supabase
     .from('clientes')
     .insert([{
+      empresa_id: empresaId,
       nit_cedula: cleanInput.nit_cedula.trim().toUpperCase(),
       nombre: cleanInput.nombre.trim(),
       telefono: cleanInput.telefono?.trim() || '',
@@ -67,13 +70,8 @@ export async function crearClienteAction(input: CrearClienteInput) {
     return { success: false, error: `Error al guardar cliente en BD: ${error.message}` };
   }
 
-  if (redis) {
-    try {
-      await redis.del('cache:clientes');
-    } catch (e) {
-      console.warn('Error invalidando caché de clientes en Redis:', e);
-    }
-  }
+  // Invalida caché multi-tenant y legacy
+  await invalidateTenantCache(user?.id, ['clientes']);
 
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({
@@ -86,6 +84,7 @@ export async function crearClienteAction(input: CrearClienteInput) {
       nombre: cleanInput.nombre,
       telefono: cleanInput.telefono,
       email: cleanInput.email,
+      empresaId,
     },
   });
 
@@ -148,13 +147,8 @@ export async function editarClienteAction(input: EditarClienteInput) {
     return { success: false, error: `Error al actualizar cliente en BD: ${error.message}` };
   }
 
-  if (redis) {
-    try {
-      await redis.del('cache:clientes');
-    } catch (e) {
-      console.warn('Error invalidando caché de clientes en Redis:', e);
-    }
-  }
+  // Invalida caché multi-tenant y legacy
+  await invalidateTenantCache(null, ['clientes'], targetId);
 
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({

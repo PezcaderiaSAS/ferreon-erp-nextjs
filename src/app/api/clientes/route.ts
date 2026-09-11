@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getTenantCache, setTenantCache, invalidateTenantCache } from "@/lib/redis";
-import { createServerSupabaseClient } from "@/infrastructure/persistence/supabase/server";
+import { createServerSupabaseClient, resolveEmpresaId } from "@/infrastructure/persistence/supabase/server";
 import { ClienteSchema } from "@/infrastructure/dtos/cliente.dto";
 import { validateApiRequest } from "@/lib/security/validation";
 
@@ -104,11 +104,13 @@ export async function POST(request: Request) {
     const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     const tenantId = user?.id || 'default';
+    const empresaId = await resolveEmpresaId(user?.id);
 
     const { data, error } = await supabase
       .from("clientes")
       .insert([
         {
+          empresa_id: empresaId,
           nit_cedula: validatedData.nitCedula.trim().toUpperCase(),
           nombre: validatedData.nombre.trim().toUpperCase(),
           telefono: validatedData.telefono || null,

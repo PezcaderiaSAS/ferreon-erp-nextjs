@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getTenantCache, setTenantCache, invalidateTenantCache } from "@/lib/redis";
-import { createServerSupabaseClient } from "@/infrastructure/persistence/supabase/server";
+import { createServerSupabaseClient, resolveEmpresaId } from "@/infrastructure/persistence/supabase/server";
 import { validateApiRequest } from "@/lib/security/validation";
 
 export const dynamic = 'force-dynamic';
@@ -120,6 +120,7 @@ export async function POST(request: Request) {
     const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     const tenantId = user?.id || 'default';
+    const empresaId = await resolveEmpresaId(user?.id);
 
     const subtotalEquipos = validatedData.items.reduce(
       (acc, item) => acc + item.cantidad * item.tarifaAplicada * item.diasContratados,
@@ -133,6 +134,7 @@ export async function POST(request: Request) {
     const { data: cabecera, error: errorCabecera } = await supabase
       .from("alquileres")
       .insert([{
+        empresa_id: empresaId,
         cliente_id: validatedData.clienteId,
         estado: validatedData.estado,
         subtotal_equipos: subtotalEquipos,
@@ -155,6 +157,7 @@ export async function POST(request: Request) {
 
     // 2. Insertar Detalles
     const detallesPayload = validatedData.items.map(item => ({
+      empresa_id: empresaId,
       alquiler_id: cabecera.id,
       equipo_id: item.itemId,
       cantidad: item.cantidad,

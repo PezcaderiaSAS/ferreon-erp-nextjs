@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerSupabaseClient } from '../../infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient, resolveEmpresaId } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { invalidateTenantCache } from '../../lib/redis';
 import { z } from 'zod';
@@ -14,6 +14,9 @@ export interface AlquilerItemInput {
   tarifaAplicada: number;
   fechaInicio: string;
   fechaFinEstimada: string;
+  esSubcontratado?: boolean | null;
+  proveedorSubcontratadoId?: string | null;
+  costoDiarioProveedor?: number | null;
 }
 
 export interface CrearAlquilerInput {
@@ -129,12 +132,16 @@ const EditarAlquilerZodSchema = z.object({
 const DevolucionItemZodSchema = z.object({
   detalleId: z.union([z.string(), z.number()]),
   cantidadDevuelta: z.coerce.number().int().min(1, 'La cantidad devuelta debe ser al menos 1'),
-  costoDano: z.coerce.number().min(0).optional().nullable(),
+  costoDano: z.coerce.number().min(0).default(0),
 }).passthrough();
 
 const ProcesarDevolucionZodSchema = z.object({
   alquilerId: z.union([z.string(), z.number()]),
-  devoluciones: z.array(DevolucionItemZodSchema).min(1, 'Debe procesar al menos una devolución'),
+  devoluciones: z.array(DevolucionItemZodSchema).min(1, 'Debe incluir al menos una devolución'),
+}).passthrough();
+
+const AprobarCotizacionZodSchema = z.object({
+  alquilerId: z.union([z.string(), z.number()]),
 }).passthrough();
 
 export interface RegistrarAbonoInput {
@@ -154,6 +161,7 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   const userIdentifier = user?.email || user?.id || 'SISTEMA_OPERADOR';
+  const empresaId = await resolveEmpresaId(user?.id);
 
   // 1. Calcular subtotales
   let subtotalEquipos = 0;
@@ -167,6 +175,9 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
     const subtotalLinea = tarifa * cant * dias;
     subtotalEquipos += subtotalLinea;
 
+    const provId = item.proveedorSubcontratadoId || (item as any).proveedorId || null;
+    const costoSub = Number(item.costoDiarioProveedor || (item as any).costoSubcontrato || 0);
+
     return {
       equipo_id: typeof item.itemId === 'string' ? parseInt(item.itemId, 10) : item.itemId,
       cantidad: cant,
@@ -175,8 +186,10 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
       fecha_inicio: item.fechaInicio,
       fecha_fin: item.fechaFinEstimada,
       es_subcontratado: Boolean(item.esSubcontratado),
-      proveedor_subcontratado_id: item.proveedorSubcontratadoId || null,
-      costo_diario_proveedor: Number(item.costoDiarioProveedor || 0)
+      proveedor_subcontratado_id: provId,
+      proveedor_id: provId,
+      costo_diario_proveedor: costoSub,
+      costo_subcontratacion_diario: costoSub
     };
   });
 
@@ -187,6 +200,7 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
   const total = subtotalGeneral;
 
   const payload = {
+    empresa_id: empresaId,
     cliente_id: typeof cleanInput.clienteId === 'string' ? parseInt(cleanInput.clienteId, 10) : cleanInput.clienteId,
     estado: cleanInput.estado || 'ACTIVO',
     subtotal_equipos: subtotalEquipos,
