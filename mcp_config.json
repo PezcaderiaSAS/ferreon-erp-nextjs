@@ -2,8 +2,21 @@
   "mcpServers": {
     "ricoui-stitch": {
       "command": "node",
-      "args": ["scripts/ricoui-mcp.mjs"],
-      "description": "Rico UI Brands & Google Stitch Design System Engine for UI extraction and prompt generation"
+      "args": ["scripts/ricoui-mcp.mjs"]
+    },
+    "vp0-design-alternative": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@vp0/mcp-server-untitled"
+      ],
+      "env": {
+        "VP0_API_KEY": "vp0_da6dc995_8b583e38628c7ffa1139eca2ebfa491757173ebb62a08bd5bf42b21a"
+      }
+    },
+    "open-design": {
+      "command": "od",
+      "args": ["mcp"]
     }
   }
 }

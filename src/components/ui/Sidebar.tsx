@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { LayoutDashboard, CalendarDays, FileSpreadsheet, Package, ShoppingBag, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X, LogOut, Palette } from 'lucide-react';
 import { useEmpresaStore, applyThemeToDOM } from '../../infrastructure/state/empresaStore';
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';
@@ -10,7 +10,53 @@ import { useTenantStore } from '../../infrastructure/state/tenantStore';
 
 import { supabaseClient } from '../../infrastructure/persistence/supabase/client';
 import { unifiedLogout } from '../../lib/auth/logout';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+
+const SIDEBAR_LINKS = [
+  { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/alquileres', icon: CalendarDays, label: 'Alquileres & Cotizaciones' },
+  { href: '/bodega', icon: Package, label: 'Bodega' },
+  { href: '/compras', icon: ShoppingBag, label: 'Compras' },
+  { href: '/devoluciones', icon: ArrowLeftRight, label: 'Devoluciones' },
+  { href: '/facturacion', icon: FileText, label: 'Facturación' },
+  { href: '/clientes', icon: Users, label: 'Clientes' },
+  { href: '/suscripcion', icon: CreditCard, label: 'Suscripción' },
+];
+
+function SidebarNavLinks({ pathname, setMobileMenuOpen }: { pathname: string; setMobileMenuOpen: (open: boolean) => void }) {
+  return (
+    <div className="flex flex-col gap-2 flex-grow overflow-y-auto">
+      {SIDEBAR_LINKS.map((link) => {
+        const isActive = link.href === '/alquileres' 
+          ? pathname.startsWith('/alquileres') 
+          : pathname === link.href;
+
+        const Icon = link.icon;
+        
+        let tourId = undefined;
+        if (link.href === '/bodega') tourId = 'tour-bodega';
+        if (link.href === '/facturacion') tourId = 'tour-facturacion';
+
+        return (
+          <Link 
+            key={link.href}
+            id={tourId}
+            href={link.href}
+            onClick={() => setMobileMenuOpen(false)}
+            className={`rounded-lg text-base font-semibold flex items-center gap-4 px-4 py-3 transition-colors duration-200 active:scale-95 ${
+              isActive 
+                ? 'bg-brand-salmonLight text-brand-salmonDark' 
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+            {link.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -48,23 +94,10 @@ export function Sidebar() {
     }
   }, [config, mounted]);
 
-
   const handleLogout = async () => {
     await unifiedLogout();
     router.push('/auth/login');
   };
-
-  const links = [
-    { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { href: '/alquileres', icon: CalendarDays, label: 'Alquileres' },
-    { href: '/cotizaciones', icon: FileSpreadsheet, label: 'Cotizaciones' },
-    { href: '/bodega', icon: Package, label: 'Bodega' },
-    { href: '/compras', icon: ShoppingBag, label: 'Compras' },
-    { href: '/devoluciones', icon: ArrowLeftRight, label: 'Devoluciones' },
-    { href: '/facturacion', icon: FileText, label: 'Facturación' },
-    { href: '/clientes', icon: Users, label: 'Clientes' },
-    { href: '/suscripcion', icon: CreditCard, label: 'Suscripción' },
-  ];
 
   return (
     <>
@@ -109,34 +142,23 @@ export function Sidebar() {
             <X className="w-6 h-6" />
           </button>
         </div>
-        <div className="flex flex-col gap-2 flex-grow overflow-y-auto">
-          {links.map((link) => {
-            const isActive = pathname === link.href;
-            const Icon = link.icon;
-            
-            // Asignar IDs para el Tour Interactivo
-            let tourId = undefined;
-            if (link.href === '/bodega') tourId = 'tour-bodega';
-            if (link.href === '/facturacion') tourId = 'tour-facturacion';
-
-            return (
-              <Link 
-                key={link.href}
-                id={tourId}
-                href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`rounded-lg text-base font-semibold flex items-center gap-4 px-4 py-3 transition-colors duration-200 active:scale-95 ${
-                  isActive 
-                    ? 'bg-brand-salmonLight text-brand-salmonDark' 
-                    : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-                {link.label}
-              </Link>
-            );
-          })}
-        </div>
+        
+        {/* Navegación Modular con Soporte React Suspense para SearchParams */}
+        <Suspense fallback={
+          <div className="flex flex-col gap-2 flex-grow overflow-y-auto">
+            {SIDEBAR_LINKS.map((link) => {
+              const Icon = link.icon;
+              return (
+                <div key={link.href} className="rounded-lg text-base font-semibold flex items-center gap-4 px-4 py-3 text-slate-400">
+                  <Icon className="w-5 h-5 stroke-2" />
+                  {link.label}
+                </div>
+              );
+            })}
+          </div>
+        }>
+          <SidebarNavLinks pathname={pathname} setMobileMenuOpen={setMobileMenuOpen} />
+        </Suspense>
 
         {/* Badge de Suscripción / Tenant Activo al Pie */}
         <div className="pt-3 border-t border-slate-100 mt-auto">

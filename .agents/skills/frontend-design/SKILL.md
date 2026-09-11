@@ -1,42 +1,85 @@
 ---
 name: frontend-design
-description: Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, artifacts, posters, or applications (examples include websites, landing pages, dashboards, React components, HTML/CSS layouts, or when styling/beautifying any web UI). Generates creative, polished code and UI design that avoids generic AI aesthetics.
+description: |
+  Create distinctive, production-grade frontend interfaces with strong visual direction, polished typography, considered layout, and working HTML/CSS/JS or framework code. Use for websites, landing pages, dashboards, React components, application screens, and UI beautification.
+triggers:
+  - "frontend design"
+  - "ui design"
+  - "ux design"
+  - "web design"
+  - "production ui"
+  - "landing page"
+  - "dashboard design"
+  - "react component design"
 license: Complete terms in LICENSE.txt
+od:
+  mode: prototype
+  category: web-artifacts
+  craft:
+    requires: [typography, color, anti-ai-slop]
+  design_system:
+    requires: true
+    sections: [color, typography, layout, components]
+  example_prompt: "Design and build a production-quality SaaS analytics dashboard for a finance team, with real interaction states, refined typography, and a distinctive visual direction."
+  upstream: "https://github.com/anthropics/skills/tree/main/skills/frontend-design"
 ---
 
-This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.
+# frontend-design
 
-The user provides frontend requirements: a component, page, application, or interface to build. They may include context about the purpose, audience, or technical constraints.
+> Adapted from Anthropic's official `frontend-design` skill for OpenDesign.
 
-## Design Thinking
+Use this skill when the user asks to build or improve a frontend interface: a website, landing page, dashboard, application screen, HTML/CSS artifact, React/Vue/Svelte component, or a visual redesign of an existing UI.
 
-Before coding, understand the context and commit to a BOLD aesthetic direction:
-- **Purpose**: What problem does this interface solve? Who uses it?
-- **Tone**: Pick an extreme: brutally minimal, maximalist chaos, retro-futuristic, organic/natural, luxury/refined, playful/toy-like, editorial/magazine, brutalist/raw, art deco/geometric, soft/pastel, industrial/utilitarian, etc. There are so many flavors to choose from. Use these for inspiration but design one that is true to the aesthetic direction.
-- **Constraints**: Technical requirements (framework, performance, accessibility).
-- **Differentiation**: What makes this UNFORGETTABLE? What's the one thing someone will remember?
+The goal is not just "make it nicer." The goal is to ship working frontend code with a clear design point of view, strong craft, and enough product detail that the result feels designed for the user's actual context.
 
-**CRITICAL**: Choose a clear conceptual direction and execute it with precision. Bold maximalism and refined minimalism both work - the key is intentionality, not intensity.
+## Workflow
 
-Then implement working code (HTML/CSS/JS, React, Vue, etc.) that is:
-- Production-grade and functional
-- Visually striking and memorable
-- Cohesive with a clear aesthetic point-of-view
-- Meticulously refined in every detail
+1. Understand the brief before choosing the look.
+   - Identify the audience, primary job, domain, and emotional tone.
+   - Note any technical constraints: framework, existing styles, accessibility, performance, export target, or responsive requirements.
+   - If the repo already has design tokens, components, screenshots, or a `DESIGN.md`, use those as the source of truth.
 
-## Frontend Aesthetics Guidelines
+2. Commit to one specific aesthetic direction.
+   - Pick a direction that fits the product: brutally minimal, editorial, luxury, playful, industrial, retro-futuristic, dense operational, calm enterprise, artful consumer, or another precise direction.
+   - Make the direction concrete through typography, spacing, color, hierarchy, motion, and component shape.
+   - Avoid generic AI defaults: purple-blue gradients, vague glass cards, interchangeable SaaS layouts, over-rounded cards, stock icon rows, and decorative blobs that do not serve the interface.
 
-Focus on:
-- **Typography**: Choose fonts that are beautiful, unique, and interesting. Avoid generic fonts like Arial and Inter; opt instead for distinctive choices that elevate the frontend's aesthetics; unexpected, characterful font choices. Pair a distinctive display font with a refined body font.
-- **Color & Theme**: Commit to a cohesive aesthetic. Use CSS variables for consistency. Dominant colors with sharp accents outperform timid, evenly-distributed palettes.
-- **Motion**: Use animations for effects and micro-interactions. Prioritize CSS-only solutions for HTML. Use Motion library for React when available. Focus on high-impact moments: one well-orchestrated page load with staggered reveals (animation-delay) creates more delight than scattered micro-interactions. Use scroll-triggering and hover states that surprise.
-- **Spatial Composition**: Unexpected layouts. Asymmetry. Overlap. Diagonal flow. Grid-breaking elements. Generous negative space OR controlled density.
-- **Backgrounds & Visual Details**: Create atmosphere and depth rather than defaulting to solid colors. Add contextual effects and textures that match the overall aesthetic. Apply creative forms like gradient meshes, noise textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, custom cursors, and grain overlays.
+3. Design the real interface, not a placeholder poster.
+   - Include the controls, empty/loading/error states, tables, filters, navigation, and responsive behavior a real user would expect.
+   - Use honest content. If data is unknown, label it as sample, pending, or unavailable instead of inventing claims.
+   - Keep workflows efficient for the target user. Dashboards and tools should be scannable and dense enough for repeated use; marketing pages can be more expressive.
 
-NEVER use generic AI-generated aesthetics like overused font families (Inter, Roboto, Arial, system fonts), cliched color schemes (particularly purple gradients on white backgrounds), predictable layouts and component patterns, and cookie-cutter design that lacks context-specific character.
+4. Build production-grade frontend code.
+   - Prefer the repository's existing framework, component conventions, icons, tokens, and styling approach.
+   - For standalone artifacts, create self-contained HTML/CSS/JS unless the user asked for a framework.
+   - Use semantic markup, keyboard-accessible controls, visible focus states, sensible contrast, and responsive layout constraints.
+   - Use CSS variables for repeated colors, spacing, shadows, and type scale.
 
-Interpret creatively and make unexpected choices that feel genuinely designed for the context. No design should be the same. Vary between light and dark themes, different fonts, different aesthetics. NEVER converge on common choices (Space Grotesk, for example) across generations.
+5. Refine visual craft.
+   - Typography: choose expressive but readable type pairings. Avoid using default system stacks as the main visual idea unless the direction is intentionally utilitarian.
+   - Color: create a balanced palette with role clarity. Use accent color sparingly and deliberately.
+   - Layout: use alignment, rhythm, density, and negative space intentionally. Do not let cards, panels, or labels drift.
+   - Motion: add purposeful transitions for state changes, reveals, and feedback. Prefer transforms and opacity for performance.
+   - Details: use texture, borders, shadows, dividers, media, and iconography only when they support the concept.
 
-**IMPORTANT**: Match implementation complexity to the aesthetic vision. Maximalist designs need elaborate code with extensive animations and effects. Minimalist or refined designs need restraint, precision, and careful attention to spacing, typography, and subtle details. Elegance comes from executing the vision well.
+6. Self-review before final delivery.
+   - The interface works at mobile and desktop widths.
+   - Text fits its containers and does not overlap adjacent UI.
+   - Interactive elements have hover/focus/active/disabled states.
+   - The design avoids obvious AI-generated visual tropes.
+   - The result has one memorable quality a user could describe after closing the page.
 
-Remember: Claude is capable of extraordinary creative work. Don't hold back, show what can truly be created when thinking outside the box and committing fully to a distinctive vision.
+## OpenDesign Integration
+
+When OpenDesign provides an active design system, treat it as the product's brand contract. Use the injected color, typography, layout, and component guidance first, then apply this skill's frontend craft rules where the design system is silent.
+
+When OpenDesign injects craft references such as `typography`, `color`, and `anti-ai-slop`, apply those checks before finishing. If the user's brand guidance conflicts with a generic craft rule, the user's brand guidance wins.
+
+## Source
+
+- Upstream: https://github.com/anthropics/skills/tree/main/skills/frontend-design
+- Category: `web-artifacts`
+
+## License
+
+This skill is adapted from Anthropic's official skills repository. See `LICENSE.txt` in this folder for the upstream Apache-2.0 license terms.

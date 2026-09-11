@@ -55,12 +55,9 @@ const config: Config = {
         preset: 'var(--preset-radius)',
       },
       fontFamily: {
-        sans: ['var(--preset-font-body)', 'Outfit', 'Inter', 'sans-serif'],
-        display: ['var(--preset-font-display)', 'Outfit', 'Inter', 'sans-serif'],
-        jakarta: ['"Plus Jakarta Sans"', 'sans-serif'],
-        roboto: ['Roboto', 'sans-serif'],
-        calistoga: ['Calistoga', 'Georgia', 'serif'],
-        mono: ['"JetBrains Mono"', 'Fira Code', 'monospace'],
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        display: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'monospace'],
       },
       boxShadow: {
         /* Sombras Semánticas Dinámicas de Preset */

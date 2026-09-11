@@ -1,260 +1,45 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import * as z from 'zod';
-import { useClienteStore } from '../../infrastructure/state/clienteStore';
-import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
-import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
-import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
-import { crearAlquilerAction, editarAlquilerAction } from '../../app/actions/alquileres';
-import { equipoToEquipoUI } from '../../lib/mappers';
+import React, { useEffect } from 'react';
 import { Button } from '../ui/Button';
-import { idempotencyManager } from '../../lib/idempotency';
 import { Modal } from '../ui/Modal';
 import { ClienteForm } from './ClienteForm';
 import { BodegaForm } from './BodegaForm';
-import { formatearMonedaConLetras } from '../../core/utils/numero-a-letras';
-import { EnterprisePDFService } from '../../core/services/pdf-factura-generator.service';
-import { Lock, Plus, Printer, FileText, CheckCircle, ArrowRight } from 'lucide-react';
-import { EquipoCombobox } from '../ui/EquipoCombobox';
+import { useAlquilerForm } from './alquiler/useAlquilerForm';
+import { AlquilerStepper } from './alquiler/AlquilerStepper';
+import { StepClienteGarantias } from './alquiler/StepClienteGarantias';
+import { StepEquiposLogistica } from './alquiler/StepEquiposLogistica';
+import { StepResumenLiquidacion } from './alquiler/StepResumenLiquidacion';
+import { AlquilerPreviewModal } from './alquiler/AlquilerPreviewModal';
+import { AlquilerSuccessView } from './alquiler/AlquilerSuccessView';
+import { AlquilerFormProps } from './alquiler/types';
 
-const alquilerSchema = z.object({
-  clienteId: z.string().min(1, 'Debe seleccionar un cliente'),
-  fechaRegistro: z.string().min(1, 'La fecha de registro es requerida'),
-  fechaInicioContrato: z.string().min(1, 'La fecha de inicio del alquiler es requerida').optional(),
-  fechaFinEstimadaContrato: z.string().min(1, 'La fecha fin estimada es requerida').optional(),
-  fleteEntrega: z.number().min(0),
-  fleteRecogida: z.number().min(0),
-  deposito: z.number().min(0),
-  garantiaMonto: z.number().min(0),
-  garantiaTipo: z.string(),
-  observaciones: z.string().optional(),
-  detallesLogistica: z.string().optional(),
-  items: z.array(z.object({
-    itemId: z.string().min(1, 'Seleccione un equipo'),
-    cantidad: z.number().min(1, 'Cantidad mínima 1'),
-    precioDiario: z.number().min(0, 'El precio no puede ser negativo'),
-    fechaInicio: z.string().min(1, 'Fecha inicio requerida'),
-    fechaFinEstimada: z.string().min(1, 'Fecha fin estimada requerida'),
-  })).min(1, 'Debe agregar al menos un equipo')
-});
-
-interface ItemRow {
-  id: string;
-  itemId: string;
-  cantidad: number;
-  precioDiario: number;
-  fechaInicio: string;
-  fechaFinEstimada: string;
-}
-
-interface Props {
-  initialData?: any;
-  onSuccess: (alquiler?: any) => void;
-  onCancel: () => void;
-  onDirtyChange?: (isDirty: boolean) => void;
-}
-
-const STEPS = [
-  { id: 1, title: 'Cliente y Garantías', desc: 'Datos del cliente y pólizas' },
-  { id: 2, title: 'Equipos y Logística', desc: 'Selección de maquinaria y fletes' },
-  { id: 3, title: 'Resumen y Confirmación', desc: 'Observaciones y cálculo final' },
-];
-
-export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }: Props) {
-  const { clientes, setClientes } = useClienteStore();
-  const { equipos, setEquipos } = useBodegaStore();
-  const { config: empresaConfig } = useEmpresaStore();
-
-  const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
-  
-  const [clientSearchTerm, setClientSearchTerm] = useState('');
-  const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
-  const [idempotencyKey] = useState(() => idempotencyManager.generateKey());
-  
-  const [isCreandoCliente, setIsCreandoCliente] = useState(false);
-  const [isCreandoEquipo, setIsCreandoEquipo] = useState(false);
-  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-  const [previewPaperSize, setPreviewPaperSize] = useState<'LETTER' | 'A5'>('LETTER');
-  
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [savedAlquilerData, setSavedAlquilerData] = useState<any>(null);
-  const [autoFocusRowId, setAutoFocusRowId] = useState<string | null>(null);
-  const [openComboboxRowId, setOpenComboboxRowId] = useState<string | null>(null);
-
-  const todayStr = new Date().toISOString().split("T")[0];
-
-  // Sincronización proactiva de catálogos
-  const fetchCatalogsBackground = useCallback(async () => {
-    try {
-      const [resCli, resEq] = await Promise.all([
-        fetch('/api/clientes', { cache: 'no-store' }),
-        fetch('/api/equipos', { cache: 'no-store' })
-      ]);
-      const [jsonCli, jsonEq] = await Promise.all([
-        resCli.json(),
-        resEq.json()
-      ]);
-      if (jsonCli.success && Array.isArray(jsonCli.data)) {
-        setClientes(jsonCli.data);
-      }
-      if (jsonEq.success && Array.isArray(jsonEq.data)) {
-        setEquipos(jsonEq.data.map(equipoToEquipoUI));
-      }
-    } catch (err) {
-      console.warn('[AlquilerForm] Error al sincronizar catálogos en background:', err);
-    }
-  }, [setClientes, setEquipos]);
-
-  useEffect(() => {
-    const fetchCatalogs = async () => {
-      setIsLoadingCatalogs(true);
-      await fetchCatalogsBackground();
-      setIsLoadingCatalogs(false);
-    };
-    fetchCatalogs();
-  }, [fetchCatalogsBackground]);
-
-  // Form State
-  const [clienteId, setClienteId] = useState<string>(String(initialData?.cliente_id || initialData?.clienteId || ''));
-  const [fechaRegistro, setFechaRegistro] = useState<string>(
-    initialData?.created_at ? new Date(initialData.created_at).toISOString().split('T')[0] : 
-    (initialData?.createdAt ? new Date(initialData.createdAt).toISOString().split('T')[0] : todayStr)
-  );
-
-  // Rango Maestro de Fechas para todo el contrato
-  const [fechaInicioContrato, setFechaInicioContrato] = useState<string>(() => {
-    if (initialData?.fecha_inicio) return new Date(initialData.fecha_inicio).toISOString().split('T')[0];
-    if (initialData?.fechaInicio) return new Date(initialData.fechaInicio).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fecha_inicio) return new Date(initialData.detalles[0].fecha_inicio).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fechaInicio) return new Date(initialData.detalles[0].fechaInicio).toISOString().split('T')[0];
-    return todayStr;
-  });
-
-  const [fechaFinEstimadaContrato, setFechaFinEstimadaContrato] = useState<string>(() => {
-    if (initialData?.fecha_fin_estimada) return new Date(initialData.fecha_fin_estimada).toISOString().split('T')[0];
-    if (initialData?.fechaFinEstimada) return new Date(initialData.fechaFinEstimada).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fecha_fin_estimada) return new Date(initialData.detalles[0].fecha_fin_estimada).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fechaFinEstimada) return new Date(initialData.detalles[0].fechaFinEstimada).toISOString().split('T')[0];
-    return todayStr;
-  });
-
-  const [fleteEntrega, setFleteEntrega] = useState<number>(initialData ? (initialData.flete_entrega || initialData.fleteEntrega || 0) : 30000);
-  const [fleteRecogida, setFleteRecogida] = useState<number>(initialData ? (initialData.flete_recogida || initialData.fleteRecogida || 0) : 30000);
-  const [deposito, setDeposito] = useState<number>(initialData ? (initialData.deposito || 0) : 50000);
-  const [garantiaMonto, setGarantiaMonto] = useState<number>(initialData ? (initialData.garantia_monto || initialData.garantiaMonto || 0) : 300000);
-  const [garantiaTipo, setGarantiaTipo] = useState<string>(initialData?.garantia_tipo || initialData?.garantiaTipo || 'Efectivo');
-  const [observaciones, setObservaciones] = useState<string>(initialData?.observaciones || initialData?.observacionesGenerales || '');
-  const [detallesLogistica, setDetallesLogistica] = useState<string>(initialData?.detalles_logistica || initialData?.detallesLogistica || '');
-  const [estadoDocumento, setEstadoDocumento] = useState<'COTIZACION' | 'ACTIVO'>(initialData?.estado || 'ACTIVO');
-
-  const [items, setItems] = useState<ItemRow[]>(() => {
-    if (initialData?.detalles && initialData.detalles.length > 0) {
-      return initialData.detalles.map((d: any, idx: number) => ({
-        id: `init_${idx}_${Date.now()}`,
-        itemId: String(d.equipo_id || d.itemId || ''),
-        cantidad: d.cantidad || 1,
-        precioDiario: d.valor_unitario || d.tarifaDiaria || d.precioDiario || d.valorUnitario || 0,
-        fechaInicio: d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (d.fechaInicio ? new Date(d.fechaInicio).toISOString().split('T')[0] : todayStr),
-        fechaFinEstimada: d.fecha_fin_estimada ? new Date(d.fecha_fin_estimada).toISOString().split('T')[0] : (d.fechaFinEstimada ? new Date(d.fechaFinEstimada).toISOString().split('T')[0] : todayStr),
-      }));
-    }
-    return [{ id: `row_0_${Date.now()}`, itemId: '', cantidad: 1, precioDiario: 0, fechaInicio: fechaInicioContrato, fechaFinEstimada: fechaFinEstimadaContrato }];
-  });
-
-  // Manejadores Poka-Yoke con sincronización en cascada
-  const handleFechaInicioMasterChange = (newStart: string) => {
-    setFechaInicioContrato(newStart);
-    let targetEnd = fechaFinEstimadaContrato;
-    if (targetEnd < newStart) {
-      targetEnd = newStart;
-      setFechaFinEstimadaContrato(newStart);
-    }
-    if (!initialData) {
-      setItems(prev => prev.map(item => ({
-        ...item,
-        fechaInicio: newStart,
-        fechaFinEstimada: targetEnd
-      })));
-    }
-  };
-
-  const handleFechaFinMasterChange = (newEnd: string) => {
-    let targetEnd = newEnd;
-    if (targetEnd < fechaInicioContrato) {
-      targetEnd = fechaInicioContrato;
-    }
-    setFechaFinEstimadaContrato(targetEnd);
-    if (!initialData) {
-      setItems(prev => prev.map(item => ({
-        ...item,
-        fechaFinEstimada: targetEnd
-      })));
-    }
-  };
-
-  const initialStateStr = useMemo(() => {
-    return JSON.stringify({
-      clienteId, fechaRegistro, fechaInicioContrato, fechaFinEstimadaContrato,
-      fleteEntrega, fleteRecogida, deposito, garantiaMonto, garantiaTipo,
-      observaciones, detallesLogistica, items, estadoDocumento
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const currentDataStr = JSON.stringify({
-      clienteId, fechaRegistro, fechaInicioContrato, fechaFinEstimadaContrato,
-      fleteEntrega, fleteRecogida, deposito, garantiaMonto, garantiaTipo,
-      observaciones, detallesLogistica, items, estadoDocumento
-    });
-    if (onDirtyChange) {
-      onDirtyChange(currentDataStr !== initialStateStr);
-    }
-  }, [
-    clienteId, fechaRegistro, fechaInicioContrato, fechaFinEstimadaContrato,
-    fleteEntrega, fleteRecogida, deposito, garantiaMonto, garantiaTipo,
-    observaciones, detallesLogistica, items, estadoDocumento, initialStateStr, onDirtyChange
-  ]);
-
-
-  const addItemRow = useCallback(() => {
-    const newRowId = `row_${Date.now()}_${Math.random()}`;
-    setAutoFocusRowId(newRowId);
-    setItems(prev => [
-      ...prev,
-      { id: newRowId, itemId: '', cantidad: 1, precioDiario: 0, fechaInicio: fechaInicioContrato, fechaFinEstimada: fechaFinEstimadaContrato }
-    ]);
-  }, [fechaInicioContrato, fechaFinEstimadaContrato]);
+export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }: AlquilerFormProps) {
+  const form = useAlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange });
 
   // Atajo de teclado global F2 para añadir renglón de equipo
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F2') {
-        // Bloqueo de seguridad: omitir si hay modales secundarios abiertos o envío en curso
-        if (isCreandoCliente || isCreandoEquipo || isPreviewModalOpen || isSubmitting) {
+        if (form.isCreandoCliente || form.isCreandoEquipo || form.isPreviewModalOpen || form.isSubmitting) {
           return;
         }
 
         e.preventDefault();
 
-        if (currentStep === 1) {
-          if (!clienteId) {
-            setFormErrors(prev => ({ ...prev, clienteId: 'Seleccione un cliente antes de agregar maquinaria' }));
+        if (form.currentStep === 1) {
+          if (!form.clienteId) {
+            form.setFormErrors(prev => ({ ...prev, clienteId: 'Seleccione un cliente antes de agregar maquinaria' }));
             return;
           }
-          setCurrentStep(2);
+          form.setCurrentStep(2);
           setTimeout(() => {
-            addItemRow();
+            form.addItemRow();
             const el = document.getElementById('items-list-end');
             el?.scrollIntoView({ behavior: 'smooth', block: 'end' });
           }, 80);
-        } else if (currentStep === 2) {
-          addItemRow();
+        } else if (form.currentStep === 2) {
+          form.addItemRow();
           setTimeout(() => {
             const el = document.getElementById('items-list-end');
             el?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -265,1273 +50,279 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [currentStep, clienteId, isCreandoCliente, isCreandoEquipo, isPreviewModalOpen, isSubmitting, addItemRow]);
-
-  const removeItemRow = (index: number) => {
-    if (items.length <= 1) return;
-    setItems(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const updateItemRow = (index: number, field: keyof ItemRow, value: any) => {
-    setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
-  };
-
-  const filteredClientes = useMemo(() => {
-    return clientes.filter(c => {
-      const isActivo = c.estado === 'Activo' || !c.estado;
-      if (!isActivo) return false;
-      if (!clientSearchTerm.trim()) return true;
-      const term = clientSearchTerm.toLowerCase();
-      const nombre = (c.nombre || '').toLowerCase();
-      const nit = (c.nit_cedula || c.nit || '').toLowerCase();
-      const tel = (c.telefono || c.contacto || '').toLowerCase();
-      return nombre.includes(term) || nit.includes(term) || tel.includes(term);
-    });
-  }, [clientes, clientSearchTerm]);
-
-  const equiposActivos = useMemo(() => {
-    return equipos.filter(e => e.estado !== 'Inactivo');
-  }, [equipos]);
-
-  const selectedCliente = useMemo(() => {
-    return clientes.find(c => String(c.id) === String(clienteId));
-  }, [clientes, clienteId]);
-
-  const isEditMode = Boolean(initialData);
-
-  // Fallbacks resilientes para visualización de cliente cuando el store aún no ha cargado en red
-  const displayClienteNombre = selectedCliente?.nombre || initialData?.clienteNombre || initialData?.cliente?.nombre || '';
-  const displayClienteNit = selectedCliente?.nit_cedula || selectedCliente?.nit || initialData?.clienteNit || initialData?.clienteDocumento || initialData?.cliente?.nit || '';
-  const displayClienteTelefono = selectedCliente?.telefono || selectedCliente?.contacto || initialData?.clienteTelefono || initialData?.cliente?.telefono || '';
-
-  // Subtotal de equipos calculado con fórmula estricta
-  const subtotalEquipos = useMemo(() => {
-    return items.reduce((acc, item) => {
-      if (!item.itemId || !item.fechaInicio || !item.fechaFinEstimada) return acc;
-      
-      const start = new Date(item.fechaInicio);
-      const end = new Date(item.fechaFinEstimada);
-      const diffMs = end.getTime() - start.getTime();
-      const dias = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-
-      return acc + ((item.precioDiario || 0) * (item.cantidad || 1) * dias);
-    }, 0);
-  }, [items]);
-
-  const totalFletes = (fleteEntrega || 0) + (fleteRecogida || 0);
-  const totalGeneral = subtotalEquipos + totalFletes;
-  const totalEstimado = Math.max(0, totalGeneral - (deposito || 0));
-
-  // POKA-YOKE: Calcular Valor de Reposición Total para regla del 10%
-  const valorReposicionTotal = useMemo(() => {
-    return items.reduce((acc, item) => {
-      if (!item.itemId) return acc;
-      const equipo = equiposActivos.find(e => String(e.id) === String(item.itemId));
-      return acc + ((equipo?.valor_reposicion || 0) * (item.cantidad || 1));
-    }, 0);
-  }, [items, equiposActivos]);
-
-  const formatearCOP = (valor: number) => {
-    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Math.round(valor || 0));
-  };
-
-
-
-  const validateCurrentStep = (): boolean => {
-    setFormErrors({});
-    if (currentStep === 1) {
-      if (!clienteId) {
-        setFormErrors(prev => ({ ...prev, clienteId: 'Debe seleccionar un cliente' }));
-        return false;
-      }
-      if (!fechaRegistro) {
-        setFormErrors(prev => ({ ...prev, fechaRegistro: 'La fecha de registro es requerida' }));
-        return false;
-      }
-      if (!fechaInicioContrato) {
-        setFormErrors(prev => ({ ...prev, fechaInicioContrato: 'La fecha de inicio es requerida' }));
-        return false;
-      }
-      if (!fechaFinEstimadaContrato) {
-        setFormErrors(prev => ({ ...prev, fechaFinEstimadaContrato: 'La fecha fin estimada es requerida' }));
-        return false;
-      }
-      if (fechaFinEstimadaContrato < fechaInicioContrato) {
-        setFormErrors(prev => ({ ...prev, fechaFinEstimadaContrato: 'La fecha final no puede ser menor a la de inicio' }));
-        return false;
-      }
-    } else if (currentStep === 2) {
-      const hasEmptyItem = items.some(it => !it.itemId);
-      if (hasEmptyItem) {
-        setFormErrors(prev => ({ ...prev, items: 'Seleccione un equipo para cada fila' }));
-        return false;
-      }
-      
-      // POKA-YOKE: Validación del 10% del Valor de Reposición (Restricción Global)
-      const minimoRequerido = valorReposicionTotal * 0.1;
-      const garantiaTotal = Number(deposito) + Number(garantiaMonto);
-      if (garantiaTotal < minimoRequerido) {
-        setErrorMsg(`Bloqueo de Seguridad: Se requiere un colateral (Depósito + Garantía) mínimo del 10% del valor de los equipos (${formatearCOP(minimoRequerido)}). El colateral actual es ${formatearCOP(garantiaTotal)}. Por favor regrese al Paso 1.`);
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const handleNextStep = () => {
-    setErrorMsg(null);
-    if (!validateCurrentStep()) return;
-    setCurrentStep((prev) => Math.min(3, prev + 1));
-  };
-
-  const handlePrevStep = () => {
-    setErrorMsg(null);
-    setCurrentStep((prev) => Math.max(1, prev - 1));
-  };
-
-  // Payload unificado para vista previa o guardado
-  const construirPayloadDocumento = (consecutivo = 'Borrador') => {
-    const itemsConDetalles = items.map(item => {
-      const equipo = equiposActivos.find(e => String(e.id) === String(item.itemId));
-      const start = new Date(item.fechaInicio);
-      const end = new Date(item.fechaFinEstimada);
-      const diffMs = end.getTime() - start.getTime();
-      const dias = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-      const subtotalLinea = (item.precioDiario || 0) * (item.cantidad || 1) * dias;
-
-      return {
-        itemId: item.itemId,
-        nombre: equipo?.nombre || 'Equipo de Construcción',
-        nombreItem: equipo?.nombre || 'Equipo de Construcción',
-        codigo: (equipo as any)?.codigo || (equipo as any)?.sku || '',
-        cantidad: item.cantidad,
-        tarifaDiaria: item.precioDiario,
-        tarifaAplicada: item.precioDiario,
-        fechaInicio: item.fechaInicio,
-        fechaFin: item.fechaFinEstimada,
-        fechaFinEstimada: item.fechaFinEstimada,
-        dias,
-        subtotal: subtotalLinea,
-        subtotalLineaEstimado: subtotalLinea,
-      };
-    });
-
-    return {
-      id: '',
-      tipo: 'CONTRATO' as const,
-      consecutivo,
-      cliente_id: clienteId,
-      clienteNombre: displayClienteNombre || 'Consumidor Final',
-      clienteNit: displayClienteNit || 'Sin Registrar',
-      clienteTelefono: displayClienteTelefono,
-      flete_entrega: fleteEntrega,
-      fleteEntrega,
-      flete_recogida: fleteRecogida,
-      fleteRecogida,
-      deposito,
-      depositoAplicado: deposito,
-      garantia_monto: garantiaMonto,
-      garantiaMonto,
-      garantia_tipo: garantiaTipo,
-      garantiaTipo,
-      observaciones,
-      detalles_logistica: detallesLogistica,
-      detallesLogistica,
-      items: itemsConDetalles,
-      detalles: itemsConDetalles,
-      subtotal_equipos: subtotalEquipos,
-      subtotalEquipos,
-      total_general: totalGeneral,
-      subtotalGeneral: totalGeneral,
-      total: totalEstimado,
-      totalPagar: totalEstimado,
-      saldo_pendiente: totalEstimado,
-      saldoPendiente: totalEstimado,
-      created_at: fechaRegistro,
-      fechaEmision: fechaRegistro,
-      fechaInicio: fechaInicioContrato,
-      fecha_inicio: fechaInicioContrato,
-      fechaFinEstimada: fechaFinEstimadaContrato,
-      fecha_fin_estimada: fechaFinEstimadaContrato,
-      estado: estadoDocumento,
-      empresa: empresaConfig,
-      formatoPapel: 'LETTER' as 'LETTER' | 'A5',
-    };
-  };
-
-  const handleAbrirImpresionHTML = (formato: 'LETTER' | 'A5' = 'LETTER') => {
-    const payload: any = construirPayloadDocumento(savedAlquilerData?.consecutivo || 'Borrador');
-    payload.formatoPapel = formato;
-    payload.empresa = empresaConfig;
-    if (savedAlquilerData) {
-      if (savedAlquilerData.consecutivo) payload.consecutivo = savedAlquilerData.consecutivo;
-      if (savedAlquilerData.clienteNombre) payload.clienteNombre = savedAlquilerData.clienteNombre;
-    }
-    const htmlContent = EnterprisePDFService.generarHTMLDocumento(payload);
-    
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => {
-        try {
-          printWindow.print();
-        } catch (printErr) {
-          console.warn('[Impresión] No se pudo lanzar print() automáticamente:', printErr);
-        }
-      }, 350);
-    } else {
-      alert("Por favor habilita las ventanas emergentes para visualizar e imprimir el documento.");
-    }
-  };
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-    setFormErrors({});
-
-    const validation = alquilerSchema.safeParse({
-      clienteId: String(clienteId),
-      fechaRegistro,
-      fechaInicioContrato,
-      fechaFinEstimadaContrato,
-      fleteEntrega: Number(fleteEntrega) || 0,
-      fleteRecogida: Number(fleteRecogida) || 0,
-      deposito: Number(deposito) || 0,
-      garantiaMonto: Number(garantiaMonto) || 0,
-      garantiaTipo,
-      observaciones,
-      detallesLogistica,
-      items: items.map(it => ({
-        itemId: it.itemId,
-        cantidad: Number(it.cantidad) || 1,
-        precioDiario: Number(it.precioDiario) || 0,
-        fechaInicio: it.fechaInicio,
-        fechaFinEstimada: it.fechaFinEstimada
-      }))
-    });
-
-    if (!validation.success) {
-      const errMap: { [key: string]: string } = {};
-      validation.error.issues.forEach(iss => {
-        const path = iss.path.join('.');
-        errMap[path] = iss.message;
-      });
-      setFormErrors(errMap);
-      setErrorMsg('Por favor verifique los campos requeridos en el formulario.');
-      return;
-    }
-
-    if (!idempotencyManager.processKey(idempotencyKey)) {
-      console.warn("Transacción bloqueada por IdempotencyManager (doble clic detectado)");
-      return;
-    }
-
-    setIsSubmitting(true);
-    
-    const store = useAlquilerStore.getState();
-    const previousAlquileres = [...store.alquileres];
-    const optimisticId = initialData ? initialData.id : `temp_${Date.now()}`;
-    
-    try {
-      const alquilerUi = construirPayloadDocumento(initialData?.consecutivo || 'Borrador');
-      alquilerUi.id = optimisticId;
-      
-      if (initialData) {
-        store.updateAlquiler(alquilerUi as any);
-      } else {
-        store.addAlquiler(alquilerUi as any);
-      }
-
-      // Persistencia mediante Server Action
-      if (initialData) {
-        const result = await editarAlquilerAction({
-          alquilerId: initialData.id,
-          clienteId: validation.data.clienteId,
-          clienteNombre: displayClienteNombre,
-          fleteEntrega: validation.data.fleteEntrega,
-          fleteRecogida: validation.data.fleteRecogida,
-          deposito: validation.data.deposito,
-          garantiaMonto: validation.data.garantiaMonto,
-          garantiaTipo: validation.data.garantiaTipo,
-          observaciones: validation.data.observaciones,
-          detallesLogistica: validation.data.detallesLogistica,
-          estado: estadoDocumento,
-          items: alquilerUi.detalles,
-        });
-        
-        if (!result.success) {
-          throw new Error(result.error);
-        }
-        
-        store.sanitizeStore();
-        setSavedAlquilerData(alquilerUi);
-        setIsSuccess(true);
-      } else {
-        const result = await crearAlquilerAction({
-          clienteId: validation.data.clienteId,
-          clienteNombre: displayClienteNombre,
-          fleteEntrega: validation.data.fleteEntrega,
-          fleteRecogida: validation.data.fleteRecogida,
-          deposito: validation.data.deposito,
-          garantiaMonto: validation.data.garantiaMonto,
-          garantiaTipo: validation.data.garantiaTipo,
-          observaciones: validation.data.observaciones,
-          detallesLogistica: validation.data.detallesLogistica,
-          estado: estadoDocumento,
-          items: alquilerUi.detalles
-        });
-        
-        if (!result.success) {
-          throw new Error(result.error);
-        }
-        
-        const nuevoAlquilerDB = result.data;
-        const alquilerFinal = { 
-          ...alquilerUi, 
-          id: nuevoAlquilerDB.id, 
-          consecutivo: nuevoAlquilerDB.consecutivo,
-          subtotal_equipos: subtotalEquipos,
-          total: totalEstimado,
-          saldo_pendiente: totalEstimado
-        };
-        store.updateAlquiler(alquilerFinal as any);
-        store.sanitizeStore();
-        
-        setSavedAlquilerData(alquilerFinal);
-        setIsSuccess(true);
-      }
-    } catch (err: any) {
-      store.restoreSnapshot(previousAlquileres);
-      idempotencyManager.removeKey(idempotencyKey);
-      console.error("Error al guardar alquiler:", err);
-      setErrorMsg(err.message || 'Error al guardar el contrato');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  }, [form]);
 
   // Pantalla de Éxito y Emisión de Documentos
-  if (isSuccess && savedAlquilerData) {
-    const consecutivoDisplay = savedAlquilerData.consecutivo || '101';
-    const nombreCliente = savedAlquilerData.clienteNombre || 'Cliente';
-
+  if (form.isSuccess && form.savedAlquilerData) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 space-y-6 text-center animate-fadeIn">
-        <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl shadow-inner">
-          <CheckCircle className="w-9 h-9 text-emerald-600" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold text-slate-800">
-            {initialData ? "¡Contrato Actualizado Exitosamente!" : "¡Contrato Guardado Exitosamente!"}
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">
-            El contrato <span className="font-bold text-slate-700">#{consecutivoDisplay}</span> ({nombreCliente}) ha sido registrado en el sistema.
-          </p>
-        </div>
-
-        {/* Opciones de Emisión e Impresión Oficial */}
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 w-full max-w-lg space-y-4 shadow-sm">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-            Emisión y Descarga del Documento (PDF)
-          </span>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Emisión Formato Carta */}
-            <button
-              type="button"
-              onClick={() => handleAbrirImpresionHTML('LETTER')}
-              className="px-4 py-3 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 text-xs cursor-pointer active:scale-[0.98]"
-            >
-              <FileText className="w-4 h-4" />
-              <span>Ver / Imprimir Carta (PDF)</span>
-            </button>
-
-            {/* Emisión Formato A5 / Media Carta */}
-            <button
-              type="button"
-              onClick={() => handleAbrirImpresionHTML('A5')}
-              className="px-4 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 text-xs cursor-pointer active:scale-[0.98]"
-            >
-              <Printer className="w-4 h-4" />
-              <span>Media Carta / A5 (PDF)</span>
-            </button>
-          </div>
-
-          <div className="pt-3 border-t border-slate-200 flex justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => onSuccess(savedAlquilerData)}
-              className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
-            >
-              <span>Continuar y Ver en Listado</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
+      <AlquilerSuccessView
+        isEditMode={form.isEditMode}
+        savedAlquilerData={form.savedAlquilerData}
+        onPrint={form.handleAbrirImpresionHTML}
+        onContinue={onSuccess}
+      />
     );
   }
 
   return (
     <>
-      <form onSubmit={onSubmit} className="flex flex-col h-full space-y-6">
-        {/* Stepper */}
-        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 sm:p-4">
-          <div className="grid grid-cols-3 gap-2">
-            {STEPS.map((step) => {
-              const isActive = currentStep === step.id;
-              const isCompleted = currentStep > step.id;
-              return (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={() => setCurrentStep(step.id)}
-                  className={`flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-2 p-2 rounded-xl transition-all ${
-                    isActive
-                      ? 'bg-white shadow-sm border border-teal-600/30 text-teal-700'
-                      : isCompleted
-                      ? 'text-emerald-700 hover:bg-white/60'
-                      : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
-                      isActive
-                        ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
-                        : isCompleted
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-slate-200 text-slate-600'
-                    }`}
-                  >
-                    {isCompleted ? '✓' : step.id}
-                  </div>
-                  <div className="overflow-hidden">
-                    <div className="text-xs font-bold truncate">{step.title}</div>
-                    <div className="text-[10px] text-slate-400 hidden sm:block truncate">{step.desc}</div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      <form onSubmit={form.onSubmit} className="flex flex-col h-full space-y-6">
+        {/* Stepper de Navegación */}
+        <AlquilerStepper
+          currentStep={form.currentStep}
+          onStepClick={(stepId) => form.setCurrentStep(stepId)}
+        />
 
-        {errorMsg && (
-          <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs sm:text-sm font-medium flex items-center space-x-2">
+        {form.errorMsg && (
+          <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs sm:text-sm font-medium flex items-center space-x-2 animate-fadeIn">
             <span>⚠️</span>
-            <span>{errorMsg}</span>
+            <span>{form.errorMsg}</span>
           </div>
         )}
 
         {/* PASO 1: CLIENTE Y GARANTÍAS */}
-        {currentStep === 1 && (
-          <div className="space-y-4 animate-fadeIn">
-            {/* Tipo de Documento */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-                <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                <span>Tipo de Documento</span>
-              </h3>
-              <div className="flex bg-slate-100/50 p-1 rounded-xl border border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setEstadoDocumento('COTIZACION')}
-                  className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all ${
-                    estadoDocumento === 'COTIZACION'
-                      ? 'bg-white text-indigo-700 shadow-sm border border-slate-200/60'
-                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  📝 Cotización / Presupuesto
-                  <span className="block font-normal text-[10px] text-slate-400 mt-0.5">No descuenta stock</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEstadoDocumento('ACTIVO')}
-                  className={`flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all ${
-                    estadoDocumento === 'ACTIVO'
-                      ? 'bg-white text-teal-700 shadow-sm border border-slate-200/60'
-                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  📄 Contrato Activo
-                  <span className="block font-normal text-[10px] text-slate-400 mt-0.5">Reserva equipos</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-                <span className="w-2 h-2 rounded-full bg-teal-600" />
-                <span>Identificación del Cliente y Fechas</span>
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Buscador Asistido o Tarjeta Bloqueada de Clientes */}
-                <div className="flex flex-col gap-1.5 relative">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-slate-700">
-                      {isEditMode ? "Cliente Vinculado (No modificable en edición)" : "Cliente / Razón Social *"}
-                    </label>
-                    {!isEditMode && (
-                      <button 
-                        type="button" 
-                        onClick={() => setIsCreandoCliente(true)} 
-                        className="text-[10px] bg-teal-50 text-teal-700 px-2.5 py-0.5 rounded-full font-bold hover:bg-teal-100 transition-colors flex items-center gap-1"
-                      >
-                        + Nuevo Cliente
-                      </button>
-                    )}
-                  </div>
-
-                  {isEditMode ? (
-                    /* MODO EDICIÓN: Tarjeta Bloqueada Read-Only (Poka-Yoke) */
-                    <div className="p-3 bg-slate-50 border border-slate-200/90 rounded-xl flex items-center justify-between shadow-sm">
-                      <div className="flex items-center space-x-3 overflow-hidden">
-                        <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0">
-                          <Lock className="w-4 h-4 text-slate-500" />
-                        </div>
-                        <div className="truncate">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs sm:text-sm font-bold text-slate-800 truncate">
-                              {displayClienteNombre || 'Cliente vinculado'}
-                            </span>
-                            <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-medium shrink-0">
-                              Solo Lectura
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
-                            <span>NIT: {displayClienteNit || 'S/N'}</span>
-                            {displayClienteTelefono && (
-                              <span>• Tel: {displayClienteTelefono}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-slate-400 bg-slate-100 rounded-lg shrink-0 ml-2">
-                        <Lock className="w-3 h-3" />
-                        Bloqueado
-                      </div>
-                    </div>
-                  ) : (
-                    /* MODO CREACIÓN: Selector interactivo y búsqueda */
-                    selectedCliente && !isClientDropdownOpen ? (
-                      <div className="p-3 bg-teal-50/60 border border-teal-200 rounded-xl flex items-center justify-between shadow-sm">
-                        <div className="flex items-center space-x-3 overflow-hidden">
-                          <div className="w-8 h-8 rounded-full bg-teal-600/10 text-teal-700 flex items-center justify-center font-bold text-xs shrink-0">
-                            👤
-                          </div>
-                          <div className="truncate">
-                            <div className="text-xs sm:text-sm font-bold text-slate-800 truncate">{selectedCliente.nombre}</div>
-                            <div className="text-[11px] text-slate-500 flex items-center gap-2">
-                              <span>NIT: {selectedCliente.nit_cedula || selectedCliente.nit || 'S/N'}</span>
-                              {(selectedCliente.telefono || selectedCliente.contacto) && (
-                                <span>• Tel: {selectedCliente.telefono || selectedCliente.contacto}</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsClientDropdownOpen(true);
-                            setClientSearchTerm('');
-                          }}
-                          className="px-2.5 py-1 text-[11px] font-bold text-teal-700 hover:bg-teal-100 rounded-lg transition-colors shrink-0 ml-2"
-                        >
-                          Cambiar
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <input 
-                          type="text"
-                          placeholder="Escriba para buscar por nombre o NIT..."
-                          value={clientSearchTerm}
-                          onChange={(e) => {
-                            setClientSearchTerm(e.target.value);
-                            setIsClientDropdownOpen(true);
-                          }}
-                          onFocus={() => setIsClientDropdownOpen(true)}
-                          className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all"
-                        />
-                        {isClientDropdownOpen && (
-                          <div className="absolute z-30 w-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100">
-                            {filteredClientes.map(c => (
-                              <div 
-                                key={c.id} 
-                                className="px-3.5 py-2.5 text-xs text-slate-700 hover:bg-teal-50 hover:text-teal-800 cursor-pointer flex justify-between items-center transition-colors"
-                                onClick={() => {
-                                  setClienteId(String(c.id));
-                                  setClientSearchTerm('');
-                                  setIsClientDropdownOpen(false);
-                                }}
-                              >
-                                <div className="flex flex-col">
-                                  <span className="font-bold text-slate-800">{c.nombre}</span>
-                                  <span className="text-[10px] text-slate-400">{c.telefono || c.contacto || ''}</span>
-                                </div>
-                                <span className="text-slate-500 text-[11px] bg-slate-100 px-2 py-0.5 rounded-full font-mono">
-                                  NIT: {c.nit_cedula || c.nit}
-                                </span>
-                              </div>
-                            ))}
-                            {filteredClientes.length === 0 && (
-                              <div className="px-4 py-4 text-xs text-slate-400 text-center flex flex-col items-center gap-1.5">
-                                <span>{isLoadingCatalogs ? "Cargando clientes..." : "No se encontraron clientes registrados."}</span>
-                                <button 
-                                  type="button" 
-                                  onClick={() => setIsCreandoCliente(true)} 
-                                  className="text-xs text-teal-700 font-bold hover:underline"
-                                >
-                                  + Crear nuevo cliente ahora
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  )}
-                  {formErrors.clienteId && <span className="text-[11px] text-red-500 font-semibold">{formErrors.clienteId}</span>}
-                </div>
-
-                {/* Fecha de Registro */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">Fecha de Creación del Contrato *</label>
-                  <input 
-                    type="date" 
-                    value={fechaRegistro}
-                    onChange={(e) => setFechaRegistro(e.target.value)}
-                    className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all" 
-                  />
-                  {formErrors.fechaRegistro && <span className="text-[11px] text-red-500 font-semibold">{formErrors.fechaRegistro}</span>}
-                </div>
-              </div>
-
-              {/* Rango Maestro de Alquiler (Propagación a Ítems) */}
-              <div className="pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-teal-50/50 p-4 rounded-xl border border-teal-100/80">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-teal-950 flex items-center gap-1.5">
-                    <span>📅</span>
-                    <span>Fecha Inicio del Alquiler *</span>
-                  </label>
-                  <input 
-                    type="date" 
-                    value={fechaInicioContrato}
-                    onChange={(e) => handleFechaInicioMasterChange(e.target.value)}
-                    className="px-3.5 py-2.5 bg-white border border-teal-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all font-medium shadow-sm" 
-                  />
-                  {formErrors.fechaInicioContrato && (
-                    <span className="text-[11px] text-red-500 font-semibold">{formErrors.fechaInicioContrato}</span>
-                  )}
-                  <span className="text-[10.5px] text-teal-700">Se asigna automáticamente a cada equipo agregado</span>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-teal-950 flex items-center gap-1.5">
-                    <span>🏁</span>
-                    <span>Fecha Fin Estimada *</span>
-                  </label>
-                  <input 
-                    type="date" 
-                    value={fechaFinEstimadaContrato}
-                    min={fechaInicioContrato}
-                    onChange={(e) => handleFechaFinMasterChange(e.target.value)}
-                    className="px-3.5 py-2.5 bg-white border border-teal-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all font-medium shadow-sm" 
-                  />
-                  {formErrors.fechaFinEstimadaContrato && (
-                    <span className="text-[11px] text-red-500 font-semibold">{formErrors.fechaFinEstimadaContrato}</span>
-                  )}
-                  <span className="text-[10.5px] text-teal-700">Duración base estimada para cálculo de tarifas</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Garantías y Depósito con Ayuda Verbal */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Garantía y Anticipo de Seguridad</span>
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">Tipo de Respaldo</label>
-                  <select 
-                    value={garantiaTipo}
-                    onChange={(e) => setGarantiaTipo(e.target.value)}
-                    className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all"
-                  >
-                    <option value="Efectivo">Efectivo en Custodia</option>
-                    <option value="Pagaré">Pagaré Firmado</option>
-                    <option value="Transferencia">Transferencia Bancaria</option>
-                    <option value="Cheque">Cheque de Gerencia</option>
-                  </select>
-                </div>
-
-                {/* Monto de Garantía */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">Monto de Garantía ($ COP)</label>
-                  <input 
-                    type="number" 
-                    min={0}
-                    value={garantiaMonto}
-                    onChange={(e) => setGarantiaMonto(parseFloat(e.target.value) || 0)}
-                    className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all" 
-                  />
-                  <span className="text-[10.5px] text-emerald-700 font-semibold truncate">
-                    {formatearMonedaConLetras(garantiaMonto)}
-                  </span>
-                </div>
-
-                {/* Depósito / Abono */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">Depósito / Abono Inicial ($ COP)</label>
-                  <input 
-                    type="number" 
-                    min={0}
-                    value={deposito}
-                    onChange={(e) => setDeposito(parseFloat(e.target.value) || 0)}
-                    className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all" 
-                  />
-                  <span className="text-[10.5px] text-teal-700 font-semibold truncate">
-                    {formatearMonedaConLetras(deposito)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+        {form.currentStep === 1 && (
+          <StepClienteGarantias
+            isEditMode={form.isEditMode}
+            tipoDocumento={form.tipoDocumento}
+            setTipoDocumento={form.setTipoDocumento}
+            estadoDocumento={form.estadoDocumento}
+            setEstadoDocumento={form.setEstadoDocumento}
+            cotizacionOrigen={form.cotizacionOrigen}
+            clienteId={form.clienteId}
+            setClienteId={form.setClienteId}
+            selectedCliente={form.selectedCliente}
+            displayClienteNombre={form.displayClienteNombre}
+            displayClienteNit={form.displayClienteNit}
+            displayClienteTelefono={form.displayClienteTelefono}
+            clientSearchTerm={form.clientSearchTerm}
+            setClientSearchTerm={form.setClientSearchTerm}
+            isClientDropdownOpen={form.isClientDropdownOpen}
+            setIsClientDropdownOpen={form.setIsClientDropdownOpen}
+            filteredClientes={form.filteredClientes}
+            isLoadingCatalogs={form.isLoadingCatalogs}
+            setIsCreandoCliente={form.setIsCreandoCliente}
+            fechaRegistro={form.fechaRegistro}
+            setFechaRegistro={form.setFechaRegistro}
+            fechaInicioContrato={form.fechaInicioContrato}
+            fechaFinEstimadaContrato={form.fechaFinEstimadaContrato}
+            handleFechaInicioMasterChange={form.handleFechaInicioMasterChange}
+            handleFechaFinMasterChange={form.handleFechaFinMasterChange}
+            esFechaInicioEnPasado={form.esFechaInicioEnPasado}
+            ratificarFechaInicioAHoy={form.ratificarFechaInicioAHoy}
+            garantiaTipo={form.garantiaTipo}
+            setGarantiaTipo={form.setGarantiaTipo}
+            garantiaMonto={form.garantiaMonto}
+            setGarantiaMonto={form.setGarantiaMonto}
+            deposito={form.deposito}
+            setDeposito={form.setDeposito}
+            depositoExoneradoCredito={form.depositoExoneradoCredito}
+            setDepositoExoneradoCredito={form.setDepositoExoneradoCredito}
+            estadoCarteraCliente={form.estadoCarteraCliente}
+            desbloqueoSupervisorAprobado={form.desbloqueoSupervisorAprobado}
+            mostrarModalDesbloqueo={form.mostrarModalDesbloqueo}
+            setMostrarModalDesbloqueo={form.setMostrarModalDesbloqueo}
+            pinSupervisorIngresado={form.pinSupervisorIngresado}
+            setPinSupervisorIngresado={form.setPinSupervisorIngresado}
+            errorPinSupervisor={form.errorPinSupervisor}
+            autorizarDesbloqueoSupervisor={form.autorizarDesbloqueoSupervisor}
+            revocarDesbloqueoSupervisor={form.revocarDesbloqueoSupervisor}
+            formErrors={form.formErrors}
+          />
         )}
 
         {/* PASO 2: EQUIPOS Y LOGÍSTICA */}
-        {currentStep === 2 && (
-          <div className="space-y-4 animate-fadeIn">
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4 shadow-sm">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-900">Maquinaria y Equipos Solicitados</h3>
-                    <span className="inline-flex items-center gap-1 text-[10.5px] bg-teal-50 text-teal-800 px-2 py-0.5 rounded-md font-mono border border-teal-200">
-                      <kbd className="bg-white px-1 py-0.2 rounded font-bold shadow-2xs">F2</kbd>
-                      <span>Nueva fila</span>
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Asigne fechas de inicio y fin estimadas para cada máquina.</p>
-                </div>
-                <div className="flex gap-2">
-                  <button 
-                    type="button" 
-                    onClick={() => setIsCreandoEquipo(true)} 
-                    className="px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold rounded-xl text-xs transition-colors flex items-center space-x-1.5"
-                  >
-                    <span>+ Nuevo Equipo</span>
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => { addItemRow(); setTimeout(() => { const el = document.getElementById('items-list-end'); el?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 50); }}
-                    className="px-3 py-1.5 bg-teal-600 text-white hover:bg-teal-700 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 shadow-sm"
-                    title="Atajo de teclado: Tecla F2"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Agregar Maquinaria</span>
-                    <span className="hidden sm:inline-block text-[10px] bg-teal-800/30 px-1 py-0.2 rounded font-mono font-normal">F2</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Lista de items con scroll interno para 10 ítems visibles */}
-              <div className="flex flex-col">
-                <div className="space-y-3 max-h-[600px] sm:max-h-[640px] overflow-y-auto pr-1 pb-36" id="items-scroll-area">
-                  {items.map((field, index) => {
-                    const start = new Date(field.fechaInicio);
-                    const end = new Date(field.fechaFinEstimada);
-                    const diasFila = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-                    const subtotalFila = (field.precioDiario || 0) * (field.cantidad || 1) * diasFila;
-                    const isComboboxOpen = openComboboxRowId === field.id;
-
-                    return (
-                      <div 
-                        key={field.id} 
-                        className={`p-3.5 rounded-2xl border transition-all ${
-                          isComboboxOpen 
-                            ? 'bg-white border-teal-500 shadow-xl ring-2 ring-teal-500/20' 
-                            : 'bg-slate-50/90 border-slate-200'
-                        } flex flex-col gap-2 relative`}
-                        style={{ zIndex: isComboboxOpen ? 100 : Math.max(1, 40 - index) }}
-                      >
-                        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-                          <div className="flex-1 min-w-[220px] flex flex-col gap-1">
-                            <label className="text-[11px] font-bold text-slate-600">Equipo *</label>
-                            <EquipoCombobox
-                              equipos={equiposActivos}
-                              value={field.itemId}
-                              placeholder="Escriba nombre o código..."
-                              autoFocus={autoFocusRowId === field.id}
-                              onCrearNuevo={() => setIsCreandoEquipo(true)}
-                              onOpenChange={(isOpen) => {
-                                setOpenComboboxRowId(isOpen ? field.id : null);
-                              }}
-                              onChange={(eqId, equipo) => {
-                                if (!equipo) {
-                                  const newItems = [...items];
-                                  newItems[index] = { 
-                                    ...newItems[index], 
-                                    itemId: '', 
-                                    precioDiario: 0 
-                                  };
-                                  setItems(newItems);
-                                  return;
-                                }
-
-                                const tarifa = equipo.tarifa_diaria ?? equipo.tarifaDiaria ?? 0;
-                                
-                                // Prevención de ítems duplicados visualmente (Mismo equipo, mismas fechas)
-                                const existingIndex = items.findIndex((it, i) => 
-                                  i !== index && String(it.itemId) === String(eqId) && 
-                                  it.fechaInicio === field.fechaInicio && 
-                                  it.fechaFinEstimada === field.fechaFinEstimada
-                                );
-
-                                const newItems = [...items];
-                                if (existingIndex !== -1) {
-                                  // Consolidar sumando cantidad y eliminar esta fila
-                                  newItems[existingIndex].cantidad += field.cantidad;
-                                  newItems.splice(index, 1);
-                                } else {
-                                  newItems[index] = { 
-                                    ...newItems[index], 
-                                    itemId: eqId, 
-                                    precioDiario: tarifa 
-                                  };
-                                }
-                                setItems(newItems);
-                              }}
-                            />
-                          </div>
-
-                          <div className="w-28 flex flex-col gap-1">
-                            <label className="text-[11px] font-bold text-slate-600">Valor Diario</label>
-                            <input 
-                              type="number" 
-                              min={0} 
-                              value={field.precioDiario}
-                              onChange={(e) => updateItemRow(index, 'precioDiario', parseFloat(e.target.value) || 0)}
-                              className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-right font-semibold" 
-                            />
-                          </div>
-
-                          <div className="w-20 flex flex-col gap-1">
-                            <label className="text-[11px] font-bold text-slate-600">Cant.</label>
-                            <input 
-                              type="number" 
-                              min={1} 
-                              value={field.cantidad}
-                              onChange={(e) => updateItemRow(index, 'cantidad', parseInt(e.target.value, 10) || 1)}
-                              className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-center font-bold" 
-                            />
-                          </div>
-
-                          <div className="w-36 flex flex-col gap-1">
-                            <label className="text-[11px] font-bold text-slate-600">Fecha Inicio</label>
-                            <input 
-                              type="date" 
-                              value={field.fechaInicio}
-                              onChange={(e) => updateItemRow(index, 'fechaInicio', e.target.value)}
-                              className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none" 
-                            />
-                          </div>
-
-                          <div className="w-36 flex flex-col gap-1">
-                            <label className="text-[11px] font-bold text-slate-600">Fin Estimado</label>
-                            <input 
-                              type="date" 
-                              value={field.fechaFinEstimada}
-                              onChange={(e) => updateItemRow(index, 'fechaFinEstimada', e.target.value)}
-                              className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none" 
-                            />
-                          </div>
-
-                          {items.length > 1 && (
-                            <div className="flex items-end pt-5 md:pt-0">
-                              <button 
-                                type="button" 
-                                onClick={() => removeItemRow(index)} 
-                                className="p-2 text-red-500 hover:bg-red-50 rounded-xl text-xs transition-colors"
-                                title="Eliminar fila"
-                              >
-                                🗑️
-                              </button>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Subtotal de Fila y Ayuda Verbal */}
-                        <div className="flex justify-between items-center text-[11px] px-2 pt-1 border-t border-slate-200/60">
-                          <span className="text-slate-500">
-                            {formatearMonedaConLetras(field.precioDiario)} × {diasFila} día(s)
-                          </span>
-                          <span className="font-bold text-teal-800">
-                            Subtotal Renglón: {formatearCOP(subtotalFila)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {/* Anchor invisible para scroll automático al agregar */}
-                  <div id="items-list-end" />
-                </div>
-
-                {/* Botón Sticky al fondo — siempre visible, con contador de items */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    addItemRow();
-                    // Auto-scroll al nuevo item tras el render
-                    setTimeout(() => {
-                      const el = document.getElementById('items-list-end');
-                      const area = document.getElementById('items-scroll-area');
-                      if (area) area.scrollTop = area.scrollHeight;
-                    }, 60);
-                  }}
-                  className="mt-2 w-full py-2.5 flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-teal-400/60 bg-teal-50/60 text-teal-700 hover:bg-teal-100 hover:border-teal-500 hover:shadow-md font-bold text-xs transition-all group active:scale-[0.98]"
-                >
-                  <span className="w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-                    <Plus className="w-3.5 h-3.5" />
-                  </span>
-                  <span>Agregar Maquinaria</span>
-                  <span className="ml-auto text-[10px] text-teal-500 font-semibold bg-teal-100 px-2 py-0.5 rounded-full">
-                    {items.length} en lista
-                  </span>
-                </button>
-              </div>
-              {formErrors.items && <span className="text-[11px] text-red-500 font-semibold">{formErrors.items}</span>}
-            </div>
-
-            {/* Fletes y Logística con Ayuda Verbal */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                <span>Costos de Logística y Traslado</span>
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">Flete de Entrega a Obra ($ COP)</label>
-                  <input 
-                    type="number" 
-                    min={0}
-                    value={fleteEntrega}
-                    onChange={(e) => setFleteEntrega(parseFloat(e.target.value) || 0)}
-                    className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all" 
-                  />
-                  <span className="text-[10.5px] text-slate-600 font-semibold truncate">
-                    {formatearMonedaConLetras(fleteEntrega)}
-                  </span>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">Flete de Recogida / Retorno ($ COP)</label>
-                  <input 
-                    type="number" 
-                    min={0}
-                    value={fleteRecogida}
-                    onChange={(e) => setFleteRecogida(parseFloat(e.target.value) || 0)}
-                    className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all" 
-                  />
-                  <span className="text-[10.5px] text-slate-600 font-semibold truncate">
-                    {formatearMonedaConLetras(fleteRecogida)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+        {form.currentStep === 2 && (
+          <StepEquiposLogistica
+            items={form.items}
+            setItems={form.setItems}
+            equiposActivos={form.equiposActivos}
+            tipoDocumento={form.tipoDocumento}
+            addItemRow={form.addItemRow}
+            removeItemRow={form.removeItemRow}
+            updateItemRow={form.updateItemRow}
+            verificarStockItem={form.verificarStockItem}
+            toggleSubcontratacionItem={form.toggleSubcontratacionItem}
+            updateSubcontratoItem={form.updateSubcontratoItem}
+            costoTotalSubcontratacion={form.costoTotalSubcontratacion}
+            margenTotalSubcontratacion={form.margenTotalSubcontratacion}
+            totalItemsSubcontratados={form.totalItemsSubcontratados}
+            autoFocusRowId={form.autoFocusRowId}
+            openComboboxRowId={form.openComboboxRowId}
+            setOpenComboboxRowId={form.setOpenComboboxRowId}
+            setIsCreandoEquipo={form.setIsCreandoEquipo}
+            fleteEntrega={form.fleteEntrega}
+            setFleteEntrega={form.setFleteEntrega}
+            fleteRecogida={form.fleteRecogida}
+            setFleteRecogida={form.setFleteRecogida}
+            formatearCOP={form.formatearCOP}
+            formErrors={form.formErrors}
+          />
         )}
 
-        {/* PASO 3: RESUMEN, CONFIRMACIÓN Y VISTA PREVIA */}
-        {currentStep === 3 && (
-          <div className="space-y-4 animate-fadeIn">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Notas y Observaciones */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4 shadow-sm flex flex-col">
-                <h3 className="text-sm font-bold text-slate-900">Observaciones y Condiciones Especiales</h3>
-                <textarea 
-                  rows={3}
-                  placeholder="Ingrese detalles sobre el estado del equipo, sitio de obra o acuerdos especiales..."
-                  value={observaciones}
-                  onChange={(e) => setObservaciones(e.target.value)}
-                  className="w-full flex-1 p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all"
-                />
-                <textarea 
-                  rows={2}
-                  placeholder="Dirección exacta de obra y persona encargada de recibir..."
-                  value={detallesLogistica}
-                  onChange={(e) => setDetallesLogistica(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all"
-                />
-              </div>
-
-              {/* Desglose Financiero */}
-              <div className="bg-slate-900 text-slate-100 rounded-2xl p-5 space-y-3 shadow-xl flex flex-col justify-between border border-slate-800">
-                <div>
-                  <span className="text-[10px] uppercase tracking-wider text-teal-400 font-bold">Resumen de Liquidación</span>
-                  <h4 className="text-xl font-black text-white mt-1">Alquileres System</h4>
-                </div>
-
-                <div className="space-y-2 text-xs divide-y divide-slate-800">
-                  <div className="flex justify-between py-1 text-slate-300">
-                    <span>Subtotal Alquiler Equipos:</span>
-                    <span className="font-bold text-white">{formatearCOP(subtotalEquipos)}</span>
-                  </div>
-                  <div className="flex justify-between py-1 text-slate-300">
-                    <span>Total Fletes (Entrega + Recogida):</span>
-                    <span className="font-bold text-white">{formatearCOP(totalFletes)}</span>
-                  </div>
-                  <div className="flex justify-between py-1 text-slate-300">
-                    <span>Anticipo / Depósito Aplicado:</span>
-                    <span className="font-bold text-amber-400">- {formatearCOP(deposito)}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 text-sm font-bold border-t border-slate-700">
-                    <span className="text-teal-300">Saldo Pendiente Estimado:</span>
-                    <span className="text-xl font-black text-emerald-400">{formatearCOP(totalEstimado)}</span>
-                  </div>
-                </div>
-
-                <div className="p-2.5 bg-slate-800/80 rounded-xl text-[11px] text-slate-400 flex justify-between items-center">
-                  <span>Garantía ({garantiaTipo}):</span>
-                  <span className="font-bold text-white">{formatearCOP(garantiaMonto)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* PASO 3: RESUMEN Y LIQUIDACIÓN */}
+        {form.currentStep === 3 && (
+          <StepResumenLiquidacion
+            observaciones={form.observaciones}
+            setObservaciones={form.setObservaciones}
+            detallesLogistica={form.detallesLogistica}
+            setDetallesLogistica={form.setDetallesLogistica}
+            subtotalEquipos={form.subtotalEquipos}
+            totalFletes={form.totalFletes}
+            deposito={form.deposito}
+            totalEstimado={form.totalEstimado}
+            garantiaTipo={form.garantiaTipo}
+            garantiaMonto={form.garantiaMonto}
+            valorReposicionTotal={form.valorReposicionTotal}
+            formatearCOP={form.formatearCOP}
+            aplicaImpuesto={form.aplicaImpuesto}
+            toggleAplicaImpuesto={form.toggleAplicaImpuesto}
+            tasaImpuesto={form.tasaImpuesto}
+            setTasaImpuesto={form.setTasaImpuesto}
+            valorImpuesto={form.valorImpuesto}
+            nombreImpuesto={form.nombreImpuesto}
+            tipoDocumento={form.tipoDocumento}
+            setTipoDocumento={form.setTipoDocumento}
+            guardarComoCotizacion={form.guardarComoCotizacion}
+            formalizarComoContrato={form.formalizarComoContrato}
+            isSubmitting={form.isSubmitting}
+            costoTotalSubcontratacion={form.costoTotalSubcontratacion}
+            margenTotalSubcontratacion={form.margenTotalSubcontratacion}
+            totalItemsSubcontratados={form.totalItemsSubcontratados}
+            depositoExoneradoCredito={form.depositoExoneradoCredito}
+            onOpenPreview={() => form.setIsPreviewModalOpen(true)}
+          />
         )}
 
-        {/* ACTION FOOTER */}
+        {/* Barra de Acciones Inferior Sticky */}
         <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 px-4 sm:px-6 py-4 bg-white/95 backdrop-blur-md border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 z-20 mt-6 rounded-b-2xl sm:rounded-b-3xl">
           <button 
             type="button" 
             onClick={onCancel} 
-            className="px-4 py-2.5 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs sm:text-sm transition-all"
+            className="px-4 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-100 font-bold text-xs sm:text-sm transition-all cursor-pointer"
           >
             Cancelar
           </button>
 
           <div className="flex items-center space-x-2">
-            {currentStep > 1 && (
+            {form.currentStep > 1 && (
               <button
                 type="button"
-                onClick={handlePrevStep}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm rounded-xl transition-all"
+                onClick={form.handlePrevStep}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer"
               >
                 ← Anterior
               </button>
             )}
 
-            {currentStep < 3 ? (
+            {form.currentStep < 3 ? (
               <button
                 type="button"
-                onClick={handleNextStep}
-                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center space-x-1.5"
+                onClick={form.handleNextStep}
+                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer active:scale-98"
               >
                 <span>Continuar</span>
                 <span>→</span>
               </button>
             ) : (
               <div className="flex items-center gap-2">
-                {/* Botón de Vista Previa del Documento en Paso 3 */}
                 <button
                   type="button"
-                  onClick={() => setIsPreviewModalOpen(true)}
-                  className="px-4 py-2.5 bg-teal-50 border border-teal-300 text-teal-800 hover:bg-teal-100 font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center space-x-1.5"
+                  onClick={() => form.setIsPreviewModalOpen(true)}
+                  className="px-4 py-2.5 bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer"
                 >
                   <span>👁️</span>
                   <span>Vista Previa</span>
                 </button>
 
-                <Button 
-                  type="submit" 
-                  isLoading={isSubmitting}
-                  className="px-6 py-2.5 min-w-[160px] bg-teal-700 hover:bg-teal-800 text-white shadow-lg shadow-teal-700/25 font-black text-xs sm:text-sm rounded-xl flex items-center space-x-2"
-                >
-                  <span>💾</span>
-                  <span>{initialData ? "Guardar Cambios" : "Guardar y Crear Contrato"}</span>
-                </Button>
+                {form.tipoDocumento === 'COTIZACION' ? (
+                  <Button 
+                    type="button"
+                    onClick={() => form.guardarComoCotizacion()}
+                    isLoading={form.isSubmitting}
+                    className="px-6 py-2.5 min-w-[170px] bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25 font-bold text-xs sm:text-sm rounded-xl flex items-center space-x-2 cursor-pointer active:scale-98"
+                  >
+                    <span>📄</span>
+                    <span>{form.isEditMode ? "Guardar Cotización" : "Guardar Cotización (COT)"}</span>
+                  </Button>
+                ) : (
+                  <Button 
+                    type="button"
+                    onClick={() => form.formalizarComoContrato()}
+                    isLoading={form.isSubmitting}
+                    className="px-6 py-2.5 min-w-[170px] bg-emerald-700 hover:bg-emerald-800 text-white shadow-lg shadow-emerald-700/25 font-bold text-xs sm:text-sm rounded-xl flex items-center space-x-2 cursor-pointer active:scale-98"
+                  >
+                    <span>✅</span>
+                    <span>{form.isEditMode ? "Guardar Contrato" : "Formalizar Contrato (ALQ)"}</span>
+                  </Button>
+                )}
               </div>
             )}
           </div>
         </div>
       </form>
 
-      {/* MODAL DE VISTA PREVIA INTERACTIVA (CARTA & A5) */}
+      {/* Modal de Vista Previa Oficial */}
+      <AlquilerPreviewModal
+        isOpen={form.isPreviewModalOpen}
+        onClose={() => form.setIsPreviewModalOpen(false)}
+        tipoDocumento={form.tipoDocumento}
+        consecutivo={form.savedAlquilerData?.consecutivo || (form.tipoDocumento === 'COTIZACION' ? 'COT-BORRADOR' : 'ALQ-BORRADOR')}
+        previewPaperSize={form.previewPaperSize}
+        setPreviewPaperSize={form.setPreviewPaperSize}
+        onPrint={form.handleAbrirImpresionHTML}
+        fechaRegistro={form.fechaRegistro}
+        selectedCliente={form.selectedCliente}
+        detallesLogistica={form.detallesLogistica}
+        garantiaTipo={form.garantiaTipo}
+        garantiaMonto={form.garantiaMonto}
+        observaciones={form.observaciones}
+        items={form.items}
+        equiposActivos={form.equiposActivos}
+        subtotalEquipos={form.subtotalEquipos}
+        totalFletes={form.totalFletes}
+        deposito={form.deposito}
+        depositoExoneradoCredito={form.depositoExoneradoCredito}
+        totalEstimado={form.totalEstimado}
+        aplicaImpuesto={form.aplicaImpuesto}
+        tasaImpuesto={form.tasaImpuesto}
+        valorImpuesto={form.valorImpuesto}
+        nombreImpuesto={form.nombreImpuesto}
+        costoTotalSubcontratacion={form.costoTotalSubcontratacion}
+        margenTotalSubcontratacion={form.margenTotalSubcontratacion}
+        formatearCOP={form.formatearCOP}
+      />
+
+      {/* Submodales de creación rápida On-The-Fly */}
       <Modal 
-        isOpen={isPreviewModalOpen} 
-        onClose={() => setIsPreviewModalOpen(false)} 
-        title="Vista Previa del Contrato de Alquiler" 
-        maxWidth="4xl"
+        isOpen={form.isCreandoCliente} 
+        onClose={() => form.setIsCreandoCliente(false)} 
+        title="Crear Cliente" 
+        maxWidth="2xl"
       >
-        <div className="space-y-4">
-          <div className="flex justify-between items-center bg-slate-100 p-2.5 rounded-xl text-xs">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-700">Formato de Hoja:</span>
-              <button
-                type="button"
-                onClick={() => setPreviewPaperSize('LETTER')}
-                className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-                  previewPaperSize === 'LETTER' ? 'bg-teal-700 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                📄 Tamaño Carta
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreviewPaperSize('A5')}
-                className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-                  previewPaperSize === 'A5' ? 'bg-teal-700 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                📑 Media Carta (A5)
-              </button>
-            </div>
-            
-            <button
-              type="button"
-              onClick={() => handleAbrirImpresionHTML(previewPaperSize)}
-              className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg transition-all flex items-center space-x-1.5"
-            >
-              <span>🖨️</span>
-              <span>Imprimir Documento</span>
-            </button>
-          </div>
-
-          <div className="max-h-[65vh] overflow-y-auto border border-slate-200 rounded-xl p-4 bg-slate-50">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 text-xs space-y-4">
-              {/* Header preview */}
-              <div className="flex justify-between items-start border-b-2 border-teal-700 pb-3">
-                <div>
-                  <h2 className="text-lg font-black text-teal-800">Alquileres System</h2>
-                  <p className="text-[11px] text-slate-500">Gestión y Alquiler de Maquinaria y Equipos para la Construcción</p>
-                  <p className="text-[10px] text-slate-400">NIT: 900.854.123-9 • Tel: (+57) 310 987 6543 • Bogotá D.C.</p>
-                </div>
-                <div className="text-right bg-emerald-50 border border-emerald-300 p-2 rounded-lg">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase block">Contrato de Alquiler</span>
-                  <span className="text-sm font-black text-teal-800">#BORRADOR</span>
-                  <span className="text-[10px] text-slate-500 block">Fecha: {fechaRegistro}</span>
-                </div>
-              </div>
-
-              {/* Info Cliente */}
-              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                <div>
-                  <span className="font-bold text-teal-800 block text-[11px]">DATOS DEL CLIENTE</span>
-                  <p><strong>Cliente:</strong> {selectedCliente?.nombre || 'Consumidor Final'}</p>
-                  <p><strong>NIT/C.C.:</strong> {selectedCliente?.nit_cedula || selectedCliente?.nit || 'Sin Registrar'}</p>
-                  <p><strong>Teléfono:</strong> {selectedCliente?.telefono || selectedCliente?.contacto || 'No especificado'}</p>
-                </div>
-                <div>
-                  <span className="font-bold text-teal-800 block text-[11px]">LOGÍSTICA Y RESPALDO</span>
-                  <p><strong>Lugar de Entrega:</strong> {detallesLogistica || 'Entrega en bodega'}</p>
-                  <p><strong>Garantía ({garantiaTipo}):</strong> {formatearCOP(garantiaMonto)}</p>
-                  {observaciones && <p><strong>Obs:</strong> {observaciones}</p>}
-                </div>
-              </div>
-
-              {/* Tabla de Equipos Preview */}
-              <table className="w-full text-left border-collapse border border-slate-200">
-                <thead>
-                  <tr className="bg-teal-700 text-white text-[10px] uppercase">
-                    <th className="p-2">Equipo</th>
-                    <th className="p-2 text-center">Cant.</th>
-                    <th className="p-2 text-center">Desde</th>
-                    <th className="p-2 text-center">Hasta</th>
-                    <th className="p-2 text-center">Días</th>
-                    <th className="p-2 text-right">Tarifa/Día</th>
-                    <th className="p-2 text-right">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {items.map((it, idx) => {
-                    const eq = equiposActivos.find(e => String(e.id) === String(it.itemId));
-                    const start = new Date(it.fechaInicio);
-                    const end = new Date(it.fechaFinEstimada);
-                    const dias = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-                    const sub = (it.precioDiario || 0) * (it.cantidad || 1) * dias;
-
-                    return (
-                      <tr key={idx} className={idx % 2 === 1 ? 'bg-slate-50' : ''}>
-                        <td className="p-2 font-bold text-slate-800">{eq?.nombre || 'Equipo'}</td>
-                        <td className="p-2 text-center font-bold">{it.cantidad}</td>
-                        <td className="p-2 text-center">{it.fechaInicio}</td>
-                        <td className="p-2 text-center">{it.fechaFinEstimada}</td>
-                        <td className="p-2 text-center font-bold">{dias}</td>
-                        <td className="p-2 text-right">{formatearCOP(it.precioDiario)}</td>
-                        <td className="p-2 text-right font-bold text-teal-900">{formatearCOP(sub)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              {/* Totales Preview */}
-              <div className="flex justify-between items-start gap-4">
-                <div className="flex-1 bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-[10.5px]">
-                  <span className="font-bold text-teal-800 block">VALOR EN LETRAS:</span>
-                  <span className="font-bold text-slate-700">{formatearMonedaConLetras(totalEstimado)}</span>
-                </div>
-                <div className="w-56 border border-slate-200 rounded-lg overflow-hidden text-[11px]">
-                  <div className="flex justify-between p-1.5 border-b border-slate-100">
-                    <span>Subtotal Equipos:</span>
-                    <span className="font-bold">{formatearCOP(subtotalEquipos)}</span>
-                  </div>
-                  <div className="flex justify-between p-1.5 border-b border-slate-100">
-                    <span>Fletes (Entrega + Recogida):</span>
-                    <span>{formatearCOP(totalFletes)}</span>
-                  </div>
-                  <div className="flex justify-between p-1.5 border-b border-slate-100 text-red-600 font-bold">
-                    <span>Anticipo / Depósito:</span>
-                    <span>- {formatearCOP(deposito)}</span>
-                  </div>
-                  <div className="flex justify-between p-2 bg-teal-700 text-white font-bold text-xs">
-                    <span>SALDO PENDIENTE:</span>
-                    <span>{formatearCOP(totalEstimado)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={() => setIsPreviewModalOpen(false)}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all"
-            >
-              Cerrar Vista Previa
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Submodales de creación rápida */}
-      <Modal isOpen={isCreandoCliente} onClose={() => setIsCreandoCliente(false)} title="Crear Cliente" maxWidth="2xl">
         <ClienteForm 
           onSuccess={(nuevoCliente) => {
             if (nuevoCliente && nuevoCliente.id) {
-              setClienteId(String(nuevoCliente.id));
-              setClientSearchTerm('');
+              form.setClienteId(String(nuevoCliente.id));
+              form.setClientSearchTerm('');
             }
-            setIsCreandoCliente(false);
-            fetchCatalogsBackground(); // Sincronización en background sin latencia
+            form.setIsCreandoCliente(false);
+            form.fetchCatalogsBackground();
           }} 
-          onCancel={() => setIsCreandoCliente(false)} 
+          onCancel={() => form.setIsCreandoCliente(false)} 
         />
       </Modal>
 
-      <Modal isOpen={isCreandoEquipo} onClose={() => setIsCreandoEquipo(false)} title="Crear Equipo" maxWidth="2xl">
+      <Modal 
+        isOpen={form.isCreandoEquipo} 
+        onClose={() => form.setIsCreandoEquipo(false)} 
+        title="Crear Equipo" 
+        maxWidth="2xl"
+      >
         <BodegaForm 
           onSuccess={(nuevoEquipo) => {
             if (nuevoEquipo && nuevoEquipo.id) {
-              const newItems = [...items];
+              const newItems = [...form.items];
               if (newItems.length > 0 && !newItems[newItems.length - 1].itemId) {
                 newItems[newItems.length - 1] = { 
                   ...newItems[newItems.length - 1], 
@@ -1544,16 +335,16 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
                   itemId: String(nuevoEquipo.id), 
                   cantidad: 1, 
                   precioDiario: nuevoEquipo.tarifaDiaria || 0, 
-                  fechaInicio: todayStr, 
-                  fechaFinEstimada: todayStr 
+                  fechaInicio: form.fechaInicioContrato, 
+                  fechaFinEstimada: form.fechaFinEstimadaContrato 
                 });
               }
-              setItems(newItems);
+              form.setItems(newItems);
             }
-            setIsCreandoEquipo(false);
-            fetchCatalogsBackground(); // Sincronización en background
+            form.setIsCreandoEquipo(false);
+            form.fetchCatalogsBackground();
           }} 
-          onCancel={() => setIsCreandoEquipo(false)} 
+          onCancel={() => form.setIsCreandoEquipo(false)} 
         />
       </Modal>
     </>

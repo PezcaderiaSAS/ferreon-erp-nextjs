@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Outfit } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
 import { AppShell } from "../components/layout/AppShell";
@@ -7,7 +7,7 @@ import { RealtimeProvider } from "../components/providers/RealtimeProvider";
 import { GlobalTourWrapper } from "../components/ui/GlobalTourWrapper";
 import { ToastNotification } from "../components/ui/ToastNotification";
 
-const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
+const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
   title: "FerreOn ERP & AppFrios Pezca — Gestión Integral y Presets de Diseño",
@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${outfit.variable}`}>
+    <html lang="es" className={inter.className}>
       <body className="antialiased font-sans bg-slate-50 text-slate-900 min-h-screen flex">
         <RealtimeProvider>
           <AppShell>

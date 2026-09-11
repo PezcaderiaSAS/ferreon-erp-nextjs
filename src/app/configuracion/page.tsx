@@ -2,11 +2,11 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
+import { useEmpresaStore, applyThemeToDOM } from '../../infrastructure/state/empresaStore';
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';
-import { MonedaConfig } from '../../core/domain/entities/empresa-config';
+import { MonedaConfig, TemaColorCorporativo, PAISES_LATAM_PRESETS } from '../../core/domain/entities/empresa-config';
 import { UsuariosTab } from './UsuariosTab';
-import { HelpCircle, Palette, Sparkles, Check, FileText, Eye, Loader2, Trash2, Upload, ShieldAlert } from 'lucide-react';
+import { HelpCircle, Palette, Sparkles, Check, FileText, Eye, Loader2, Trash2, Upload, ShieldAlert, ChevronDown, ChevronUp } from 'lucide-react';
 import { THEME_PRESETS, ThemePresetId, resolveCompanyTheme, isValidHex } from '../../core/domain/theme/theme-tokens';
 import { obtenerConfiguracionEmpresaAction, guardarConfiguracionEmpresaAction } from '../actions/empresa';
 import { supabaseClient } from '../../infrastructure/persistence/supabase/client';
@@ -23,6 +23,58 @@ const AuditoriaTab = dynamic(
     ) 
   }
 );
+
+interface TriadaColorOption {
+  id: TemaColorCorporativo;
+  name: string;
+  tag: string;
+  badgeClass: string;
+  description: string;
+  base: string;
+  dark: string;
+  light: string;
+  ringClass: string;
+  borderClass: string;
+}
+
+const TRIADA_INSTITUCIONAL: TriadaColorOption[] = [
+  {
+    id: 'salmon-pastel',
+    name: 'Rosa Salmonado Pastel',
+    tag: 'Principal / Predeterminada',
+    badgeClass: 'bg-[#FFF3F0] text-[#D94C24] border-[#FFE4DC]',
+    description: 'Estética cálida y de alta legibilidad, diseñada para reducir la fatiga visual en facturación.',
+    base: '#FF8A65',
+    dark: '#F4683E',
+    light: '#FFF3F0',
+    ringClass: 'ring-[#FF8A65]/40',
+    borderClass: 'border-[#FF8A65]',
+  },
+  {
+    id: 'cyber-cyan',
+    name: 'Cyber Cyan & Steel Blue',
+    tag: 'Industrial / Fríos Pezca',
+    badgeClass: 'bg-[#F0F9FF] text-[#0369A1] border-[#E0F2FE]',
+    description: 'Identidad corporativa técnica para logística marina, muelle y bodegas de frío.',
+    base: '#0EA5E9',
+    dark: '#0284C7',
+    light: '#F0F9FF',
+    ringClass: 'ring-[#0EA5E9]/40',
+    borderClass: 'border-[#0EA5E9]',
+  },
+  {
+    id: 'monochrome',
+    name: 'Neutral Monochrome',
+    tag: 'Minimalismo B2B',
+    badgeClass: 'bg-[#F4F4F5] text-slate-800 border-[#E4E4E7]',
+    description: 'Máxima sobriedad corporativa ejecutiva estilo Linear/Vercel sobre lienzo neutro.',
+    base: '#18181B',
+    dark: '#27272A',
+    light: '#F4F4F5',
+    ringClass: 'ring-slate-900/40',
+    borderClass: 'border-slate-900',
+  },
+];
 
 const OPCIONES_MONEDA: MonedaConfig[] = [
   { codigo: 'COP', locale: 'es-CO', simbolo: '$' },
@@ -85,6 +137,7 @@ export default function ConfiguracionPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string>('');
+  const [mostrarMasPaletas, setMostrarMasPaletas] = useState(false);
 
   useEffect(() => {
     supabaseClient.auth.getUser().then(({ data }) => {
@@ -136,6 +189,23 @@ export default function ConfiguracionPage() {
     const selected = OPCIONES_MONEDA.find(m => m.codigo === e.target.value);
     if (selected) {
       setFormData(prev => ({ ...prev, moneda: selected }));
+      setIsSaved(false);
+      setErrorMessage(null);
+    }
+  };
+
+  const handlePaisChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const codPais = e.target.value;
+    const preset = PAISES_LATAM_PRESETS.find(p => p.codigoPais === codPais);
+    if (preset) {
+      const monSugerida = OPCIONES_MONEDA.find(m => m.codigo === preset.monedaCodigo) || formData.moneda;
+      setFormData(prev => ({
+        ...prev,
+        pais: preset.nombrePais,
+        nombreImpuesto: preset.nombreImpuesto,
+        tasaImpuestoDefecto: preset.tasaImpuesto,
+        moneda: monSugerida,
+      }));
       setIsSaved(false);
       setErrorMessage(null);
     }
@@ -356,116 +426,213 @@ export default function ConfiguracionPage() {
               </div>
             </div>
 
-            {/* Grid de 6 Paletas Maestras */}
+            {/* 1. Tríada Institucional de Marca (Corporate Clean Standard) */}
             <div className="flex flex-col gap-3">
-              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                1. Seleccione una Paleta Maestra Curada
-              </label>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-brand-salmon" />
+                  1. Tríada de Identidad Institucional (Recomendada)
+                </label>
+                <span className="text-[11px] text-slate-500 font-medium">
+                  Gobernanza corporativa centralizada para Web UI & PDFs
+                </span>
+              </div>
               
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                {Object.values(THEME_PRESETS).map((preset) => {
-                  const isSelected = (formData.themeId || 'salmon') === preset.id;
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                {TRIADA_INSTITUCIONAL.map((item) => {
+                  const isSelected = (formData.temaColor || 'salmon-pastel') === item.id;
                   return (
                     <button
-                      key={preset.id}
+                      key={item.id}
                       type="button"
                       onClick={() => {
-                        const updated = { ...formData, themeId: preset.id as ThemePresetId, paletaPDF: (preset.id === 'teal' ? 'TEAL' : preset.id === 'ocean' ? 'AZUL' : 'SALMON') as any };
+                        const updated = {
+                          ...formData,
+                          temaColor: item.id,
+                          themeId: item.id as ThemePresetId,
+                          paletaPDF: (item.id === 'cyber-cyan' ? 'AZUL' : 'SALMON') as any,
+                        };
                         setFormData(updated);
+                        actualizarConfig(updated);
+                        applyThemeToDOM(updated);
                         setIsSaved(false);
                       }}
-                      className={`relative flex flex-col p-3 rounded-xl border text-left transition-all group ${
+                      className={`relative flex flex-col p-4 rounded-xl border text-left transition-all duration-150 ${
                         isSelected 
-                          ? 'border-brand-salmon bg-slate-50/80 shadow-md ring-2 ring-brand-salmon/30 scale-[1.02]' 
+                          ? `${item.borderClass} bg-white shadow-md ring-2 ${item.ringClass} scale-[1.01]` 
                           : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
                       }`}
                     >
-                      {/* Swatch visual con gradiente base/dark */}
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center -space-x-1.5">
-                          <span 
-                            className="w-5 h-5 rounded-full border border-white shadow-sm" 
-                            style={{ backgroundColor: preset.base }} 
-                          />
-                          <span 
-                            className="w-4 h-4 rounded-full border border-white shadow-sm" 
-                            style={{ backgroundColor: preset.dark }} 
-                          />
-                          <span 
-                            className="w-3.5 h-3.5 rounded-full border border-white shadow-sm" 
-                            style={{ backgroundColor: preset.light }} 
-                          />
-                        </div>
-                        {isSelected && (
-                          <div className="w-4 h-4 rounded-full bg-brand-salmon text-white flex items-center justify-center text-[10px]">
-                            <Check className="w-3 h-3 stroke-[3]" />
+                      {/* Badge y Checkmark */}
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${item.badgeClass}`}>
+                          {item.tag}
+                        </span>
+                        {isSelected ? (
+                          <div 
+                            className="w-5 h-5 rounded-full text-white flex items-center justify-center text-[11px] shadow-sm"
+                            style={{ backgroundColor: item.base }}
+                          >
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
                           </div>
+                        ) : (
+                          <div className="w-5 h-5 rounded-full border border-slate-200" />
                         )}
                       </div>
-                      
-                      <span className="text-xs font-bold text-slate-800 line-clamp-1">{preset.name.split(' (')[0]}</span>
-                      <span className="text-[10px] text-slate-400 font-mono mt-0.5">{preset.base}</span>
+
+                      {/* Título y Muestras de color */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-bold text-slate-900">{item.name}</span>
+                        <div className="flex items-center -space-x-1.5">
+                          <span 
+                            className="w-5 h-5 rounded-full border-2 border-white shadow-sm" 
+                            style={{ backgroundColor: item.base }} 
+                          />
+                          <span 
+                            className="w-4 h-4 rounded-full border-2 border-white shadow-sm" 
+                            style={{ backgroundColor: item.dark }} 
+                          />
+                          <span 
+                            className="w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm" 
+                            style={{ backgroundColor: item.light }} 
+                          />
+                        </div>
+                      </div>
+
+                      {/* Descripción */}
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-3">
+                        {item.description}
+                      </p>
+
+                      {/* Código HEX */}
+                      <span className="text-[11px] text-slate-400 font-mono font-semibold tabular-nums mt-auto">
+                        Base: {item.base}
+                      </span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Selector de Color HEX Libre */}
-            <div className="flex flex-col gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    id="theme-custom-radio"
-                    name="themeIdChoice"
-                    checked={formData.themeId === 'custom'}
-                    onChange={() => {
-                      setFormData({ ...formData, themeId: 'custom' });
-                      setIsSaved(false);
-                    }}
-                    className="w-4 h-4 text-brand-salmon focus:ring-brand-salmon"
-                  />
-                  <label htmlFor="theme-custom-radio" className="text-sm font-bold text-slate-800 cursor-pointer flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-amber-500" />
-                    Color Corporativo a la Medida (HEX Libre)
-                  </label>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {/* Native Color Picker */}
-                  <input
-                    type="color"
-                    value={isValidHex(formData.customBrandHex) ? formData.customBrandHex : '#FF8A65'}
-                    disabled={formData.themeId !== 'custom'}
-                    onChange={(e) => {
-                      const hex = e.target.value.toUpperCase();
-                      setFormData({ ...formData, themeId: 'custom', customBrandHex: hex });
-                      setIsSaved(false);
-                    }}
-                    className="w-9 h-9 p-0.5 rounded-lg border border-slate-300 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-white"
-                  />
-                  
-                  {/* Hex Text Input */}
-                  <input
-                    type="text"
-                    placeholder="#FF8A65"
-                    value={formData.customBrandHex || ''}
-                    disabled={formData.themeId !== 'custom'}
-                    onChange={(e) => {
-                      let hex = e.target.value.trim().toUpperCase();
-                      if (hex && !hex.startsWith('#')) hex = `#${hex}`;
-                      setFormData({ ...formData, themeId: 'custom', customBrandHex: hex });
-                      setIsSaved(false);
-                    }}
-                    className="w-28 px-3 py-1.5 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-salmon/50 disabled:opacity-40 disabled:cursor-not-allowed"
-                  />
-                </div>
+            {/* Selector de Paletas Secundarias / Personalización HEX Libre (Colapsable) */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setMostrarMasPaletas(!mostrarMasPaletas)}
+                  className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  <Palette className="w-3.5 h-3.5 text-slate-500" />
+                  {mostrarMasPaletas ? 'Ocultar opciones avanzadas' : 'Ver paletas complementarias y color HEX personalizado...'}
+                  {mostrarMasPaletas ? <ChevronUp className="w-3.5 h-3.5 ml-0.5" /> : <ChevronDown className="w-3.5 h-3.5 ml-0.5" />}
+                </button>
               </div>
 
-              <p className="text-[11px] text-slate-500">
-                El sistema derivará automáticamente los tonos suaves, acentos oscuros, resplandores neon y sombras neumórficas garantizando contraste de texto WCAG 2.1 AA.
-              </p>
+              {mostrarMasPaletas && (
+                <div className="flex flex-col gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200 animate-in fade-in duration-200">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                    Paletas Maestras Adicionales
+                  </label>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                    {Object.values(THEME_PRESETS)
+                      .filter((p) => !['salmon-pastel', 'cyber-cyan', 'monochrome'].includes(p.id))
+                      .map((preset) => {
+                        const isSelected = formData.themeId === preset.id;
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => {
+                              const updated = { 
+                                ...formData, 
+                                themeId: preset.id as ThemePresetId,
+                                paletaPDF: (preset.id === 'teal' ? 'TEAL' : preset.id === 'ocean' ? 'AZUL' : 'SALMON') as any 
+                              };
+                              setFormData(updated);
+                              actualizarConfig(updated);
+                              applyThemeToDOM(updated);
+                              setIsSaved(false);
+                            }}
+                            className={`relative flex flex-col p-2.5 rounded-lg border text-left transition-all ${
+                              isSelected 
+                                ? 'border-brand-salmon bg-white shadow-sm ring-2 ring-brand-salmon/30' 
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="w-4 h-4 rounded-full border border-white shadow-sm" style={{ backgroundColor: preset.base }} />
+                              {isSelected && (
+                                <div className="w-3.5 h-3.5 rounded-full bg-brand-salmon text-white flex items-center justify-center text-[9px]">
+                                  <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-800 truncate">{preset.name.split(' (')[0]}</span>
+                            <span className="text-[9px] text-slate-400 font-mono mt-0.5">{preset.base}</span>
+                          </button>
+                        );
+                      })}
+                  </div>
+
+                  {/* Selector de Color HEX Libre */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        id="theme-custom-radio"
+                        name="themeIdChoice"
+                        checked={formData.themeId === 'custom'}
+                        onChange={() => {
+                          const updated = { ...formData, themeId: 'custom' as const };
+                          setFormData(updated);
+                          actualizarConfig(updated);
+                          applyThemeToDOM(updated);
+                          setIsSaved(false);
+                        }}
+                        className="w-4 h-4 text-brand-salmon focus:ring-brand-salmon"
+                      />
+                      <label htmlFor="theme-custom-radio" className="text-xs font-bold text-slate-800 cursor-pointer flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        Color Corporativo a la Medida (HEX Libre)
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={isValidHex(formData.customBrandHex) ? formData.customBrandHex : '#FF8A65'}
+                        disabled={formData.themeId !== 'custom'}
+                        onChange={(e) => {
+                          const hex = e.target.value.toUpperCase();
+                          const updated = { ...formData, themeId: 'custom' as const, customBrandHex: hex };
+                          setFormData(updated);
+                          actualizarConfig(updated);
+                          applyThemeToDOM(updated);
+                          setIsSaved(false);
+                        }}
+                        className="w-8 h-8 p-0.5 rounded-lg border border-slate-300 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-white"
+                      />
+                      <input
+                        type="text"
+                        placeholder="#FF8A65"
+                        value={formData.customBrandHex || ''}
+                        disabled={formData.themeId !== 'custom'}
+                        onChange={(e) => {
+                          let hex = e.target.value.trim().toUpperCase();
+                          if (hex && !hex.startsWith('#')) hex = `#${hex}`;
+                          const updated = { ...formData, themeId: 'custom' as const, customBrandHex: hex };
+                          setFormData(updated);
+                          actualizarConfig(updated);
+                          applyThemeToDOM(updated);
+                          setIsSaved(false);
+                        }}
+                        className="w-24 px-2.5 py-1 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-salmon/50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Live Interactive Preview Box (Vista Previa en Vivo) */}
@@ -535,26 +702,86 @@ export default function ConfiguracionPage() {
             })()}
           </div>
 
-          {/* Facturation & Banks */}
+          {/* Parámetros de Facturación, Impuestos & Moneda Multipaís LATAM */}
           <div className="flex flex-col gap-4">
-            <h3 className="text-lg font-semibold text-slate-800">Parámetros Adicionales de Documentos</h3>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-800">Parámetros Tributarios y Moneda (LATAM)</h3>
+              <p className="text-xs text-slate-500">Configure la jurisdicción fiscal y la tasa de impuesto que se aplicará por defecto en los alquileres y cotizaciones.</p>
+            </div>
             
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex flex-col gap-1 md:w-1/2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {/* País / Jurisdicción Fiscal */}
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-slate-700">País / Jurisdicción</label>
+                <select 
+                  value={PAISES_LATAM_PRESETS.find(p => p.nombrePais === (formData.pais || 'Colombia'))?.codigoPais || 'CO'} 
+                  onChange={handlePaisChange} 
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-salmon/50 bg-white"
+                >
+                  {PAISES_LATAM_PRESETS.map(p => (
+                    <option key={p.codigoPais} value={p.codigoPais}>
+                      {p.nombrePais} ({p.nombreImpuesto} {p.tasaImpuesto}%)
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-400">Ajusta sugerencias fiscales automáticamente.</p>
+              </div>
+
+              {/* Moneda del Sistema */}
+              <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-slate-700">Moneda del Sistema</label>
                 <select 
                   value={formData.moneda?.codigo || 'COP'} 
                   onChange={handleMonedaChange} 
-                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-salmon/50"
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-salmon/50 bg-white"
                 >
                   {OPCIONES_MONEDA.map(m => (
                     <option key={m.codigo} value={m.codigo}>{m.codigo} - {m.simbolo}</option>
                   ))}
                 </select>
-                <p className="text-xs text-slate-500 mt-1">Todos los montos se formatearán en base a la moneda seleccionada.</p>
+                <p className="text-[11px] text-slate-400">Formato monetario general.</p>
               </div>
 
-              <div className="flex flex-col gap-1 md:w-1/2">
+              {/* Nombre del Impuesto */}
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-slate-700">Nombre del Impuesto</label>
+                <input
+                  type="text"
+                  name="nombreImpuesto"
+                  placeholder="IVA / IGV"
+                  value={formData.nombreImpuesto || 'IVA'}
+                  onChange={handleChange}
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-salmon/50"
+                />
+                <p className="text-[11px] text-slate-400">Denominación fiscal en el PDF.</p>
+              </div>
+
+              {/* Tasa de Impuesto Predeterminada (%) */}
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-slate-700">Tasa de Impuesto (%)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    name="tasaImpuestoDefecto"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    value={formData.tasaImpuestoDefecto ?? 19}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, tasaImpuestoDefecto: Number(e.target.value) || 0 }));
+                      setIsSaved(false);
+                    }}
+                    className="w-full px-3 py-2 pr-8 border border-slate-300 rounded-lg text-sm font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-salmon/50 text-right"
+                  />
+                  <span className="absolute right-3 top-2 text-sm text-slate-400 font-bold">%</span>
+                </div>
+                <p className="text-[11px] text-slate-400">Tasa predeterminada para el switch.</p>
+              </div>
+            </div>
+
+            {/* Fila secundaria: Días mínimos y Switch de Preactivación */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-slate-700">Días Mínimos de Alquiler</label>
                 <input
                   type="number"
@@ -564,7 +791,26 @@ export default function ConfiguracionPage() {
                   onChange={handleChange}
                   className="px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-salmon/50"
                 />
-                <p className="text-xs text-slate-500 mt-1">Período mínimo de facturación predeterminado para nuevos contratos.</p>
+                <p className="text-[11px] text-slate-400">Período mínimo de facturación en contratos.</p>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl mt-1">
+                <input
+                  type="checkbox"
+                  id="aplicaImpuestoDefecto"
+                  checked={Boolean(formData.aplicaImpuestoDefecto)}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, aplicaImpuestoDefecto: e.target.checked }));
+                    setIsSaved(false);
+                  }}
+                  className="w-4 h-4 text-brand-salmon rounded border-slate-300 focus:ring-brand-salmon cursor-pointer"
+                />
+                <label htmlFor="aplicaImpuestoDefecto" className="text-xs font-semibold text-slate-800 cursor-pointer">
+                  Activar cobro de impuesto por defecto en nuevos alquileres
+                  <span className="block text-[11px] text-slate-500 font-normal">
+                    Si se desmarca, el switch de impuestos iniciará apagado y el operador podrá encenderlo con 1 clic cuando lo requiera.
+                  </span>
+                </label>
               </div>
             </div>
 

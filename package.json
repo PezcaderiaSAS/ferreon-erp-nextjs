@@ -13,10 +13,13 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "prisma:generate": "prisma generate",
+    "prisma:format": "prisma format",
     "supabase:gen-types": "supabase gen types typescript --local > src/infrastructure/persistence/supabase/database.types.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
+    "@prisma/client": "^7.10.0",
     "@react-pdf/renderer": "^3.4.5",
     "@supabase/server": "^1.4.1",
     "@supabase/ssr": "^0.4.1",

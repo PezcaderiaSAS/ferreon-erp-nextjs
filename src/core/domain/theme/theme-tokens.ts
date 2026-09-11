@@ -5,7 +5,7 @@
  * 100% Isomórfico (compatible con Server Components, Node.js, Web Workers y React-PDF).
  */
 
-export type ThemePresetId = 'salmon' | 'ocean' | 'teal' | 'slate' | 'indigo' | 'amber' | 'custom';
+export type ThemePresetId = 'salmon' | 'ocean' | 'teal' | 'slate' | 'indigo' | 'amber' | 'salmon-pastel' | 'cyber-cyan' | 'monochrome' | 'custom';
 
 export interface ThemeTokens {
   id: ThemePresetId;
@@ -23,6 +23,48 @@ export interface ThemeTokens {
 }
 
 export const THEME_PRESETS: Record<Exclude<ThemePresetId, 'custom'>, ThemeTokens> = {
+  'salmon-pastel': {
+    id: 'salmon-pastel',
+    name: 'Rosa Salmonado Pastel (Default)',
+    light: '#FFF3F0',
+    base: '#FF8A65',
+    dark: '#F4683E',
+    accent: '#D94C24',
+    glow: 'rgba(255, 138, 101, 0.25)',
+    badgeBg: '#FFF3F0',
+    badgeText: '#D94C24',
+    textOnBase: '#FFFFFF',
+    neuLight: '#FFFFFF',
+    neuDark: '#E2E8F0',
+  },
+  'cyber-cyan': {
+    id: 'cyber-cyan',
+    name: 'Cyber Cyan & Steel Blue',
+    light: '#F0F9FF',
+    base: '#0EA5E9',
+    dark: '#0284C7',
+    accent: '#0369A1',
+    glow: 'rgba(14, 165, 233, 0.25)',
+    badgeBg: '#F0F9FF',
+    badgeText: '#0369A1',
+    textOnBase: '#FFFFFF',
+    neuLight: '#FFFFFF',
+    neuDark: '#E2E8F0',
+  },
+  'monochrome': {
+    id: 'monochrome',
+    name: 'Neutral Monochrome',
+    light: '#F4F4F5',
+    base: '#18181B',
+    dark: '#27272A',
+    accent: '#3F3F46',
+    glow: 'rgba(24, 24, 27, 0.15)',
+    badgeBg: '#F4F4F5',
+    badgeText: '#18181B',
+    textOnBase: '#FFFFFF',
+    neuLight: '#FFFFFF',
+    neuDark: '#E4E4E7',
+  },
   salmon: {
     id: 'salmon',
     name: 'Salmón Pastel (Default)',
@@ -256,29 +298,39 @@ export function deriveThemeFromHex(hex: string): ThemeTokens {
  * Resuelve los tokens definitivos para una empresa con soporte retrocompatible para esquemas legados
  */
 export function resolveCompanyTheme(config?: {
+  temaColor?: string;
   themeId?: ThemePresetId | string;
   customBrandHex?: string;
   paletaPDF?: string;
   themeApp?: string;
 }): ThemeTokens {
-  if (!config) return THEME_PRESETS.salmon;
+  if (!config) return THEME_PRESETS['salmon-pastel'];
 
-  // 1. Si está explícitamente en modo custom y el HEX es válido
+  // 1. Si está definida la tríada institucional temaColor
+  if (config.temaColor && config.temaColor in THEME_PRESETS) {
+    return THEME_PRESETS[config.temaColor as keyof typeof THEME_PRESETS];
+  }
+
+  // 2. Si está explícitamente en modo custom y el HEX es válido
   if (config.themeId === 'custom' && config.customBrandHex && isValidHex(config.customBrandHex)) {
     return deriveThemeFromHex(config.customBrandHex);
   }
 
-  // 2. Si tiene un themeId de preset conocido
   const targetId = (config.themeId || config.themeApp || '').toLowerCase();
+
+  // 3. Mapeo de unificación de presets legados hacia la tríada institucional
+  if (targetId === 'salmon') return THEME_PRESETS['salmon-pastel'];
+  if (targetId === 'ocean') return THEME_PRESETS['cyber-cyan'];
+  if (targetId === 'slate') return THEME_PRESETS['monochrome'];
+  if (config.paletaPDF === 'TEAL') return THEME_PRESETS.teal;
+  if (config.paletaPDF === 'AZUL') return THEME_PRESETS['cyber-cyan'];
+  if (config.paletaPDF === 'SALMON') return THEME_PRESETS['salmon-pastel'];
+
+  // 4. Si tiene un themeId de preset conocido
   if (targetId in THEME_PRESETS) {
     return THEME_PRESETS[targetId as keyof typeof THEME_PRESETS];
   }
 
-  // 3. Mapeo de retrocompatibilidad con paletaPDF legacy
-  if (config.paletaPDF === 'TEAL') return THEME_PRESETS.teal;
-  if (config.paletaPDF === 'AZUL') return THEME_PRESETS.ocean;
-  if (config.paletaPDF === 'SALMON') return THEME_PRESETS.salmon;
-
-  // Fallback por defecto
-  return THEME_PRESETS.salmon;
+  // Fallback institucional por defecto
+  return THEME_PRESETS['salmon-pastel'];
 }

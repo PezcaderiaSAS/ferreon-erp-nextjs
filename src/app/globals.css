@@ -1,74 +1,113 @@
-@import url('https://fonts.googleapis.com/css2?family=Calistoga&family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Roboto:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* ========================================================================= */
+/* BASE MULTI-DISPOSITIVO UNIVERSAL (iOS, Android, Windows, macOS, Tablets)  */
+/* ========================================================================= */
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  min-height: 100dvh;
+}
+
+/* Prevención de retardo de 300ms en toques táctiles */
+button, a, input, select, textarea {
+  touch-action: manipulation;
+}
+
+/* Prevención de auto-zoom molesto en Safari iOS en pantallas móviles */
+@media (max-width: 767px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  input[type="email"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* ========================================================================= */
+/* TRÍADA INSTITUCIONAL DE PALETAS (data-theme)                              */
+/* ========================================================================= */
+
+/* 1. Rosa Salmonado Pastel (Principal Institucional por Defecto) */
+:root,
+[data-theme="salmon-pastel"],
+[data-theme="salmon"] {
   --background: 248, 250, 252; /* #f8fafc */
   --foreground: 15, 23, 42; /* #0f172a */
-
-  /* Tema por Defecto (Salmon Pastel) */
-  --brand-light: #FFDBCF;
+  --brand-light: #FFE5DC;
   --brand-base: #FF8A65;
   --brand-dark: #E76E4A;
-  --brand-glow: rgba(255, 138, 101, 0.35);
+  --brand-glow: rgba(255, 138, 101, 0.28);
+  --color-primary: 14 90% 65%;
+  --color-primary-fg: 0 0% 100%;
   --shadow-neu-light: #ffffff;
   --shadow-neu-dark: #d9baba;
 }
 
-[data-theme="salmon"] {
-  --brand-light: #FFDBCF;
-  --brand-base: #FF8A65;
-  --brand-dark: #E76E4A;
-  --brand-glow: rgba(255, 138, 101, 0.35);
-  --shadow-neu-light: #ffffff;
-  --shadow-neu-dark: #d9baba;
-}
-
+/* 2. Cyber Cyan & Steel Blue (Industrial / Fríos Pezca) */
+[data-theme="cyber-cyan"],
 [data-theme="ocean"] {
-  --brand-light: #E0F2FE;
-  --brand-base: #38BDF8;
-  --brand-dark: #0284C7;
-  --brand-glow: rgba(56, 189, 248, 0.35);
+  --background: 248, 250, 252;
+  --foreground: 15, 23, 42;
+  --brand-light: #E0F7FA;
+  --brand-base: #06B6D4;
+  --brand-dark: #0891B2;
+  --brand-glow: rgba(6, 182, 212, 0.25);
+  --color-primary: 189 94% 43%;
+  --color-primary-fg: 0 0% 100%;
   --shadow-neu-light: #ffffff;
-  --shadow-neu-dark: #bedaea;
+  --shadow-neu-dark: #b2ebf2;
 }
 
+/* 3. Neutral Monochrome (Minimalist B2B / Vercel) */
+[data-theme="monochrome"],
+[data-theme="slate"] {
+  --background: 248, 250, 252;
+  --foreground: 15, 23, 42;
+  --brand-light: #F1F5F9;
+  --brand-base: #0F172A;
+  --brand-dark: #020617;
+  --brand-glow: rgba(15, 23, 42, 0.18);
+  --color-primary: 222 47% 11%;
+  --color-primary-fg: 0 0% 100%;
+  --shadow-neu-light: #ffffff;
+  --shadow-neu-dark: #cbd5e1;
+}
+
+/* Temas heredados conservados para compatibilidad total */
 [data-theme="teal"] {
   --brand-light: #CCFBF1;
   --brand-base: #14B8A6;
   --brand-dark: #0F766E;
-  --brand-glow: rgba(20, 184, 166, 0.35);
-  --shadow-neu-light: #ffffff;
-  --shadow-neu-dark: #b2dfdb;
-}
-
-[data-theme="slate"] {
-  --brand-light: #F1F5F9;
-  --brand-base: #94A3B8;
-  --brand-dark: #475569;
-  --brand-glow: rgba(148, 163, 184, 0.35);
-  --shadow-neu-light: #ffffff;
-  --shadow-neu-dark: #ccd4dc;
+  --brand-glow: rgba(20, 184, 166, 0.25);
 }
 
 [data-theme="indigo"] {
   --brand-light: #E0E7FF;
   --brand-base: #6366F1;
   --brand-dark: #4338CA;
-  --brand-glow: rgba(99, 102, 241, 0.35);
-  --shadow-neu-light: #ffffff;
-  --shadow-neu-dark: #c7d2fe;
+  --brand-glow: rgba(99, 102, 241, 0.25);
 }
 
 [data-theme="amber"] {
   --brand-light: #FEF3C7;
   --brand-base: #F59E0B;
   --brand-dark: #D97706;
-  --brand-glow: rgba(245, 158, 11, 0.35);
-  --shadow-neu-light: #ffffff;
-  --shadow-neu-dark: #fde68a;
+  --brand-glow: rgba(245, 158, 11, 0.25);
 }
 
 /* ========================================================================= */

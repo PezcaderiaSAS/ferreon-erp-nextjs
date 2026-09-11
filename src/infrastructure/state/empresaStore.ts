@@ -1,6 +1,8 @@
 import { create, persist, createJSONStorage } from '../../lib/zustand';
-import { EmpresaConfig, DEFAULT_EMPRESA_CONFIG } from '../../core/domain/entities/empresa-config';
+import { EmpresaConfig, DEFAULT_EMPRESA_CONFIG, TemaColorCorporativo } from '../../core/domain/entities/empresa-config';
 import { resolveCompanyTheme } from '../../core/domain/theme/theme-tokens';
+
+export type { TemaColorCorporativo };
 
 /**
  * Inyecta los tokens de diseño en el DOM (CSS Variables & data-theme)

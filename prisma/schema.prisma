@@ -1,0 +1,373 @@
+// ============================================================================
+// FERREON ERP & WMS - ESQUEMA DE DATOS MULTI-TENANT CON PRISMA ORM
+// Arquitectura: Shared Database, Shared Schema (Aislamiento por Fila / tenantId)
+// Base de Datos: PostgreSQL (Supabase)
+// ============================================================================
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ----------------------------------------------------------------------------
+// 1. ENUMERACIONES DEL SISTEMA (Type Safety Estricto)
+// ----------------------------------------------------------------------------
+
+enum TenantStatus {
+  trialing
+  active
+  past_due
+  canceled
+  unpaid
+
+  @@map("tenant_status")
+}
+
+enum UserRole {
+  ULTRAADMIN
+  SUPERADMIN
+  ADMIN
+  OPERADOR_BODEGA
+  FACTURACION_CARTERA
+  CONSULTOR_AUDITOR
+  VENDEDOR
+
+  @@map("user_role")
+}
+
+enum DocumentType {
+  NIT
+  CC
+  CE
+  PP
+
+  @@map("document_type")
+}
+
+enum EquipmentStatus {
+  DISPONIBLE
+  ALQUILADO
+  MANTENIMIENTO
+  BAJA
+
+  @@map("equipment_status")
+}
+
+enum RentalStatus {
+  BORRADOR
+  COTIZACION
+  PENDIENTE_ENTREGA
+  ACTIVO_EN_OBRA
+  FINALIZADO
+  CANCELADO
+
+  @@map("rental_status")
+}
+
+enum MovementType {
+  ENTRADA_COMPRA
+  SALIDA_ALQUILER
+  RETORNO_ALQUILER
+  AJUSTE_POSITIVO
+  AJUSTE_NEGATIVO
+  TRANSFERENCIA_ENTRADA
+  TRANSFERENCIA_SALIDA
+  MANTENIMIENTO
+
+  @@map("movement_type")
+}
+
+// ----------------------------------------------------------------------------
+// 2. NÚCLEO SAAS & MULTI-TENANCY (EMPRESAS Y MIEMBROS)
+// ----------------------------------------------------------------------------
+
+model Tenant {
+  id                     String       @id @default(uuid()) @db.Uuid
+  nombre                 String       @db.VarChar(255)
+  nit                    String?      @db.VarChar(50)
+  slug                   String       @unique @db.VarChar(100)
+  stripeCustomerId       String?      @unique @map("stripe_customer_id") @db.VarChar(100)
+  stripeSubscriptionId   String?      @map("stripe_subscription_id") @db.VarChar(100)
+  subscriptionStatus     TenantStatus @default(trialing) @map("subscription_status")
+  planId                 String       @default("plan_monthly_flat") @map("plan_id") @db.VarChar(50)
+  trialEndsAt            DateTime     @map("trial_ends_at") @db.Timestamptz(6)
+  configuracion          Json?        @default("{}")
+  createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt              DateTime?    @map("deleted_at") @db.Timestamptz(6)
+
+  // Relaciones Multi-Tenant con entidades del ERP y WMS
+  users                  User[]
+  customers              Customer[]
+  warehouses             Warehouse[]
+  warehouseStocks        WarehouseStock[]
+  equipments             Equipment[]
+  rentalContracts        RentalContract[]
+  rentalDetails          RentalDetail[]
+  inventoryMovements     InventoryMovement[]
+  auditLogs              AuditLog[]
+
+  @@index([slug])
+  @@map("empresas")
+}
+
+model User {
+  id              BigInt    @id @default(autoincrement())
+  empresaId       String    @map("empresa_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid // Referencia a auth.users de Supabase
+  rol             UserRole  @default(OPERADOR_BODEGA)
+  esEmpresaActiva Boolean   @default(true) @map("es_empresa_activa")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant          Tenant    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@unique([empresaId, userId])
+  @@index([empresaId])
+  @@index([userId])
+  @@map("empresa_usuarios")
+}
+
+// ----------------------------------------------------------------------------
+// 3. MÓDULO ERP: CLIENTES Y CARTERA
+// ----------------------------------------------------------------------------
+
+model Customer {
+  id               Int          @id @default(autoincrement())
+  empresaId        String       @map("empresa_id") @db.Uuid
+  tipoDocumento    DocumentType @default(NIT) @map("tipo_documento")
+  numeroDocumento  String       @map("numero_documento") @db.VarChar(50)
+  nombre           String       @db.VarChar(255)
+  email            String?      @db.VarChar(255)
+  telefono         String?      @db.VarChar(50)
+  direccion        String?
+  ciudad           String?      @default("Bucaramanga")
+  estadoCartera    String?      @default("AL_DIA") @map("estado_cartera")
+  activo           Boolean      @default(true)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime?    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt        DateTime?    @map("deleted_at") @db.Timestamptz(6)
+
+  tenant           Tenant       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  rentalContracts  RentalContract[]
+
+  // Evita duplicidad de NIT/Cédula dentro de la misma empresa
+  @@unique([numeroDocumento, empresaId])
+  @@index([empresaId])
+  @@index([numeroDocumento])
+  @@map("clientes")
+}
+
+// ----------------------------------------------------------------------------
+// 4. MÓDULO WMS: INFRAESTRUCTURA DE BODEGAS Y ALMACENAMIENTO
+// ----------------------------------------------------------------------------
+
+model Warehouse {
+  id                 String              @id @default(uuid()) @db.Uuid
+  empresaId          String              @map("empresa_id") @db.Uuid
+  nombre             String              @db.VarChar(255)
+  codigo             String              @db.VarChar(50)
+  direccion          String?
+  esPrincipal        Boolean             @default(false) @map("es_principal")
+  activa             Boolean             @default(true)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt          DateTime?           @map("deleted_at") @db.Timestamptz(6)
+
+  tenant             Tenant              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  stocks             WarehouseStock[]
+  rentalContracts    RentalContract[]
+  inventoryMovements InventoryMovement[]
+
+  // Código único por empresa
+  @@unique([codigo, empresaId])
+  @@index([empresaId])
+  @@map("bodegas")
+}
+
+// ----------------------------------------------------------------------------
+// 5. MÓDULO WMS & ERP: MAQUINARIA, EQUIPOS E INVENTARIO
+// ----------------------------------------------------------------------------
+
+model Equipment {
+  id                 BigInt              @id @default(autoincrement())
+  empresaId          String              @map("empresa_id") @db.Uuid
+  codigo             String              @db.VarChar(50)
+  nombre             String              @db.VarChar(255)
+  categoria          String              @db.VarChar(100)
+  estado             EquipmentStatus     @default(DISPONIBLE)
+  
+  // Stock estricto en unidades enteras (Cero coma flotante)
+  stockTotal         Int                 @default(0) @map("stock_total")
+  stockDisponible    Int                 @default(0) @map("stock_disponible")
+  
+  tarifaDia          Decimal             @default(0) @map("tarifa_dia") @db.Decimal(12, 2)
+  tarifaSemana       Decimal?            @default(0) @map("tarifa_semana") @db.Decimal(12, 2)
+  tarifaMes          Decimal?            @default(0) @map("tarifa_mes") @db.Decimal(12, 2)
+  valorReposicion    Decimal?            @default(0) @map("valor_reposicion") @db.Decimal(12, 2)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime?           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt          DateTime?           @map("deleted_at") @db.Timestamptz(6)
+
+  tenant             Tenant              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  warehouseStocks    WarehouseStock[]
+  rentalDetails      RentalDetail[]
+  inventoryMovements InventoryMovement[]
+
+  @@unique([codigo, empresaId])
+  @@index([empresaId])
+  @@index([codigo])
+  @@map("equipos")
+}
+
+model WarehouseStock {
+  id              String    @id @default(uuid()) @db.Uuid
+  empresaId       String    @map("empresa_id") @db.Uuid
+  bodegaId        String    @map("bodega_id") @db.Uuid
+  equipoId        BigInt    @map("equipo_id")
+  
+  // Balances por bodega en números enteros
+  stockFisico     Int       @default(0) @map("stock_fisico")
+  stockReservado  Int       @default(0) @map("stock_reservado")
+  ubicacionBin    String?   @map("ubicacion_bin") @db.VarChar(100)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant          Tenant    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  warehouse       Warehouse @relation(fields: [bodegaId], references: [id], onDelete: Restrict)
+  equipment       Equipment @relation(fields: [equipoId], references: [id], onDelete: Restrict)
+
+  // Un solo balance por bodega y equipo dentro del mismo inquilino
+  @@unique([empresaId, bodegaId, equipoId])
+  @@index([empresaId])
+  @@index([bodegaId])
+  @@index([equipoId])
+  @@map("bodega_stocks")
+}
+
+// ----------------------------------------------------------------------------
+// 6. TRANSACCIONALIDAD: CONTRATOS DE ALQUILER Y DETALLES
+// ----------------------------------------------------------------------------
+
+model RentalContract {
+  id                  Int                 @id @default(autoincrement())
+  empresaId           String              @map("empresa_id") @db.Uuid
+  consecutivo         Int
+  clienteId           Int                 @map("cliente_id")
+  bodegaOrigenId      String?             @map("bodega_origen_id") @db.Uuid
+  cotizacionOrigenId  String?             @map("cotizacion_origen_id")
+  estado              RentalStatus        @default(BORRADOR)
+  
+  subtotalEquipos     Decimal             @default(0) @map("subtotal_equipos") @db.Decimal(12, 2)
+  total               Decimal             @default(0) @db.Decimal(12, 2)
+  totalPagado         Decimal             @default(0) @map("total_pagado") @db.Decimal(12, 2)
+  saldoPendiente      Decimal             @default(0) @map("saldo_pendiente") @db.Decimal(12, 2)
+  deposito            Decimal             @default(0) @db.Decimal(12, 2)
+  aplicaIva           Boolean?            @default(false) @map("aplica_iva")
+  valorIva            Decimal?            @default(0) @map("valor_iva") @db.Decimal(12, 2)
+  creadoPor           String?             @map("creado_por")
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime?           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(6)
+
+  tenant              Tenant              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  customer            Customer            @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  warehouse           Warehouse?          @relation(fields: [bodegaOrigenId], references: [id], onDelete: Restrict)
+  details             RentalDetail[]
+  inventoryMovements  InventoryMovement[]
+
+  @@unique([consecutivo, empresaId])
+  @@index([empresaId])
+  @@index([clienteId])
+  @@index([bodegaOrigenId])
+  @@map("alquileres")
+}
+
+model RentalDetail {
+  id               Int            @id @default(autoincrement())
+  empresaId        String?        @map("empresa_id") @db.Uuid
+  alquilerId       Int            @map("alquiler_id")
+  equipoId         BigInt         @map("equipo_id")
+  
+  cantidad         Int            // Cantidad en unidades enteras
+  cantidadDevuelta Int            @default(0) @map("cantidad_devuelta")
+  diasContratados  Int            @map("dias_contratados")
+  fechaInicio      DateTime       @map("fecha_inicio") @db.Date
+  fechaFin         DateTime?      @map("fecha_fin") @db.Date
+  tarifaAplicada   Decimal        @map("tarifa_aplicada") @db.Decimal(12, 2)
+  subtotalLinea    Decimal        @map("subtotal_linea") @db.Decimal(12, 2)
+  devuelto         Boolean        @default(false)
+  costoDano        Decimal        @default(0) @map("costo_dano") @db.Decimal(12, 2)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant           Tenant?        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  rental           RentalContract @relation(fields: [alquilerId], references: [id], onDelete: Cascade)
+  equipment        Equipment      @relation(fields: [equipoId], references: [id], onDelete: Restrict)
+
+  @@index([empresaId])
+  @@index([alquilerId])
+  @@index([equipoId])
+  @@map("alquiler_detalles")
+}
+
+// ----------------------------------------------------------------------------
+// 7. TRAZABILIDAD WMS: KARDEX INMUTABLE DE MOVIMIENTOS
+// ----------------------------------------------------------------------------
+
+model InventoryMovement {
+  id                  String         @id @default(uuid()) @db.Uuid
+  empresaId           String         @map("empresa_id") @db.Uuid
+  bodegaId            String?        @map("bodega_id") @db.Uuid
+  equipoId            BigInt         @map("equipo_id")
+  alquilerId          Int?           @map("alquiler_id")
+  tipoMovimiento      MovementType   @map("tipo_movimiento")
+  
+  cantidad            Int            // Unidades enteras
+  saldoAnterior       Int            @map("saldo_anterior")
+  saldoNuevo          Int            @map("saldo_nuevo")
+  referenciaDocumento String?        @map("referencia_documento") @db.VarChar(100)
+  observaciones       String?
+  usuarioId           String?        @map("usuario_id") @db.Uuid
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant              Tenant         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  warehouse           Warehouse?     @relation(fields: [bodegaId], references: [id], onDelete: Restrict)
+  equipment           Equipment      @relation(fields: [equipoId], references: [id], onDelete: Restrict)
+  rental              RentalContract? @relation(fields: [alquilerId], references: [id], onDelete: SetNull)
+
+  @@index([empresaId])
+  @@index([equipoId])
+  @@index([bodegaId])
+  @@index([createdAt])
+  @@map("kardex_inventario")
+}
+
+// ----------------------------------------------------------------------------
+// 8. SEGURIDAD & AUDITORÍA FORENSE INMUTABLE
+// ----------------------------------------------------------------------------
+
+model AuditLog {
+  id            String    @id @default(uuid()) @db.Uuid
+  empresaId     String?   @map("empresa_id") @db.Uuid
+  usuarioId     String?   @map("usuario_id") @db.Uuid
+  usuarioNombre String    @default("Sistema") @map("usuario_nombre") @db.VarChar(255)
+  usuarioEmail  String    @default("sistema@ferreon.com") @map("usuario_email") @db.VarChar(255)
+  usuarioRol    String    @default("SISTEMA") @map("usuario_rol") @db.VarChar(50)
+  modulo        String    @db.VarChar(50)
+  accion        String    @db.VarChar(100)
+  entidadId     String?   @map("entidad_id") @db.VarChar(100)
+  descripcion   String
+  detalles      Json?     @default("{}")
+  ipAddress     String?   @default("127.0.0.1") @map("ip_address") @db.VarChar(50)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant        Tenant?   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@index([empresaId, createdAt(sort: Desc)])
+  @@index([modulo, accion])
+  @@index([usuarioId])
+  @@map("audit_logs")
+}
