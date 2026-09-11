@@ -14,6 +14,7 @@ export interface EquipoComboboxProps {
   onCrearNuevo?: () => void;
   onOpenChange?: (isOpen: boolean) => void;
   className?: string;
+  initialName?: string;
 }
 
 /**
@@ -48,6 +49,7 @@ export function EquipoCombobox({
   onCrearNuevo,
   onOpenChange,
   className = '',
+  initialName = '',
 }: EquipoComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,9 +92,9 @@ export function EquipoCombobox({
   // Sincronizar el texto del input cuando el valor externo cambia o se cierra el dropdown
   useEffect(() => {
     if (!isOpen) {
-      setSearchQuery(selectedEquipo ? selectedEquipo.nombre : '');
+      setSearchQuery(selectedEquipo ? selectedEquipo.nombre : (initialName || ''));
     }
-  }, [selectedEquipo, isOpen]);
+  }, [selectedEquipo, isOpen, initialName]);
 
   // Filtrado instantáneo multi-criterio en memoria (< 5ms)
   const filteredEquipos = useMemo(() => {

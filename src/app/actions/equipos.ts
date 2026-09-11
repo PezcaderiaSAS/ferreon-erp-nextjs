@@ -21,21 +21,21 @@ const CrearEquipoZodSchema = z.object({
   sku: z.string().min(1, 'El código/SKU es obligatorio'),
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   categoria: z.string().min(1, 'La categoría es obligatoria'),
-  tarifaDiaria: z.number().min(0, 'La tarifa diaria debe ser mayor o igual a cero'),
-  valorReposicion: z.number().min(0, 'El valor de reposición debe ser mayor o igual a cero'),
-  stockInicial: z.number().int().min(0, 'El stock inicial debe ser mayor o igual a cero'),
-  idempotency_key: z.string().optional(),
-});
+  tarifaDiaria: z.coerce.number().min(0, 'La tarifa diaria debe ser mayor o igual a cero'),
+  valorReposicion: z.coerce.number().min(0, 'El valor de reposición debe ser mayor o igual a cero').default(0),
+  stockInicial: z.coerce.number().int().min(0, 'El stock inicial debe ser mayor o igual a cero'),
+  idempotency_key: z.string().optional().nullable(),
+}).passthrough();
 
 const EditarEquipoZodSchema = z.object({
   id: z.union([z.string(), z.number()]),
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   categoria: z.string().min(1, 'La categoría es obligatoria'),
-  tarifaDiaria: z.number().min(0, 'La tarifa diaria debe ser mayor o igual a cero'),
-  valorReposicion: z.number().min(0, 'El valor de reposición debe ser mayor o igual a cero'),
-  estado: z.enum(['Disponible', 'En Alquiler', 'Mantenimiento', 'Activo', 'Inactivo']),
-  idempotency_key: z.string().optional(),
-});
+  tarifaDiaria: z.coerce.number().min(0, 'La tarifa diaria debe ser mayor o igual a cero'),
+  valorReposicion: z.coerce.number().min(0, 'El valor de reposición debe ser mayor o igual a cero').optional().default(0),
+  estado: z.string().optional().default('Activo'),
+  idempotency_key: z.string().optional().nullable(),
+}).passthrough();
 
 export async function crearEquipoAction(input: CrearEquipoInput) {
   const validation = validateActionInput(input, CrearEquipoZodSchema);

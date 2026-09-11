@@ -20,22 +20,22 @@ export interface CrearClienteInput {
 const CrearClienteZodSchema = z.object({
   nit_cedula: z.string().min(3, 'El NIT o Cédula debe contener al menos 3 caracteres'),
   nombre: z.string().min(2, 'El nombre o razón social debe contener al menos 2 caracteres'),
-  telefono: z.string().optional(),
-  email: z.string().email('Formato de correo electrónico inválido').optional().or(z.literal('')),
-  direccion: z.string().optional(),
-  nivel_riesgo: z.string().optional(),
-  idempotency_key: z.string().optional(),
-});
+  telefono: z.string().optional().nullable(),
+  email: z.string().email('Formato de correo electrónico inválido').optional().nullable().or(z.literal('')),
+  direccion: z.string().optional().nullable(),
+  nivel_riesgo: z.string().optional().nullable(),
+  idempotency_key: z.string().optional().nullable(),
+}).passthrough();
 
 const EditarClienteZodSchema = z.object({
   id: z.union([z.string(), z.number()]),
-  nit_cedula: z.string().min(3).optional(),
+  nit_cedula: z.string().min(3).optional().nullable(),
   nombre: z.string().min(2, 'El nombre o razón social debe contener al menos 2 caracteres'),
-  telefono: z.string().optional(),
-  email: z.string().email('Formato de correo electrónico inválido').optional().or(z.literal('')),
-  direccion: z.string().optional(),
-  estado: z.enum(['Activo', 'Inactivo']).optional(),
-});
+  telefono: z.string().optional().nullable(),
+  email: z.string().email('Formato de correo electrónico inválido').optional().nullable().or(z.literal('')),
+  direccion: z.string().optional().nullable(),
+  estado: z.string().optional().nullable(),
+}).passthrough();
 
 export async function crearClienteAction(input: CrearClienteInput) {
   const validation = validateActionInput(input, CrearClienteZodSchema);
@@ -111,7 +111,11 @@ export async function editarClienteAction(input: EditarClienteInput) {
   const cleanInput = validation.data;
 
   const supabase = await createServerSupabaseClient();
-  const numericId = typeof cleanInput.id === 'string' ? parseInt(cleanInput.id, 10) : cleanInput.id;
+  const targetId = (typeof cleanInput.id === 'string' && !isNaN(Number(cleanInput.id))) ? Number(cleanInput.id) : cleanInput.id;
+
+  if (targetId === undefined || targetId === null || (typeof targetId === 'number' && isNaN(targetId))) {
+    return { success: false, error: 'Identificador de cliente no válido.' };
+  }
 
   const updatePayload: any = {
     nombre: cleanInput.nombre.trim(),
@@ -132,7 +136,7 @@ export async function editarClienteAction(input: EditarClienteInput) {
   const { data, error } = await supabase
     .from('clientes')
     .update(updatePayload)
-    .eq('id', numericId)
+    .eq('id', targetId)
     .select()
     .single();
 
@@ -156,10 +160,10 @@ export async function editarClienteAction(input: EditarClienteInput) {
   AuditLogger.logAsync({
     modulo: 'CLIENTES',
     accion: 'EDITAR_CLIENTE',
-    descripcion: `Cliente actualizado: ${cleanInput.nombre} (ID: ${numericId})`,
-    entidadId: numericId,
+    descripcion: `Cliente actualizado: ${cleanInput.nombre} (ID: ${targetId})`,
+    entidadId: targetId,
     detalles: {
-      id: numericId,
+      id: targetId,
       nombre: cleanInput.nombre,
       nit_cedula: cleanInput.nit_cedula,
       estado: cleanInput.estado,

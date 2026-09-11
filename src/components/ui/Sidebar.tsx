@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, FileSpreadsheet, Package, ShoppingBag, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X, LogOut, Palette } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { LayoutDashboard, CalendarDays, FileSpreadsheet, Package, ShoppingBag, Handshake, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X, LogOut, Palette } from 'lucide-react';
 import { useEmpresaStore, applyThemeToDOM } from '../../infrastructure/state/empresaStore';
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';
 import { useTenantStore } from '../../infrastructure/state/tenantStore';
@@ -17,6 +17,7 @@ const SIDEBAR_LINKS = [
   { href: '/alquileres', icon: CalendarDays, label: 'Alquileres & Cotizaciones' },
   { href: '/bodega', icon: Package, label: 'Bodega' },
   { href: '/compras', icon: ShoppingBag, label: 'Compras' },
+  { href: '/subcontrataciones', icon: Handshake, label: 'Subcontratación' },
   { href: '/devoluciones', icon: ArrowLeftRight, label: 'Devoluciones' },
   { href: '/facturacion', icon: FileText, label: 'Facturación' },
   { href: '/clientes', icon: Users, label: 'Clientes' },
@@ -98,6 +99,7 @@ export function Sidebar() {
     await unifiedLogout();
     router.push('/auth/login');
   };
+
 
   return (
     <>

@@ -446,6 +446,8 @@ export class EnterprisePDFService {
         <p><strong>Razón Social:</strong> ${payload.clienteNombre || "Consumidor Final"}</p>
         <p><strong>NIT / C.C.:</strong> ${payload.clienteNit || "Sin Registrar"}</p>
         <p><strong>Teléfono:</strong> ${payload.clienteTelefono || "No registrado"}</p>
+        ${payload.clienteDireccion ? `<p><strong>Dirección:</strong> ${payload.clienteDireccion}</p>` : ""}
+        ${payload.clienteEmail ? `<p><strong>Email:</strong> ${payload.clienteEmail}</p>` : ""}
       </div>
       <div class="info-block">
         <h4>Logística y Respaldo</h4>

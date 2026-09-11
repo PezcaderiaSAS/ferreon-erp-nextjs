@@ -17,33 +17,15 @@ import { AlquilerFormProps } from './alquiler/types';
 export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }: AlquilerFormProps) {
   const form = useAlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange });
 
-  // Atajo de teclado global F2 para añadir renglón de equipo
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'F2') {
-        if (form.isCreandoCliente || form.isCreandoEquipo || form.isPreviewModalOpen || form.isSubmitting) {
-          return;
-        }
-
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) {
+        return;
+      }
+      if (e.altKey && e.key.toLowerCase() === 'n') {
         e.preventDefault();
-
-        if (form.currentStep === 1) {
-          if (!form.clienteId) {
-            form.setFormErrors(prev => ({ ...prev, clienteId: 'Seleccione un cliente antes de agregar maquinaria' }));
-            return;
-          }
-          form.setCurrentStep(2);
-          setTimeout(() => {
-            form.addItemRow();
-            const el = document.getElementById('items-list-end');
-            el?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-          }, 80);
-        } else if (form.currentStep === 2) {
+        if (form.currentStep === 2) {
           form.addItemRow();
-          setTimeout(() => {
-            const el = document.getElementById('items-list-end');
-            el?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-          }, 80);
         }
       }
     };
@@ -52,63 +34,44 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [form]);
 
-  // Pantalla de Éxito y Emisión de Documentos
   if (form.isSuccess && form.savedAlquilerData) {
     return (
       <AlquilerSuccessView
-        isEditMode={form.isEditMode}
         savedAlquilerData={form.savedAlquilerData}
-        onPrint={form.handleAbrirImpresionHTML}
-        onContinue={onSuccess}
+        formatearCOP={form.formatearCOP}
+        onImprimir={form.handleAbrirImpresionHTML}
+        onNuevo={form.handleNuevoAlquiler}
+        onCerrar={() => onSuccess(form.savedAlquilerData)}
       />
     );
   }
 
   return (
-    <>
-      <form onSubmit={form.onSubmit} className="flex flex-col h-full space-y-6">
-        {/* Stepper de Navegación */}
-        <AlquilerStepper
-          currentStep={form.currentStep}
-          onStepClick={(stepId) => form.setCurrentStep(stepId)}
-        />
+    <div className="space-y-6">
+      <AlquilerStepper currentStep={form.currentStep} setStep={form.setStep} />
 
-        {form.errorMsg && (
-          <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs sm:text-sm font-medium flex items-center space-x-2 animate-fadeIn">
-            <span>⚠️</span>
-            <span>{form.errorMsg}</span>
-          </div>
-        )}
-
+      <form onSubmit={(e) => { e.preventDefault(); }} className="space-y-6">
         {/* PASO 1: CLIENTE Y GARANTÍAS */}
         {form.currentStep === 1 && (
           <StepClienteGarantias
-            isEditMode={form.isEditMode}
             tipoDocumento={form.tipoDocumento}
             setTipoDocumento={form.setTipoDocumento}
-            estadoDocumento={form.estadoDocumento}
-            setEstadoDocumento={form.setEstadoDocumento}
-            cotizacionOrigen={form.cotizacionOrigen}
+            cotizacionOrigenId={form.cotizacionOrigenId}
             clienteId={form.clienteId}
             setClienteId={form.setClienteId}
             selectedCliente={form.selectedCliente}
-            displayClienteNombre={form.displayClienteNombre}
-            displayClienteNit={form.displayClienteNit}
-            displayClienteTelefono={form.displayClienteTelefono}
+            filteredClientes={form.filteredClientes}
             clientSearchTerm={form.clientSearchTerm}
             setClientSearchTerm={form.setClientSearchTerm}
             isClientDropdownOpen={form.isClientDropdownOpen}
             setIsClientDropdownOpen={form.setIsClientDropdownOpen}
-            filteredClientes={form.filteredClientes}
-            isLoadingCatalogs={form.isLoadingCatalogs}
             setIsCreandoCliente={form.setIsCreandoCliente}
             fechaRegistro={form.fechaRegistro}
             setFechaRegistro={form.setFechaRegistro}
             fechaInicioContrato={form.fechaInicioContrato}
+            setFechaInicioContrato={form.setFechaInicioContrato}
             fechaFinEstimadaContrato={form.fechaFinEstimadaContrato}
-            handleFechaInicioMasterChange={form.handleFechaInicioMasterChange}
-            handleFechaFinMasterChange={form.handleFechaFinMasterChange}
-            esFechaInicioEnPasado={form.esFechaInicioEnPasado}
+            setFechaFinEstimadaContrato={form.setFechaFinEstimadaContrato}
             ratificarFechaInicioAHoy={form.ratificarFechaInicioAHoy}
             garantiaTipo={form.garantiaTipo}
             setGarantiaTipo={form.setGarantiaTipo}
@@ -347,6 +310,6 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
           onCancel={() => form.setIsCreandoEquipo(false)} 
         />
       </Modal>
-    </>
+    </div>
   );
 }

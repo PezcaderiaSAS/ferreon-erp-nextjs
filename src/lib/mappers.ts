@@ -26,6 +26,7 @@ export function equipoToEquipoUI(equipo: any): EquipoUI {
     nombre: equipo.nombre,
     categoria: equipo.categoria,
     tarifa_diaria: equipo.tarifaDiaria ?? equipo.tarifa_diaria ?? 0,
+    valor_reposicion: equipo.valorReposicion ?? equipo.valor_reposicion ?? 0,
     stock_total: equipo.stockTotal ?? equipo.stock_total ?? 0,
     stock_disponible: equipo.stockDisponible ?? equipo.stock_disponible ?? 0,
     stock_en_obra: equipo.stockEnObra ?? equipo.stock_en_obra ?? 0,
@@ -34,6 +35,7 @@ export function equipoToEquipoUI(equipo: any): EquipoUI {
     // Retrocompatibilidad camelCase
     sku: equipo.sku ?? equipo.codigo,
     tarifaDiaria: equipo.tarifaDiaria ?? equipo.tarifa_diaria ?? 0,
+    valorReposicion: equipo.valorReposicion ?? equipo.valor_reposicion ?? 0,
     stockTotal: equipo.stockTotal ?? equipo.stock_total ?? 0,
     stockDisponible: equipo.stockDisponible ?? equipo.stock_disponible ?? 0,
     stockEnObra: equipo.stockEnObra ?? equipo.stock_en_obra ?? 0,
@@ -65,19 +67,19 @@ export function equipoUIToEquipo(ui: EquipoUI): Equipo {
 /**
  * Convierte un Cliente (dominio/Supabase) → ClienteUI (Zustand store).
  */
-export function clienteToClienteUI(cliente: Cliente): ClienteUI {
+export function clienteToClienteUI(cliente: any): ClienteUI {
   return {
     id: cliente.id,
-    nit_cedula: cliente.nit ?? '',
-    nombre: cliente.nombre,
-    telefono: cliente.contacto ?? '',
+    nit_cedula: cliente.nit_cedula ?? cliente.nit ?? '',
+    nombre: cliente.nombre || '',
+    telefono: cliente.telefono ?? cliente.contacto ?? '',
     email: cliente.email ?? '',
     direccion: cliente.direccion ?? '',
-    estado: 'Activo',
-    created_at: cliente.creado_en ? new Date(cliente.creado_en).toISOString() : new Date().toISOString(),
+    estado: cliente.estado || 'Activo',
+    created_at: (cliente.creado_en || cliente.created_at) ? new Date(cliente.creado_en || cliente.created_at).toISOString() : new Date().toISOString(),
     // Retrocompatibilidad
-    nit: cliente.nit,
-    contacto: cliente.contacto,
+    nit: cliente.nit_cedula ?? cliente.nit ?? '',
+    contacto: cliente.telefono ?? cliente.contacto ?? '',
     nivel_riesgo: cliente.nivel_riesgo,
   };
 }
@@ -108,25 +110,33 @@ export function clienteUIToCliente(ui: ClienteUI): Cliente {
 export function alquilerEntityToAlquilerUI(entity: any): AlquilerUI {
   const clienteNombre = entity.clienteNombre || entity.clientes?.nombre || entity.cliente_nombre || 'Consumidor Final';
   
-  const detallesMapeados = (entity.detalles && entity.detalles.length > 0)
+  const rawDetalles = (entity.detalles && entity.detalles.length > 0)
     ? entity.detalles
-    : (entity.alquiler_detalles || []).map((d: any) => ({
-        id: d.id,
-        itemId: String(d.equipo_id || d.itemId || ''),
-        equipoId: String(d.equipo_id || d.itemId || ''),
-        nombreItem: (Array.isArray(d.equipos) ? d.equipos[0]?.nombre : d.equipos?.nombre) || d.nombreItem || d.nombre || 'Equipo de Construcción',
-        codigo: (Array.isArray(d.equipos) ? d.equipos[0]?.codigo : d.equipos?.codigo) || (Array.isArray(d.equipos) ? d.equipos[0]?.sku : d.equipos?.sku) || d.codigo || '',
-        cantidad: d.cantidad || 1,
-        tarifaAplicada: d.tarifa_aplicada ?? d.tarifaAplicada ?? d.valor_unitario ?? 0,
-        valor_unitario: d.tarifa_aplicada ?? d.tarifaAplicada ?? d.valor_unitario ?? 0,
-        diasContratados: d.dias_contratados ?? d.dias ?? 1,
-        fechaInicio: d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (entity.created_at ? new Date(entity.created_at).toISOString().split('T')[0] : ''),
-        fechaFinEstimada: d.fecha_fin ? new Date(d.fecha_fin).toISOString().split('T')[0] : (entity.created_at ? new Date(entity.created_at).toISOString().split('T')[0] : ''),
-        subtotalLineaEstimado: d.subtotal_linea ?? d.subtotalLineaEstimado ?? 0,
-        devuelto: d.devuelto ?? false,
-        cantidadDevuelta: d.cantidad_devuelta ?? 0,
-        costoDano: d.costo_dano ?? 0,
-      }));
+    : (entity.alquiler_detalles || []);
+
+  const detallesMapeados = rawDetalles.map((d: any) => ({
+    id: d.id,
+    itemId: String(d.equipo_id || d.itemId || d.equipoId || ''),
+    equipoId: String(d.equipo_id || d.itemId || d.equipoId || ''),
+    nombreItem: (Array.isArray(d.equipos) ? d.equipos[0]?.nombre : d.equipos?.nombre) || d.nombreItem || d.nombre || 'Equipo de Construcción',
+    codigo: (Array.isArray(d.equipos) ? d.equipos[0]?.codigo : d.equipos?.codigo) || (Array.isArray(d.equipos) ? d.equipos[0]?.sku : d.equipos?.sku) || d.codigo || '',
+    cantidad: d.cantidad || 1,
+    tarifaAplicada: d.tarifa_aplicada ?? d.tarifaAplicada ?? d.valor_unitario ?? 0,
+    valor_unitario: d.tarifa_aplicada ?? d.tarifaAplicada ?? d.valor_unitario ?? 0,
+    diasContratados: d.dias_contratados ?? d.diasContratados ?? d.dias ?? 1,
+    fechaInicio: d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (d.fechaInicio || (entity.created_at ? new Date(entity.created_at).toISOString().split('T')[0] : '')),
+    fechaFinEstimada: d.fecha_fin ? new Date(d.fecha_fin).toISOString().split('T')[0] : (d.fechaFinEstimada || d.fechaFin || (entity.created_at ? new Date(entity.created_at).toISOString().split('T')[0] : '')),
+    subtotalLineaEstimado: d.subtotal_linea ?? d.subtotalLineaEstimado ?? 0,
+    devuelto: d.devuelto ?? false,
+    cantidadDevuelta: d.cantidad_devuelta ?? d.cantidadDevuelta ?? 0,
+    costoDano: d.costo_dano ?? d.costoDano ?? 0,
+    esSubcontratado: Boolean(d.es_subcontratado ?? d.esSubcontratado),
+    es_subcontratado: Boolean(d.es_subcontratado ?? d.esSubcontratado),
+    proveedorSubcontratadoId: d.proveedor_id ? String(d.proveedor_id) : (d.proveedorSubcontratadoId ? String(d.proveedorSubcontratadoId) : ''),
+    proveedor_id: d.proveedor_id ? String(d.proveedor_id) : (d.proveedorSubcontratadoId ? String(d.proveedorSubcontratadoId) : ''),
+    costoDiarioProveedor: Number(d.costo_subcontratacion_diario ?? d.costoDiarioProveedor ?? 0),
+    costo_subcontratacion_diario: Number(d.costo_subcontratacion_diario ?? d.costoDiarioProveedor ?? 0),
+  }));
 
   const subtotalEquipos = entity.subtotalEquiposEstimado ?? entity.subtotal_equipos ?? 0;
   const fleteEntrega = entity.fleteEntrega ?? entity.flete_entrega ?? 0;
