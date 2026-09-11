@@ -37,41 +37,48 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
   if (form.isSuccess && form.savedAlquilerData) {
     return (
       <AlquilerSuccessView
+        isEditMode={form.isEditMode}
         savedAlquilerData={form.savedAlquilerData}
-        formatearCOP={form.formatearCOP}
-        onImprimir={form.handleAbrirImpresionHTML}
-        onNuevo={form.handleNuevoAlquiler}
-        onCerrar={() => onSuccess(form.savedAlquilerData)}
+        onPrint={form.handleAbrirImpresionHTML}
+        onContinue={() => onSuccess(form.savedAlquilerData)}
       />
     );
   }
 
   return (
     <div className="space-y-6">
-      <AlquilerStepper currentStep={form.currentStep} setStep={form.setStep} />
+      <AlquilerStepper currentStep={form.currentStep} onStepClick={form.setCurrentStep} />
 
       <form onSubmit={(e) => { e.preventDefault(); }} className="space-y-6">
         {/* PASO 1: CLIENTE Y GARANTÍAS */}
         {form.currentStep === 1 && (
           <StepClienteGarantias
+            isEditMode={form.isEditMode}
             tipoDocumento={form.tipoDocumento}
             setTipoDocumento={form.setTipoDocumento}
-            cotizacionOrigenId={form.cotizacionOrigenId}
+            estadoDocumento={form.estadoDocumento}
+            setEstadoDocumento={form.setEstadoDocumento}
+            cotizacionOrigen={form.cotizacionOrigen}
             clienteId={form.clienteId}
             setClienteId={form.setClienteId}
             selectedCliente={form.selectedCliente}
-            filteredClientes={form.filteredClientes}
+            displayClienteNombre={form.displayClienteNombre}
+            displayClienteNit={form.displayClienteNit}
+            displayClienteTelefono={form.displayClienteTelefono}
             clientSearchTerm={form.clientSearchTerm}
             setClientSearchTerm={form.setClientSearchTerm}
             isClientDropdownOpen={form.isClientDropdownOpen}
             setIsClientDropdownOpen={form.setIsClientDropdownOpen}
+            filteredClientes={form.filteredClientes}
+            isLoadingCatalogs={form.isLoadingCatalogs}
             setIsCreandoCliente={form.setIsCreandoCliente}
             fechaRegistro={form.fechaRegistro}
             setFechaRegistro={form.setFechaRegistro}
             fechaInicioContrato={form.fechaInicioContrato}
-            setFechaInicioContrato={form.setFechaInicioContrato}
             fechaFinEstimadaContrato={form.fechaFinEstimadaContrato}
-            setFechaFinEstimadaContrato={form.setFechaFinEstimadaContrato}
+            handleFechaInicioMasterChange={form.handleFechaInicioMasterChange}
+            handleFechaFinMasterChange={form.handleFechaFinMasterChange}
+            esFechaInicioEnPasado={form.esFechaInicioEnPasado}
             ratificarFechaInicioAHoy={form.ratificarFechaInicioAHoy}
             garantiaTipo={form.garantiaTipo}
             setGarantiaTipo={form.setGarantiaTipo}
