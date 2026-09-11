@@ -5,7 +5,8 @@
   "description": "Alquileres ERP - Sistema de Gestión de Alquileres, Facturación y Equipos de Construcción (Next.js + Supabase + Vercel)",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
