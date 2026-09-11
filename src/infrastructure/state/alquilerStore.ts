@@ -8,6 +8,10 @@ export interface AlquilerUI {
   cliente_id: string | number;
   clienteNombre?: string;
   clienteNit?: string;
+  clienteTelefono?: string;
+  clienteDireccion?: string;
+  clienteEmail?: string;
+  clientes?: any;
   tipo?: 'COTIZACION' | 'CONTRATO' | string;
   tipoDocumento?: 'COTIZACION' | 'CONTRATO';
   estado: string;

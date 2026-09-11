@@ -156,7 +156,8 @@ export default function FacturacionPage() {
     }
 
     const alq = factura.alquilerOriginal;
-    const detallesList = alq.detalles || [];
+    const rawCliente = (alq as any).clientes || (alq as any).cliente;
+    const detallesList = alq.detalles || (alq as any).alquiler_detalles || [];
     const subtotalCalc = alq.subtotal_general || alq.subtotal_equipos || factura.total;
     const valorIva = alq.valor_iva || (alq.aplica_iva ? Math.round(subtotalCalc * 0.19) : 0);
     const valorRetefuente = alq.valor_retefuente || 0;
@@ -167,20 +168,20 @@ export default function FacturacionPage() {
       consecutivo: factura.id,
       fechaEmision: factura.fechaEmision || new Date().toISOString(),
       fechaVencimiento: factura.vencimiento,
-      clienteNombre: factura.cliente,
-      clienteNit: (alq as any).clienteNit || (alq as any).clienteDocumento || 'Sin Registrar',
-      clienteTelefono: (alq as any).clienteTelefono || '',
-      clienteEmail: (alq as any).clienteEmail || '',
+      clienteNombre: factura.cliente || rawCliente?.nombre || 'Consumidor Final',
+      clienteNit: (alq as any).clienteNit || (alq as any).clienteDocumento || rawCliente?.nit_cedula || rawCliente?.nit || 'Sin Registrar',
+      clienteTelefono: (alq as any).clienteTelefono || rawCliente?.telefono || '',
+      clienteEmail: (alq as any).clienteEmail || rawCliente?.email || '',
       detallesLogistica: alq.detalles_logistica || (alq as any).detallesLogistica || '',
       items: detallesList.map((d: any) => ({
         cantidad: d.cantidad || 1,
-        nombre: d.nombreItem || d.nombre || 'Equipo de Alquiler',
-        codigo: d.codigo || '',
-        fechaInicio: d.fecha_inicio || factura.fechaEmision,
-        fechaFin: d.fecha_fin || factura.vencimiento,
-        dias: d.dias_contratados || d.dias || 1,
-        tarifaDiaria: Number(d.tarifa_aplicada || d.tarifaDiaria || 0),
-        subtotal: Number(d.subtotal_linea || d.subtotal || 0),
+        nombre: d.equipos?.nombre || d.equipo?.nombre || d.nombreItem || d.nombre || 'Equipo de Alquiler',
+        codigo: d.equipos?.codigo || d.equipo?.codigo || d.codigo || '',
+        fechaInicio: d.fecha_inicio || d.fechaInicio || factura.fechaEmision,
+        fechaFin: d.fecha_fin || d.fechaFin || factura.vencimiento,
+        dias: Number(d.dias_contratados || d.dias || 1),
+        tarifaDiaria: Number(d.tarifa_aplicada ?? d.tarifaAplicada ?? d.tarifaDiaria ?? d.valor_unitario ?? 0),
+        subtotal: Number(d.subtotal_linea ?? d.subtotal ?? 0),
       })),
       subtotalEquipos: Number(alq.subtotal_equipos || subtotalCalc),
       fleteEntrega: Number(alq.flete_entrega || 0),

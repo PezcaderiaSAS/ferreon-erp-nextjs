@@ -68,8 +68,8 @@ export async function GET() {
       .from("alquileres")
       .select(`
         *,
-        clientes ( nombre, nit_cedula ),
-        alquiler_detalles ( *, equipos ( nombre ) )
+        clientes ( id, nombre, nit_cedula, telefono, direccion, email ),
+        alquiler_detalles ( *, equipos ( id, nombre, codigo, tarifa_diaria ) )
       `)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });

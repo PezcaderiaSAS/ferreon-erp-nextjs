@@ -35,10 +35,17 @@ export interface DocumentoPDFPayload {
   garantiaMonto?: number;
   items: DetalleItemPDF[];
   subtotalEquipos: number;
+  subtotalEquiposEstimado?: number;
+  subtotal_equipos?: number;
   fleteEntrega: number;
   fleteRecogida: number;
   subtotalGeneral: number;
+  subtotal_general?: number;
   costosDano?: number;
+  clientes?: any;
+  cliente?: any;
+  detalles?: any[];
+  alquiler_detalles?: any[];
 
   // Impuestos seleccionables
   aplicaIva?: boolean;
@@ -69,18 +76,50 @@ export class EnterprisePDFService {
     const emp = payload.empresa || DEFAULT_EMPRESA_CONFIG;
     const isA5 = payload.formatoPapel === "A5";
     
+    // Extracción tolerante y defensiva de clientes
+    const rawCliente = (payload as any).clientes || (payload as any).cliente;
+    const clienteNombre = payload.clienteNombre || rawCliente?.nombre || "Consumidor Final";
+    const rawNit = payload.clienteNit || (payload as any).clienteDocumento || rawCliente?.nit_cedula || rawCliente?.nit || (payload as any).nit_cedula || (payload as any).nit;
+    const clienteNit = (rawNit && rawNit !== "Sin NIT" && rawNit !== "Sin Registrar") ? rawNit : (rawNit || "Sin Registrar");
+    const rawTelefono = payload.clienteTelefono || rawCliente?.telefono || (payload as any).telefono;
+    const clienteTelefono = (rawTelefono && rawTelefono !== "No registrado") ? rawTelefono : (rawTelefono || "No registrado");
+    const clienteDireccion = payload.clienteDireccion || rawCliente?.direccion || (payload as any).direccion || "";
+    const clienteEmail = payload.clienteEmail || rawCliente?.email || (payload as any).email || "";
+
+    // Extracción tolerante y defensiva de ítems
+    const rawItems = (payload.items && payload.items.length > 0)
+      ? payload.items
+      : ((payload as any).detalles && (payload as any).detalles.length > 0
+        ? (payload as any).detalles
+        : ((payload as any).alquiler_detalles || []));
+
     // Recalcular ítems de manera resiliente
-    const itemsProcesados = (payload.items || []).map((it) => {
-      const fInicio = it.fechaInicio || payload.fechaEmision || new Date().toISOString();
-      const fFin = it.fechaFin || fInicio;
+    const itemsProcesados = rawItems.map((it: any) => {
+      const fInicio = it.fechaInicio || it.fecha_inicio || payload.fechaEmision || new Date().toISOString();
+      const fFin = it.fechaFin || it.fecha_fin || it.fechaFinEstimada || it.fecha_fin_estimada || fInicio;
       const diffMs = new Date(fFin).getTime() - new Date(fInicio).getTime();
-      const diasCalculados = it.dias && it.dias > 0 ? it.dias : Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      const diasCalculados = it.dias && Number(it.dias) > 0 
+        ? Number(it.dias) 
+        : (it.dias_contratados && Number(it.dias_contratados) > 0 
+          ? Number(it.dias_contratados) 
+          : Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24))));
       const cant = Number(it.cantidad || 1);
-      const tarifa = Number(it.tarifaDiaria || 0);
-      const subtotalCalc = it.subtotal && it.subtotal > 0 ? it.subtotal : cant * tarifa * diasCalculados;
+      const tarifa = Number(it.tarifaDiaria ?? it.tarifa_aplicada ?? it.tarifaAplicada ?? it.valor_unitario ?? it.precioDiario ?? it.equipos?.tarifa_diaria ?? it.equipo?.tarifa_diaria ?? 0);
+      const subtotalCalc = (it.subtotal !== undefined && Number(it.subtotal) > 0)
+        ? Number(it.subtotal)
+        : ((it.subtotal_linea !== undefined && Number(it.subtotal_linea) > 0)
+          ? Number(it.subtotal_linea)
+          : (it.subtotalLineaEstimado !== undefined && Number(it.subtotalLineaEstimado) > 0)
+            ? Number(it.subtotalLineaEstimado)
+            : cant * tarifa * diasCalculados);
+
+      const nombreReal = it.nombre || it.nombreItem || it.equipos?.nombre || it.equipo?.nombre || "Equipo";
+      const codigoReal = it.codigo || it.sku || it.equipos?.codigo || it.equipo?.codigo || "";
 
       return {
         ...it,
+        nombre: nombreReal,
+        codigo: codigoReal,
         cantidad: cant,
         dias: diasCalculados,
         tarifaDiaria: tarifa,
@@ -90,17 +129,33 @@ export class EnterprisePDFService {
       };
     });
 
-    const subtotalEquiposCalc = itemsProcesados.reduce((acc, it) => acc + it.subtotal, 0);
-    const fleteEntrega = Number(payload.fleteEntrega || 0);
-    const fleteRecogida = Number(payload.fleteRecogida || 0);
+    const subtotalEquiposCalc = itemsProcesados.reduce((acc: number, it: any) => acc + it.subtotal, 0);
+    const subtotalEquipos = subtotalEquiposCalc > 0 
+      ? subtotalEquiposCalc 
+      : Number(payload.subtotalEquipos || (payload as any).subtotal_equipos || payload.subtotalEquiposEstimado || 0);
+
+    const fleteEntrega = Number(payload.fleteEntrega || (payload as any).flete_entrega || 0);
+    const fleteRecogida = Number(payload.fleteRecogida || (payload as any).flete_recogida || 0);
     const totalFletes = fleteEntrega + fleteRecogida;
-    const deposito = Number(payload.depositoAplicado || 0);
-    const valorIva = payload.valorIva !== undefined ? payload.valorIva : (payload.aplicaIva ? Math.round(subtotalEquiposCalc * ((payload.tasaIva || 19) / 100)) : 0);
-    const valorRetefuente = payload.valorRetefuente !== undefined ? payload.valorRetefuente : (payload.aplicaRetefuente ? Math.round(subtotalEquiposCalc * ((payload.tasaRetefuente || 2.5) / 100)) : 0);
-    const valorReteica = payload.valorReteica !== undefined ? payload.valorReteica : (payload.aplicaReteica ? Math.round(subtotalEquiposCalc * ((payload.tasaReteica || 0.966) / 100)) : 0);
-    const totalGeneral = subtotalEquiposCalc + totalFletes + (payload.costosDano || 0) + valorIva - valorRetefuente - valorReteica;
+    const deposito = Number(payload.depositoAplicado || (payload as any).deposito || 0);
+    const valorIva = payload.valorIva !== undefined ? payload.valorIva : (payload.aplicaIva ? Math.round(subtotalEquipos * ((payload.tasaIva || 19) / 100)) : 0);
+    const valorRetefuente = payload.valorRetefuente !== undefined ? payload.valorRetefuente : (payload.aplicaRetefuente ? Math.round(subtotalEquipos * ((payload.tasaRetefuente || 2.5) / 100)) : 0);
+    const valorReteica = payload.valorReteica !== undefined ? payload.valorReteica : (payload.aplicaReteica ? Math.round(subtotalEquipos * ((payload.tasaReteica || 0.966) / 100)) : 0);
+    
+    const totalGeneralCalc = subtotalEquipos + totalFletes + (payload.costosDano || 0) + valorIva - valorRetefuente - valorReteica;
+    const totalGeneral = totalGeneralCalc > 0 
+      ? totalGeneralCalc 
+      : Number(payload.subtotalGeneral || (payload as any).total_general || (payload as any).total || payload.totalPagar || 0);
+
     const saldoPendiente = Math.max(0, totalGeneral - deposito);
-    const totalEnLetras = numeroALetras(saldoPendiente);
+    const montoParaLetras = saldoPendiente > 0 
+      ? saldoPendiente 
+      : (payload.saldoPendiente ? Number(payload.saldoPendiente) : (payload.totalPagar ? Number(payload.totalPagar) : totalGeneral));
+    const totalEnLetras = numeroALetras(montoParaLetras);
+
+    const fechaEmisionValid = payload.fechaEmision && !isNaN(new Date(payload.fechaEmision).getTime())
+      ? new Date(payload.fechaEmision)
+      : new Date();
 
     const tituloDoc =
       payload.tipo === "COTIZACION"
@@ -436,23 +491,23 @@ export class EnterprisePDFService {
       <div class="doc-badge">
         <h2>${tituloDoc}</h2>
         <p><strong>N°: ${consecutivoDisplay}</strong></p>
-        <p>Fecha: ${new Date(payload.fechaEmision).toLocaleDateString("es-CO")}</p>
+        <p>Fecha: ${fechaEmisionValid.toLocaleDateString("es-CO")}</p>
       </div>
     </div>
 
     <div class="grid-info">
       <div class="info-block">
         <h4>Información del Cliente</h4>
-        <p><strong>Razón Social:</strong> ${payload.clienteNombre || "Consumidor Final"}</p>
-        <p><strong>NIT / C.C.:</strong> ${payload.clienteNit || "Sin Registrar"}</p>
-        <p><strong>Teléfono:</strong> ${payload.clienteTelefono || "No registrado"}</p>
-        ${payload.clienteDireccion ? `<p><strong>Dirección:</strong> ${payload.clienteDireccion}</p>` : ""}
-        ${payload.clienteEmail ? `<p><strong>Email:</strong> ${payload.clienteEmail}</p>` : ""}
+        <p><strong>Razón Social:</strong> ${clienteNombre}</p>
+        <p><strong>NIT / C.C.:</strong> ${clienteNit}</p>
+        <p><strong>Teléfono:</strong> ${clienteTelefono}</p>
+        ${clienteDireccion ? `<p><strong>Dirección:</strong> ${clienteDireccion}</p>` : ""}
+        ${clienteEmail ? `<p><strong>Email:</strong> ${clienteEmail}</p>` : ""}
       </div>
       <div class="info-block">
         <h4>Logística y Respaldo</h4>
-        <p><strong>Destino / Obra:</strong> ${payload.detallesLogistica || payload.clienteDireccion || "Entrega en bodega"}</p>
-        <p><strong>Garantía (${payload.garantiaTipo || "Efectivo"}):</strong> ${formatearMonedaCOP(payload.garantiaMonto || 0)}</p>
+        <p><strong>Destino / Obra:</strong> ${payload.detallesLogistica || (payload as any).detalles_logistica || clienteDireccion || "Entrega en bodega"}</p>
+        <p><strong>Garantía (${payload.garantiaTipo || (payload as any).garantia_tipo || "Efectivo"}):</strong> ${formatearMonedaCOP(payload.garantiaMonto || (payload as any).garantia_monto || 0)}</p>
         ${payload.observaciones ? `<p><strong>Obs:</strong> ${payload.observaciones}</p>` : ""}
       </div>
     </div>

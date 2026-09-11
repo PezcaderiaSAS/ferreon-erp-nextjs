@@ -446,31 +446,56 @@ export default function AlquileresPage() {
   };
 
   const handleVerPDFCotizacion = (cot: any) => {
+    // Extracción tolerante de cliente
+    const rawCliente = cot.clientes || cot.cliente;
+    const clienteNombre = cot.cliente_nombre || cot.clienteNombre || rawCliente?.nombre || 'Consumidor Final';
+    const rawNit = cot.cliente_documento || cot.clienteNit || cot.clienteDocumento || rawCliente?.nit_cedula || rawCliente?.nit;
+    const clienteNit = (rawNit && rawNit !== 'Sin NIT' && rawNit !== 'Sin Registrar') ? rawNit : (rawNit || 'Sin Registrar');
+    const clienteTelefono = cot.cliente_telefono || cot.clienteTelefono || rawCliente?.telefono || '';
+    const clienteEmail = cot.cliente_email || cot.clienteEmail || rawCliente?.email || '';
+
+    // Extracción tolerante de ítems
+    const rawDetalles = cot.cotizaciones_detalles || cot.detalles || cot.items || [];
+    const items = rawDetalles.map((d: any) => {
+      const dias = Number(d.dias || d.dias_contratados || 1);
+      const tarifaDiaria = Number(d.tarifa_diaria ?? d.tarifaDiaria ?? d.tarifa_aplicada ?? d.tarifaAplicada ?? d.valor_unitario ?? d.equipos?.tarifa_diaria ?? 0);
+      const cantidad = Number(d.cantidad || 1);
+      const subtotal = Number(d.subtotal ?? d.subtotal_linea ?? (tarifaDiaria * dias * cantidad));
+      const nombreEquipo = d.equipos?.nombre || d.equipo?.nombre || d.nombreItem || d.nombre || 'Equipo';
+      const codigoEquipo = d.equipos?.codigo || d.equipo?.codigo || d.codigo || '';
+
+      return {
+        cantidad,
+        nombre: nombreEquipo,
+        codigo: codigoEquipo,
+        fechaInicio: d.fecha_inicio || d.fechaInicio || cot.fecha_emision || cot.created_at || new Date().toISOString(),
+        fechaFin: d.fecha_fin || d.fechaFin || new Date(Date.now() + dias * 24 * 60 * 60 * 1000).toISOString(),
+        dias,
+        tarifaDiaria,
+        subtotal,
+      };
+    });
+
+    const subtotalCalc = items.reduce((acc: number, it: any) => acc + (it.subtotal || 0), 0);
+    const subtotalEquipos = Number(cot.subtotal || cot.subtotal_equipos || subtotalCalc || 0);
+    const fleteEntrega = Number(cot.valor_transporte || cot.flete_entrega || cot.fleteEntrega || 0);
+
     const payload: DocumentoPDFPayload = {
       tipo: 'COTIZACION',
       consecutivo: cot.consecutivo,
       fechaEmision: cot.fecha_emision || cot.created_at || new Date().toISOString(),
       fechaVencimiento: cot.fecha_vencimiento,
-      clienteNombre: cot.cliente_nombre || 'Cliente',
-      clienteNit: cot.cliente_documento || 'Sin NIT',
-      clienteTelefono: cot.cliente_telefono || '',
-      clienteEmail: cot.cliente_email || '',
-      obraNombre: cot.obra_nombre || '',
-      obraDireccion: cot.obra_direccion || '',
-      items: (cot.cotizaciones_detalles || []).map((d: any) => ({
-        cantidad: d.cantidad,
-        nombre: d.equipos?.nombre || 'Equipo',
-        codigo: d.equipos?.codigo || '',
-        fechaInicio: cot.fecha_emision || new Date().toISOString(),
-        fechaFin: new Date(Date.now() + (d.dias || 1) * 24 * 60 * 60 * 1000).toISOString(),
-        dias: d.dias || 1,
-        tarifaDiaria: Number(d.tarifa_diaria || 0),
-        subtotal: Number(d.subtotal || 0),
-      })),
-      subtotalEquipos: Number(cot.subtotal || 0),
-      fleteEntrega: Number(cot.valor_transporte || 0),
+      clienteNombre,
+      clienteNit,
+      clienteTelefono,
+      clienteEmail,
+      obraNombre: cot.obra_nombre || cot.obraNombre || '',
+      obraDireccion: cot.obra_direccion || cot.obraDireccion || '',
+      items,
+      subtotalEquipos,
+      fleteEntrega,
       fleteRecogida: 0,
-      subtotalGeneral: Number(cot.subtotal || 0) + Number(cot.valor_transporte || 0),
+      subtotalGeneral: subtotalEquipos + fleteEntrega,
       aplicaIva: cot.aplica_iva,
       tasaIva: Number(cot.tasa_iva || 19),
       valorIva: Number(cot.valor_iva || 0),
@@ -481,7 +506,7 @@ export default function AlquileresPage() {
       tasaReteica: Number(cot.tasa_reteica || 0.966),
       valorReteica: Number(cot.valor_reteica || 0),
       depositoAplicado: Number(cot.deposito_garantia || 0),
-      totalPagar: Number(cot.total || 0),
+      totalPagar: Number(cot.total || (subtotalEquipos + fleteEntrega)),
       observaciones: cot.observaciones || '',
       empresa: empresaConfig,
     };
@@ -693,15 +718,56 @@ export default function AlquileresPage() {
 
   const handleGenerarPDF = async (contrato: any) => {
     try {
-      // Búsqueda proactiva del cliente real en el store local si no viene pre-cargado
+      // Búsqueda proactiva del cliente real en el store local o en la relación de BD
       const rawClienteId = contrato.cliente_id || contrato.clienteId;
       const clienteEnStore = useClienteStore.getState().clientes.find(c => String(c.id) === String(rawClienteId));
+      const clienteObj = contrato.clientes || (contrato as any).cliente || clienteEnStore;
 
-      const clienteNombre = contrato.clienteNombre || (contrato as any).cliente?.nombre || clienteEnStore?.nombre || "Consumidor Final";
-      const clienteNit = contrato.clienteNit || contrato.clienteDocumento || (contrato as any).cliente?.nit || (contrato as any).cliente?.nit_cedula || clienteEnStore?.nit_cedula || clienteEnStore?.nit || "Sin Registrar";
-      const clienteTelefono = contrato.clienteTelefono || (contrato as any).cliente?.telefono || clienteEnStore?.telefono || "";
-      const clienteDireccion = contrato.clienteDireccion || (contrato as any).cliente?.direccion || clienteEnStore?.direccion || "";
-      const clienteEmail = contrato.clienteEmail || (contrato as any).cliente?.email || clienteEnStore?.email || "";
+      const clienteNombre = contrato.clienteNombre || clienteObj?.nombre || "Consumidor Final";
+      const clienteNit = contrato.clienteNit || contrato.clienteDocumento || clienteObj?.nit_cedula || clienteObj?.nit || "Sin Registrar";
+      const clienteTelefono = contrato.clienteTelefono || clienteObj?.telefono || "No registrado";
+      const clienteDireccion = contrato.clienteDireccion || clienteObj?.direccion || "";
+      const clienteEmail = contrato.clienteEmail || clienteObj?.email || "";
+
+      // Extracción tolerante de ítems
+      const rawItems = contrato.detalles || contrato.alquiler_detalles || contrato.items || [];
+      const itemsMapeados = rawItems.map((d: any) => {
+        const fInicio = new Date(d.fechaInicio || d.fecha_inicio || contrato.createdAt || contrato.created_at || Date.now()).getTime();
+        const fFin = new Date(d.fechaFinEstimada || d.fecha_fin_estimada || d.fechaFin || d.fecha_fin || contrato.createdAt || contrato.created_at || Date.now()).getTime();
+        const diffMs = fFin - fInicio;
+        const dias = Number(d.dias || d.dias_contratados || Math.max(1, Math.ceil(diffMs / 86400000)));
+        
+        const tarifaDiaria = Number(d.tarifa_aplicada ?? d.tarifaAplicada ?? d.valor_unitario ?? d.tarifaDiaria ?? d.equipos?.tarifa_diaria ?? d.equipo?.tarifa_diaria ?? 0);
+        const cantidad = Number(d.cantidad || 1);
+        const subtotalLinea = Number(d.subtotal_linea ?? d.subtotalLineaReal ?? d.subtotalLineaEstimado ?? d.subtotal ?? (tarifaDiaria * dias * cantidad));
+
+        const itemId = d.itemId || d.equipoId || d.equipo_id || d.equipos?.id;
+        const equipoReal = useBodegaStore.getState().equipos.find(e => String(e.id) === String(itemId));
+        const nombreEquipo = d.equipos?.nombre || d.equipo?.nombre || equipoReal?.nombre || d.nombreItem || d.nombre || "Equipo";
+        const codigoEquipo = d.equipos?.codigo || d.equipo?.codigo || equipoReal?.codigo || d.codigo || "";
+
+        return {
+          itemId,
+          cantidad,
+          nombre: nombreEquipo,
+          codigo: codigoEquipo,
+          fechaInicio: new Date(fInicio).toISOString(),
+          fechaFin: new Date(fFin).toISOString(),
+          dias,
+          tarifaDiaria,
+          subtotal: subtotalLinea,
+        };
+      });
+
+      const subtotalItemsCalc = itemsMapeados.reduce((acc: number, it: any) => acc + (it.subtotal || 0), 0);
+      const fleteEntrega = Number(contrato.flete_entrega || contrato.fleteEntrega || contrato.costoEnvio || 0);
+      const fleteRecogida = Number(contrato.flete_recogida || contrato.fleteRecogida || contrato.costoRecoleccion || 0);
+      const totalFletes = fleteEntrega + fleteRecogida;
+      const costosDano = Number(rawItems.reduce((acc: number, d: any) => acc + Number(d.costo_dano || d.costoDano || 0), 0));
+      const subtotalEquipos = Number(contrato.subtotalEquiposEstimado || contrato.subtotal_equipos || contrato.subtotalEquipos || subtotalItemsCalc || 0);
+      const subtotalGeneral = Number(contrato.subtotalGeneralEstimado || contrato.total_general || contrato.subtotalGeneral || (subtotalEquipos + totalFletes + costosDano));
+      const depositoAplicado = Number(contrato.deposito || contrato.totalPagado || 0);
+      const totalPagar = Number(contrato.total || contrato.totalEstimado || (subtotalGeneral - depositoAplicado) || 0);
 
       const payload: any = {
         tipo: contrato.estado === 'COTIZACION' ? 'COTIZACION' : (contrato.estado === 'FINALIZADO' ? 'CUENTA_COBRO' : 'CONTRATO'),
@@ -713,29 +779,14 @@ export default function AlquileresPage() {
         clienteTelefono,
         clienteDireccion,
         clienteEmail,
-        items: (contrato.detalles || []).map((d: any) => {
-          const fInicio = new Date(d.fechaInicio || d.fecha_inicio || contrato.createdAt || contrato.created_at || Date.now()).getTime();
-          const fFin = new Date(d.fechaFinEstimada || d.fecha_fin_estimada || d.fechaFin || contrato.createdAt || contrato.created_at || Date.now()).getTime();
-          const dias = Math.max(1, Math.ceil((fFin - fInicio) / 86400000));
-          const tarifaDiaria = d.tarifaAplicada || d.valor_unitario || d.tarifaDiaria || 0;
-          const equipoReal = useBodegaStore.getState().equipos.find(e => String(e.id) === String(d.itemId || d.equipo_id));
-          return {
-            cantidad: d.cantidad || 1,
-            nombre: equipoReal?.nombre || d.nombreItem || d.nombre || "Equipo",
-            fechaInicio: new Date(fInicio).toISOString(),
-            fechaFin: new Date(fFin).toISOString(),
-            dias: dias,
-            tarifaDiaria: tarifaDiaria,
-            subtotal: d.subtotalLineaReal || d.subtotalLineaEstimado || (tarifaDiaria * dias * (d.cantidad || 1)) || 0,
-          };
-        }),
-        subtotalEquipos: contrato.subtotalEquiposEstimado || contrato.subtotal_equipos || contrato.subtotalEquipos || 0,
-        fleteEntrega: contrato.flete_entrega || contrato.fleteEntrega || contrato.costoEnvio || 0,
-        fleteRecogida: contrato.flete_recogida || contrato.fleteRecogida || contrato.costoRecoleccion || 0,
-        subtotalGeneral: contrato.subtotalGeneralEstimado || contrato.total_general || contrato.subtotalGeneral || 0,
-        costosDano: (contrato.detalles || []).reduce((acc: number, d: any) => acc + (d.costoDano || 0), 0),
-        depositoAplicado: contrato.deposito || contrato.totalPagado || 0,
-        totalPagar: contrato.total || contrato.totalEstimado || 0,
+        items: itemsMapeados,
+        subtotalEquipos,
+        fleteEntrega,
+        fleteRecogida,
+        subtotalGeneral,
+        costosDano,
+        depositoAplicado,
+        totalPagar,
         observaciones: contrato.observaciones || contrato.observacionesGenerales || "",
         detallesLogistica: contrato.detalles_logistica || contrato.detallesLogistica || "",
         empresa: empresaConfig,

@@ -108,37 +108,60 @@ export function clienteUIToCliente(ui: ClienteUI): Cliente {
  * Convierte un AlquilerEntity (dominio) → AlquilerUI (Zustand store).
  */
 export function alquilerEntityToAlquilerUI(entity: any): AlquilerUI {
-  const clienteNombre = entity.clienteNombre || entity.clientes?.nombre || entity.cliente_nombre || 'Consumidor Final';
-  
+  const clienteNombre = entity.clienteNombre || entity.clientes?.nombre || entity.cliente?.nombre || entity.cliente_nombre || 'Consumidor Final';
+  const clienteNit = entity.clienteNit || entity.clientes?.nit_cedula || entity.clientes?.nit || entity.cliente?.nit_cedula || entity.cliente?.nit || entity.cliente_nit || entity.nit_cedula || '';
+  const clienteTelefono = entity.clienteTelefono || entity.clientes?.telefono || entity.cliente?.telefono || entity.cliente_telefono || entity.telefono || '';
+  const clienteDireccion = entity.clienteDireccion || entity.clientes?.direccion || entity.cliente?.direccion || entity.cliente_direccion || entity.direccion || '';
+  const clienteEmail = entity.clienteEmail || entity.clientes?.email || entity.cliente?.email || entity.cliente_email || entity.email || '';
+
   const rawDetalles = (entity.detalles && entity.detalles.length > 0)
     ? entity.detalles
-    : (entity.alquiler_detalles || []);
+    : (entity.alquiler_detalles || entity.items || []);
 
-  const detallesMapeados = rawDetalles.map((d: any) => ({
-    id: d.id,
-    itemId: String(d.equipo_id || d.itemId || d.equipoId || ''),
-    equipoId: String(d.equipo_id || d.itemId || d.equipoId || ''),
-    nombreItem: (Array.isArray(d.equipos) ? d.equipos[0]?.nombre : d.equipos?.nombre) || d.nombreItem || d.nombre || 'Equipo de Construcción',
-    codigo: (Array.isArray(d.equipos) ? d.equipos[0]?.codigo : d.equipos?.codigo) || (Array.isArray(d.equipos) ? d.equipos[0]?.sku : d.equipos?.sku) || d.codigo || '',
-    cantidad: d.cantidad || 1,
-    tarifaAplicada: d.tarifa_aplicada ?? d.tarifaAplicada ?? d.valor_unitario ?? 0,
-    valor_unitario: d.tarifa_aplicada ?? d.tarifaAplicada ?? d.valor_unitario ?? 0,
-    diasContratados: d.dias_contratados ?? d.diasContratados ?? d.dias ?? 1,
-    fechaInicio: d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (d.fechaInicio || (entity.created_at ? new Date(entity.created_at).toISOString().split('T')[0] : '')),
-    fechaFinEstimada: d.fecha_fin ? new Date(d.fecha_fin).toISOString().split('T')[0] : (d.fechaFinEstimada || d.fechaFin || (entity.created_at ? new Date(entity.created_at).toISOString().split('T')[0] : '')),
-    subtotalLineaEstimado: d.subtotal_linea ?? d.subtotalLineaEstimado ?? 0,
-    devuelto: d.devuelto ?? false,
-    cantidadDevuelta: d.cantidad_devuelta ?? d.cantidadDevuelta ?? 0,
-    costoDano: d.costo_dano ?? d.costoDano ?? 0,
-    esSubcontratado: Boolean(d.es_subcontratado ?? d.esSubcontratado),
-    es_subcontratado: Boolean(d.es_subcontratado ?? d.esSubcontratado),
-    proveedorSubcontratadoId: d.proveedor_id ? String(d.proveedor_id) : (d.proveedorSubcontratadoId ? String(d.proveedorSubcontratadoId) : ''),
-    proveedor_id: d.proveedor_id ? String(d.proveedor_id) : (d.proveedorSubcontratadoId ? String(d.proveedorSubcontratadoId) : ''),
-    costoDiarioProveedor: Number(d.costo_subcontratacion_diario ?? d.costoDiarioProveedor ?? 0),
-    costo_subcontratacion_diario: Number(d.costo_subcontratacion_diario ?? d.costoDiarioProveedor ?? 0),
-  }));
+  const detallesMapeados = rawDetalles.map((d: any) => {
+    const nombreItem = (Array.isArray(d.equipos) ? d.equipos[0]?.nombre : d.equipos?.nombre) || d.nombreItem || d.nombre || d.equipo?.nombre || 'Equipo de Construcción';
+    const codigo = (Array.isArray(d.equipos) ? d.equipos[0]?.codigo : d.equipos?.codigo) || (Array.isArray(d.equipos) ? d.equipos[0]?.sku : d.equipos?.sku) || d.codigo || d.sku || '';
+    const cantidad = Number(d.cantidad || 1);
+    const tarifa = Number(d.tarifa_aplicada ?? d.tarifaAplicada ?? d.tarifa_diaria ?? d.tarifaDiaria ?? d.valor_unitario ?? 0);
+    const dias = Number(d.dias_contratados ?? d.diasContratados ?? d.dias ?? 1);
+    const subtotal = Number(d.subtotal_linea ?? d.subtotalLineaEstimado ?? d.subtotalLineaReal ?? d.subtotal ?? (cantidad * tarifa * dias));
 
-  const subtotalEquipos = entity.subtotalEquiposEstimado ?? entity.subtotal_equipos ?? 0;
+    return {
+      id: d.id,
+      itemId: String(d.equipo_id || d.itemId || d.equipoId || ''),
+      equipoId: String(d.equipo_id || d.itemId || d.equipoId || ''),
+      equipo_id: d.equipo_id || d.itemId || d.equipoId,
+      nombre: nombreItem,
+      nombreItem,
+      codigo,
+      cantidad,
+      tarifaDiaria: tarifa,
+      tarifaAplicada: tarifa,
+      tarifa_aplicada: tarifa,
+      valor_unitario: tarifa,
+      dias,
+      diasContratados: dias,
+      dias_contratados: dias,
+      fechaInicio: d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (d.fechaInicio || (entity.created_at ? new Date(entity.created_at).toISOString().split('T')[0] : '')),
+      fechaFin: d.fecha_fin ? new Date(d.fecha_fin).toISOString().split('T')[0] : (d.fechaFin || d.fechaFinEstimada || (entity.created_at ? new Date(entity.created_at).toISOString().split('T')[0] : '')),
+      fechaFinEstimada: d.fecha_fin ? new Date(d.fecha_fin).toISOString().split('T')[0] : (d.fechaFinEstimada || d.fechaFin || (entity.created_at ? new Date(entity.created_at).toISOString().split('T')[0] : '')),
+      subtotal,
+      subtotalLineaEstimado: subtotal,
+      subtotal_linea: subtotal,
+      devuelto: d.devuelto ?? false,
+      cantidadDevuelta: d.cantidad_devuelta ?? d.cantidadDevuelta ?? 0,
+      costoDano: d.costo_dano ?? d.costoDano ?? 0,
+      esSubcontratado: Boolean(d.es_subcontratado ?? d.esSubcontratado),
+      es_subcontratado: Boolean(d.es_subcontratado ?? d.esSubcontratado),
+      proveedorSubcontratadoId: d.proveedor_id ? String(d.proveedor_id) : (d.proveedorSubcontratadoId ? String(d.proveedorSubcontratadoId) : ''),
+      proveedor_id: d.proveedor_id ? String(d.proveedor_id) : (d.proveedorSubcontratadoId ? String(d.proveedorSubcontratadoId) : ''),
+      costoDiarioProveedor: Number(d.costo_subcontratacion_diario ?? d.costoDiarioProveedor ?? 0),
+      costo_subcontratacion_diario: Number(d.costo_subcontratacion_diario ?? d.costoDiarioProveedor ?? 0),
+      equipos: d.equipos || d.equipo,
+    };
+  });
+
+  const subtotalEquipos = entity.subtotalEquiposEstimado ?? entity.subtotal_equipos ?? (detallesMapeados.reduce((acc: number, it: any) => acc + it.subtotal, 0));
   const fleteEntrega = entity.fleteEntrega ?? entity.flete_entrega ?? 0;
   const fleteRecogida = entity.fleteRecogida ?? entity.flete_recogida ?? 0;
   const subtotalGeneral = entity.subtotalGeneralEstimado ?? entity.subtotal_general ?? (subtotalEquipos + fleteEntrega + fleteRecogida);
@@ -152,6 +175,11 @@ export function alquilerEntityToAlquilerUI(entity: any): AlquilerUI {
     consecutivo: entity.consecutivo ?? 0,
     cliente_id: entity.clienteId ?? entity.cliente_id ?? '',
     clienteNombre,
+    clienteNit,
+    clienteTelefono,
+    clienteDireccion,
+    clienteEmail,
+    clientes: entity.clientes || entity.cliente,
     estado: entity.estado || 'ACTIVO',
     subtotal_equipos: subtotalEquipos,
     flete_entrega: fleteEntrega,
@@ -169,6 +197,7 @@ export function alquilerEntityToAlquilerUI(entity: any): AlquilerUI {
     observaciones: entity.observacionesGenerales ?? entity.observaciones ?? '',
     detalles_logistica: entity.detallesLogistica ?? entity.detalles_logistica ?? '',
     detalles: detallesMapeados,
+    items: detallesMapeados,
     created_at: entity.createdAt ? new Date(entity.createdAt).toISOString() : (entity.created_at ? new Date(entity.created_at).toISOString() : new Date().toISOString()),
     aplica_iva: entity.aplica_iva ?? false,
     valor_iva: entity.valor_iva ?? 0,

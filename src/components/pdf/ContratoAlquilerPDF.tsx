@@ -322,19 +322,43 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
     day: '2-digit',
   });
 
-  // Procesamiento y cálculo matemático dinámico de ítems
-  const detallesProcesados = (data.detalles || []).map((item: any) => {
+  // Extracción tolerante y defensiva de cliente
+  const rawCliente = (data as any).clientes || (data as any).cliente;
+  const clienteNombre = data.clienteNombre || data.cliente_nombre || rawCliente?.nombre || 'Consumidor Final';
+  const rawNit = data.clienteNit || data.cliente_nit || data.nit_cedula || data.nit || rawCliente?.nit_cedula || rawCliente?.nit;
+  const clienteNit = (rawNit && rawNit !== 'Sin NIT' && rawNit !== 'Sin Registrar') ? rawNit : (rawNit || 'Sin Registrar');
+  const rawTel = data.clienteTelefono || data.telefono || data.contacto || rawCliente?.telefono;
+  const clienteTelefono = (rawTel && rawTel !== 'No registrado' && rawTel !== 'No especificado') ? rawTel : (rawTel || 'No registrado');
+
+  // Procesamiento y cálculo matemático dinámico de ítems tolerante
+  const rawDetalles = (data.detalles && data.detalles.length > 0) 
+    ? data.detalles 
+    : ((data.alquiler_detalles && data.alquiler_detalles.length > 0) 
+      ? data.alquiler_detalles 
+      : (data.items || []));
+
+  const detallesProcesados = rawDetalles.map((item: any) => {
     const fInicio = item.fecha_inicio || item.fechaInicio || fechaDoc;
     const fFin = item.fecha_fin_estimada || item.fechaFinEstimada || item.fecha_fin || item.fechaFin || fInicio;
     
     const diffMs = new Date(fFin).getTime() - new Date(fInicio).getTime();
-    const dias = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    const dias = item.dias && Number(item.dias) > 0 
+      ? Number(item.dias) 
+      : (item.dias_contratados && Number(item.dias_contratados) > 0 
+        ? Number(item.dias_contratados) 
+        : Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24))));
     const cantidad = Number(item.cantidad || 1);
-    const tarifa = Number(item.valor_unitario || item.tarifaDiaria || item.tarifaAplicada || item.precioDiario || 0);
-    const subtotalLinea = cantidad * tarifa * dias;
+    const tarifa = Number(item.tarifa_aplicada ?? item.tarifaAplicada ?? item.valor_unitario ?? item.tarifaDiaria ?? item.precioDiario ?? item.equipos?.tarifa_diaria ?? item.equipo?.tarifa_diaria ?? 0);
+    const subtotalLinea = (item.subtotal !== undefined && Number(item.subtotal) > 0)
+      ? Number(item.subtotal)
+      : ((item.subtotal_linea !== undefined && Number(item.subtotal_linea) > 0)
+        ? Number(item.subtotal_linea)
+        : ((item.subtotalLineaEstimado !== undefined && Number(item.subtotalLineaEstimado) > 0)
+          ? Number(item.subtotalLineaEstimado)
+          : cantidad * tarifa * dias));
 
-    const nombreDisplay = item.nombreItem || item.nombre || item.equipo?.nombre || 'Equipo de Construcción';
-    const codigoDisplay = item.codigo || item.sku || item.equipo?.codigo || '';
+    const nombreDisplay = item.equipos?.nombre || item.equipo?.nombre || item.nombreItem || item.nombre || 'Equipo de Construcción';
+    const codigoDisplay = item.equipos?.codigo || item.equipo?.codigo || item.codigo || item.sku || '';
 
     return {
       nombre: codigoDisplay ? `${nombreDisplay} (${codigoDisplay})` : nombreDisplay,
@@ -347,7 +371,7 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
     };
   });
 
-  const subtotalEquipos = detallesProcesados.reduce((acc: number, it: any) => acc + it.subtotal, 0);
+  const subtotalEquipos = Number(data.subtotal_equipos || data.subtotalEquipos || data.subtotalEquiposEstimado || detallesProcesados.reduce((acc: number, it: any) => acc + it.subtotal, 0));
   const fleteEntrega = Number(data.flete_entrega || data.fleteEntrega || 0);
   const fleteRecogida = Number(data.flete_recogida || data.fleteRecogida || 0);
   const totalFletes = fleteEntrega + fleteRecogida;
@@ -355,9 +379,10 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
   const garantiaMonto = Number(data.garantia_monto || data.garantiaMonto || 0);
   const garantiaTipo = data.garantia_tipo || data.garantiaTipo || 'Efectivo';
   
-  const totalGeneral = subtotalEquipos + totalFletes;
+  const totalGeneral = Number(data.total || data.total_general || data.totalEstimado || (subtotalEquipos + totalFletes));
   const saldoPendiente = Math.max(0, totalGeneral - deposito);
-  const montoEnLetras = numeroALetras(saldoPendiente);
+  const montoParaLetras = saldoPendiente > 0 ? saldoPendiente : (totalGeneral > 0 ? totalGeneral : subtotalEquipos);
+  const montoEnLetras = numeroALetras(montoParaLetras);
 
   const consecutivoFormatted = data.consecutivo ? `#${String(data.consecutivo).padStart(5, '0')}` : 'BORRADOR';
 
@@ -398,15 +423,15 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
             <Text style={[styles.metaBold, { color: themeTokens.dark, marginBottom: 4 }]}>DATOS DEL CLIENTE</Text>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Cliente:</Text>
-              <Text style={styles.infoValue}>{data.clienteNombre || data.cliente_nombre || 'Consumidor Final'}</Text>
+              <Text style={styles.infoValue}>{clienteNombre}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>NIT / C.C.:</Text>
-              <Text style={styles.infoValue}>{data.clienteNit || data.cliente_nit || data.nit_cedula || data.nit || 'Sin Registrar'}</Text>
+              <Text style={styles.infoValue}>{clienteNit}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Teléfono:</Text>
-              <Text style={styles.infoValue}>{data.clienteTelefono || data.telefono || data.contacto || 'No especificado'}</Text>
+              <Text style={styles.infoValue}>{clienteTelefono}</Text>
             </View>
           </View>
 
