@@ -1,4 +1,3 @@
-// @ts-ignore - PrismaClient se autogenera mediante prisma generate tras la migración
 import { PrismaClient } from "@prisma/client";
 
 declare global {
@@ -6,27 +5,45 @@ declare global {
   var globalPrisma: PrismaClient | undefined;
 }
 
-/**
- * Instancia global singleton de PrismaClient para Next.js App Router
- * Evita la saturación de conexiones en el pool de PostgreSQL durante el desarrollo (HMR).
- */
-export const prisma =
-  global.globalPrisma ||
-  new PrismaClient({
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["query", "error", "warn"]
-        : ["error"],
-  });
+let _prismaInstance: PrismaClient | undefined;
 
-if (process.env.NODE_ENV !== "production") {
-  global.globalPrisma = prisma;
+/**
+ * Retorna la instancia singleton de PrismaClient de manera perezosa (lazy).
+ * Evita errores en tiempo de importación durante pruebas o compilación sin adapter configurado.
+ */
+export function getPrismaClient(): PrismaClient {
+  if (global.globalPrisma) {
+    return global.globalPrisma;
+  }
+  if (!_prismaInstance) {
+    _prismaInstance = new PrismaClient({
+      log:
+        process.env.NODE_ENV === "development"
+          ? ["query", "error", "warn"]
+          : ["error"],
+    });
+
+    if (process.env.NODE_ENV !== "production") {
+      global.globalPrisma = _prismaInstance;
+    }
+  }
+  return _prismaInstance;
 }
+
+/**
+ * Proxy para mantener compatibilidad con `import { prisma } from '...'`
+ */
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getPrismaClient();
+    return (client as unknown as Record<string | symbol, unknown>)[prop];
+  },
+});
 
 /**
  * Modelos con soporte directo de aislamiento por empresa (Multi-Tenant)
  */
-const TENANT_AWARE_MODELS = new Set([
+export const TENANT_AWARE_MODELS = new Set([
   "Customer",
   "User",
   "Warehouse",
@@ -45,56 +62,58 @@ const TENANT_AWARE_MODELS = new Set([
  * escrituras y eliminaciones masivas, evitando fugas de datos (data leaks) entre inquilinos.
  *
  * @param tenantId UUID del inquilino / empresa activa
+ * @param baseClient Cliente Prisma opcional (útil para pruebas unitarias con mocks)
  * @returns Instancia de PrismaClient contextualizada al inquilino
  */
-export function getTenantPrismaClient(tenantId: string) {
-  if (!tenantId || typeof tenantId !== "string") {
+export function getTenantPrismaClient(tenantId: string, baseClient?: PrismaClient) {
+  if (!tenantId || typeof tenantId !== "string" || tenantId.trim() === "") {
     throw new Error(
       "[Security Exception] Multi-Tenant Guard: Se requiere un tenantId válido para instanciar el cliente de base de datos."
     );
   }
 
-  return prisma.$extends({
+  const client = baseClient || getPrismaClient();
+
+  return client.$extends({
     name: "multi-tenant-isolation-guard",
     query: {
       $allModels: {
         async findMany({ model, args, query }) {
           if (TENANT_AWARE_MODELS.has(model)) {
-            args.where = { ...args.where, empresaId: tenantId };
+            args.where = { ...(args.where as Record<string, unknown>), empresaId: tenantId } as typeof args.where;
           }
           return query(args);
         },
         async findFirst({ model, args, query }) {
           if (TENANT_AWARE_MODELS.has(model)) {
-            args.where = { ...args.where, empresaId: tenantId };
+            args.where = { ...(args.where as Record<string, unknown>), empresaId: tenantId } as typeof args.where;
           }
           return query(args);
         },
         async findUnique({ model, args, query }) {
-          // findUnique en Prisma requiere claves primarias o únicas completas
           return query(args);
         },
         async count({ model, args, query }) {
           if (TENANT_AWARE_MODELS.has(model)) {
-            args.where = { ...args.where, empresaId: tenantId };
+            args.where = { ...(args.where as Record<string, unknown>), empresaId: tenantId } as typeof args.where;
           }
           return query(args);
         },
         async create({ model, args, query }) {
           if (TENANT_AWARE_MODELS.has(model)) {
-            args.data = { ...args.data, empresaId: tenantId };
+            args.data = { ...(args.data as Record<string, unknown>), empresaId: tenantId } as typeof args.data;
           }
           return query(args);
         },
         async updateMany({ model, args, query }) {
           if (TENANT_AWARE_MODELS.has(model)) {
-            args.where = { ...args.where, empresaId: tenantId };
+            args.where = { ...(args.where as Record<string, unknown>), empresaId: tenantId } as typeof args.where;
           }
           return query(args);
         },
         async deleteMany({ model, args, query }) {
           if (TENANT_AWARE_MODELS.has(model)) {
-            args.where = { ...args.where, empresaId: tenantId };
+            args.where = { ...(args.where as Record<string, unknown>), empresaId: tenantId } as typeof args.where;
           }
           return query(args);
         },

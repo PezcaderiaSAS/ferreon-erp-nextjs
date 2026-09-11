@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { getTenantPrismaClient } from "@/infrastructure/persistence/prisma/client";
+import type { PrismaClient } from "@prisma/client";
+import { getTenantPrismaClient, TENANT_AWARE_MODELS } from "@/infrastructure/persistence/prisma/client";
 
 describe("Arquitectura Multi-Tenant & Aislamiento por Fila (Prisma ORM)", () => {
   const MOCK_TENANT_A = "11111111-1111-4111-8111-111111111111";
@@ -15,12 +16,75 @@ describe("Arquitectura Multi-Tenant & Aislamiento por Fila (Prisma ORM)", () => 
   });
 
   it("debe retornar una instancia de cliente extendida para un tenant válido", () => {
-    const tenantClient = getTenantPrismaClient(MOCK_TENANT_A);
+    const mockBaseClient = {
+      $extends: vi.fn().mockReturnValue({ isExtended: true }),
+    } as unknown as PrismaClient;
+
+    const tenantClient = getTenantPrismaClient(MOCK_TENANT_A, mockBaseClient);
     expect(tenantClient).toBeDefined();
-    expect(typeof tenantClient).toBe("object");
+    expect(mockBaseClient.$extends).toHaveBeenCalled();
   });
 
-  it("garantiza que las cantidades de stock y balances WMS sean estrictamente enteros", () => {
+  it("debe inyectar automáticamente empresaId en findMany y create para modelos tenant-aware", async () => {
+    let capturedFindManyArgs: any = null;
+    let capturedCreateArgs: any = null;
+
+    const mockBaseClient = {
+      $extends: vi.fn().mockImplementation(({ query }) => {
+        return {
+          customer: {
+            findMany: async (args: any) => {
+              return query.$allModels.findMany({
+                model: "Customer",
+                args,
+                query: async (finalArgs: any) => {
+                  capturedFindManyArgs = finalArgs;
+                  return [];
+                },
+              });
+            },
+            create: async (args: any) => {
+              return query.$allModels.create({
+                model: "Customer",
+                args,
+                query: async (finalArgs: any) => {
+                  capturedCreateArgs = finalArgs;
+                  return { id: 1, ...finalArgs.data };
+                },
+              });
+            },
+          },
+        };
+      }),
+    } as unknown as PrismaClient;
+
+    const tenantClient = getTenantPrismaClient(MOCK_TENANT_A, mockBaseClient) as any;
+
+    // 1. Simular consulta de lectura (findMany)
+    await tenantClient.customer.findMany({ where: { activo: true } });
+    expect(capturedFindManyArgs).toBeDefined();
+    expect(capturedFindManyArgs.where.empresaId).toBe(MOCK_TENANT_A);
+    expect(capturedFindManyArgs.where.activo).toBe(true);
+
+    // 2. Simular inserción de datos (create)
+    await tenantClient.customer.create({ data: { nombre: "Cliente Obra Norte" } });
+    expect(capturedCreateArgs).toBeDefined();
+    expect(capturedCreateArgs.data.empresaId).toBe(MOCK_TENANT_A);
+    expect(capturedCreateArgs.data.nombre).toBe("Cliente Obra Norte");
+  });
+
+  it("garantiza que todos los modelos críticos de negocio están registrados como tenant-aware", () => {
+    expect(TENANT_AWARE_MODELS.has("Customer")).toBe(true);
+    expect(TENANT_AWARE_MODELS.has("Warehouse")).toBe(true);
+    expect(TENANT_AWARE_MODELS.has("WarehouseStock")).toBe(true);
+    expect(TENANT_AWARE_MODELS.has("Equipment")).toBe(true);
+    expect(TENANT_AWARE_MODELS.has("RentalContract")).toBe(true);
+    expect(TENANT_AWARE_MODELS.has("RentalDetail")).toBe(true);
+    expect(TENANT_AWARE_MODELS.has("InventoryMovement")).toBe(true);
+    expect(TENANT_AWARE_MODELS.has("AuditLog")).toBe(true);
+  });
+
+  it("garantiza que las cantidades de stock y balances WMS sean estrictamente enteros (cero coma flotante)", () => {
     const stockEntrada = 10;
     const stockDecimalErroneo = 10.5;
 
