@@ -94,3 +94,86 @@ export async function resolveEmpresaId(userId?: string | null): Promise<string> 
 
   return DEFAULT_EMPRESA_ID;
 }
+
+export interface SupabaseHealthResult {
+  ok: boolean;
+  latenciaMs: number;
+  url: string;
+  timestamp: string;
+  empresaId?: string;
+  detalles?: {
+    servicioUrlConfigurado: boolean;
+    serviceKeyConfigurada: boolean;
+    anonKeyConfigurada: boolean;
+  };
+  error?: string;
+}
+
+/**
+ * Verifica la conectividad en vivo con la base de datos Supabase,
+ * midiendo la latencia de respuesta y confirmando que las operaciones de lectura/escritura son posibles.
+ */
+export async function verificarConexionSupabase(): Promise<SupabaseHealthResult> {
+  const tInicio = Date.now();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
+  const serviceKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+  const detalles = {
+    servicioUrlConfigurado: Boolean(url),
+    serviceKeyConfigurada: Boolean(serviceKey),
+    anonKeyConfigurada: Boolean(anonKey)
+  };
+
+  if (!url || (!serviceKey && !anonKey)) {
+    return {
+      ok: false,
+      latenciaMs: Date.now() - tInicio,
+      url: url || 'NO_CONFIGURADA',
+      timestamp: new Date().toISOString(),
+      detalles,
+      error: 'Credenciales de Supabase incompletas en las variables de entorno.'
+    };
+  }
+
+  try {
+    const admin = createAdminSupabaseClient();
+    
+    // Test de consulta liviano para medir respuesta real de la base de datos
+    const { data, error } = await admin
+      .from('empresas')
+      .select('id')
+      .limit(1);
+
+    const latenciaMs = Date.now() - tInicio;
+
+    if (error) {
+      return {
+        ok: false,
+        latenciaMs,
+        url,
+        timestamp: new Date().toISOString(),
+        detalles,
+        error: `Error de respuesta en Supabase: ${error.message}`
+      };
+    }
+
+    return {
+      ok: true,
+      latenciaMs,
+      url,
+      timestamp: new Date().toISOString(),
+      empresaId: data && data[0] ? data[0].id : undefined,
+      detalles
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      latenciaMs: Date.now() - tInicio,
+      url,
+      timestamp: new Date().toISOString(),
+      detalles,
+      error: err.message || 'Excepción al conectar con Supabase.'
+    };
+  }
+}

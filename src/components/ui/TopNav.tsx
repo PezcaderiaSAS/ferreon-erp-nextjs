@@ -10,6 +10,8 @@ import { unifiedLogout } from '../../lib/auth/logout';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { CajaStatusBadge } from '../caja/CajaStatusBadge';
+
 export function TopNav() {
   const { toggleMobileMenu, setTourOpen } = useLayoutStore();
   const { tenant } = useTenantStore();
@@ -60,6 +62,7 @@ export function TopNav() {
         </div>
       </div>
       <div className="flex items-center gap-2 sm:gap-4 ml-4">
+        <CajaStatusBadge />
         <button 
           onClick={() => setTourOpen(true)}
           className="hidden sm:flex items-center gap-2 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors border border-indigo-100"

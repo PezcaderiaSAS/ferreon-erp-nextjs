@@ -109,6 +109,8 @@ model Tenant {
   rentalDetails      RentalDetail[]
   inventoryMovements InventoryMovement[]
   auditLogs          AuditLog[]
+  cashSessions       CashSession[]
+  cashMovements      CashMovement[]
 
   @@index([slug])
   @@map("empresas")
@@ -370,3 +372,56 @@ model AuditLog {
   @@index([usuarioId])
   @@map("audit_logs")
 }
+
+// ----------------------------------------------------------------------------
+// 9. PUNTO DE VENTA (POS) & CONTROL DE CAJA EN EFECTIVO
+// ----------------------------------------------------------------------------
+
+model CashSession {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String?   @map("tenant_id") @db.Uuid
+  empresaId       String?   @map("empresa_id") @db.Uuid
+  usuarioId       String    @map("usuario_id") @db.Uuid
+  estado          String    @default("ABIERTA") @db.VarChar(20)
+  montoApertura   Decimal   @default(0) @map("monto_apertura") @db.Decimal(15, 2)
+  montoCierre     Decimal?  @map("monto_cierre") @db.Decimal(15, 2)
+  montoEsperado   Decimal?  @map("monto_esperado") @db.Decimal(15, 2)
+  diferencia      Decimal?  @db.Decimal(15, 2)
+  motivoDescuadre String?   @map("motivo_descuadre")
+  arqueoDetalle   Json?     @map("arqueo_detalle")
+  observaciones   String?
+  fechaApertura   DateTime? @default(now()) @map("fecha_apertura") @db.Timestamptz(6)
+  fechaCierre     DateTime? @map("fecha_cierre") @db.Timestamptz(6)
+
+  tenant      Tenant?        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  movements   CashMovement[]
+
+  @@index([empresaId])
+  @@index([tenantId])
+  @@index([estado])
+  @@index([usuarioId])
+  @@map("sesiones_caja")
+}
+
+model CashMovement {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String?   @map("tenant_id") @db.Uuid
+  empresaId     String?   @map("empresa_id") @db.Uuid
+  sesionCajaId  String    @map("sesion_caja_id") @db.Uuid
+  usuarioId     String    @map("usuario_id") @db.Uuid
+  tipo          String    @db.VarChar(20)
+  monto         Decimal   @db.Decimal(15, 2)
+  concepto      String    @db.VarChar(255)
+  beneficiario  String?   @db.VarChar(255)
+  comprobante   String?   @db.VarChar(100)
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant        Tenant?     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  cashSession   CashSession @relation(fields: [sesionCajaId], references: [id], onDelete: Cascade)
+
+  @@index([empresaId])
+  @@index([tenantId])
+  @@index([sesionCajaId])
+  @@map("movimientos_caja")
+}
+

@@ -123,4 +123,9 @@ describe("Arquitectura Multi-Tenant & Aislamiento por Fila (Prisma ORM)", () => 
     expect(equiposTenantB.length).toBe(1);
     expect(equiposTenantA[0].empresaId).not.toBe(equiposTenantB[0].empresaId);
   });
+
+  it("garantiza que los modelos de Punto de Venta (CashSession y CashMovement) están protegidos por el guard multi-tenant", () => {
+    expect(TENANT_AWARE_MODELS.has("CashSession")).toBe(true);
+    expect(TENANT_AWARE_MODELS.has("CashMovement")).toBe(true);
+  });
 });

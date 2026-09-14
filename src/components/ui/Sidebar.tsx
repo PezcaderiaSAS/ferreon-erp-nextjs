@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, FileSpreadsheet, Package, ShoppingBag, Handshake, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X, LogOut, Palette } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, FileSpreadsheet, Package, ShoppingBag, Handshake, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X, LogOut, Palette, Wallet } from 'lucide-react';
 import { useEmpresaStore, applyThemeToDOM } from '../../infrastructure/state/empresaStore';
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';
 import { useTenantStore } from '../../infrastructure/state/tenantStore';
@@ -20,6 +20,7 @@ const SIDEBAR_LINKS = [
   { href: '/subcontrataciones', icon: Handshake, label: 'Subcontratación' },
   { href: '/devoluciones', icon: ArrowLeftRight, label: 'Devoluciones' },
   { href: '/facturacion', icon: FileText, label: 'Facturación' },
+  { href: '/caja', icon: Wallet, label: 'Caja & POS' },
   { href: '/clientes', icon: Users, label: 'Clientes' },
   { href: '/suscripcion', icon: CreditCard, label: 'Suscripción' },
 ];

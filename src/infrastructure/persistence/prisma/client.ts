@@ -53,6 +53,8 @@ export const TENANT_AWARE_MODELS = new Set([
   "RentalDetail",
   "InventoryMovement",
   "AuditLog",
+  "CashSession",
+  "CashMovement",
 ]);
 
 /**

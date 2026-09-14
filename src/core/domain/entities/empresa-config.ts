@@ -21,6 +21,8 @@ export interface EmpresaConfig {
   notasFacturaPDF?: string;
   cuentaBancariaInfo?: string;
   diasMinimosAlquiler?: number;
+  /** Régimen fiscal o tributario */
+  regimen?: string;
   /** País o Jurisdicción Fiscal de Operación */
   pais?: string;
   /** Tasa de impuesto por defecto en % (ej. 19 para CO, 16 para MX) */

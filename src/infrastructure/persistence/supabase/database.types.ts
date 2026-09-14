@@ -1185,8 +1185,67 @@ export type Database = {
           },
         ]
       }
+      movimientos_caja: {
+        Row: {
+          beneficiario: string | null
+          comprobante: string | null
+          concepto: string
+          created_at: string | null
+          empresa_id: string | null
+          id: string
+          monto: number
+          sesion_caja_id: string
+          tenant_id: string | null
+          tipo: string
+          usuario_id: string
+        }
+        Insert: {
+          beneficiario?: string | null
+          comprobante?: string | null
+          concepto: string
+          created_at?: string | null
+          empresa_id?: string | null
+          id?: string
+          monto: number
+          sesion_caja_id: string
+          tenant_id?: string | null
+          tipo: string
+          usuario_id: string
+        }
+        Update: {
+          beneficiario?: string | null
+          comprobante?: string | null
+          concepto?: string
+          created_at?: string | null
+          empresa_id?: string | null
+          id?: string
+          monto?: number
+          sesion_caja_id?: string
+          tenant_id?: string | null
+          tipo?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimientos_caja_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimientos_caja_sesion_caja_id_fkey"
+            columns: ["sesion_caja_id"]
+            isOneToOne: false
+            referencedRelation: "sesiones_caja"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sesiones_caja: {
         Row: {
+          arqueo_detalle: Json | null
+          diferencia: number | null
           empresa_id: string | null
           estado: string
           fecha_apertura: string | null
@@ -1194,11 +1253,15 @@ export type Database = {
           id: string
           monto_apertura: number
           monto_cierre: number | null
+          monto_esperado: number | null
+          motivo_descuadre: string | null
           observaciones: string | null
           tenant_id: string | null
           usuario_id: string
         }
         Insert: {
+          arqueo_detalle?: Json | null
+          diferencia?: number | null
           empresa_id?: string | null
           estado?: string
           fecha_apertura?: string | null
@@ -1206,11 +1269,15 @@ export type Database = {
           id?: string
           monto_apertura?: number
           monto_cierre?: number | null
+          monto_esperado?: number | null
+          motivo_descuadre?: string | null
           observaciones?: string | null
           tenant_id?: string | null
           usuario_id: string
         }
         Update: {
+          arqueo_detalle?: Json | null
+          diferencia?: number | null
           empresa_id?: string | null
           estado?: string
           fecha_apertura?: string | null
@@ -1218,6 +1285,8 @@ export type Database = {
           id?: string
           monto_apertura?: number
           monto_cierre?: number | null
+          monto_esperado?: number | null
+          motivo_descuadre?: string | null
           observaciones?: string | null
           tenant_id?: string | null
           usuario_id?: string

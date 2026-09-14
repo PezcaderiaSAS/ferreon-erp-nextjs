@@ -31,7 +31,11 @@ export type AuditActionType =
   | "CREAR_PROVEEDOR"
   | "EDITAR_PROVEEDOR"
   | "CREAR_ORDEN_SUBCONTRATACION"
-  | "CAMBIO_ESTADO_SUBCONTRATACION";
+  | "CAMBIO_ESTADO_SUBCONTRATACION"
+  | "APERTURA_CAJA"
+  | "CIERRE_CAJA"
+  | "EGRESO_CAJA_MENOR"
+  | "INGRESO_CAJA_MENOR";
 
 export type AuditModuloType =
   | "SEGURIDAD"
@@ -45,7 +49,8 @@ export type AuditModuloType =
   | "CLIENTES"
   | "CONFIGURACION"
   | "TENANTS"
-  | "SUBCONTRATACIONES";
+  | "SUBCONTRATACIONES"
+  | "CAJA_POS";
 
 export interface AuditDetalleCambio {
   campo?: string;
