@@ -1,21 +1,23 @@
-Codemap Update Summary - 2026-09-10
+Codemap Update Summary - 2026-09-15
 ====================================
-Files Scanned: ~55
+Files Scanned: ~68
 Architecture Changes:
-  - Added Purchases & Suppliers Subsystem (/compras, /cotizaciones)
-  - Added Real-time Tax Engine (IVA 19%, ReteFuente 2.5%/3.5%, ReteICA 9.66‰)
-  - Integrated Balanced Double-Entry Bookkeeping in Ledger (journal_entries)
-  - Injected Financial Accounts (1520, 2408, 2365, 2368, 2205)
-  - Added Assisted Supplier Typeahead (SelectorProveedorAsistido.tsx)
-  - Integrated Official PDF Purchase Order Generator (ComprobanteEntradaPDFModal.tsx)
+  - Integrated End-to-End Idempotency in Rental Contracts (idempotency_key UUID v4)
+  - Added Poka-Yoke Visual Blocking Overlay (AlquilerBlockingOverlay.tsx) with Glassmorphism and click/keyboard suppression
+  - Enforced Zero Latency (0 ms) with Optimistic Snapshots and Rollback in Zustand stores
+  - Added Cash Register & Treasury Module (/caja, actions/caja.ts, cash count calculator, print modals)
+  - Added Machinery Subcontracting Module (/subcontrataciones, actions/subcontrataciones.ts)
+  - Applied Supabase Migration 20260915_idempotencia_alquileres.sql (unique conditional index & atomic RPC deduplication)
+  - Added Forensic Duplication Diagnostic Tool (scripts/diagnosticar_duplicados.mjs)
+  - Configured Linter Governance (.eslintignore & .eslintrc.json ignorePatterns)
 
 Updated Codemaps:
-  - docs/CODEMAPS/architecture.md: Updated with purchases, suppliers, and accounting ledger boundaries.
-  - docs/CODEMAPS/backend.md: Added actions/proveedores.ts, actions/compras.ts, actions/cotizaciones.ts, actions/facturacion.ts.
-  - docs/CODEMAPS/frontend.md: Added /compras (tabs: orders/suppliers), /cotizaciones, assisted selector, and PDF modals.
-  - docs/CODEMAPS/data.md: Added proveedores, compras, compras_detalles, cotizaciones, and new financial_accounts.
-  - docs/CODEMAPS/dependencies.md: Added Upstash Redis keys for purchases/suppliers and tax domain services.
+  - docs/CODEMAPS/architecture.md: Updated with idempotency perimeter, Poka-Yoke visual guard, and cash register boundaries.
+  - docs/CODEMAPS/backend.md: Added idempotency key guard in alquileres.ts, actions/caja.ts, actions/subcontrataciones.ts, and forensic script.
+  - docs/CODEMAPS/frontend.md: Added AlquilerBlockingOverlay, reactive submit buttons, /caja page, and cash register modal suite.
+  - docs/CODEMAPS/data.md: Added idempotency_key column, unique conditional index, caja_sesiones, caja_movimientos, and migrations history.
+  - docs/CODEMAPS/dependencies.md: Updated Prisma 7.10.0, Next.js 14 (23 routes), and idempotency/caja integrations.
 
-Diff Percentage: ~22% (Updated in-place according to workflow policy)
-Production Build Status: 22/22 routes passing clean (Exit code 0).
-Unit Tests Status: 26 files passed, 94 tests passed (100% green).
+Diff Percentage: ~24% (Updated in-place according to workflow policy)
+Production Build Status: 23/23 routes passing clean (Exit code 0).
+Unit Tests Status: 41 test files passed, 178 tests passed (100% green).

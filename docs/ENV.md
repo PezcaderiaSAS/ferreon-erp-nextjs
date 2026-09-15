@@ -9,8 +9,10 @@ Las siguientes variables son necesarias para levantar el entorno de FerreOn ERP 
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sí | Clave anónima pública JWT de Supabase (Frontend). | `eyJhbGciOiJIUz...` |
 | `SUPABASE_SECRET_KEY` | Sí | Clave de servidor para nuevo SDK `@supabase/server`. NUNCA exponer al cliente. | `sb_secret_...` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Sí | Clave clásica service_role para omitir RLS en acciones administrativas y de auditoría. | `eyJhbGciOiJIUz...` |
+| `DATABASE_URL` | Sí | Cadena de conexión PostgreSQL para Prisma ORM (Connection Pooling pgbouncer). | `postgresql://postgres.[REF]:[PASS]@...:6543/postgres?pgbouncer=true` |
 | `UPSTASH_REDIS_REST_URL` | Sí | URL REST API de Upstash Redis (Serverless Cache y Rate Limit). | `https://tu-endpoint.upstash.io` |
 | `UPSTASH_REDIS_REST_TOKEN` | Sí | Token REST de autenticación Upstash Redis. | `tu-token-seguro-upstash` |
+| `CRON_SECRET` | No | Token secreto para proteger invocaciones de Cron Jobs en Vercel. | `token_secreto_cron_...` |
 | `STRIPE_SECRET_KEY` | No | Llave privada de Stripe para suscripciones SaaS. | `sk_test_...` |
 | `NEXT_PUBLIC_APP_URL` | Sí | URL base de la aplicación para redirecciones y callbacks. | `http://localhost:3000` |
 | `NODE_ENV` | Sí | Entorno de ejecución (`development` o `production`). | `development` |
