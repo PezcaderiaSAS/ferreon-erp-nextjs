@@ -109,6 +109,7 @@ export type Database = {
           garantia_monto: number
           garantia_tipo: string
           id: number
+          idempotency_key: string | null
           observaciones: string | null
           saldo_pendiente: number
           subtotal_equipos: number
@@ -142,6 +143,7 @@ export type Database = {
           garantia_monto?: number
           garantia_tipo?: string
           id?: number
+          idempotency_key?: string | null
           observaciones?: string | null
           saldo_pendiente?: number
           subtotal_equipos?: number
@@ -175,6 +177,7 @@ export type Database = {
           garantia_monto?: number
           garantia_tipo?: string
           id?: number
+          idempotency_key?: string | null
           observaciones?: string | null
           saldo_pendiente?: number
           subtotal_equipos?: number

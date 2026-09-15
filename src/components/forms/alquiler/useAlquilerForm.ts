@@ -745,6 +745,11 @@ export function useAlquilerForm({
 
   // Motor Transaccional Unificado para Cotización o Contrato
   const ejecutarGuardadoTransaccional = async (modo: 'COTIZACION' | 'CONTRATO'): Promise<boolean> => {
+    if (isSubmitting) {
+      console.warn("[useAlquilerForm] Guardado bloqueado: ya se encuentra una transacción en curso.");
+      return false;
+    }
+
     setErrorMsg(null);
     setFormErrors({});
 
@@ -919,6 +924,7 @@ export function useAlquilerForm({
           observaciones: validation.data.observaciones,
           detallesLogistica: validation.data.detallesLogistica,
           estado: modo === 'COTIZACION' ? 'COTIZACION' : 'ACTIVO',
+          idempotency_key: idempotencyKey,
           items: alquilerUi.detalles
         });
 

@@ -166,6 +166,31 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
   const { data: { user } } = await supabase.auth.getUser();
   const userIdentifier = user?.email || user?.id || 'SISTEMA_OPERADOR';
   const empresaId = await resolveEmpresaId(user?.id);
+  const idempotencyKey = cleanInput.idempotency_key?.trim() || null;
+
+  // 0. Comprobación de Idempotencia Defensiva: Evitar inserciones concurrentes o dobles clics
+  if (idempotencyKey) {
+    try {
+      const fromAlquileres = (supabase.from('alquileres') as any);
+      if (typeof fromAlquileres?.select === 'function') {
+        const { data: existingAlquiler } = await fromAlquileres
+          .select('id, consecutivo, estado, total, deposito, created_at')
+          .eq('idempotency_key', idempotencyKey)
+          .maybeSingle();
+
+        if (existingAlquiler) {
+          console.info(`[crearAlquilerAction] Transacción idempotente detectada para key "${idempotencyKey}". Retornando alquiler existente ID: ${existingAlquiler.id}`);
+          return {
+            success: true,
+            data: existingAlquiler,
+            idempotent: true
+          };
+        }
+      }
+    } catch (checkErr) {
+      console.warn('[crearAlquilerAction] Advertencia comprobando idempotencia:', checkErr);
+    }
+  }
 
   // 1. Calcular subtotales
   let subtotalEquipos = 0;
@@ -205,6 +230,7 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
 
   const payload = {
     empresa_id: empresaId,
+    idempotency_key: idempotencyKey,
     cliente_id: typeof cleanInput.clienteId === 'string' ? parseInt(cleanInput.clienteId, 10) : cleanInput.clienteId,
     estado: cleanInput.estado || 'ACTIVO',
     subtotal_equipos: subtotalEquipos,
@@ -228,6 +254,20 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
 
   if (error) {
     console.error('Error Supabase crear_alquiler_transaccional:', error);
+    // Si falló por conflicto de llave única de idempotencia, recuperar el registro existente
+    if (idempotencyKey && (error.message?.includes('idx_alquileres_empresa_idempotency_key') || error.message?.includes('duplicate key'))) {
+      const { data: recoveredAlquiler } = await (supabase
+        .from('alquileres') as any)
+        .select('id, consecutivo, estado, total, deposito, created_at')
+        .eq('idempotency_key', idempotencyKey)
+        .maybeSingle();
+
+      if (recoveredAlquiler) {
+        console.info(`[crearAlquilerAction] Registro recuperado tras carrera de concurrencia para key "${idempotencyKey}". ID: ${recoveredAlquiler.id}`);
+        return { success: true, data: recoveredAlquiler, idempotent: true };
+      }
+    }
+
     if (error.message && error.message.includes('Stock insuficiente')) {
       return { success: false, error: error.message };
     }

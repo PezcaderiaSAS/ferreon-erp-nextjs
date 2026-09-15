@@ -1,0 +1,7 @@
+node_modules/
+.next/
+scripts/
+scratch/
+supabase/
+*.mjs
+test-*.mjs

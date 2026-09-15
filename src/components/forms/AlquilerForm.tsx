@@ -12,6 +12,7 @@ import { StepEquiposLogistica } from './alquiler/StepEquiposLogistica';
 import { StepResumenLiquidacion } from './alquiler/StepResumenLiquidacion';
 import { AlquilerPreviewModal } from './alquiler/AlquilerPreviewModal';
 import { AlquilerSuccessView } from './alquiler/AlquilerSuccessView';
+import { AlquilerBlockingOverlay } from './alquiler/AlquilerBlockingOverlay';
 import { AlquilerFormProps } from './alquiler/types';
 
 export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }: AlquilerFormProps) {
@@ -210,20 +211,30 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
                     type="button"
                     onClick={() => form.guardarComoCotizacion()}
                     isLoading={form.isSubmitting}
-                    className="px-6 py-2.5 min-w-[170px] bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25 font-bold text-xs sm:text-sm rounded-xl flex items-center space-x-2 cursor-pointer active:scale-98"
+                    disabled={form.isSubmitting}
+                    className="px-6 py-2.5 min-w-[190px] bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25 font-bold text-xs sm:text-sm rounded-xl flex items-center space-x-2 cursor-pointer active:scale-98 disabled:pointer-events-none disabled:opacity-50"
                   >
                     <span>📄</span>
-                    <span>{form.isEditMode ? "Guardar Cotización" : "Guardar Cotización (COT)"}</span>
+                    <span>
+                      {form.isSubmitting 
+                        ? "Guardando Cotización..." 
+                        : (form.isEditMode ? "Guardar Cotización" : "Guardar Cotización (COT)")}
+                    </span>
                   </Button>
                 ) : (
                   <Button 
                     type="button"
                     onClick={() => form.formalizarComoContrato()}
                     isLoading={form.isSubmitting}
-                    className="px-6 py-2.5 min-w-[170px] bg-emerald-700 hover:bg-emerald-800 text-white shadow-lg shadow-emerald-700/25 font-bold text-xs sm:text-sm rounded-xl flex items-center space-x-2 cursor-pointer active:scale-98"
+                    disabled={form.isSubmitting}
+                    className="px-6 py-2.5 min-w-[190px] bg-emerald-700 hover:bg-emerald-800 text-white shadow-lg shadow-emerald-700/25 font-bold text-xs sm:text-sm rounded-xl flex items-center space-x-2 cursor-pointer active:scale-98 disabled:pointer-events-none disabled:opacity-50"
                   >
                     <span>✅</span>
-                    <span>{form.isEditMode ? "Guardar Contrato" : "Formalizar Contrato (ALQ)"}</span>
+                    <span>
+                      {form.isSubmitting 
+                        ? "Formalizando Contrato..." 
+                        : (form.isEditMode ? "Guardar Contrato" : "Formalizar Contrato (ALQ)")}
+                    </span>
                   </Button>
                 )}
               </div>
@@ -317,6 +328,12 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
           onCancel={() => form.setIsCreandoEquipo(false)} 
         />
       </Modal>
+
+      {/* Overlay Bloqueante con Glassmorphism y Prevención Poka-Yoke de Clics Múltiples */}
+      <AlquilerBlockingOverlay 
+        isOpen={form.isSubmitting} 
+        tipoDocumento={form.tipoDocumento} 
+      />
     </div>
   );
 }

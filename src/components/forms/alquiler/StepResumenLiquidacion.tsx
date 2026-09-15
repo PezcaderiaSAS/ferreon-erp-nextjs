@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, MapPin, AlertCircle, ShieldAlert, CheckCircle2, Building2, TrendingUp, Eye, Sparkles, Receipt } from 'lucide-react';
+import { FileText, MapPin, AlertCircle, ShieldAlert, CheckCircle2, Building2, TrendingUp, Eye, Sparkles, Receipt, Loader2 } from 'lucide-react';
 
 interface StepResumenLiquidacionProps {
   observaciones: string;
@@ -425,19 +425,29 @@ export const StepResumenLiquidacion: React.FC<StepResumenLiquidacionProps> = ({
             type="button"
             disabled={isSubmitting}
             onClick={() => guardarComoCotizacion()}
-            className="p-3.5 bg-white hover:bg-blue-50/50 border-2 border-blue-400 text-blue-900 rounded-xl font-bold transition-all flex flex-col items-start gap-1 shadow-2xs hover:shadow-xs cursor-pointer disabled:opacity-50 disabled:pointer-events-none group"
+            className="p-3.5 bg-white hover:bg-blue-50/50 border-2 border-blue-400 text-blue-900 rounded-xl font-bold transition-all flex flex-col items-start gap-1 shadow-2xs hover:shadow-xs cursor-pointer disabled:opacity-60 disabled:pointer-events-none group"
           >
             <div className="flex items-center justify-between w-full">
               <span className="text-xs sm:text-sm font-black flex items-center gap-1.5 text-blue-800 group-hover:text-blue-900">
-                <FileText className="w-4 h-4 text-blue-600" />
-                <span>Guardar como Cotización (COT-xxx)</span>
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                ) : (
+                  <FileText className="w-4 h-4 text-blue-600" />
+                )}
+                <span>
+                  {isSubmitting 
+                    ? "Guardando Cotización en Base de Datos..." 
+                    : "Guardar como Cotización (COT-xxx)"}
+                </span>
               </span>
               <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-extrabold uppercase">
-                Propuesta
+                {isSubmitting ? "Procesando..." : "Propuesta"}
               </span>
             </div>
             <p className="text-[10.5px] text-slate-500 text-left leading-tight font-normal">
-              Emite documento formal sin descontar bodega propia ni comprometer pólizas de seguridad.
+              {isSubmitting
+                ? "Sincronizando con FerreOn Cloud de forma segura..."
+                : "Emite documento formal sin descontar bodega propia ni comprometer pólizas de seguridad."}
             </p>
           </button>
 
@@ -446,19 +456,29 @@ export const StepResumenLiquidacion: React.FC<StepResumenLiquidacionProps> = ({
             type="button"
             disabled={isSubmitting}
             onClick={() => formalizarComoContrato()}
-            className="p-3.5 bg-emerald-700 hover:bg-emerald-800 border-2 border-emerald-600 text-white rounded-xl font-bold transition-all flex flex-col items-start gap-1 shadow-md shadow-emerald-700/20 cursor-pointer disabled:opacity-50 disabled:pointer-events-none group active:scale-99"
+            className="p-3.5 bg-emerald-700 hover:bg-emerald-800 border-2 border-emerald-600 text-white rounded-xl font-bold transition-all flex flex-col items-start gap-1 shadow-md shadow-emerald-700/20 cursor-pointer disabled:opacity-60 disabled:pointer-events-none group active:scale-99"
           >
             <div className="flex items-center justify-between w-full">
               <span className="text-xs sm:text-sm font-black flex items-center gap-1.5 text-white">
-                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                <span>Formalizar Contrato de Alquiler (ALQ-xxx)</span>
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 text-emerald-200 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                )}
+                <span>
+                  {isSubmitting 
+                    ? "Formalizando Contrato en Base de Datos..." 
+                    : "Formalizar Contrato de Alquiler (ALQ-xxx)"}
+                </span>
               </span>
               <span className="text-[10px] bg-emerald-800 text-emerald-100 px-2 py-0.5 rounded-full font-extrabold uppercase border border-emerald-600">
-                Oficial
+                {isSubmitting ? "Procesando..." : "Oficial"}
               </span>
             </div>
             <p className="text-[10.5px] text-emerald-100/90 text-left leading-tight font-normal">
-              Descuenta stock de equipos propios en bodega, valida cartera y genera orden de despacho en obra.
+              {isSubmitting
+                ? "Descontando stock pesimista y reservando maquinaria..."
+                : "Descuenta stock de equipos propios en bodega, valida cartera y genera orden de despacho en obra."}
             </p>
           </button>
         </div>
