@@ -20,8 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={inter.className}>
-      <body className="antialiased font-sans bg-slate-50 text-slate-900 min-h-screen flex">
+    <html lang="es" className={inter.className} suppressHydrationWarning>
+      <body className="antialiased font-sans bg-slate-50 text-slate-900 min-h-screen flex" suppressHydrationWarning>
         <RealtimeProvider>
           <AppShell>
             {children}

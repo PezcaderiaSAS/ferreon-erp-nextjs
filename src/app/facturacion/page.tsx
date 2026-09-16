@@ -4,7 +4,8 @@ import { Box, Receipt, TrendingUp, ArrowUp, Clock, AlertTriangle, Search, FileBo
 
 import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { RegistrarPagoModal } from '../components/cartera/RegistrarPagoModal';
+import { RegistrarPagoMixtoModal } from '../../components/cartera/RegistrarPagoMixtoModal';
+import { ReciboCajaMixtoPDFModal } from '../../components/pdf/ReciboCajaMixtoPDFModal';
 import { useCurrencyFormatter } from '../../lib/hooks/useCurrencyFormatter';
 import { useToastStore } from '../../infrastructure/state/toastStore';
 import { registrarPagoAction } from '../actions/pagos';
@@ -44,6 +45,7 @@ export default function FacturacionPage() {
   const [isPagoModalOpen, setIsPagoModalOpen] = useState(false);
   const [isReciboModalOpen, setIsReciboModalOpen] = useState(false);
   const [reciboGenerado, setReciboGenerado] = useState<any>(null);
+  const [reciboMixtoGenerado, setReciboMixtoGenerado] = useState<any>(null);
   const [isProcesandoPago, setIsProcesandoPago] = useState(false);
   const [facturaSeleccionada, setFacturaSeleccionada] = useState<Factura | null>(null);
   const [documentoPDFSeleccionado, setDocumentoPDFSeleccionado] = useState<DocumentoPDFPayload | null>(null);
@@ -493,22 +495,33 @@ export default function FacturacionPage() {
         )}
       </div>
 
-      <RegistrarPagoModal 
+      <RegistrarPagoMixtoModal 
         isOpen={isPagoModalOpen}
         onClose={() => {
           setIsPagoModalOpen(false);
           setFacturaSeleccionada(null);
         }}
-        contratoParaPago={facturaSeleccionada ? {
-          consecutivo: String(facturaSeleccionada.id || "").replace('#FAC-', ''),
-          clienteNombre: facturaSeleccionada.cliente,
-          total: facturaSeleccionada.total,
-          totalPagado: facturaSeleccionada.totalPagado
-        } : null}
-        onConfirmarPago={handleConfirmarPago}
+        contrato={facturaSeleccionada ? facturaSeleccionada.alquilerOriginal : null}
+        onSuccess={(pagoData, reciboInfo) => {
+          recargarAlquileres();
+          setIsPagoModalOpen(false);
+          showSuccessToast('Abono mixto registrado y balanceado en el Ledger contable.');
+          if (reciboInfo) {
+            setReciboMixtoGenerado(reciboInfo);
+          }
+        }}
       />
 
-      {/* Modal de Recibo de Caja Imprimible (@media print) */}
+      {/* Comprobante Oficial de Caja con Soporte Térmica y Carta */}
+      {reciboMixtoGenerado && (
+        <ReciboCajaMixtoPDFModal
+          isOpen={true}
+          onClose={() => setReciboMixtoGenerado(null)}
+          recibo={reciboMixtoGenerado}
+        />
+      )}
+
+      {/* Modal de Recibo de Caja Imprimible legacy (@media print) */}
       <ReciboPagoModal
         isOpen={isReciboModalOpen}
         onClose={() => setIsReciboModalOpen(false)}

@@ -11,17 +11,18 @@ Multi-tenant architecture via Supabase RLS (Row Level Security) and Upstash Redi
   - Compatibilidad certificada con Apple iOS (WebKit / Safari): `worker-src 'self' blob:`, `child-src 'self' blob:`, `script-src-elem`, `style-src-elem` y WebSockets (`wss://*.supabase.co`).
   - Directiva booleana estricta `upgrade-insecure-requests` sin valores residuales (solo en producción HTTPS).
   - Fast-paths perimetrales para assets internos (`/_next`), APIs JSON y guard de timeout de autenticación (1200ms).
-- **Idempotency & Poka-Yoke Visual Guard (`AlquilerBlockingOverlay.tsx` & `useAlquilerForm.ts`)**:
-  - Escudo visual Poka-Yoke con Glassmorphism (`backdrop-blur-md`), spinner sincronizado y bloqueo físico de clics múltiples (`pointer-events-none`) y atajos de teclado (`tabIndex`, escape) durante `isSubmitting`.
-  - Generación de `idempotency_key` criptográfica única (UUID v4) transmitida por formulario.
-  - Deduplicación atómica en Backend (Server Action) y Base de Datos (Postgres Unique Index + RPC Transaccional) garantizando 0 duplicados y latencia cero (0 ms).
-- **Frontend Layer**: React Server Components (RSC) + Client Components con Typeahead Accesible (`EquipoCombobox`, `SelectorProveedorAsistido`), atajos globales (`F2`), rangos maestros, gobernanza de tokens `DESIGN.md` y apilamiento dinámico de capas (`zIndex: 100`).
+- **Idempotency & Poka-Yoke Visual Guard (`AlquilerBlockingOverlay.tsx`, `CotizacionBlockingOverlay.tsx`, `ConvertirCotizacionModal.tsx`)**:
+  - Escudos visuales Poka-Yoke con Glassmorphism (`backdrop-blur-md`), spinner sincronizado y bloqueo físico de clics múltiples (`pointer-events-none`) y atajos de teclado (`tabIndex`, escape) durante `isSubmitting`.
+  - Generación de `idempotency_key` criptográfica única (UUID v4) transmitida por formulario y RPC.
+  - Conversión 1-clic de cotizaciones a contratos con bloqueo pesimista en base de datos (`ORDER BY id ASC FOR UPDATE`) garantizando cero sobreventas y prevención matemática de deadlocks.
+- **Frontend Layer**: React Server Components (RSC) + Client Components con Typeahead Accesible (`EquipoCombobox`, `SelectorProveedorAsistido`), atajos globales (`F2`), rangos maestros, gobernanza de tokens `DESIGN.md`, modales multilínea de recaudo mixto (`RegistrarPagoMixtoModal.tsx`) y apilamiento dinámico de capas (`zIndex: 100`).
 - **State Management**: Zustand (Modular Client Stores: `alquilerStore`, `bodegaStore`, `empresaStore`, `clienteStore`, `cajaStore`, `layoutStore`, `toastStore`, `ledgerStore`) con transiciones optimistas, rollback ante fallos y reconciliación independiente vía `Promise.allSettled`.
 - **Backend / Server Actions Layer**: Next.js Server Actions (`src/app/actions/`):
-  - Contratos, cotizaciones y alquileres (`alquileres.ts`, `cotizaciones.ts`).
+  - Contratos, cotizaciones y formalización atómica (`alquileres.ts`, `cotizaciones.ts`).
+  - Tesorería y Cartera: Pagos mixtos multilínea con saldo a favor de clientes y partida doble (`pagos.ts`).
   - Devoluciones avanzadas con Split-Line, clasificación de inventario y conciliación de depósitos (`devoluciones.ts`).
   - Subcontrataciones de maquinaria aliada a dos tiempos, retenciones tributarias y asientos contables (`subcontrataciones.ts`).
-  - Turnos, movimientos, arqueos y comprobantes de caja (`caja.ts`).
+  - Turnos, movimientos, arqueo ciego por denominaciones y comprobantes de caja (`caja.ts`).
   - Facturación comercial y asientos contables (`facturacion.ts`).
   - Compras y aprovisionamiento con liquidación tributaria (`compras.ts`).
   - Directorio maestro de proveedores (`proveedores.ts`).

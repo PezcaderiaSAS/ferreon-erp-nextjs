@@ -10,6 +10,7 @@ import {
 import { useSubcontratacionStore, SubcontratacionUI, SubcontratacionEstado } from '../../infrastructure/state/subcontratacionStore';
 import { useProveedorStore } from '../../infrastructure/state/proveedorStore';
 import { obtenerSubcontratacionesAction, cambiarEstadoSubcontratacionAction } from '../actions/subcontrataciones';
+import { obtenerProveedoresAction } from '../actions/proveedores';
 import { CrearSubcontratacionModal } from '../components/subcontrataciones/CrearSubcontratacionModal';
 import { OrdenSubcontratacionPDFModal } from '../components/subcontrataciones/OrdenSubcontratacionPDFModal';
 import { DetalleSubcontratacionModal } from '../components/subcontrataciones/DetalleSubcontratacionModal';
@@ -40,17 +41,17 @@ export default function SubcontratacionesPage() {
     try {
       const [resSubs, resProvs] = await Promise.all([
         obtenerSubcontratacionesAction(),
-        fetch('/api/proveedores', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ data: [] }))
+        obtenerProveedoresAction()
       ]);
 
       if (resSubs.success && Array.isArray(resSubs.data)) {
         setSubcontrataciones(resSubs.data);
       }
-      if (resProvs?.data && Array.isArray(resProvs.data)) {
+      if (resProvs.success && Array.isArray(resProvs.data)) {
         setProveedores(resProvs.data);
       }
     } catch (err) {
-      console.warn('Error cargando subcontrataciones:', err);
+      console.warn('Error cargando subcontrataciones o proveedores:', err);
     } finally {
       setIsLoading(false);
     }

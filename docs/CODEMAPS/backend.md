@@ -6,12 +6,12 @@
 - `caja.ts`: Gestión de turnos y tesorería (`abrirCajaAction`, `cerrarCajaAction`, `registrarMovimientoCajaAction`, `obtenerSesionCajaActivaAction`). Control de saldos base, recaudos en efectivo, egresos operacionales, arqueo ciego, determinación de faltantes/sobrantes y emisión de comprobantes contables.
 - `compras.ts`: Aprovisionamiento de maquinaria e inventario (`crearCompraAction`, `obtenerComprasAction`). Incorpora `calcularLiquidacionCompra` (IVA 19%, ReteFuente 2.5%/3.5%, ReteICA 9.66‰), asientos balanceados multilínea en `journal_entries` (Activo `1520`, IVA `2408`, ReteFuente `2365`, ReteICA `2368`, Contrapartida `1105`/`1110`/`2205`), incremento atómico de stock en `equipos` y trazabilidad inmutable en `kardex_inventario` (`INGRESO_COMPRA`).
 - `proveedores.ts`: Catálogo maestro de proveedores (`obtenerProveedoresAction`, `crearProveedorAction`, `actualizarProveedorAction`). Valida datos con Zod, resuelve `tenant_id` y administra caché distribuida en Redis (`cacheKey: proveedores:${tenantId}`).
-- `cotizaciones.ts`: Emisión y ciclo de vida de cotizaciones de obra (`crearCotizacionAction`, `obtenerCotizacionesAction`, `convertirCotizacionAContratoAction`). Soporta casillas tributarias interactivas y conversión 1-clic con bloqueo pesimista contra sobreventa.
+- `cotizaciones.ts`: Emisión y ciclo de vida de cotizaciones de obra (`crearCotizacionAction`, `obtenerCotizacionesAction`, `convertirCotizacionAContratoAction`). Soporta cálculo tributario (IVA 19%, Retefuente 2.5%, ReteICA 9.66‰) y conversión atómica 1-clic con bloqueo pesimista ordenado (`ORDER BY id ASC FOR UPDATE`) contra sobreventa y deadlocks concurrentes.
 - `facturacion.ts`: Emisión de facturas comerciales formales (`emitirFacturaLedgerAction`) con asientos contables de venta (`1305 Clientes`, `1355 Anticipos`, `2408 IVA Generado`, `4155 Ingresos por Alquileres`).
 - `devoluciones.ts`: Recepción técnica de maquinaria y compensación neta de depósitos (`procesarDevolucionAvanzadaAction`, `obtenerHistorialDevolucionesAction`). Implementa validación Zod perimetral, idempotencia con UUID v4, invocación de RPC `procesar_devolucion_avanzada` con Split-Line inmutable, registro automático de movimientos en `movimientos_caja` (si hay devolución en efectivo y sesión de caja activa), auditoría forense e invalidación de caché Redis.
 - `subcontrataciones.ts`: Gestión de maquinaria de proveedores aliados (`crearSubcontratacionAction`, `obtenerSubcontratacionesAction`, `cambiarEstadoSubcontratacionAction`, `registrarRetornoAProveedorAction`, `liquidarSubcontratacionAction`). Implementa cómputo de costos a dos tiempos (cliente vs aliado), cálculo de márgenes operativos, aplicación de retenciones tributarias (ReteFuente 2.5%, ReteICA 9.66‰) y generación de asientos contables balanceados en el Ledger (Cuentas `6135` vs `2365`, `2368`, `2205`).
 - `equipos.ts`: Inventario (Kardex) y ajustes Poka-Yoke con RPC `ajustar_stock_equipo` y `reducir_stock_seguro`.
-- `pagos.ts`: Abonos e ingresos con validación contra sesiones de caja ABIERTAS (`registrarPagoAction`).
+- `pagos.ts`: Recaudos, abonos simples y recaudos mixtos multilínea (`registrarPagoAction`, `registrarPagoMixtoAction`). Admite división entre Efectivo, Bancos (Bancolombia, Davivienda), Billeteras (Nequi, Daviplata) y Saldo a Favor del Cliente, actualizando `cliente_movimientos_saldo`, `pago_metodos_detalle`, caja activa y asiento en partida doble en Ledger.
 - `ultraadmin.ts`: Supervisión global multi-tenant protegida por `is_ultra_admin()`.
 
 ## API Endpoints (`src/app/api/`)
@@ -24,6 +24,9 @@
 - Cabeceras estándar: `Cache-Control: no-store, no-cache, must-revalidate`.
 
 ## Key Files
+- `src/core/services/cotizacion-tributaria.service.ts` (Servicio puro de liquidación tributaria de cotizaciones: IVA 19%, Retefuente 2.5%, ReteICA 9.66‰ y fletes)
+- `src/core/services/pago-mixto.service.ts` (Servicio puro de liquidación multilínea de pagos, validación de saldo a favor y balance en partida doble)
+- `src/core/services/arqueo-caja.service.ts` (Servicio puro de arqueo ciego por denominaciones colombianas y ajuste en Ledger)
 - `src/core/services/liquidacion-devolucion.service.ts` (Servicio puro de liquidación de devoluciones, Split-Line, prorrateo diario y compensación de garantía)
 - `src/core/services/liquidacion-subcontratacion.service.ts` (Servicio puro de liquidación de maquinaria aliada a dos tiempos, retenciones DIAN y partida doble en Ledger)
 - `src/core/services/calculo-compras-tributario.ts` (Servicio puro de liquidación tributaria y partida doble contable)

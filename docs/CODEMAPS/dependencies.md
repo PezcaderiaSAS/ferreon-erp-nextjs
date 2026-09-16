@@ -27,12 +27,15 @@
 ## Integrations & Services
 - **Motor de Idempotencia & Poka-Yoke**: Validación dual-layer con esquemas Zod (`idempotency_key`), overlays visuales bloqueantes (`AlquilerBlockingOverlay.tsx`, `DevolucionBlockingOverlay.tsx`), supresión de teclado (`Enter`/`Escape`) y deshabilitación síncrona de botones en cliente.
 - **Servicios Puros de Dominio & Contabilidad**:
+  - `cotizacion-tributaria.service.ts`: Liquidación tributaria completa de cotizaciones (IVA 19%, Retefuente 2.5%, ReteICA 9.66‰) y fletes de obra.
+  - `pago-mixto.service.ts`: Validación multilínea de recaudos, imputación de saldo a favor y balance en partida doble ($\sum D + \sum C = 0$).
+  - `arqueo-caja.service.ts`: Conteo ciego por denominaciones de billetes/monedas colombianas, justificación obligatoria y asiento contable de descuadre en Ledger.
   - `liquidacion-devolucion.service.ts`: Cálculo de split-line, deducción de daños/pérdidas y balance neto de garantías.
   - `liquidacion-subcontratacion.service.ts`: Cómputo a dos tiempos con aliados, retenciones DIAN (ReteFuente 2.5%, ReteICA 9.66‰) y partida doble balanceada en Ledger.
   - `calculo-compras-tributario.ts`: Liquidación tributaria de compras e inventario.
 - **Dual PDF Engines**:
   1. `@react-pdf/renderer` (v3.4.5): Generación vectorial en cliente para contratos de alquiler.
-  2. `EnterprisePDFService` / Modales HTML (`ComprobanteDevolucionPDFModal.tsx`, `OrdenSubcontratacionPDFModal.tsx`, `VisorDocumentoPDFModal.tsx`, `ComprobanteEntradaPDFModal.tsx`, `ComprobanteArqueoModal.tsx`): Emisión de Actas de Devolución, Órdenes de Subcontratación, Facturas Comerciales, Cotizaciones de Obra, Órdenes de Compra y Comprobantes de Arqueo.
+  2. `EnterprisePDFService` / Modales HTML (`ReciboCajaMixtoPDFModal.tsx`, `ComprobanteDevolucionPDFModal.tsx`, `OrdenSubcontratacionPDFModal.tsx`, `VisorDocumentoPDFModal.tsx`, `ComprobanteEntradaPDFModal.tsx`, `ComprobanteArqueoModal.tsx`): Emisión de Recibos Oficiales de Caja (Térmica POS 80mm y Carta), Actas de Devolución, Órdenes de Subcontratación, Facturas Comerciales, Cotizaciones de Obra, Órdenes de Compra y Comprobantes de Arqueo.
 - **Zod (v3.23.8)**: Validación de esquemas y tipos estáticos de payloads (Security-First) en rutas API y Server Actions.
 - **Stripe (v16.8.0)**: Pagos recurrentes y facturación multi-tenant (`js.stripe.com`).
 - **Lucide React (v0.428.0)**: Biblioteca de iconos SVG ligeros para UI/UX de alta fidelidad.

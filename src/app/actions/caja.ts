@@ -17,6 +17,7 @@ import {
   validarDisponibilidadEgreso,
   ConteoDenominaciones
 } from '@/core/services/calculoCajaArqueo';
+import { generarAsientoAjusteDescuadre } from '@/core/services/arqueo-caja.service';
 
 /**
  * Server Action para validar la conectividad en vivo con Supabase,
@@ -579,6 +580,48 @@ export async function cerrarSesionCajaAction(input: {
       };
     }
 
+    // 3.1 Asiento Contable Balanceado en el Ledger por Descuadre (Decisión /grill-me Aprobada)
+    let transactionIdAjuste: string | null = null;
+    if (balance.diferencia !== 0) {
+      try {
+        const { data: accounts } = await admin
+          .from('financial_accounts')
+          .select('id, name, code, type');
+
+        const asientoAjuste = generarAsientoAjusteDescuadre({
+          sesionCajaId: sesion.id,
+          diferencia: balance.diferencia,
+          cuentas: (accounts as any) || []
+        });
+
+        if (asientoAjuste) {
+          const { data: txn } = await admin
+            .from('transactions')
+            .insert([{
+              description: asientoAjuste.description,
+              reference_id: asientoAjuste.referenceId,
+              created_by: user.id,
+              idempotency_key: `ajuste_caja_${sesion.id}_${Date.now()}`,
+              timestamp: new Date().toISOString()
+            }])
+            .select('id')
+            .single();
+
+          if (txn) {
+            transactionIdAjuste = txn.id;
+            const entriesPayload = asientoAjuste.entries.map(e => ({
+              transaction_id: txn.id,
+              account_id: e.accountId,
+              amount: e.amount
+            }));
+            await admin.from('journal_entries').insert(entriesPayload);
+          }
+        }
+      } catch (adjErr) {
+        console.warn('[Caja] Advertencia al generar asiento de descuadre en Ledger:', adjErr);
+      }
+    }
+
     // 4. Registro forense en audit_logs
     AuditLogger.logAsync({
       empresaId,
@@ -600,7 +643,8 @@ export async function cerrarSesionCajaAction(input: {
         montoCierreFisico: montoFisico,
         diferencia: balance.diferencia,
         clasificacionDescuadre: balance.clasificacionDescuadre,
-        motivoDescuadre: parsed.data.motivoDescuadre
+        motivoDescuadre: parsed.data.motivoDescuadre,
+        transactionIdAjuste
       }
     });
 

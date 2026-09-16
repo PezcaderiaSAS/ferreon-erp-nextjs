@@ -2,7 +2,9 @@
 # Data Architecture (Supabase PostgreSQL)
 
 ## Tables
-- `clientes`: Directorio de clientes (`id BIGSERIAL`, `nombre`, `nit_cedula`, `telefono`, `direccion`, `email`, `estado`, `empresa_id`). Relación 1:N con `alquileres` y `cotizaciones`.
+- `clientes`: Directorio de clientes (`id BIGSERIAL`, `nombre`, `nit_cedula`, `telefono`, `direccion`, `email`, `estado`, `empresa_id`, `saldo_a_favor BIGINT DEFAULT 0`). Relación 1:N con `alquileres`, `cotizaciones` y `cliente_movimientos_saldo`.
+- `cliente_movimientos_saldo`: Historial contable inmutable de saldos a favor (`id BIGSERIAL`, `cliente_id`, `empresa_id`, `tipo CHECK IN ('ACREDITACION', 'DEBITO_PAGO', 'AJUSTE')`, `monto BIGINT`, `saldo_anterior BIGINT`, `saldo_nuevo BIGINT`, `pago_id`, `motivo`, `created_at`).
+- `pago_metodos_detalle`: Desglose multilínea de pagos mixtos (`id BIGSERIAL`, `pago_id`, `metodo CHECK IN ('EFECTIVO', 'BANCO_BANCOLOMBIA', 'BANCO_DAVIVIENDA', 'NEQUI', 'DAVIPLATA', 'SALDO_FAVOR_CLIENTE')`, `monto BIGINT`, `referencia`, `efectivo_recibido BIGINT`, `cambio_devuelto BIGINT`).
 - `alquileres`: Contratos de alquiler (`id BIGSERIAL`, `consecutivo`, `cliente_id`, `empresa_id`, `cotizacion_origen_id`, `estado`, `subtotal_equipos`, `total`, `deposito`, `saldo_pendiente`, `idempotency_key TEXT`). Índice único condicional `idx_alquileres_empresa_idempotency_key UNIQUE (empresa_id, idempotency_key) WHERE idempotency_key IS NOT NULL` que garantiza 0 registros duplicados.
 - `alquiler_detalles`: Líneas de contrato (`id`, `alquiler_id`, `equipo_id`, `cantidad`, `cantidad_devuelta`, `dias_contratados`, `fecha_inicio`, `fecha_fin`, `tarifa_aplicada`, `subtotal_linea`, `devuelto`, `costo_dano`).
 - `caja_sesiones`: Control de turnos de caja (`id UUID`, `empresa_id`, `usuario_id`, `estado CHECK (estado IN ('ABIERTA', 'CERRADA'))`, `monto_apertura`, `monto_cierre_esperado`, `monto_cierre_real`, `diferencia`, `fecha_apertura`, `fecha_cierre`, `observaciones`).
@@ -26,6 +28,7 @@
 - `audit_logs`: Trazabilidad inmutable de operaciones y seguridad del ERP.
 
 ## Stored Procedures & RPCs Transaccionales
+- `convertir_cotizacion_a_alquiler_transaccional(p_payload)`: Conversión atómica 1-clic de cotización a contrato de alquiler. Verifica existencias con bloqueo pesimista ordenado (`ORDER BY id ASC FOR UPDATE`) en la tabla `equipos` para prevenir deadlocks y sobreventas concurrentes de forma absoluta. Genera el contrato, sus detalles, asienta la salida en `kardex_inventario`, transiciona el estado de la cotización a `CONVERTIDA` y garantiza idempotencia por `idempotency_key`.
 - `procesar_devolucion_avanzada(p_payload)`: Devolución atómica de equipos con Split-Line inmutable, tasación de daños/pérdidas, clasificación cuatripartita de stock (`stock_disponible`, `stock_mantenimiento`, `stock_perdido`), compensación de depósito en garantía, detección de subcontratación y alerta de retorno en bodega.
 - `crear_alquiler_transaccional(p_payload)`: Creación atómica de contrato. Verifica primero si `idempotency_key` ya fue procesada para el tenant; de ser así, retorna inmediatamente el contrato existente sin mutaciones. Realiza validación `FOR UPDATE` de stock disponible y bloqueo pesimista contra sobreventa.
 - `procesar_devolucion_alquiler(p_payload)`: Devolución atómica de ítems con restitución automática de stock en obra a disponible y transición de estado a `FINALIZADO`.
@@ -33,6 +36,7 @@
 - `ajustar_stock_equipo(p_equipo_id, p_nuevo_disponible, p_motivo)`: Ajuste Poka-Yoke de bodega.
 
 ## Migrations History
+- `20260916_cotizaciones_pesimistas_y_pagos_mixtos.sql`: Tablas `cliente_movimientos_saldo` y `pago_metodos_detalle`, columna `clientes.saldo_a_favor`, índices de integridad y función almacenada nativa `convertir_cotizacion_a_alquiler_transaccional` con bloqueo pesimista ordenado (`ORDER BY id ASC FOR UPDATE`).
 - `20260916_devoluciones_avanzadas_y_subcontrataciones.sql`: Tablas `devoluciones` y `devolucion_detalles`, extensión de `alquiler_detalles` (Split-Line e inspección física), `equipos.stock_perdido`, estados a dos tiempos y liquidación en `subcontrataciones`, y procedimiento almacenado `procesar_devolucion_avanzada`.
 - `20260915_idempotencia_alquileres.sql`: Columna `idempotency_key`, índice único condicional y reemplazo de RPC `crear_alquiler_transaccional` con detección y retorno idempotente.
 - `20260914_modulo_caja_movimientos_y_arqueo.sql`: Estructura para turnos de caja, movimientos de efectivo y arqueo con desglose de denominaciones.

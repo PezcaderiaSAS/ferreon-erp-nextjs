@@ -23,7 +23,11 @@
 - `forms/alquiler/AlquilerBlockingOverlay.tsx`: Escudo visual Poka-Yoke con Glassmorphism (`backdrop-blur-md`), spinner sincronizado y bloqueo físico absoluto de clics y atajos de teclado (`pointer-events-none`) durante la ejecución de la transacción para evitar doble clic o reenvíos accidentales.
 - `forms/alquiler/StepResumenLiquidacion.tsx`: Panel de liquidación final con botones reactivos, estados de carga y deshabilitación inmediata durante `isSubmitting`.
 - `caja/AbrirCajaModal.tsx`: Modal para iniciar turno de caja especificando el monto base inicial en efectivo.
-- `caja/ArqueoCierreModal.tsx`: Calculadora interactiva de arqueo de caja con desglose de denominaciones de billetes/monedas colombianas (COP) y cálculo automático de diferencia (sobrante/faltante).
+- `forms/cotizaciones/CotizacionBlockingOverlay.tsx`: Escudo visual Poka-Yoke con Glassmorphism (`backdrop-blur-md`), spinner sincronizado y bloqueo físico absoluto de clics y atajos de teclado durante la conversión atómica a contrato en base de datos.
+- `forms/cotizaciones/ConvertirCotizacionModal.tsx`: Modal interactivo de formalización 1-clic con validación de inventario en bodega en tiempo real; ante faltantes, bloquea la acción y ofrece derivar las unidades a Subcontrataciones.
+- `cartera/RegistrarPagoMixtoModal.tsx`: Modal multilínea dinámico que permite combinar Efectivo, Transferencias Bancarias (Bancolombia, Davivienda), Billeteras (Nequi, Daviplata) y Saldo a Favor del Cliente, con cálculo en vivo de saldo pendiente y cambio a devolver.
+- `pdf/ReciboCajaMixtoPDFModal.tsx`: Visor oficial de comprobantes de pago mixto con alternancia instantánea entre formato Carta y Térmica POS 80mm e impresión directa.
+- `caja/ArqueoCierreModal.tsx`: Calculadora interactiva de arqueo de caja con desglose de denominaciones de billetes/monedas colombianas (COP), justificación obligatoria ante descuadres y asiento de ajuste en Ledger.
 - `caja/ComprobanteArqueoModal.tsx`: Visor e impresión nativa del Comprobante Oficial de Arqueo y Cierre de Turno.
 - `caja/MovimientoCajaModal.tsx`: Registro rápido de ingresos y egresos de efectivo con motivo y categoría.
 - `caja/CajaStatusBadge.tsx`: Indicador visual en tiempo real del estado de la caja (ABIERTA / CERRADA) en el header global.

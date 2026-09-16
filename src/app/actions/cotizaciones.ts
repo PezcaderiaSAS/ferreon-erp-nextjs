@@ -42,6 +42,8 @@ export interface CrearCotizacionInput {
 
 export interface ConvertirCotizacionInput {
   cotizacionId: string;
+  idempotencyKey?: string;
+  detallesLogistica?: string;
 }
 
 const CotizacionItemZodSchema = z.object({
@@ -374,231 +376,76 @@ export async function actualizarEstadoCotizacionAction(id: string, nuevoEstado: 
 
 /**
  * Server Action: CONVERSIÓN POKA-YOKE 1-CLIC DE COTIZACIÓN A CONTRATO DE ALQUILER
- * Verifica existencias en bodega, bloquea atómicamente el inventario,
- * crea el contrato en `alquileres`, registra el movimiento en `kardex_inventario`
- * y marca la cotización como `CONVERTIDA`.
+ * Ejecuta el procedimiento SQL atómico con bloqueo pesimista ordenado (ORDER BY id ASC FOR UPDATE)
+ * en base de datos para prevenir sobreventas y deadlocks concurrentes de forma absoluta.
  */
 export async function convertirCotizacionAContratoAction(input: ConvertirCotizacionInput) {
   try {
+    if (!input.cotizacionId) {
+      return { success: false, error: 'El ID de la cotización es obligatorio para la conversión.' };
+    }
+
     const supabase = await createServerSupabaseClient();
-    const adminSupabase = createAdminSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     const userIdentifier = user?.email || user?.id || 'SISTEMA_OPERADOR';
+    const idempotencyKey = input.idempotencyKey || `conv_cot_${input.cotizacionId}_${Date.now()}`;
 
-    // 1. Obtener la cotización completa
-    const { data: cotizacion, error: cotErr } = await supabase
-      .from('cotizaciones')
-      .select(`
-        *,
-        cotizaciones_detalles (
-          id,
-          equipo_id,
-          cantidad,
-          dias,
-          tarifa_diaria,
-          subtotal,
-          equipos (
-            id,
-            nombre,
-            codigo,
-            stock_disponible,
-            stock_en_obra
-          )
-        )
-      `)
-      .eq('id', input.cotizacionId)
-      .single();
-
-    if (cotErr || !cotizacion) {
-      return { success: false, error: 'Cotización no encontrada para conversión.' };
-    }
-
-    if (cotizacion.estado === 'CONVERTIDA') {
-      return { 
-        success: false, 
-        error: `Esta cotización ya fue convertida previamente al Contrato #${cotizacion.alquiler_id || 'existente'}.` 
-      };
-    }
-
-    const detalles = cotizacion.cotizaciones_detalles || [];
-    if (detalles.length === 0) {
-      return { success: false, error: 'La cotización no contiene ítems ni equipos para alquilar.' };
-    }
-
-    // 2. POKA-YOKE DE STOCK PESIMISTA:
-    // Validar de forma estricta que todos los equipos tengan stock disponible suficiente
-    for (const det of detalles) {
-      const { data: eqActual, error: eqErr } = await supabase
-        .from('equipos')
-        .select('id, nombre, stock_disponible')
-        .eq('id', det.equipo_id)
-        .single();
-
-      if (eqErr || !eqActual) {
-        return { 
-          success: false, 
-          error: `Equipo ID ${det.equipo_id} no encontrado en inventario.` 
-        };
+    // 1. Invocar el procedimiento SQL atómico en Supabase con bloqueo pesimista
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc('convertir_cotizacion_a_alquiler_transaccional', {
+      p_payload: {
+        cotizacion_id: input.cotizacionId,
+        idempotency_key: idempotencyKey,
+        usuario_id: user?.id,
+        detalles_logistica: input.detallesLogistica || ''
       }
+    });
 
-      if (eqActual.stock_disponible < det.cantidad) {
+    if (rpcErr) {
+      console.error('[convertirCotizacionAContratoAction] Error RPC Supabase:', rpcErr);
+      const errMsg = rpcErr.message || '';
+
+      if (errMsg.includes('STOCK_INSUFICIENTE')) {
         return {
           success: false,
-          error: `[POKA-YOKE INVENTARIO] Stock insuficiente para "${eqActual.nombre}". Disponible en bodega: ${eqActual.stock_disponible} unidad(es), requerido en cotización: ${det.cantidad}. Ajuste el pedido antes de formalizar el contrato.`
+          esErrorStock: true,
+          error: `[POKA-YOKE INVENTARIO] ${errMsg.replace('STOCK_INSUFICIENTE:', '').trim()}. Puede derivar las unidades faltantes a Subcontratación con Proveedor Aliado o ajustar el pedido.`
         };
       }
-    }
-
-    // 3. Asegurar existencia de Cliente en Base de Datos
-    let clienteIdReal = cotizacion.cliente_id;
-    if (!clienteIdReal) {
-      // Si fue una cotización a prospecto rápido, asegurar cliente en tabla clientes
-      const docClean = cotizacion.cliente_documento?.trim() || `PROSP-${Date.now().toString().slice(-6)}`;
-      const { data: nuevoCli, error: cliErr } = await supabase
-        .from('clientes')
-        .insert([{
-          nit_cedula: docClean,
-          nombre: cotizacion.cliente_nombre.trim(),
-          telefono: cotizacion.cliente_telefono?.trim() || '',
-          email: cotizacion.cliente_email?.trim() || '',
-          direccion: cotizacion.obra_direccion?.trim() || '',
-          estado: 'Activo'
-        }])
-        .select()
-        .single();
-
-      if (cliErr) {
-        console.warn('Advertencia al crear cliente on-the-fly desde cotización:', cliErr);
-      } else if (nuevoCli) {
-        clienteIdReal = nuevoCli.id;
-      }
-    }
-
-    // 4. Preparar Payload Transaccional para Alquiler
-    const hoy = new Date();
-    const itemsPayload = detalles.map((d: any) => {
-      const fInicio = hoy.toISOString();
-      const fFin = new Date(hoy.getTime() + (d.dias * 24 * 60 * 60 * 1000)).toISOString();
 
       return {
-        equipo_id: d.equipo_id,
-        cantidad: d.cantidad,
-        tarifa_aplicada: d.tarifa_diaria,
-        dias_contratados: d.dias,
-        subtotal_linea: d.subtotal,
-        fecha_inicio: fInicio,
-        fecha_fin: fFin
-      };
-    });
-
-    const fleteEntrega = Number(cotizacion.valor_transporte || 0);
-    const deposito = Number(cotizacion.deposito_garantia || 0);
-    const totalContrato = Number(cotizacion.total || 0);
-
-    const rpcPayload = {
-      cliente_id: clienteIdReal,
-      estado: 'ACTIVO',
-      subtotal_equipos: Number(cotizacion.subtotal || 0),
-      flete_entrega: fleteEntrega,
-      flete_recogida: 0,
-      subtotal_general: Number(cotizacion.subtotal || 0) + fleteEntrega,
-      total: totalContrato,
-      deposito: deposito,
-      garantia_monto: deposito,
-      garantia_tipo: 'Efectivo',
-      observaciones: `Convertido automáticamente desde Cotización ${cotizacion.consecutivo}. ${cotizacion.observaciones || ''}`.trim(),
-      detalles_logistica: cotizacion.obra_direccion || '',
-      creado_por: userIdentifier,
-      items: itemsPayload
-    };
-
-    // 5. Ejecutar creación atómica con la función SQL transaccional
-    const { data: alqData, error: rpcErr } = await supabase.rpc('crear_alquiler_transaccional', {
-      p_payload: rpcPayload
-    });
-
-    if (rpcErr || !alqData?.alquiler_id) {
-      console.error('Error RPC al convertir cotización en contrato:', rpcErr);
-      return { 
-        success: false, 
-        error: `Error al formalizar contrato en base de datos: ${rpcErr?.message || 'Error desconocido en transacción'}` 
+        success: false,
+        error: `Error al formalizar contrato en base de datos: ${errMsg}`
       };
     }
 
-    const nuevoAlquilerId = alqData.alquiler_id;
-    const consecutivoAlquiler = alqData.consecutivo;
+    const nuevoAlquilerId = rpcRes?.alquiler_id;
+    const consecutivoAlquiler = rpcRes?.consecutivo;
+    const consecutivoCotizacion = rpcRes?.cotizacion_consecutivo;
 
-    // 6. Actualizar campos tributarios y referencia de cotización en el nuevo contrato
-    await supabase
-      .from('alquileres')
-      .update({
-        aplica_iva: cotizacion.aplica_iva,
-        valor_iva: cotizacion.valor_iva,
-        aplica_retefuente: cotizacion.aplica_retefuente,
-        valor_retefuente: cotizacion.valor_retefuente,
-        aplica_reteica: cotizacion.aplica_reteica,
-        valor_reteica: cotizacion.valor_reteica,
-        cotizacion_origen_id: cotizacion.id,
-      })
-      .eq('id', nuevoAlquilerId);
-
-    // 7. Registrar Movimientos Inmutables en Kardex (SALIDA_ALQUILER)
-    try {
-      for (const d of detalles) {
-        const { data: eqActual } = await supabase
-          .from('equipos')
-          .select('stock_disponible, tenant_id')
-          .eq('id', d.equipo_id)
-          .single();
-
-        await adminSupabase.from('kardex_inventario').insert([{
-          equipo_id: d.equipo_id,
-          tenant_id: eqActual?.tenant_id || user?.id || null,
-          tipo_movimiento: 'ALQUILER_SALIDA',
-          cantidad_delta: -Math.abs(d.cantidad),
-          stock_resultante: eqActual?.stock_disponible || 0,
-          motivo: `Despacho por alquiler formalizado desde cotización ${cotizacion.consecutivo}`,
-          referencia_documento: `ALQ-${consecutivoAlquiler || nuevoAlquilerId}`,
-          usuario_id: user?.id || '00000000-0000-0000-0000-000000000000'
-        }]);
-      }
-    } catch (kardexError) {
-      console.warn('Advertencia al registrar en kardex_inventario:', kardexError);
-    }
-
-    // 8. Marcar la Cotización como CONVERTIDA y enlazar al Contrato
-    await supabase
-      .from('cotizaciones')
-      .update({
-        estado: 'CONVERTIDA',
-        alquiler_id: nuevoAlquilerId,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', cotizacion.id);
-
-    // 9. Auditoría Completa
+    // 2. Registro de Auditoría Inmutable
     AuditLogger.logAsync({
       modulo: 'ALQUILERES',
       accion: 'CONVERTIR_COTIZACION_A_CONTRATO',
-      descripcion: `Cotización ${cotizacion.consecutivo} convertida con éxito en Contrato ALQ-${consecutivoAlquiler || nuevoAlquilerId}. Total: $${totalContrato.toLocaleString('es-CO')}`,
-      entidadId: nuevoAlquilerId,
+      descripcion: `Cotización ${consecutivoCotizacion} convertida formalmente en Contrato ALQ-${consecutivoAlquiler || nuevoAlquilerId}. Idempotente: ${!!rpcRes?.idempotent}`,
+      entidadId: String(nuevoAlquilerId),
       detalles: {
-        cotizacionId: cotizacion.id,
-        cotizacionConsecutivo: cotizacion.consecutivo,
+        cotizacionId: input.cotizacionId,
         alquilerId: nuevoAlquilerId,
         consecutivoAlquiler,
-        total: totalContrato,
-        equiposCount: detalles.length
+        consecutivoCotizacion,
+        idempotencyKey,
+        idempotente: !!rpcRes?.idempotent,
+        total: rpcRes?.total
       },
       userId: user?.id,
       userEmail: user?.email,
     });
 
-    // 10. Limpieza de Caché y Revalidación de Rutas
+    // 3. Limpieza de Caché y Revalidación Reactiva de Rutas
     try {
       await invalidateTenantCache(user?.id, ['cotizaciones', 'alquileres', 'equipos']);
     } catch (cErr) {
-      console.warn('[convertirCotizacionAContratoAction] Cache clear error:', cErr);
+      console.warn('[convertirCotizacionAContratoAction] Cache clear warning:', cErr);
     }
 
     revalidatePath('/alquileres');
@@ -610,14 +457,15 @@ export async function convertirCotizacionAContratoAction(input: ConvertirCotizac
       data: {
         alquilerId: nuevoAlquilerId,
         consecutivo: consecutivoAlquiler,
-        cotizacionConsecutivo: cotizacion.consecutivo
+        cotizacionConsecutivo: consecutivoCotizacion,
+        idempotent: !!rpcRes?.idempotent
       }
     };
   } catch (err: any) {
     console.error('Excepción crítica en convertirCotizacionAContratoAction:', err);
     return {
       success: false,
-      error: err.message || 'Error inesperado durante la conversión de cotización a contrato'
+      error: err.message || 'Error inesperado durante la formalización del contrato'
     };
   }
 }

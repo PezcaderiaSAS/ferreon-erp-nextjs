@@ -63,6 +63,21 @@ const RegistrarAbonoModal = dynamic(
   { ssr: false, loading: () => <ModalSkeleton message="Cargando registro de abono..." /> }
 );
 
+const ConvertirCotizacionModal = dynamic(
+  () => import('../../components/forms/cotizaciones/ConvertirCotizacionModal').then((m) => m.ConvertirCotizacionModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Verificando disponibilidad de inventario..." /> }
+);
+
+const RegistrarPagoMixtoModal = dynamic(
+  () => import('../../components/cartera/RegistrarPagoMixtoModal').then((m) => m.RegistrarPagoMixtoModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Cargando tesorería y recaudo mixto..." /> }
+);
+
+const ReciboCajaMixtoPDFModal = dynamic(
+  () => import('../../components/pdf/ReciboCajaMixtoPDFModal').then((m) => m.ReciboCajaMixtoPDFModal),
+  { ssr: false }
+);
+
 import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
 import { AlquilerEntity } from '../../core/domain/entities/alquiler';
 import { alquilerUIToAlquilerEntity, alquilerEntityToAlquilerUI, equipoToEquipoUI } from '../../lib/mappers';
@@ -110,6 +125,9 @@ export default function AlquileresPage() {
   // Estados del Flujo Integrado de Cotizaciones y Visor PDF
   const [cotizacionesList, setCotizacionesList] = useState<any[]>([]);
   const [showCrearCotizacionModal, setShowCrearCotizacionModal] = useState<boolean>(false);
+  const [showConvertirModal, setShowConvertirModal] = useState<boolean>(false);
+  const [cotizacionParaConvertir, setCotizacionParaConvertir] = useState<any | null>(null);
+  const [reciboMixtoGenerado, setReciboMixtoGenerado] = useState<any | null>(null);
   const [documentoParaPDF, setDocumentoParaPDF] = useState<DocumentoPDFPayload | null>(null);
   const [convertiendoCotizacionId, setConvertiendoCotizacionId] = useState<string | null>(null);
 
@@ -1087,12 +1105,15 @@ export default function AlquileresPage() {
 
                                   <button
                                     type="button"
-                                    onClick={() => handleFormalizarCotizacionEnForm(cot)}
+                                    onClick={() => {
+                                      setCotizacionParaConvertir(cot);
+                                      setShowConvertirModal(true);
+                                    }}
                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-black shadow-xs shadow-emerald-700/20 transition-all cursor-pointer active:scale-98"
-                                    title="Formalizar Contrato en AlquilerForm con validación de stock y Re-Renting"
+                                    title="Formalización 1-Clic Poka-Yoke con bloqueo de stock pesimista"
                                   >
                                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
-                                    <span>Formalizar Contrato</span>
+                                    <span>Formalizar Contrato (1-Clic)</span>
                                   </button>
                                 </>
                               ) : (
@@ -1325,12 +1346,39 @@ export default function AlquileresPage() {
         contrato={contratoActivo}
         onConfirmar={handleRegistrarAbono}
       />
-      <RegistrarPagoModal
+      <RegistrarPagoMixtoModal
         isOpen={showPagoModal}
         onClose={() => setShowPagoModal(false)}
-        contratoParaPago={contratoActivo}
-        onConfirmarPago={handleRegistrarPago}
+        contrato={contratoActivo}
+        onSuccess={(pagoData, reciboInfo) => {
+          fetchAllData();
+          setShowPagoModal(false);
+          if (reciboInfo) {
+            setReciboMixtoGenerado(reciboInfo);
+          }
+        }}
       />
+      <ConvertirCotizacionModal
+        isOpen={showConvertirModal}
+        onClose={() => {
+          setShowConvertirModal(false);
+          setCotizacionParaConvertir(null);
+        }}
+        cotizacion={cotizacionParaConvertir}
+        onSuccess={async (nuevoContrato) => {
+          await fetchAllData();
+          setShowConvertirModal(false);
+          setCotizacionParaConvertir(null);
+          handleTabChange('contratos');
+        }}
+      />
+      {reciboMixtoGenerado && (
+        <ReciboCajaMixtoPDFModal
+          isOpen={true}
+          onClose={() => setReciboMixtoGenerado(null)}
+          recibo={reciboMixtoGenerado}
+        />
+      )}
       <HistorialPagosModal
         isOpen={showHistorialPagosModal}
         onClose={() => setShowHistorialPagosModal(false)}

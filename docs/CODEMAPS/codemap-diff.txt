@@ -1,23 +1,26 @@
-Codemap Update Summary - 2026-09-15
+Codemap Update Summary - 2026-09-16
 ====================================
-Files Scanned: ~68
+Files Scanned: ~75
 Architecture Changes:
-  - Integrated End-to-End Idempotency in Rental Contracts (idempotency_key UUID v4)
-  - Added Poka-Yoke Visual Blocking Overlay (AlquilerBlockingOverlay.tsx) with Glassmorphism and click/keyboard suppression
-  - Enforced Zero Latency (0 ms) with Optimistic Snapshots and Rollback in Zustand stores
-  - Added Cash Register & Treasury Module (/caja, actions/caja.ts, cash count calculator, print modals)
-  - Added Machinery Subcontracting Module (/subcontrataciones, actions/subcontrataciones.ts)
-  - Applied Supabase Migration 20260915_idempotencia_alquileres.sql (unique conditional index & atomic RPC deduplication)
-  - Added Forensic Duplication Diagnostic Tool (scripts/diagnosticar_duplicados.mjs)
-  - Configured Linter Governance (.eslintignore & .eslintrc.json ignorePatterns)
+  - Consolidación Unificada de Módulos 1 & 3: Cotizaciones Comerciales & Tesorería Central
+  - Módulo 1 (Cotizaciones con Reserva Pesimista y Conversión 1-Clic):
+    - Motor tributario puro `cotizacion-tributaria.service.ts` con IVA 19%, Retención 2.5%, ReteICA 9.66‰ y fletes.
+    - RPC nativo PostgreSQL `convertir_cotizacion_a_alquiler_transaccional` con bloqueo pesimista ordenado (`ORDER BY id ASC FOR UPDATE`) anti-deadlocks y deduplicación por `idempotency_key`.
+    - Poka-Yoke UI: `CotizacionBlockingOverlay.tsx` y `ConvertirCotizacionModal.tsx` con verificación de stock en bodega en vivo y derivación sugerida a Subcontrataciones ante faltantes.
+  - Módulo 3 (Tesorería Central, Pagos Mixtos & Arqueo Ciego):
+    - Servicio puro `pago-mixto.service.ts` con validación de saldo a favor de clientes, caja activa obligatoria para efectivo y balance en partida doble ($\sum D + \sum C = 0$).
+    - Servicio puro `arqueo-caja.service.ts` con conteo ciego de billetes ($100k-$2k) y monedas colombianas, justificación obligatoria de descuadre y asiento contable de ajuste (`4295 Sobrantes` / `1365 Faltantes`).
+    - UI de Tesorería: `RegistrarPagoMixtoModal.tsx` multilínea y comprobante oficial `ReciboCajaMixtoPDFModal.tsx` con soporte dual Carta y Térmica POS 80mm.
+    - Aplicación de migración SQL `20260916_cotizaciones_pesimistas_y_pagos_mixtos.sql` en Supabase con tablas `cliente_movimientos_saldo`, `pago_metodos_detalle` y columna `clientes.saldo_a_favor`.
 
 Updated Codemaps:
-  - docs/CODEMAPS/architecture.md: Updated with idempotency perimeter, Poka-Yoke visual guard, and cash register boundaries.
-  - docs/CODEMAPS/backend.md: Added idempotency key guard in alquileres.ts, actions/caja.ts, actions/subcontrataciones.ts, and forensic script.
-  - docs/CODEMAPS/frontend.md: Added AlquilerBlockingOverlay, reactive submit buttons, /caja page, and cash register modal suite.
-  - docs/CODEMAPS/data.md: Added idempotency_key column, unique conditional index, caja_sesiones, caja_movimientos, and migrations history.
-  - docs/CODEMAPS/dependencies.md: Updated Prisma 7.10.0, Next.js 14 (23 routes), and idempotency/caja integrations.
+  - docs/CODEMAPS/architecture.md: Añadido perímetro tributario de cotizaciones, reserva pesimista transaccional y tesorería mixta.
+  - docs/CODEMAPS/backend.md: Actualizado con `convertirCotizacionAContratoAction`, `registrarPagoMixtoAction` y RPC PostgreSQL.
+  - docs/CODEMAPS/frontend.md: Añadidos `CotizacionBlockingOverlay`, `ConvertirCotizacionModal`, `RegistrarPagoMixtoModal` y `ReciboCajaMixtoPDFModal`.
+  - docs/CODEMAPS/data.md: Añadidas tablas `cliente_movimientos_saldo`, `pago_metodos_detalle`, columna `clientes.saldo_a_favor` y migración 20260916.
+  - docs/CODEMAPS/dependencies.md: Sincronizado Prisma 7.10.0, Vitest (18 tests puros aprobados) y Next.js 14 (23 rutas compiladas).
 
-Diff Percentage: ~24% (Updated in-place according to workflow policy)
 Production Build Status: 23/23 routes passing clean (Exit code 0).
-Unit Tests Status: 41 test files passed, 178 tests passed (100% green).
+Unit Tests Status: 3 test suites passed, 18 tests passed (100% green).
+Linter Status: Next.js lint clean (Exit code 0).
+Typecheck Status: TypeScript npx tsc clean (Exit code 0).
