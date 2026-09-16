@@ -4,7 +4,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Handshake, Plus, Search, Filter, Printer, CheckCircle2, 
   Clock, ArrowRightLeft, TrendingUp, AlertCircle, Building2,
-  Eye, RotateCcw, ShieldCheck, AlertTriangle, UserPlus
+  Eye, RotateCcw, ShieldCheck, AlertTriangle, UserPlus,
+  Calculator, Receipt
 } from 'lucide-react';
 import { useSubcontratacionStore, SubcontratacionUI, SubcontratacionEstado } from '../../infrastructure/state/subcontratacionStore';
 import { useProveedorStore } from '../../infrastructure/state/proveedorStore';
@@ -13,6 +14,7 @@ import { CrearSubcontratacionModal } from '../components/subcontrataciones/Crear
 import { OrdenSubcontratacionPDFModal } from '../components/subcontrataciones/OrdenSubcontratacionPDFModal';
 import { DetalleSubcontratacionModal } from '../components/subcontrataciones/DetalleSubcontratacionModal';
 import { DevolucionSubcontratacionModal } from '../components/subcontrataciones/DevolucionSubcontratacionModal';
+import { LiquidarSubcontratacionModal } from '../components/subcontrataciones/LiquidarSubcontratacionModal';
 import { CrearProveedorModal } from '../components/subcontrataciones/CrearProveedorModal';
 import { formatearMonedaCOP } from '../../core/utils/numero-a-letras';
 import { Button } from '@/components/ui/Button';
@@ -31,6 +33,7 @@ export default function SubcontratacionesPage() {
   const [subcontratacionParaDetalle, setSubcontratacionParaDetalle] = useState<SubcontratacionUI | null>(null);
   const [subcontratacionParaPDF, setSubcontratacionParaPDF] = useState<SubcontratacionUI | null>(null);
   const [subcontratacionParaDevolucion, setSubcontratacionParaDevolucion] = useState<SubcontratacionUI | null>(null);
+  const [subcontratacionParaLiquidar, setSubcontratacionParaLiquidar] = useState<SubcontratacionUI | null>(null);
 
   const fetchDatos = useCallback(async () => {
     setIsLoading(true);
@@ -60,8 +63,10 @@ export default function SubcontratacionesPage() {
   // KPIs Financieros y Operativos
   const metrics = useMemo(() => {
     const activas = subcontrataciones.filter(s => s.estado === 'ACTIVA');
-    const solicitadas = subcontrataciones.filter(s => s.estado === 'SOLICITADA' || s.estado === 'BORRADOR');
-    const devueltas = subcontrataciones.filter(s => s.estado === 'DEVUELTA');
+    const solicitadas = subcontrataciones.filter(s => s.estado === 'SOLICITADA' || s.estado === 'BORRADOR' || s.estado === 'ORDENADA');
+    const enBodega = subcontrataciones.filter(s => s.estado === 'RECIBIDA_EN_BODEGA');
+    const devueltasProveedor = subcontrataciones.filter(s => s.estado === 'DEVUELTA_A_PROVEEDOR' || s.estado === 'DEVUELTA');
+    const liquidadas = subcontrataciones.filter(s => s.estado === 'LIQUIDADA');
     
     const costoTotalActivo = activas.reduce((acc, s) => acc + Number(s.costoTotalEstimado || 0), 0);
     const ingresoTotalActivo = activas.reduce((acc, s) => acc + Number(s.ingresoTotalEstimado || 0), 0);
@@ -74,7 +79,9 @@ export default function SubcontratacionesPage() {
     return {
       totalActivas: activas.length,
       totalSolicitadas: solicitadas.length,
-      totalDevueltas: devueltas.length,
+      totalEnBodega: enBodega.length,
+      totalDevueltas: devueltasProveedor.length,
+      totalLiquidadas: liquidadas.length,
       totalRegistros: subcontrataciones.length,
       costoTotalActivo,
       ingresoTotalActivo,
@@ -235,9 +242,11 @@ export default function SubcontratacionesPage() {
         <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
           {[
             { id: 'TODOS', label: 'Todas', count: subcontrataciones.length },
-            { id: 'ACTIVA', label: 'Activas en Obra', count: metrics.totalActivas },
+            { id: 'ACTIVA', label: 'En Obra (Cliente)', count: metrics.totalActivas },
+            { id: 'RECIBIDA_EN_BODEGA', label: 'En Bodega (Retornar)', count: metrics.totalEnBodega, alert: metrics.totalEnBodega > 0 },
+            { id: 'DEVUELTA_A_PROVEEDOR', label: 'Devueltas a Aliado', count: metrics.totalDevueltas },
+            { id: 'LIQUIDADA', label: 'Liquidadas (Ledger)', count: metrics.totalLiquidadas },
             { id: 'SOLICITADA', label: 'Solicitadas', count: metrics.totalSolicitadas },
-            { id: 'DEVUELTA', label: 'Devueltas', count: metrics.totalDevueltas },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -246,7 +255,9 @@ export default function SubcontratacionesPage() {
               className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
                 filtroEstado === tab.id
                   ? 'bg-amber-600 text-white shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                  : tab.alert 
+                    ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 hover:bg-amber-200' 
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
               }`}
             >
               <span>{tab.label}</span>
@@ -327,13 +338,20 @@ export default function SubcontratacionesPage() {
 
                     <td className="py-3 px-4 text-center">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                        sub.estado === 'RECIBIDA_EN_BODEGA' ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 border-amber-300 shadow-2xs' :
+                        sub.estado === 'DEVUELTA_A_PROVEEDOR' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200' :
+                        sub.estado === 'LIQUIDADA' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-300' :
                         sub.estado === 'ACTIVA' ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200' :
-                        sub.estado === 'SOLICITADA' ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200' :
+                        sub.estado === 'SOLICITADA' || sub.estado === 'ORDENADA' ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200' :
                         sub.estado === 'DEVUELTA' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200' :
                         sub.estado === 'CANCELADA' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200' :
                         'bg-slate-100 text-slate-700 border-slate-200'
                       }`}>
-                        {sub.estado}
+                        {sub.estado === 'RECIBIDA_EN_BODEGA' ? '⚠️ En Bodega (Retornar)' :
+                         sub.estado === 'DEVUELTA_A_PROVEEDOR' ? 'Devuelta a Aliado' :
+                         sub.estado === 'LIQUIDADA' ? '✓ Liquidada' :
+                         sub.estado === 'ACTIVA' ? 'En Obra (Cliente)' :
+                         sub.estado}
                       </span>
                     </td>
 
@@ -359,17 +377,37 @@ export default function SubcontratacionesPage() {
                           <Printer className="w-4 h-4" />
                         </button>
 
-                        {/* Botón Devolución / Liquidación */}
-                        {sub.estado === 'ACTIVA' && (
+                        {/* Botón Retorno a Proveedor (si está en obra o en bodega) */}
+                        {(sub.estado === 'ACTIVA' || sub.estado === 'RECIBIDA_EN_BODEGA') && (
                           <button
                             type="button"
                             onClick={() => setSubcontratacionParaDevolucion(sub)}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs"
-                            title="Registrar Retorno y Liquidar"
+                            className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs"
+                            title="Registrar Retorno al Proveedor Aliado"
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
-                            <span>Retorno</span>
+                            <span>Retornar</span>
                           </button>
+                        )}
+
+                        {/* Botón Liquidación Contable (si ya fue devuelta al proveedor pero no liquidada) */}
+                        {(sub.estado === 'DEVUELTA_A_PROVEEDOR' || sub.estado === 'DEVUELTA') && (
+                          <button
+                            type="button"
+                            onClick={() => setSubcontratacionParaLiquidar(sub)}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs"
+                            title="Liquidar Retenciones y Asentar en Ledger"
+                          >
+                            <Calculator className="w-3.5 h-3.5" />
+                            <span>Liquidar</span>
+                          </button>
+                        )}
+
+                        {/* Estado Liquidada */}
+                        {sub.estado === 'LIQUIDADA' && (
+                          <span className="p-1 text-emerald-600" title="Orden Asentada en Ledger Contable">
+                            <CheckCircle2 className="w-4 h-4" />
+                          </span>
                         )}
                       </div>
                     </td>
@@ -431,6 +469,18 @@ export default function SubcontratacionesPage() {
           isOpen={true}
           onClose={() => setSubcontratacionParaDevolucion(null)}
           subcontratacion={subcontratacionParaDevolucion}
+          onSuccess={() => {
+            fetchDatos();
+          }}
+        />
+      )}
+
+      {/* Modal de Liquidación Contable */}
+      {subcontratacionParaLiquidar && (
+        <LiquidarSubcontratacionModal
+          isOpen={true}
+          onClose={() => setSubcontratacionParaLiquidar(null)}
+          subcontratacion={subcontratacionParaLiquidar}
           onSuccess={() => {
             fetchDatos();
           }}

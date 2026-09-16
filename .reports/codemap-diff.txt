@@ -1,20 +1,30 @@
 Codemap Analysis Report
-Generated: 2026-09-09
-Scanned Directory: src/, docs/
+Generated: 2026-09-16
+Scanned Directory: src/, docs/, supabase/migrations/
 ==================================================
 
-1. ARCHITECTURE CHANGES:
-- Security Perimeter (CSP 3): Sanitized `src/lib/security/csp.ts` to omit `strict-dynamic` and `nonce` from `script-src` and `script-src-elem`. This prevents W3C CSP2/3 compliant browsers (Apple WebKit, Chromium) from ignoring `unsafe-inline`, enabling unblocked streaming hydration (`self.__next_f.push`) in Next.js 14 App Router.
-- Apple iOS WebKit Compatibility: Injected `worker-src 'self' blob:`, `child-src 'self' blob:`, explicit `script-src-elem`/`style-src-elem`, image blob support, and WebSockets `wss://*.supabase.co`.
-- Boolean Directive Conformity: `upgrade-insecure-requests` strictly delivered as a standalone keyword with no argument value (only in production HTTPS, omitted in local dev).
+1. ARCHITECTURE & BACKEND CHANGES:
+- Módulo 4 (Devoluciones Avanzadas & Split-Line Inmutable):
+  - Nuevo procedimiento almacenado atómico `public.procesar_devolucion_avanzada(p_payload JSONB)` con lock pesimista `FOR UPDATE` ordenado por ID.
+  - Nuevas entidades `public.devoluciones` y `public.devolucion_detalles` con índice único condicional de idempotencia `idx_devoluciones_empresa_idempotency_key`.
+  - Soporte de partición Split-Line inmutable en `alquiler_detalles` (`es_item_clonado_split`, `item_origen_id`).
+  - Clasificación cuatripartita de inventario físico en `equipos` (`stock_disponible`, `stock_en_obra`, `stock_mantenimiento`, `stock_perdido`).
+  - Nueva Server Action `procesarDevolucionAvanzadaAction` y `obtenerHistorialDevolucionesAction`.
+- Módulo 2 (Subcontrataciones de Maquinaria a Dos Tiempos):
+  - Máquina de estados extendida: `BORRADOR`, `SOLICITADA`, `ORDENADA`, `RECIBIDA_EN_BODEGA`, `EN_CLIENTE`, `ACTIVA`, `DEVUELTA`, `DEVUELTA_A_PROVEEDOR`, `LIQUIDADA`, `CANCELADA`.
+  - Cómputo independiente de días cliente vs días proveedor aliado.
+  - Nuevas Server Actions `registrarRetornoAProveedorAction` y `liquidarSubcontratacionAction` con liquidación tributaria DIAN (ReteFuente 2.5%, ReteICA 9.66‰) y generación de asiento contable balanceado en el Ledger (Cuentas `6135` vs `2365`, `2368`, `2205`).
 
-2. FRONTEND & UX CHANGES:
-- Dynamic Stacking Context in Modals: Added `openComboboxRowId` in `AlquilerForm.tsx` to elevate the active combobox row to `zIndex: 100` (`border-teal-500 shadow-xl ring-2 ring-teal-500/20 bg-white`). This prevents preceding rows (e.g. Row 0 `zIndex: 40`) from rendering over the active search dropdown.
-- Typeahead Search Ergonomics: Refined `EquipoCombobox.tsx` upward collision threshold to `220px` (lowered from `500px`), making options naturally open downwards under the user's cursor.
-- Visual Polish & 10-Item Density: Solid background `bg-white dark:bg-slate-900 shadow-2xl`, dimensions `min-w-[300px] sm:min-w-[420px]` and `max-h-[340px] sm:max-h-[380px]`, and `pb-36` bottom breathing room in `#items-scroll-area`.
-- React Hook Stabilization: Wrapped `addItemRow` (`AlquilerForm.tsx`), `fetchEquipos` (`bodega/page.tsx`), and `fetchClientes` (`clientes/page.tsx`) in `useCallback` with explicit dependency arrays.
-- Resilient Concurrent Hydration: `fetchAllData` in `alquileres/page.tsx` now uses `Promise.allSettled` to prevent single-endpoint delays from stalling the entire UI.
+2. FRONTEND & UX CHANGES (ZERO LATENCY & POKA-YOKE):
+- Escudo visual Poka-Yoke `DevolucionBlockingOverlay.tsx` con `backdrop-blur-md`, supresión de eventos de puntero y bloqueo de teclas `Enter`/`Escape`.
+- Modal interactivo `InspeccionTecnicaModal.tsx` con tasación de daños, cálculo reactivo en 0 ms y cumplimiento estricto de Rules of Hooks.
+- Tarjeta reactiva `LiquidacionGarantiaCard.tsx` con compensación automática neta de depósitos y vinculación con turnos de caja.
+- Modal `LiquidarSubcontratacionModal.tsx` para liquidación de órdenes aliadas con previsualización del asiento en partida doble.
+- Comprobante oficial `ComprobanteDevolucionPDFModal.tsx` con renderizado ultrarrápido (<150 ms) vía CSS nativo `@media print`.
+- Sincronización en tiempo real vía Supabase Realtime WebSocket en `realtimeSync.ts` para la tabla `subcontrataciones`.
 
-3. BUILD & DEPENDENCY VERIFICATION:
-- Next.js 14.2.35 `npm run build` exits with code 0 (19/19 routes compiled, 0 errors).
-- Clean Vercel production deployment pipeline.
+3. BUILD & QUALITY GATE VERIFICATION:
+- Pruebas Unitarias: Vitest 43 suites pasadas, 185/185 tests verdes (100% pass).
+- TypeScript: `tsc --noEmit` código 0 (0 errores de tipos).
+- Linter: `npx next lint` código 0 (0 errores de ESLint).
+- Next.js 14.2.35 `npm run build` código 0: 23 de 23 rutas compiladas limpiamente.

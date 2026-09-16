@@ -60,6 +60,26 @@
 ### 7. Supervisión y Seguridad UltraAdmin
 - El panel `/admin/empresas` permite a los usuarios con rol `ULTRAADMIN` (evaluado con `public.is_ultra_admin()`) auditar eventos inmutables en `audit_logs`, suspender usuarios o gestionar tenants de forma centralizada.
 
+### 8. Módulo de Devoluciones Parciales, Split-Line e Inspección Física
+- **Acceso:** Ruta `/devoluciones`.
+- **Flujo Operativo:**
+  1. Seleccionar contrato con saldo de equipos en obra (`PENDIENTE_DEVOLUCION`).
+  2. El modal `InspeccionTecnicaModal` calcula en tiempo real (0 ms) el split-line de los equipos retornados sin alterar las líneas activas restantes.
+  3. Clasificar cada unidad: `BUENO` (retorna a `stock_disponible`), `MANTENIMIENTO` (pasa a `stock_mantenimiento`) o `PERDIDA_TOTAL` (sale de `stock_total` y suma a `stock_perdido`).
+  4. La tarjeta `LiquidacionGarantiaCard` compensa automáticamente:
+     $$\text{Saldo Neto} = \text{Depósito en Garantía} - \text{Alquiler Causado} - \text{Costo Reparación/Reposición}$$
+  5. El guardado es atómico vía `procesar_devolucion_avanzada` con `idempotency_key` y bloqueo visual Poka-Yoke (`DevolucionBlockingOverlay`).
+  6. Al confirmar, se emite el acta de recepción oficial e imprimible en PDF (`ComprobanteDevolucionPDFModal`).
+
+### 9. Módulo de Subcontrataciones de Maquinaria (Cómputo a Dos Tiempos)
+- **Acceso:** Ruta `/subcontrataciones`.
+- **Ciclo de Vida:**
+  1. `SOLICITADA` / `ORDENADA`: Orden creada con el aliado comercial.
+  2. `ACTIVA`: Maquinaria despachada a la obra del cliente.
+  3. `RECIBIDA_EN_BODEGA`: El cliente retorna la máquina. Se suspende la facturación al cliente y el ERP emite alerta ámbar para que bodega devuelva el equipo al aliado.
+  4. `DEVUELTA_A_PROVEEDOR`: Se registra el despacho físico de retorno con `registrarRetornoAProveedorAction`, congelando el costo diario del proveedor.
+  5. `LIQUIDADA`: En `LiquidarSubcontratacionModal`, se liquidan retenciones DIAN (ReteFuente 2.5%, ReteICA 9.66‰), se computa el margen comercial neto y se asienta la partida doble balanceada en el Ledger (Cuentas `6135` Débito vs `2365`, `2368`, `2205` Crédito).
+
 ---
 
 ## Troubleshooting Común

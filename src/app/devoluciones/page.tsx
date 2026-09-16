@@ -1,90 +1,46 @@
 'use client';
 
-import { CheckCircle, CheckCircle2, AlertTriangle, Package, AlertOctagon } from 'lucide-react';
-
-
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { 
+  CheckCircle2, 
+  AlertTriangle, 
+  Package, 
+  AlertOctagon, 
+  History, 
+  Printer, 
+  Layers, 
+  RefreshCw,
+  Search,
+  Eye
+} from 'lucide-react';
 import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
-import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
-import { useLedgerStore } from '../../infrastructure/state/ledgerStore';
-import { NeuDevolucionWizard } from '../components/devoluciones/NeuDevolucionWizard';
-import { QuickReturnHeroCard } from '../components/devoluciones/QuickReturnHeroCard';
-import { AlquilerUI } from '../../infrastructure/state/alquilerStore';
 import { alquilerEntityToAlquilerUI } from '../../lib/mappers';
-
+import { InspeccionTecnicaModal } from '@/components/devoluciones/InspeccionTecnicaModal';
+import { ComprobanteDevolucionPDFModal } from '@/components/devoluciones/ComprobanteDevolucionPDFModal';
+import { obtenerHistorialDevolucionesAction } from '@/app/actions/devoluciones';
+import { obtenerSesionActivaAction } from '@/app/actions/caja';
 import { AutoTourTrigger } from '../../components/ui/AutoTourTrigger';
 import { InteractiveTour } from '../../components/ui/InteractiveTour';
 import { DEVOLUCIONES_STEPS } from '../../config/tours/TourConfigs';
 
 export default function DevolucionesPage() {
-  const { alquileres, procesarDevolucionOptimista, setAlquileres } = useAlquilerStore();
-  const { incrementarStock } = useBodegaStore();
-  const { registrarLiquidacionGarantia } = useLedgerStore();
+  const { alquileres, setAlquileres } = useAlquilerStore();
   
-  const [filtroEstado, setFiltroEstado] = useState<string>('Todos');
-  const [showDevolucionModal, setShowDevolucionModal] = useState<boolean>(false);
-  const [contratoActivo, setContratoActivo] = useState<any | null>(null);
-  const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
-
-  // Mapear contratos con equipos pendientes de retorno
-  const contratosConPendientes = useMemo(() => {
-    // Si hay alquileres reales en store, filtrar los que tengan equipos activos
-    const activos = alquileres.filter(a => a.estado === 'ACTIVO');
-    
-    if (activos.length > 0) {
-      return activos.map(a => ({
-        id: a.id || `CTR-${a.consecutivo}`,
-        consecutivo: a.consecutivo || 1,
-        clienteNombre: a.clienteNombre || 'Cliente General',
-        fechaEsperada: a.detalles?.[0]?.fechaFinEstimada ? new Date(a.detalles[0].fechaFinEstimada).toLocaleDateString('es-CO') : 'Hoy, 18:00',
-        equiposResumen: (a.detalles || []).map(d => `${d.cantidad}x ${d.nombreItem || 'Equipo'}`).join(', ') || 'Equipos en alquiler',
-        estadoRetraso: 'A tiempo',
-        rawAlquiler: a,
-        items: (a.detalles || []).map(d => ({
-          equipoId: d.itemId,
-          nombre: d.nombreItem || 'Equipo',
-          cantidad: d.cantidad,
-          cantidadDevuelta: d.cantidadDevuelta || 0
-        }))
-      }));
-    }
-
-    // Datos demostrativos iniciales si aún no se han creado contratos
-    return [
-      {
-        id: 'CTR-2023-089',
-        consecutivo: 89,
-        clienteNombre: 'Constructora Mónaco',
-        fechaEsperada: 'Hoy, 14:00',
-        equiposResumen: '3x Andamios Tubulares, 1x Mezcladora',
-        estadoRetraso: 'A tiempo',
-        rawAlquiler: { consecutivo: 89, id: 'CTR-2023-089', created_at: new Date().toISOString() },
-        items: [
-          { equipoId: '2', nombre: 'Andamio Tubular 2x2m', cantidad: 3, cantidadDevuelta: 0 },
-          { equipoId: '1', nombre: 'Taladro Percutor 800W', cantidad: 1, cantidadDevuelta: 0 }
-        ]
-      },
-      {
-        id: 'CTR-2023-075',
-        consecutivo: 75,
-        clienteNombre: 'Juan Pérez',
-        fechaEsperada: 'Ayer, 18:00',
-        equiposResumen: '1x Taladro Percutor 800W',
-        estadoRetraso: 'Retrasado',
-        rawAlquiler: { consecutivo: 75, id: 'CTR-2023-075', created_at: new Date().toISOString() },
-        items: [
-          { equipoId: '1', nombre: 'Taladro Percutor 800W', cantidad: 1, cantidadDevuelta: 0 }
-        ]
-      }
-    ];
-  }, [alquileres]);
+  const [tabActiva, setTabActiva] = useState<'pendientes' | 'historial'>('pendientes');
+  const [showInspeccionModal, setShowInspeccionModal] = useState<boolean>(false);
+  const [contratoSeleccionado, setContratoSeleccionado] = useState<any | null>(null);
+  const [sesionCajaActiva, setSesionCajaActiva] = useState<any | null>(null);
+  const [historialDevoluciones, setHistorialDevoluciones] = useState<any[]>([]);
+  const [loadingHistorial, setLoadingHistorial] = useState<boolean>(false);
+  const [filtroTexto, setFiltroTexto] = useState<string>('');
+  
+  // Estado para comprobante de reimpresión
+  const [selectedActaData, setSelectedActaData] = useState<any | null>(null);
+  const [showReimpresionModal, setShowReimpresionModal] = useState<boolean>(false);
 
   const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-    // Forzar fetch fresco desde la API al montar la página
-    // para asegurar que los detalles tienen el nombre de equipo (evitar cache localStorage obsoleta)
+  const refrescarAlquileres = useCallback(() => {
     fetch('/api/alquileres', { cache: 'no-store' })
       .then(r => r.json())
       .then(json => {
@@ -95,247 +51,393 @@ export default function DevolucionesPage() {
       .catch(e => console.warn('[DevolucionesPage] Error refrescando alquileres:', e));
   }, [setAlquileres]);
 
-  const handleOpenDevolucion = (contrato: any) => {
-    setContratoActivo(contrato);
-    setShowDevolucionModal(true);
-  };
-
-  const handleConfirmarDevolucion = async (payload: {
-    cantidadesBuenas: { [equipoId: string]: number };
-    cantidadesMalas: { [equipoId: string]: number };
-    cantidadesExtraviadas: { [equipoId: string]: number };
-    danos: { [equipoId: string]: number };
-    valoresReposicion: { [equipoId: string]: number };
-    fechaDevolucion: string;
-    metodoPagoExcedente: string;
-  }) => {
-    if (!contratoActivo) return;
-
-    const { cantidadesBuenas, cantidadesMalas, cantidadesExtraviadas, danos, valoresReposicion, fechaDevolucion, metodoPagoExcedente } = payload;
-    
-    // Preparar itemsDevueltos para el Payload Inmutable de Zustand
-    const todosLosEquiposIds = new Set([...Object.keys(cantidadesBuenas), ...Object.keys(cantidadesMalas), ...Object.keys(cantidadesExtraviadas)]);
-    const itemsDevueltos = Array.from(todosLosEquiposIds).map(equipoId => {
-      const buenas = cantidadesBuenas[equipoId] || 0;
-      const malas = cantidadesMalas[equipoId] || 0;
-      const extraviadas = cantidadesExtraviadas[equipoId] || 0;
-      
-      const itemEnContrato = contratoActivo.items.find((i:any) => String(i.equipoId) === String(equipoId));
-      const valorRep = itemEnContrato?.valorReposicion || valoresReposicion[equipoId] || 0;
-      const totalRep = extraviadas * valorRep;
-      
-      return {
-        equipoId,
-        cantidadDevuelta: buenas + malas + extraviadas,
-        buenas,
-        malas,
-        extraviadas,
-        costoDano: (danos[equipoId] || 0) + totalRep
-      };
-    }).filter(it => it.cantidadDevuelta > 0);
-    
-    if (itemsDevueltos.length === 0) {
-      setShowDevolucionModal(false);
-      return;
-    }
-
-    const uuidIdempotente = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `dev-${Date.now()}`;
-
-    // 1. Coordinación de Transacción (Atomicidad con Ledger)
-    let totalDanosGlobal = 0;
-    itemsDevueltos.forEach(it => { totalDanosGlobal += it.costoDano; });
-    
-    let transactionId = null;
-    if (totalDanosGlobal > 0) {
-      transactionId = await registrarLiquidacionGarantia({
-        contratoId: contratoActivo.id,
-        montoDanos: totalDanosGlobal,
-        montoGarantia: contratoActivo.rawAlquiler?.garantia_monto || 0,
-        metodoPagoExcedente
-      });
-      
-      if (!transactionId) {
-        alert("Fallo al registrar la transacción contable. No se procesó la devolución.");
-        return;
+  const cargarHistorial = useCallback(async () => {
+    setLoadingHistorial(true);
+    try {
+      const res = await obtenerHistorialDevolucionesAction();
+      if (res.success && res.data) {
+        setHistorialDevoluciones(res.data);
       }
+    } catch (e) {
+      console.warn('[DevolucionesPage] Error al cargar historial:', e);
+    } finally {
+      setLoadingHistorial(false);
     }
+  }, []);
 
-    // 2. Mutación de Zustand (Lógica matemática inmutable)
-    const exito = procesarDevolucionOptimista({
-      contratoId: contratoActivo.id,
-      itemsDevueltos,
-      fechaDevolucion,
-      idempotencyKey: uuidIdempotente,
-      transactionId: transactionId || undefined
-    });
+  useEffect(() => {
+    setIsMounted(true);
+    refrescarAlquileres();
+    cargarHistorial();
 
-    if (exito) {
-      // 2. Reintegrar stock a Bodega segregando Mantenimiento y Disponibles
-      const { incrementarStock, incrementarStockMantenimiento } = useBodegaStore.getState();
-      itemsDevueltos.forEach(it => {
-        if (it.buenas > 0) {
-          incrementarStock(it.equipoId, it.buenas);
+    // Consultar sesión activa de caja
+    obtenerSesionActivaAction()
+      .then(res => {
+        if (res.success && res.sesion) {
+          setSesionCajaActiva(res.sesion);
         }
-        if (it.malas > 0) {
-          incrementarStockMantenimiento(it.equipoId, it.malas);
-        }
+      })
+      .catch(() => {});
+  }, [refrescarAlquileres, cargarHistorial]);
+
+  // Mapear contratos con equipos pendientes de retorno
+  const contratosConPendientes = useMemo(() => {
+    const activos = alquileres.filter(a => a.estado === 'ACTIVO');
+    
+    return activos.map(a => {
+      const pendientes = (a.detalles || []).filter(d => {
+        const devuelta = Number(d.cantidadDevuelta) || 0;
+        return d.cantidad > devuelta;
       });
 
-      setFeedbackSuccess(`✓ Devolución procesada con éxito y stock reintegrado a Bodega.`);
-      setTimeout(() => setFeedbackSuccess(null), 4000);
-    }
+      return {
+        id: a.id || `CTR-${a.consecutivo}`,
+        consecutivo: a.consecutivo || 1,
+        clienteNombre: a.clienteNombre || 'Cliente General',
+        clienteNit: (a as any).clienteNit || 'Sin NIT',
+        clienteTelefono: (a as any).clienteTelefono || '',
+        depositoGarantia: Number((a as any).deposito) || 0,
+        fechaInicio: a.created_at || new Date().toISOString(),
+        fechaEsperada: a.detalles?.[0]?.fechaFinEstimada 
+          ? new Date(a.detalles[0].fechaFinEstimada).toLocaleDateString('es-CO') 
+          : 'A convenir',
+        equiposResumen: pendientes.map(d => `${d.cantidad - (d.cantidadDevuelta || 0)}x ${d.nombreItem || 'Equipo'}`).join(', ') || 'Sin pendientes',
+        estadoRetraso: 'En tiempo',
+        detallesCompletos: (a.detalles || []).map(d => ({
+          detalleId: d.id || d.itemId,
+          equipoId: d.itemId,
+          nombreEquipo: d.nombreItem || 'Equipo',
+          cantidadContratada: d.cantidad,
+          cantidadDevueltaPrevia: d.cantidadDevuelta || 0,
+          tarifaDiaria: Number(d.tarifaAplicada) || 0,
+          fechaInicio: d.fechaInicio || a.created_at || new Date().toISOString(),
+          esSubcontratado: (d as any).esSubcontratado || false,
+        }))
+      };
+    }).filter(c => c.detallesCompletos.some(d => d.cantidadContratada > d.cantidadDevueltaPrevia));
+  }, [alquileres]);
 
-    setShowDevolucionModal(false);
+  // Contratos filtrados por buscador
+  const contratosFiltrados = useMemo(() => {
+    if (!filtroTexto.trim()) return contratosConPendientes;
+    const q = filtroTexto.toLowerCase();
+    return contratosConPendientes.filter(c => 
+      c.clienteNombre.toLowerCase().includes(q) ||
+      String(c.consecutivo).includes(q) ||
+      c.equiposResumen.toLowerCase().includes(q)
+    );
+  }, [contratosConPendientes, filtroTexto]);
+
+  const handleOpenInspeccion = (contrato: any) => {
+    setContratoSeleccionado({
+      id: contrato.id,
+      consecutivo: contrato.consecutivo,
+      clienteNombre: contrato.clienteNombre,
+      clienteNit: contrato.clienteNit,
+      clienteTelefono: contrato.clienteTelefono,
+      depositoGarantia: contrato.depositoGarantia,
+      fechaInicio: contrato.fechaInicio,
+      detalles: contrato.detallesCompletos,
+    });
+    setShowInspeccionModal(true);
   };
 
-  if (!isMounted) {
-    return null;
-  }
+  const handleVerComprobanteHistorial = (acta: any) => {
+    const items = (acta.devolucion_detalles || []).map((d: any) => ({
+      nombreEquipo: d.equipos?.nombre || 'Maquinaria',
+      cantidadDevuelta: d.cantidad_devuelta,
+      diasEfectivos: d.dias_efectivos_cobrados,
+      tarifaDiaria: Number(d.tarifa_diaria_aplicada) || 0,
+      subtotalAlquiler: Number(d.subtotal_alquiler) || 0,
+      estadoInspeccion: d.estado_inspeccion,
+      costoReparacion: Number(d.costo_reparacion) || 0,
+      valorReposicion: Number(d.valor_reposicion) || 0,
+      descripcionDano: d.descripcion_dano,
+    }));
+
+    setSelectedActaData({
+      consecutivo: acta.consecutivo,
+      fechaDevolucion: acta.fecha_devolucion,
+      contratoConsecutivo: acta.alquileres?.consecutivo || acta.alquiler_id,
+      clienteNombre: acta.alquileres?.clientes?.nombre || 'Cliente General',
+      clienteNit: acta.alquileres?.clientes?.nit_cedula || '',
+      recibidoPor: acta.recibido_por || 'OPERADOR_BODEGA',
+      depositoAplicado: Number(acta.deposito_aplicado) || 0,
+      totalAlquilerLiquidado: Number(acta.total_alquiler_liquidado) || 0,
+      totalDanos: Number(acta.total_danos) || 0,
+      totalReposiciones: Number(acta.total_reposiciones) || 0,
+      saldoNeto: Number(acta.saldo_neto) || 0,
+      tipoResolucion: acta.tipo_resolucion,
+      metodoPago: acta.metodo_pago || 'EFECTIVO',
+      observaciones: acta.observaciones,
+      items,
+    });
+    setShowReimpresionModal(true);
+  };
+
+  if (!isMounted) return null;
 
   return (
-    <div className="flex flex-col gap-8 h-full">
-      {/* Page Header & Actions */}
+    <div className="flex flex-col gap-6 h-full">
+      {/* Cabecera Principal */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-semibold text-slate-900">Recepción y Devoluciones</h2>
-          <p className="text-base text-slate-600 mt-1">Gestión de maquinaria retornada, inspección física y reintegro a bodega.</p>
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-900 uppercase tracking-wider">
+              Módulo de Bodega & Devoluciones
+            </span>
+            {sesionCajaActiva && (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                ● Caja Abierta
+              </span>
+            )}
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-1">
+            Recepción e Inspección de Maquinaria
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Inspección física de daños, aplicación de Split-Line inmutable y compensación de depósitos en garantía.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { refrescarAlquileres(); cargarHistorial(); }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
+            title="Refrescar datos"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Refrescar</span>
+          </button>
         </div>
       </div>
-      
-      <QuickReturnHeroCard 
-        contratos={contratosConPendientes}
-        onProcesar={handleOpenDevolucion}
-      />
 
-      {feedbackSuccess && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-4 flex items-center gap-3 shadow-xs animate-fadeIn">
-          <CheckCircle2 className="text-emerald-600 w-5 h-5" />
-          <p className="text-sm font-bold">{feedbackSuccess}</p>
+      {/* Selector de Pestañas */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
+        <button
+          onClick={() => setTabActiva('pendientes')}
+          className={`pb-3 px-4 text-xs sm:text-sm font-bold transition-all border-b-2 flex items-center gap-2 ${
+            tabActiva === 'pendientes'
+              ? 'border-slate-900 text-slate-900'
+              : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <Package className="w-4 h-4" />
+          <span>Contratos con Retorno Pendiente ({contratosConPendientes.length})</span>
+        </button>
+
+        <button
+          onClick={() => setTabActiva('historial')}
+          className={`pb-3 px-4 text-xs sm:text-sm font-bold transition-all border-b-2 flex items-center gap-2 ${
+            tabActiva === 'historial'
+              ? 'border-slate-900 text-slate-900'
+              : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <History className="w-4 h-4" />
+          <span>Historial de Actas Emitidas ({historialDevoluciones.length})</span>
+        </button>
+      </div>
+
+      {/* PESTAÑA 1: PENDIENTES */}
+      {tabActiva === 'pendientes' && (
+        <div className="space-y-4">
+          {/* Buscador */}
+          <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="flex items-center gap-2 flex-1 max-w-md bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
+              <Search className="w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar por cliente, # contrato o maquinaria..."
+                value={filtroTexto}
+                onChange={(e) => setFiltroTexto(e.target.value)}
+                className="bg-transparent w-full focus:outline-none text-slate-800"
+              />
+            </div>
+            <span className="text-xs text-slate-400 font-medium">
+              Mostrando {contratosFiltrados.length} contrato(s)
+            </span>
+          </div>
+
+          {/* Tabla de Contratos con Maquinaria en Obra */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                  <tr>
+                    <th className="py-3.5 px-4 font-bold uppercase tracking-wider">Contrato</th>
+                    <th className="py-3.5 px-4 font-bold uppercase tracking-wider">Cliente</th>
+                    <th className="py-3.5 px-4 font-bold uppercase tracking-wider">Depósito</th>
+                    <th className="py-3.5 px-4 font-bold uppercase tracking-wider">Equipos en Obra</th>
+                    <th className="py-3.5 px-4 font-bold uppercase tracking-wider text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {contratosFiltrados.map((ctr) => (
+                    <tr 
+                      key={ctr.id} 
+                      className="hover:bg-slate-50/70 transition-all cursor-pointer group"
+                      onClick={() => handleOpenInspeccion(ctr)}
+                    >
+                      <td className="py-3.5 px-4">
+                        <span className="font-mono font-bold bg-slate-100 px-2 py-1 rounded-md text-slate-800 group-hover:bg-slate-200">
+                          #{ctr.consecutivo}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-bold text-slate-900 block">{ctr.clienteNombre}</span>
+                        <span className="text-[11px] text-slate-400 font-mono">{ctr.clienteNit}</span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                          ${ctr.depositoGarantia.toLocaleString('es-CO')}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-medium text-slate-700">
+                        {ctr.equiposResumen}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenInspeccion(ctr);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95"
+                        >
+                          <Package className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Inspeccionar y Devolver</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {contratosFiltrados.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-slate-400 text-xs">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2 opacity-80" />
+                        No hay contratos activos con maquinaria pendiente por devolver.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Delay Summary Alert */}
-      <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 shadow-sm flex items-start gap-4">
-        <AlertTriangle className="text-amber-600 mt-0.5 w-5 h-5" />
-        <div>
-          <h3 className="text-sm font-bold text-amber-900">Alquileres pendientes por retornar a bodega</h3>
-          <p className="text-xs text-amber-700 mt-0.5">Verifique el listado de contratos activos para inspeccionar el estado físico y registrar daños o devoluciones.</p>
-        </div>
-      </div>
+      {/* PESTAÑA 2: HISTORIAL DE ACTAS */}
+      {tabActiva === 'historial' && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                <tr>
+                  <th className="py-3.5 px-4 font-bold uppercase tracking-wider">Acta Consecutivo</th>
+                  <th className="py-3.5 px-4 font-bold uppercase tracking-wider">Fecha / Hora</th>
+                  <th className="py-3.5 px-4 font-bold uppercase tracking-wider">Cliente / Contrato</th>
+                  <th className="py-3.5 px-4 font-bold uppercase tracking-wider text-right">Alquiler Causado</th>
+                  <th className="py-3.5 px-4 font-bold uppercase tracking-wider text-right">Cargos Daño</th>
+                  <th className="py-3.5 px-4 font-bold uppercase tracking-wider text-right">Saldo Neto</th>
+                  <th className="py-3.5 px-4 font-bold uppercase tracking-wider text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {historialDevoluciones.map((acta) => {
+                  const saldo = Number(acta.saldo_neto) || 0;
+                  const esReembolso = saldo > 0;
+                  const esCobro = saldo < 0;
 
-      {/* Filters & Search within List */}
-      <div className="bg-white rounded-2xl shadow-card border border-slate-200 flex flex-col flex-1 min-h-[450px] overflow-hidden">
-        <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setFiltroEstado('Todos')}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${filtroEstado === 'Todos' ? 'border border-brand-salmon text-brand-salmonDark bg-brand-salmonLight' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
-            >
-              Todos ({contratosConPendientes.length})
-            </button>
+                  return (
+                    <tr key={acta.id} className="hover:bg-slate-50/70 transition-all">
+                      <td className="py-3.5 px-4">
+                        <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
+                          {acta.consecutivo}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-600">
+                        {new Date(acta.fecha_devolucion).toLocaleString('es-CO')}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-bold text-slate-900 block">
+                          {acta.alquileres?.clientes?.nombre || 'Cliente General'}
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          Contrato #{acta.alquileres?.consecutivo || acta.alquiler_id}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-medium text-slate-800">
+                        ${Number(acta.total_alquiler_liquidado).toLocaleString('es-CO')}
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-bold text-amber-700">
+                        ${(Number(acta.total_danos) + Number(acta.total_reposiciones)).toLocaleString('es-CO')}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <span className={`inline-block px-2 py-0.5 rounded-md font-bold ${
+                          esReembolso 
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                            : esCobro 
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200' 
+                            : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {esReembolso ? `Devuelto: $${saldo.toLocaleString('es-CO')}` : esCobro ? `Cobrado: $${Math.abs(saldo).toLocaleString('es-CO')}` : '$0'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleVerComprobanteHistorial(acta)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg transition-all"
+                          title="Ver e Imprimir Comprobante Oficial"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>Imprimir</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {historialDevoluciones.length === 0 && !loadingHistorial && (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-slate-400 text-xs">
+                      No se han registrado actas de devolución en el historial todavía.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
+      )}
 
-        {/* Table */}
-        <div id="tour-lista-devoluciones" className="overflow-x-auto flex-1">
-          <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10">
-              <tr>
-                <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">ID Contrato</th>
-                <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Cliente</th>
-                <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Fecha Esperada</th>
-                <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Equipos Pendientes</th>
-                <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Estado</th>
-                <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 uppercase tracking-wider text-right">Acciones de Recepción</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white text-sm">
-              {contratosConPendientes.map((ctr) => (
-                <tr 
-                  key={ctr.id} 
-                  onClick={() => handleOpenDevolucion(ctr)}
-                  className={`hover:bg-slate-50/80 transition-colors group cursor-pointer ${
-                    ctr.estadoRetraso === 'Retrasado' ? 'bg-red-50/20 border-l-4 border-l-red-500' : ''
-                  }`}
-                >
-                  <td className="py-4 px-4 font-mono text-xs font-bold text-slate-700">
-                    <span className="bg-slate-100 group-hover:bg-slate-200 px-2 py-1 rounded-md transition-colors">
-                      #{ctr.id}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 font-semibold text-slate-900">
-                    {ctr.clienteNombre}
-                  </td>
-                  <td className="py-4 px-4 text-xs font-medium text-slate-600">
-                    {ctr.fechaEsperada}
-                  </td>
-                  <td className="py-4 px-4 text-xs text-slate-700 font-medium">
-                    {ctr.equiposResumen}
-                  </td>
-                  <td className="py-4 px-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-semibold ${
-                      ctr.estadoRetraso === 'Retrasado' ? 'bg-red-100 text-red-800' : 'bg-emerald-50 text-emerald-700'
-                    }`}>
-                      {ctr.estadoRetraso}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenDevolucion(ctr);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 text-xs font-bold rounded-lg transition-colors border border-emerald-200/60 shadow-xs"
-                        title="Recibir equipos y reintegrar stock"
-                      >
-                        <Package className="text-[16px] w-5 h-5" />
-                        <span>Recibir Equipos</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenDevolucion(ctr);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 hover:bg-red-600 hover:text-white text-red-700 text-xs font-bold rounded-lg transition-colors border border-red-200/60 shadow-xs"
-                        title="Reportar daños o averías"
-                      >
-                        <AlertOctagon className="text-[16px] w-5 h-5" />
-                        <span>Daños</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {contratosConPendientes.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-500">
-                    <CheckCircle2 className="text-4xl text-slate-300 mb-2 block w-5 h-5" />
-                    No hay devoluciones pendientes en este momento.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Orquestador Visual (Híbrido) */}
-      <NeuDevolucionWizard
-        isOpen={showDevolucionModal}
+      {/* Modal Principal de Inspección Técnica & Split-Line */}
+      <InspeccionTecnicaModal
+        isOpen={showInspeccionModal}
         onClose={() => {
-          setShowDevolucionModal(false);
-          setContratoActivo(null);
+          setShowInspeccionModal(false);
+          setContratoSeleccionado(null);
         }}
-        contrato={contratoActivo}
-        onConfirm={handleConfirmarDevolucion}
+        contrato={contratoSeleccionado}
+        sesionCajaActiva={sesionCajaActiva}
+        onSuccess={() => {
+          refrescarAlquileres();
+          cargarHistorial();
+        }}
       />
 
-      {/* Tour Módulo Devoluciones */}
+      {/* Modal de Reimpresión de Comprobante PDF */}
+      <ComprobanteDevolucionPDFModal
+        isOpen={showReimpresionModal}
+        onClose={() => {
+          setShowReimpresionModal(false);
+          setSelectedActaData(null);
+        }}
+        data={selectedActaData}
+      />
+
+      {/* Tour Guiado */}
       <AutoTourTrigger tourId="devoluciones-core" delay={1000} forceMode={true} />
       <InteractiveTour tourId="devoluciones-core" steps={DEVOLUCIONES_STEPS} />
     </div>

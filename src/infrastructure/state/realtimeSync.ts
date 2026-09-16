@@ -3,6 +3,7 @@ import { supabaseClient } from '../persistence/supabase/client';
 import { useBodegaStore } from './bodegaStore';
 import { useAlquilerStore } from './alquilerStore';
 import { useClienteStore } from './clienteStore';
+import { useSubcontratacionStore, SubcontratacionUI } from './subcontratacionStore';
 import { useToastStore } from './toastStore';
 import { EquipoUI } from './bodegaStore';
 import { AlquilerUI } from './alquilerStore';
@@ -161,6 +162,39 @@ export function setupRealtimeSubscriptions() {
           clienteState.updateCliente(updatedCliente);
         } else if (eventType === 'DELETE' && oldRecord) {
           clienteState.setClientes(clienteState.clientes.filter((c) => c.id !== oldRecord.id));
+        }
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'subcontrataciones',
+      },
+      (payload) => {
+        console.info('[Realtime] Cambio detectado en tabla subcontrataciones:', payload.eventType);
+        const { eventType, new: newRecord, old: oldRecord } = payload;
+        const subState = useSubcontratacionStore.getState();
+
+        if (eventType === 'INSERT' && newRecord) {
+          if (!subState.subcontrataciones.some((s) => s.id === newRecord.id)) {
+            subState.agregarSubcontratacion(newRecord as unknown as SubcontratacionUI);
+          }
+        } else if (eventType === 'UPDATE' && newRecord) {
+          subState.actualizarEstado(newRecord.id, newRecord.estado);
+
+          // Si pasó a RECIBIDA_EN_BODEGA, alertar al personal de despacho
+          if (newRecord.estado === 'RECIBIDA_EN_BODEGA') {
+            useToastStore.getState().addToast({
+              type: 'warning',
+              title: 'Maquinaria en Bodega',
+              message: `Orden ${newRecord.consecutivo}: Entregada por cliente. Pendiente retornar al aliado.`,
+              duration: 6000,
+            });
+          }
+        } else if (eventType === 'DELETE' && oldRecord) {
+          subState.restoreSnapshot(subState.subcontrataciones.filter((s) => s.id !== oldRecord.id));
         }
       }
     )

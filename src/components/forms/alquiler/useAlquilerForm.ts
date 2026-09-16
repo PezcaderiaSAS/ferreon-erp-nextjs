@@ -963,13 +963,13 @@ export function useAlquilerForm({
     }
   };
 
-  const guardarComoCotizacion = useCallback(async (): Promise<boolean> => {
+  const guardarComoCotizacion = async (): Promise<boolean> => {
     return ejecutarGuardadoTransaccional('COTIZACION');
-  }, [ejecutarGuardadoTransaccional]);
+  };
 
-  const formalizarComoContrato = useCallback(async (): Promise<boolean> => {
+  const formalizarComoContrato = async (): Promise<boolean> => {
     return ejecutarGuardadoTransaccional('CONTRATO');
-  }, [ejecutarGuardadoTransaccional]);
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -8,7 +8,8 @@
 - `proveedores.ts`: Catálogo maestro de proveedores (`obtenerProveedoresAction`, `crearProveedorAction`, `actualizarProveedorAction`). Valida datos con Zod, resuelve `tenant_id` y administra caché distribuida en Redis (`cacheKey: proveedores:${tenantId}`).
 - `cotizaciones.ts`: Emisión y ciclo de vida de cotizaciones de obra (`crearCotizacionAction`, `obtenerCotizacionesAction`, `convertirCotizacionAContratoAction`). Soporta casillas tributarias interactivas y conversión 1-clic con bloqueo pesimista contra sobreventa.
 - `facturacion.ts`: Emisión de facturas comerciales formales (`emitirFacturaLedgerAction`) con asientos contables de venta (`1305 Clientes`, `1355 Anticipos`, `2408 IVA Generado`, `4155 Ingresos por Alquileres`).
-- `subcontrataciones.ts`: Gestión y asignación de maquinaria de proveedores externos (`crearSubcontratacionAction`, `obtenerSubcontratacionesAction`) con cálculo de márgenes operativos.
+- `devoluciones.ts`: Recepción técnica de maquinaria y compensación neta de depósitos (`procesarDevolucionAvanzadaAction`, `obtenerHistorialDevolucionesAction`). Implementa validación Zod perimetral, idempotencia con UUID v4, invocación de RPC `procesar_devolucion_avanzada` con Split-Line inmutable, registro automático de movimientos en `movimientos_caja` (si hay devolución en efectivo y sesión de caja activa), auditoría forense e invalidación de caché Redis.
+- `subcontrataciones.ts`: Gestión de maquinaria de proveedores aliados (`crearSubcontratacionAction`, `obtenerSubcontratacionesAction`, `cambiarEstadoSubcontratacionAction`, `registrarRetornoAProveedorAction`, `liquidarSubcontratacionAction`). Implementa cómputo de costos a dos tiempos (cliente vs aliado), cálculo de márgenes operativos, aplicación de retenciones tributarias (ReteFuente 2.5%, ReteICA 9.66‰) y generación de asientos contables balanceados en el Ledger (Cuentas `6135` vs `2365`, `2368`, `2205`).
 - `equipos.ts`: Inventario (Kardex) y ajustes Poka-Yoke con RPC `ajustar_stock_equipo` y `reducir_stock_seguro`.
 - `pagos.ts`: Abonos e ingresos con validación contra sesiones de caja ABIERTAS (`registrarPagoAction`).
 - `ultraadmin.ts`: Supervisión global multi-tenant protegida por `is_ultra_admin()`.
@@ -23,6 +24,8 @@
 - Cabeceras estándar: `Cache-Control: no-store, no-cache, must-revalidate`.
 
 ## Key Files
+- `src/core/services/liquidacion-devolucion.service.ts` (Servicio puro de liquidación de devoluciones, Split-Line, prorrateo diario y compensación de garantía)
+- `src/core/services/liquidacion-subcontratacion.service.ts` (Servicio puro de liquidación de maquinaria aliada a dos tiempos, retenciones DIAN y partida doble en Ledger)
 - `src/core/services/calculo-compras-tributario.ts` (Servicio puro de liquidación tributaria y partida doble contable)
 - `src/core/services/pdf-factura-generator.service.ts` (Generador de plantillas HTML corporativas para Facturas y Cotizaciones)
 - `src/lib/security/validation.ts` (Validación dual-layer con esquemas Zod en API Routes y Actions)

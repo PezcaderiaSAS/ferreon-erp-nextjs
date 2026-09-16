@@ -9,7 +9,8 @@ export type SubcontratacionEstado =
   | 'BORRADOR'
   | 'SOLICITADA'
   | 'ACTIVA'
-  | 'DEVUELTA';
+  | 'DEVUELTA'
+  | 'LIQUIDADA';
 
 export interface SubcontratacionDetalleUI {
   id: string;

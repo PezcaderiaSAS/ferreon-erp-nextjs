@@ -7,7 +7,9 @@
 - `alquiler_detalles`: Líneas de contrato (`id`, `alquiler_id`, `equipo_id`, `cantidad`, `cantidad_devuelta`, `dias_contratados`, `fecha_inicio`, `fecha_fin`, `tarifa_aplicada`, `subtotal_linea`, `devuelto`, `costo_dano`).
 - `caja_sesiones`: Control de turnos de caja (`id UUID`, `empresa_id`, `usuario_id`, `estado CHECK (estado IN ('ABIERTA', 'CERRADA'))`, `monto_apertura`, `monto_cierre_esperado`, `monto_cierre_real`, `diferencia`, `fecha_apertura`, `fecha_cierre`, `observaciones`).
 - `caja_movimientos`: Entradas y salidas operativas de efectivo (`id UUID`, `sesion_id`, `empresa_id`, `tipo CHECK (tipo IN ('INGRESO', 'EGRESO'))`, `monto`, `motivo`, `categoria`, `created_at`).
-- `subcontrataciones`: Gestión de maquinaria externa (`id UUID`, `empresa_id`, `proveedor_id`, `equipo_id`, `alquiler_id`, `costo_subcontratacion`, `tarifa_cliente`, `fecha_inicio`, `fecha_fin`, `estado`).
+- `devoluciones`: Registro histórico de recepciones de equipos (`id UUID`, `empresa_id`, `alquiler_id`, `consecutivo`, `fecha_devolucion`, `deposito_custodiado_cop`, `alquiler_causado_cop`, `costo_reparacion_total_cop`, `saldo_neto_cop`, `tipo_resolucion`, `metodo_pago`, `sesion_caja_id`, `idempotency_key`). Índice único `idx_devoluciones_empresa_idempotency_key` contra doble recepción.
+- `devolucion_detalles`: Desglose físico por ítem (`id UUID`, `devolucion_id`, `alquiler_detalle_id`, `equipo_id`, `cantidad_devuelta`, `estado_inspeccion CHECK IN ('BUENO', 'MANTENIMIENTO', 'PERDIDA_TOTAL')`, `costo_reparacion_cop`, `valor_reposicion_cop`, `descripcion_dano`).
+- `subcontrataciones`: Gestión de maquinaria externa a dos tiempos (`id UUID`, `empresa_id`, `proveedor_id`, `consecutivo`, `estado CHECK IN ('BORRADOR', 'SOLICITADA', 'ORDENADA', 'RECIBIDA_EN_BODEGA', 'EN_CLIENTE', 'ACTIVA', 'DEVUELTA', 'DEVUELTA_A_PROVEEDOR', 'LIQUIDADA', 'CANCELADA')`, `costo_final_liquidado`, `retefuente_valor`, `reteica_valor`, `asiento_contable_id`).
 - `bodegas`: Almacenes físicos y control WMS de inventario (`id UUID`, `empresa_id`, `nombre`, `ubicacion`, `es_principal`).
 - `proveedores`: Catálogo de proveedores (`id UUID`, `tenant_id`, `empresa_id`, `nombre`, `nit`, `contacto`, `telefono`, `email`, `direccion`, `ciudad`, `dias_credito`, `estado`).
 - `compras` & `compras_detalles`: Órdenes de compra con desglose tributario (IVA 19%, ReteFuente, ReteICA) y detalle de maquinaria ingresada.
@@ -24,12 +26,14 @@
 - `audit_logs`: Trazabilidad inmutable de operaciones y seguridad del ERP.
 
 ## Stored Procedures & RPCs Transaccionales
+- `procesar_devolucion_avanzada(p_payload)`: Devolución atómica de equipos con Split-Line inmutable, tasación de daños/pérdidas, clasificación cuatripartita de stock (`stock_disponible`, `stock_mantenimiento`, `stock_perdido`), compensación de depósito en garantía, detección de subcontratación y alerta de retorno en bodega.
 - `crear_alquiler_transaccional(p_payload)`: Creación atómica de contrato. Verifica primero si `idempotency_key` ya fue procesada para el tenant; de ser así, retorna inmediatamente el contrato existente sin mutaciones. Realiza validación `FOR UPDATE` de stock disponible y bloqueo pesimista contra sobreventa.
 - `procesar_devolucion_alquiler(p_payload)`: Devolución atómica de ítems con restitución automática de stock en obra a disponible y transición de estado a `FINALIZADO`.
 - `reducir_stock_seguro(p_cantidad_requerida, p_equipo_id)`: Reserva segura de inventario con control de concurrencia.
 - `ajustar_stock_equipo(p_equipo_id, p_nuevo_disponible, p_motivo)`: Ajuste Poka-Yoke de bodega.
 
 ## Migrations History
+- `20260916_devoluciones_avanzadas_y_subcontrataciones.sql`: Tablas `devoluciones` y `devolucion_detalles`, extensión de `alquiler_detalles` (Split-Line e inspección física), `equipos.stock_perdido`, estados a dos tiempos y liquidación en `subcontrataciones`, y procedimiento almacenado `procesar_devolucion_avanzada`.
 - `20260915_idempotencia_alquileres.sql`: Columna `idempotency_key`, índice único condicional y reemplazo de RPC `crear_alquiler_transaccional` con detección y retorno idempotente.
 - `20260914_modulo_caja_movimientos_y_arqueo.sql`: Estructura para turnos de caja, movimientos de efectivo y arqueo con desglose de denominaciones.
 - `20260911_modulo_wms_bodegas_y_stocks.sql`: Soporte para bodegas múltiples y stock por ubicación física.

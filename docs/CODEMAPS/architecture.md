@@ -18,18 +18,19 @@ Multi-tenant architecture via Supabase RLS (Row Level Security) and Upstash Redi
 - **Frontend Layer**: React Server Components (RSC) + Client Components con Typeahead Accesible (`EquipoCombobox`, `SelectorProveedorAsistido`), atajos globales (`F2`), rangos maestros, gobernanza de tokens `DESIGN.md` y apilamiento dinámico de capas (`zIndex: 100`).
 - **State Management**: Zustand (Modular Client Stores: `alquilerStore`, `bodegaStore`, `empresaStore`, `clienteStore`, `cajaStore`, `layoutStore`, `toastStore`, `ledgerStore`) con transiciones optimistas, rollback ante fallos y reconciliación independiente vía `Promise.allSettled`.
 - **Backend / Server Actions Layer**: Next.js Server Actions (`src/app/actions/`):
-  - Contratos, cotizaciones y devoluciones (`alquileres.ts`, `cotizaciones.ts`).
+  - Contratos, cotizaciones y alquileres (`alquileres.ts`, `cotizaciones.ts`).
+  - Devoluciones avanzadas con Split-Line, clasificación de inventario y conciliación de depósitos (`devoluciones.ts`).
+  - Subcontrataciones de maquinaria aliada a dos tiempos, retenciones tributarias y asientos contables (`subcontrataciones.ts`).
   - Turnos, movimientos, arqueos y comprobantes de caja (`caja.ts`).
   - Facturación comercial y asientos contables (`facturacion.ts`).
   - Compras y aprovisionamiento con liquidación tributaria (`compras.ts`).
   - Directorio maestro de proveedores (`proveedores.ts`).
-  - Subcontrataciones de maquinaria externa (`subcontrataciones.ts`).
   - Auditoría asíncrona no bloqueante (`AuditLogger` en `audit_logs`).
-- **Database Layer**: PostgreSQL (Supabase) con RLS estricto por tenant, tabla `audit_logs` inmutable, función `is_ultra_admin()` y RPCs transaccionales (`crear_alquiler_transaccional`, `reducir_stock_seguro`, `procesar_devolucion_alquiler`, `ajustar_stock_equipo`).
-- **Accounting & Financial Ledger**: Motor de partida doble estricto ($\sum \text{Débitos} = \sum \text{Créditos}$) para Cuentas por Cobrar (`1305`), Cuentas por Pagar Proveedores (`2205`), Activo Fijo / Equipos (`1520`), IVA Descontable (`2408`), ReteFuente Pasivo (`2365`), ReteICA Pasivo (`2368`) y Tesorería (`1105`/`1110`).
+- **Database Layer**: PostgreSQL (Supabase) con RLS estricto por tenant, tabla `audit_logs` inmutable, función `is_ultra_admin()` y RPCs transaccionales (`procesar_devolucion_avanzada`, `crear_alquiler_transaccional`, `reducir_stock_seguro`, `procesar_devolucion_alquiler`, `ajustar_stock_equipo`).
+- **Accounting & Financial Ledger**: Motor de partida doble estricto ($\sum \text{Débitos} = \sum \text{Créditos}$) para Cuentas por Cobrar (`1305`), Cuentas por Pagar Proveedores (`2205`), Activo Fijo / Equipos (`1520`), Costos de Subcontratación (`6135`), IVA Descontable (`2408`), ReteFuente Pasivo (`2365`), ReteICA Pasivo (`2368`) y Tesorería (`1105`/`1110`).
 - **Document Generation Engines**: Dual PDF system:
   1. Vectorial: `@react-pdf/renderer` (`ContratoAlquilerPDF.tsx`) con logo responsivo y formatos Letter/A5.
-  2. HTML/Print: `EnterprisePDFService` y modales de impresión nativa (`VisorDocumentoPDFModal.tsx`, `ComprobanteEntradaPDFModal.tsx`, `ComprobanteArqueoModal.tsx`) para Facturas, Cotizaciones, Órdenes de Compra y Arqueos de Caja.
+  2. HTML/Print: `EnterprisePDFService` y modales de impresión nativa (`ComprobanteDevolucionPDFModal.tsx`, `VisorDocumentoPDFModal.tsx`, `ComprobanteEntradaPDFModal.tsx`, `ComprobanteArqueoModal.tsx`, `OrdenSubcontratacionPDFModal.tsx`) para Actas de Recepción, Facturas, Cotizaciones, Órdenes de Compra y Arqueos de Caja.
 
 ## Data Flow
-Client UI (F2 / Combobox / Selector Asistido / AlquilerBlockingOverlay) → Server Action / API Route (Zod SafeParse + Idempotency Guard) → Domain Services (`calculo-compras-tributario.ts`, `pdf-factura-generator.service.ts`) → Supabase Postgres (RLS + RPC Transaccional con Lock Pesimista + Unique Idempotency Key) + Redis Cache Invalidation (`compras`, `proveedores`, `equipos`, `cotizaciones`) → AuditLogger (`audit_logs`)
+Client UI (F2 / Combobox / Selector Asistido / AlquilerBlockingOverlay / DevolucionBlockingOverlay) → Server Action / API Route (Zod SafeParse + Idempotency Guard) → Domain Services (`liquidacion-devolucion.service.ts`, `liquidacion-subcontratacion.service.ts`, `calculo-compras-tributario.ts`, `pdf-factura-generator.service.ts`) → Supabase Postgres (RLS + RPC Transaccional con Lock Pesimista + Unique Idempotency Key) + Redis Cache Invalidation (`alquileres`, `devoluciones`, `subcontrataciones`, `compras`, `proveedores`, `equipos`, `cotizaciones`) → AuditLogger (`audit_logs`)

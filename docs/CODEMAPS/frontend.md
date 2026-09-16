@@ -6,15 +6,20 @@
 - `/caja`: Control de turnos y tesorería. Incluye apertura de turno con base inicial, registro de ingresos/egresos, arqueo ciego con calculadora de denominaciones de billetes/monedas, determinación de sobrantes/faltantes y generación de comprobantes contables de arqueo.
 - `/compras`: Módulo de compras con pestañas `Órdenes de Compra` y `Directorio de Proveedores`. Incluye KPIs de inversión facturada, neto desembolsado y retenciones practicadas, tabla con botón directo de impresión PDF y búsqueda predictiva.
 - `/cotizaciones`: Gestión comercial de cotizaciones con KPIs (Total Cotizado, Aprobadas, Tasa de Conversión), desglose tributario y conversión 1-clic a contrato.
-- `/subcontrataciones`: Gestión de maquinaria externa subcontratada a terceros, control de costos y vinculación con contratos de clientes.
-- `/facturacion`: Gestión y emisión de facturas comerciales formales en PDF con asientos contables en Ledger.
-- `/bodega`: Panel de inventario, Kardex visual y ajustes Poka-Yoke de stock (`EditarEquipoModal.tsx`, `KardexEquipoModal.tsx`).
-- `/clientes`: Directorio de clientes con reconciliación estabilizada vía `useCallback([setClientes])`.
-- `/devoluciones`: Wizard Poka-Yoke interactivo para el reingreso parcial/total de equipos.
+- `subcontrataciones`: Gestión de maquinaria externa subcontratada a aliados comerciales con ciclo a dos tiempos (`ACTIVA`, `RECIBIDA_EN_BODEGA`, `DEVUELTA_A_PROVEEDOR`, `LIQUIDADA`), alerta en bodega y liquidación contable en Ledger.
+- `facturacion`: Gestión y emisión de facturas comerciales formales en PDF con asientos contables en Ledger.
+- `bodega`: Panel de inventario, Kardex visual y ajustes Poka-Yoke de stock (`EditarEquipoModal.tsx`, `KardexEquipoModal.tsx`).
+- `clientes`: Directorio de clientes con reconciliación estabilizada vía `useCallback([setClientes])`.
+- `devoluciones`: Módulo de recepción física de maquinaria con pestañas de retorno pendiente e historial de actas, inspección técnica granular, Split-Line interactivo y compensación de garantía.
 - `/admin/empresas`: Panel de control UltraAdmin multi-tenant para supervisión global de tenants y usuarios.
 - `/configuracion`: Datos fiscales, logo corporativo con compresión canvas (<150KB), usuarios y pestaña de Auditoría del sistema.
 
 ## Components (`src/components/` & `src/app/components/`)
+- `devoluciones/InspeccionTecnicaModal.tsx`: Modal orquestador de recepción con Split-Line interactivo, clasificación por ítem (`BUENO`, `MANTENIMIENTO`, `PERDIDA_TOTAL`), tasación de daños y cálculo en vivo (0 ms).
+- `devoluciones/DevolucionBlockingOverlay.tsx`: Escudo visual Poka-Yoke con Glassmorphism (`backdrop-blur-md`), spinner GPU y bloqueo de puntero/teclado (`pointer-events-none`) para evitar dobles envíos.
+- `devoluciones/LiquidacionGarantiaCard.tsx`: Tarjeta financiera reactiva que calcula la compensación neta entre depósito, arriendo causado y reparaciones, vinculando a caja o transferencia.
+- `devoluciones/ComprobanteDevolucionPDFModal.tsx`: Acta oficial de recepción e inspección técnica con estilos `@media print` (<150 ms) y áreas de firma.
+- `subcontrataciones/LiquidarSubcontratacionModal.tsx`: Modal de liquidación contable de maquinaria aliada con retenciones DIAN (ReteFuente 2.5%, ReteICA 9.66‰) y previsualización de asiento balanceado.
 - `forms/alquiler/AlquilerBlockingOverlay.tsx`: Escudo visual Poka-Yoke con Glassmorphism (`backdrop-blur-md`), spinner sincronizado y bloqueo físico absoluto de clics y atajos de teclado (`pointer-events-none`) durante la ejecución de la transacción para evitar doble clic o reenvíos accidentales.
 - `forms/alquiler/StepResumenLiquidacion.tsx`: Panel de liquidación final con botones reactivos, estados de carga y deshabilitación inmediata durante `isSubmitting`.
 - `caja/AbrirCajaModal.tsx`: Modal para iniciar turno de caja especificando el monto base inicial en efectivo.

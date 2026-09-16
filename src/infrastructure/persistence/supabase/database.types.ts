@@ -30,6 +30,13 @@ export type Database = {
           id: number
           subtotal_linea: number
           tarifa_aplicada: number
+          estado_inspeccion?: string | null
+          costo_reparacion?: number
+          valor_reposicion?: number
+          descripcion_dano?: string | null
+          fecha_devolucion_real?: string | null
+          es_item_clonado_split?: boolean
+          item_origen_id?: number | null
         }
         Insert: {
           alquiler_id: number
@@ -46,6 +53,13 @@ export type Database = {
           id?: number
           subtotal_linea: number
           tarifa_aplicada: number
+          estado_inspeccion?: string | null
+          costo_reparacion?: number
+          valor_reposicion?: number
+          descripcion_dano?: string | null
+          fecha_devolucion_real?: string | null
+          es_item_clonado_split?: boolean
+          item_origen_id?: number | null
         }
         Update: {
           alquiler_id?: number
@@ -62,6 +76,13 @@ export type Database = {
           id?: number
           subtotal_linea?: number
           tarifa_aplicada?: number
+          estado_inspeccion?: string | null
+          costo_reparacion?: number
+          valor_reposicion?: number
+          descripcion_dano?: string | null
+          fecha_devolucion_real?: string | null
+          es_item_clonado_split?: boolean
+          item_origen_id?: number | null
         }
         Relationships: [
           {
