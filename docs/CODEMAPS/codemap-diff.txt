@@ -1,35 +1,29 @@
-Codemap Update Summary - 2026-09-17
-====================================
-Files Scanned: ~85
+Codemap Update Summary - 2026-09-17 (Sesión 2: Corrección de 3 Bugs Críticos & Refinamiento)
+=============================================================================================
+Files Scanned: ~92
 Architecture Changes:
-  - Consolidación del Subsistema de Gobernanza UltraAdmin & Control de Licencias/Módulos:
-    - Servicio Puro de Dominio `licencias-modulos.service.ts`:
-      - Cálculo determinístico de días restantes de licencia (`calcularDiasRestantesLicencia`).
-      - Determinación de estado operativo (`ACTIVA`, `POR_VENCER` <= 7 días, `VENCIDA`).
-      - Resolución de módulos habilitados por plan (`BASICO`, `PRO`, `ENTERPRISE`) y feature flags dinámicos por empresa.
-      - Validación de acceso a módulos (`tieneAccesoAModulo`).
-    - Server Actions de Gobernanza (`src/app/actions/ultraadmin.ts`):
-      - `obtenerEstadoTenantsAction`: Listado transversal de todos los tenants con conteo de usuarios activos, días de licencia, plan y módulos.
-      - `toggleModuloTenantAction`: Activación/desactivación dinámica de módulos con invalidación de caché en Redis y auditoría inmutable.
-      - `extenderLicenciaTenantAction`: Modificación de vencimiento de licencia con auditoría inmutable.
-      - `cambiarEstadoUsuarioGlobalAction`: Activación/desactivación de usuarios a través de tenants con invalidación forzada de sesión en Redis (`session:user:{id}`) en tiempo real (<1s).
-      - `cambiarRolUsuarioGlobalAction`: Ajuste de roles con invalidación de sesión.
-    - Componentes UI Poka-Yoke & Gobernanza (`src/app/configuracion/components/`):
-      - `GestionModulosModal.tsx`: Modal para encender/apagar módulos por tenant en tiempo real con micro-animaciones GPU y feedback visual.
-      - `ExtenderLicenciaModal.tsx`: Modal de extensión de suscripción con cálculo en vivo de días resultantes.
-      - `UsuariosTab.tsx`: Integración del Selector Transversal de Empresas (`Filtro Global UltraAdmin`) y métricas de licencia para el rol `SUPER_ADMIN`.
-      - `Sidebar.tsx`: Filtrado dinámico de navegación basado en los módulos habilitados de la empresa (`empresa.modulos_habilitados`).
-    - Persistencia & Base de Datos:
-      - Migración `20260917_ultraadmin_licencias_modulos_y_permisos.sql` con columnas `fecha_vencimiento_licencia`, `plan_licencia`, `modulos_habilitados` en tabla `empresas`.
+  - Neutralizador Canónico de Fechas Calendario (`src/core/utils/fechas.ts`):
+    - Creación de `parsearFechaLocal` y `formatearFechaLocal` con fijación canónica de mediodía (`12:00:00`).
+    - Neutralización matemática del desfase horario UTC-5 Colombia en `@react-pdf/renderer` (`ContratoAlquilerPDF.tsx`), modales de ticket y detalle de contratos, y generador de facturas PDF.
+    - Suite de 13 pruebas unitarias en `tests/unit/fechas-local.test.ts`.
+  - Buscador y Filtros Rápidos en Inventario de Bodega (`src/app/bodega/page.tsx`):
+    - Filtrado reactivo en memoria con latencia cero (0 ms) insensible a tildes y mayúsculas mediante `normalize("NFD")`.
+    - Búsqueda multi-campo sobre Nombre, SKU y Categoría.
+    - Pestañas de estado físico (`Todos`, `Disponibles`, `En Obra`, `Mantenimiento`) con contadores en tiempo real.
+    - Optimización de KPIs y contadores en una sola pasada acumulativa $O(N)$ sobre el array de equipos.
+    - Botón de limpieza rápida (`X`) y vista vacía amigable con restablecimiento de filtros.
+  - Ergonomía en Inputs Numéricos y de Logística (`src/lib/utils.ts`):
+    - Creación de `parsearNumeroErgonomico` y `formatearValorErgonomico` en `src/lib/utils.ts`.
+    - Implementación de valor vacío con placeholder `0` (`value === 0 ? '' : value`) y parseo tolerante en `StepEquiposLogistica.tsx`, `AprobarCotizacionModal.tsx` y `CrearCotizacionModal.tsx`, eliminando el rebote del cero al borrar con Backspace.
+    - Suite de pruebas unitarias en `tests/unit/utils-ergonomia.test.ts`.
 
 Updated Codemaps:
-  - docs/CODEMAPS/architecture.md: Añadido diagrama C4 de UltraAdmin, directivas de seguridad multi-tenant y ciclo de invalidación en Redis.
-  - docs/CODEMAPS/backend.md: Mapeadas Server Actions de UltraAdmin, endpoints RPC y servicio `licencias-modulos.service.ts`.
-  - docs/CODEMAPS/frontend.md: Mapeados modales `GestionModulosModal`, `ExtenderLicenciaModal`, `UsuariosTab` y `Sidebar` condicional.
-  - docs/CODEMAPS/data.md: Documentada migración `20260917_ultraadmin_licencias_modulos_y_permisos.sql` y campos de control.
-  - docs/CODEMAPS/dependencies.md: Registrado `licencias-modulos.service.ts`, claves de invalidación de sesión en Upstash Redis (`session:user:{id}`) y validación Zod.
+  - docs/CODEMAPS/architecture.md: Registrado módulo canónico `src/core/utils/fechas.ts`, buscador de bodega y patrón de inputs ergonómicos.
+  - docs/CODEMAPS/frontend.md: Mapeado buscador con filtros y KPIs en `BodegaPage`, componentes ergonómicos de fletes y utilidades.
+  - docs/CODEMAPS/codemap-diff.txt: Registro de trazabilidad y métricas de calidad.
 
 Production Build Status: 23/23 routes passing clean (Exit code 0).
-Unit Tests Status: 49 test suites passed, 239 tests passed (100% green, incluyendo 12 tests unitarios de gobernanza).
+Unit Tests Status: 51 test suites passed, 258 tests passed (100% green).
 Linter Status: Next.js lint clean (Exit code 0).
 Typecheck Status: TypeScript npx tsc clean (Exit code 0).
+

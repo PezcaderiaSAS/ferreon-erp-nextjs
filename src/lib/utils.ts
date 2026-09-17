@@ -11,3 +11,24 @@ import { twMerge } from 'tailwind-merge';
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
+
+/**
+ * Parsea el valor string de un input numérico permitiendo borrar limpiamente
+ * el campo con Backspace (cadena vacía retorna el mínimo, por defecto 0) sin
+ * arrojar NaN ni bloquear la escritura del usuario.
+ */
+export function parsearNumeroErgonomico(valor: string, minimo = 0): number {
+  const trimmed = valor.trim();
+  if (trimmed === '') return minimo;
+  const parsed = parseFloat(trimmed);
+  return isNaN(parsed) ? minimo : Math.max(minimo, parsed);
+}
+
+/**
+ * Retorna cadena vacía cuando el valor numérico es 0 para permitir que el
+ * input muestre el placeholder sin que el '0' interfiera en la escritura.
+ */
+export function formatearValorErgonomico(valor: number | null | undefined): string | number {
+  if (valor === 0 || valor === null || valor === undefined) return '';
+  return valor;
+}

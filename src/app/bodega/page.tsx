@@ -20,6 +20,13 @@ const KardexEquipoModal = dynamic(
   { ssr: false, loading: () => <ModalSkeleton message="Cargando historial de Kardex..." /> }
 );
 
+/**
+ * Normaliza un texto eliminando diacríticos/tildes y espacios redundantes
+ * para búsqueda insensible a acentos y mayúsculas.
+ */
+const normalizarTexto = (texto: string) =>
+  (texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
 export default function BodegaPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -73,19 +80,15 @@ export default function BodegaPage() {
     };
   }, [fetchEquipos]);
 
-  // Filtrado reactivo en memoria (Zero-Latency & tolerante a tildes/mayúsculas)
-  const normalizar = (texto: string) => 
-    (texto || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-
   const equiposFiltrados = useMemo(() => {
-    const query = normalizar(searchQuery);
+    const query = normalizarTexto(searchQuery);
 
     return equipos.filter((eq) => {
       // 1. Filtro textual (Nombre, SKU/Código, Categoría)
       if (query) {
-        const matchNombre = normalizar(eq.nombre).includes(query);
-        const matchSku = normalizar(eq.sku).includes(query);
-        const matchCategoria = normalizar(eq.categoria).includes(query);
+        const matchNombre = normalizarTexto(eq.nombre).includes(query);
+        const matchSku = normalizarTexto(eq.sku).includes(query);
+        const matchCategoria = normalizarTexto(eq.categoria).includes(query);
         if (!matchNombre && !matchSku && !matchCategoria) {
           return false;
         }
@@ -106,16 +109,48 @@ export default function BodegaPage() {
     });
   }, [equipos, searchQuery, filtroEstado]);
 
-  // Contadores para insignias en filtros
-  const countDisponibles = useMemo(() => equipos.filter(e => (e.stockDisponible ?? 0) > 0).length, [equipos]);
-  const countEnObra = useMemo(() => equipos.filter(e => (e.stockEnObra ?? 0) > 0).length, [equipos]);
-  const countMantenimiento = useMemo(() => equipos.filter(e => (e.stockMantenimiento || (e as any).stock_mantenimiento || 0) > 0).length, [equipos]);
+  // Métricas y contadores de estado calculados en una sola pasada O(N)
+  const {
+    totalModelos,
+    countDisponibles,
+    countEnObra,
+    countMantenimiento,
+    totalStockFisico,
+    totalDisponible,
+    totalEnObra,
+  } = useMemo(() => {
+    let countDisponibles = 0;
+    let countEnObra = 0;
+    let countMantenimiento = 0;
+    let totalStockFisico = 0;
+    let totalDisponible = 0;
+    let totalEnObra = 0;
 
-  // KPIs
-  const totalModelos = equipos.length;
-  const totalStockFisico = equipos.reduce((acc, eq) => acc + (eq.stockTotal || 0), 0);
-  const totalDisponible = equipos.reduce((acc, eq) => acc + (eq.stockDisponible || 0), 0);
-  const totalEnObra = equipos.reduce((acc, eq) => acc + (eq.stockEnObra || 0), 0);
+    for (const eq of equipos) {
+      const disp = eq.stockDisponible ?? 0;
+      const obra = eq.stockEnObra ?? 0;
+      const mant = eq.stockMantenimiento || (eq as any).stock_mantenimiento || 0;
+      const total = eq.stockTotal ?? (disp + obra + mant);
+
+      if (disp > 0) countDisponibles++;
+      if (obra > 0) countEnObra++;
+      if (mant > 0) countMantenimiento++;
+
+      totalStockFisico += total;
+      totalDisponible += disp;
+      totalEnObra += obra;
+    }
+
+    return {
+      totalModelos: equipos.length,
+      countDisponibles,
+      countEnObra,
+      countMantenimiento,
+      totalStockFisico,
+      totalDisponible,
+      totalEnObra,
+    };
+  }, [equipos]);
 
   const handleOpenEdit = (equipo: EquipoUI) => {
     setSelectedEquipo(equipo);

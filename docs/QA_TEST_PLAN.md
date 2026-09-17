@@ -118,21 +118,36 @@ Antes de ejecutar las pruebas, asegúrate de tener instaladas las siguientes ext
 
 ## 🧪 Comandos de Validación (Terminal Integrada de VS Code)
 
+## 📋 Fase 7 — Certificación de Fechas, Buscador Bodega y Ergonomía de Inputs
+> **Herramienta:** Vitest + Next.js App Router Live Preview
+
+| # | Caso de Prueba | Pasos | Resultado Esperado | Estado |
+|---|----------------|-------|--------------------|--------|
+| 7.1 | **Invarianza de Fechas UTC-5 en PDF** | Registrar contrato con fecha `2026-09-17` → Previsualizar o descargar PDF | La fecha mostrada en cabecera y detalle es exactamente `17/09/2026` sin retraso de un día. | `[x]` |
+| 7.2 | **Buscador Insensible a Tildes en Bodega** | Escribir `"camión"`, `"camion"`, o código SKU en `/bodega` | Resultados filtrados en vivo (0 ms) con coincidencia de caracteres con o sin diacríticos. | `[x]` |
+| 7.3 | **Pestañas de Estado y Filtros en Bodega** | Clic en pestañas `Disponibles`, `En Obra`, `Mantenimiento` | Conteo exacto en badges y filtrado instantáneo de la tabla sin recarga de página. | `[x]` |
+| 7.4 | **Ergonomía de Inputs de Transporte** | En `/alquileres` (wizard) y `/cotizaciones`, presionar Backspace sobre flete/transporte | El input queda vacío mostrando `"0"` tenue como placeholder sin forzar rebote de cero. | `[x]` |
+| 7.5 | **Escritura Directa en Fletes** | Teclear `"50000"` directamente en el input de flete | El número se escribe fluido y el total se recalcula automáticamente en vivo. | `[x]` |
+
+---
+
+## 🛠️ Comandos de Verificación Automatizada
+
 ```bash
-# Verificar tipos TypeScript
+# Verificar tipos TypeScript (0 errores)
 npm run typecheck
 
-# Ejecutar suite de pruebas unitarias completa (94 tests)
+# Ejecutar suite de pruebas unitarias completa (51 suites, 258 tests)
 npm run test
 
 # Verificar cobertura (objetivo: >80%)
 npm run test:coverage
 
-# Lint completo
+# Lint completo sin advertencias críticas
 npm run lint
 
-# Ver estado del último despliegue en Vercel
-npx vercel ls
+# Build de producción limpio (23 rutas generadas)
+npm run build
 ```
 
 ---
@@ -147,9 +162,10 @@ Para certificar la versión como **Estable y Lista para Producción**:
 - [x] Fase 4 — 4/4 casos en verde ✅
 - [x] Fase 5 — 4/4 casos en verde ✅
 - [x] Fase 6 — 6/6 casos en verde ✅
+- [x] Fase 7 — 5/5 casos en verde (Fechas, Bodega y Fletes) ✅
 - [x] `npm run typecheck` → 0 errores de TypeScript
-- [x] `npm run test` → 26 suites y 94 tests aprobados (100%)
-- [x] `npm run build` → 22 rutas compiladas y optimizadas limpiamente
+- [x] `npm run test` → 51 suites y 258 tests aprobados (100% verde)
+- [x] `npm run build` → 23 rutas compiladas y optimizadas limpiamente
 - [ ] Vercel deployment en estado **READY**
 
 <!-- /AUTO-GENERATED -->

@@ -8,7 +8,7 @@
 - `/cotizaciones`: Gestión comercial de cotizaciones con KPIs (Total Cotizado, Aprobadas, Tasa de Conversión), desglose tributario y conversión 1-clic a contrato.
 - `subcontrataciones`: Gestión de maquinaria externa subcontratada a aliados comerciales con ciclo a dos tiempos (`ACTIVA`, `RECIBIDA_EN_BODEGA`, `DEVUELTA_A_PROVEEDOR`, `LIQUIDADA`), alerta en bodega y liquidación contable en Ledger.
 - `facturacion`: Gestión y emisión de facturas comerciales formales en PDF con asientos contables en Ledger.
-- `bodega`: Panel de inventario, Kardex visual y ajustes Poka-Yoke de stock (`EditarEquipoModal.tsx`, `KardexEquipoModal.tsx`).
+- `bodega`: Panel de inventario físico con buscador reactivo zero-latency (Nombre, SKU, Categoría) insensible a acentos/diacríticos, pestañas de disponibilidad por estado (`Todos`, `Disponibles`, `En Obra`, `Mantenimiento`) con contadores en tiempo real, KPIs acumulativos $O(N)$, Kardex inmutable visual y ajustes Poka-Yoke de stock (`EditarEquipoModal.tsx`, `KardexEquipoModal.tsx`).
 - `clientes`: Directorio de clientes con reconciliación estabilizada vía `useCallback([setClientes])`.
 - `devoluciones`: Módulo de recepción física de maquinaria con pestañas de retorno pendiente e historial de actas, inspección técnica granular, Split-Line interactivo y compensación de garantía.
 - `/admin/empresas`: Panel de control UltraAdmin multi-tenant. Incorpora semáforo de vigencia de licencias (`ACTIVA`, `POR_VENCER`, `EN_GRACIA`, `VENCIDA`), cálculo de días restantes, modal de asignación de días de cortesía (`ExtenderLicenciaModal.tsx`), modal de feature flags de módulos (`GestionModulosModal.tsx`) y visor de cuentas vinculadas.
@@ -41,9 +41,11 @@
 - `proveedores/SelectorProveedorAsistido.tsx`: Buscador predictivo asistido por teclado (`↑/↓/Enter/Esc`) con botón rápido `+ Nuevo` On-The-Fly para registrar proveedores al instante sin perder el borrador.
 - `compras/RegistrarCompraModal.tsx`: Formulario de compra con panel tributario interactivo (IVA 19%, ReteFuente 2.5%/3.5%, ReteICA 9.66‰).
 - `compras/ComprobanteEntradaPDFModal.tsx`: Visor e impresión directa (Carta/A4) de la Orden de Compra y Comprobante de Entrada de Almacén.
-- `cotizaciones/CrearCotizacionModal.tsx`: Modal de cotización comercial con casillas de impuestos seleccionables y cálculo en tiempo real (0 ms).
+- `cotizaciones/CrearCotizacionModal.tsx`: Modal de cotización comercial con casillas de impuestos seleccionables, cálculo en tiempo real (0 ms) e inputs ergonómicos de fletes sin rebote de cero.
 - `pdf/VisorDocumentoPDFModal.tsx`: Visor universal de Facturas y Cotizaciones con previsualización responsive e impresión nativa.
 - `ui/EquipoCombobox.tsx`: Buscador typeahead de maquinaria accesible (WAI-ARIA 1.2) con elevación dinámica `zIndex: 100`.
+- `forms/alquiler/StepEquiposLogistica.tsx`: Selección de maquinaria con atajos rápidos y campos ergonómicos para fletes de entrega y recogida con soporte de valor vacío y placeholder `0`.
+- `lib/utils.ts` & `core/utils/fechas.ts`: Utilidades puras de normalización de cadenas, parseo numérico ergonómico y formateo canónico de fechas calendario inmunes al huso UTC-5.
 
 ## State Management (`src/infrastructure/state/`)
 - `alquilerStore.ts`: Estado de contratos, cotizaciones, optimismo y rollback de snapshot ante fallos.
