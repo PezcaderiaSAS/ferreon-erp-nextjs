@@ -1,6 +1,7 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/renderer';
 import { numeroALetras } from '../../core/utils/numero-a-letras';
+import { formatearFechaLocal, calcularDiasEntreFechas } from '../../core/utils/fechas';
 import { resolveCompanyTheme, ThemeTokens } from '../../core/domain/theme/theme-tokens';
 import { EmpresaConfig } from '../../core/domain/entities/empresa-config';
 
@@ -316,11 +317,7 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
   };
 
   const fechaDoc = data.created_at || data.fechaRegistro || new Date().toISOString();
-  const fechaFormat = new Date(fechaDoc).toLocaleDateString('es-CO', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
+  const fechaFormat = formatearFechaLocal(fechaDoc);
 
   // Extracción tolerante y defensiva de cliente
   const rawCliente = (data as any).clientes || (data as any).cliente;
@@ -341,12 +338,11 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
     const fInicio = item.fecha_inicio || item.fechaInicio || fechaDoc;
     const fFin = item.fecha_fin_estimada || item.fechaFinEstimada || item.fecha_fin || item.fechaFin || fInicio;
     
-    const diffMs = new Date(fFin).getTime() - new Date(fInicio).getTime();
     const dias = item.dias && Number(item.dias) > 0 
       ? Number(item.dias) 
       : (item.dias_contratados && Number(item.dias_contratados) > 0 
         ? Number(item.dias_contratados) 
-        : Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24))));
+        : calcularDiasEntreFechas(fInicio, fFin));
     const cantidad = Number(item.cantidad || 1);
     const tarifa = Number(item.tarifa_aplicada ?? item.tarifaAplicada ?? item.valor_unitario ?? item.tarifaDiaria ?? item.precioDiario ?? item.equipos?.tarifa_diaria ?? item.equipo?.tarifa_diaria ?? 0);
     const subtotalLinea = (item.subtotal !== undefined && Number(item.subtotal) > 0)
@@ -363,8 +359,8 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
     return {
       nombre: codigoDisplay ? `${nombreDisplay} (${codigoDisplay})` : nombreDisplay,
       cantidad,
-      fechaInicio: new Date(fInicio).toLocaleDateString('es-CO'),
-      fechaFin: new Date(fFin).toLocaleDateString('es-CO'),
+      fechaInicio: formatearFechaLocal(fInicio),
+      fechaFin: formatearFechaLocal(fFin),
       dias,
       tarifaDiaria: tarifa,
       subtotal: subtotalLinea,

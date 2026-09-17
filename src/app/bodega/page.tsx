@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { PlusSquare, Package, CheckCircle, Wrench, Warehouse, Pen, History } from "lucide-react";
+import React, { useState, useEffect, useMemo } from 'react';
+import { PlusSquare, Package, CheckCircle, Wrench, Warehouse, Pen, History, Search, X } from "lucide-react";
 import dynamic from 'next/dynamic';
 import { Modal } from '../../components/ui/Modal';
 import { ModalSkeleton } from '../../components/ui/ModalSkeleton';
@@ -29,6 +29,9 @@ export default function BodegaPage() {
   const { equipos, setEquipos } = useBodegaStore();
   const [loading, setLoading] = useState(false);
 
+  // Estados reactivos de Búsqueda y Filtros
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState<'TODOS' | 'DISPONIBLES' | 'EN_OBRA' | 'MANTENIMIENTO'>('TODOS');
 
   const [isMounted, setIsMounted] = useState(false);
 
@@ -70,9 +73,49 @@ export default function BodegaPage() {
     };
   }, [fetchEquipos]);
 
-  if (!isMounted) {
-    return <div className="p-8 text-center text-slate-500">Cargando inventario...</div>;
-  }
+  // Filtrado reactivo en memoria (Zero-Latency & tolerante a tildes/mayúsculas)
+  const normalizar = (texto: string) => 
+    (texto || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+  const equiposFiltrados = useMemo(() => {
+    const query = normalizar(searchQuery);
+
+    return equipos.filter((eq) => {
+      // 1. Filtro textual (Nombre, SKU/Código, Categoría)
+      if (query) {
+        const matchNombre = normalizar(eq.nombre).includes(query);
+        const matchSku = normalizar(eq.sku).includes(query);
+        const matchCategoria = normalizar(eq.categoria).includes(query);
+        if (!matchNombre && !matchSku && !matchCategoria) {
+          return false;
+        }
+      }
+
+      // 2. Filtro de disponibilidad
+      if (filtroEstado === 'DISPONIBLES') {
+        return (eq.stockDisponible ?? 0) > 0;
+      }
+      if (filtroEstado === 'EN_OBRA') {
+        return (eq.stockEnObra ?? 0) > 0;
+      }
+      if (filtroEstado === 'MANTENIMIENTO') {
+        return (eq.stockMantenimiento || (eq as any).stock_mantenimiento || 0) > 0;
+      }
+
+      return true;
+    });
+  }, [equipos, searchQuery, filtroEstado]);
+
+  // Contadores para insignias en filtros
+  const countDisponibles = useMemo(() => equipos.filter(e => (e.stockDisponible ?? 0) > 0).length, [equipos]);
+  const countEnObra = useMemo(() => equipos.filter(e => (e.stockEnObra ?? 0) > 0).length, [equipos]);
+  const countMantenimiento = useMemo(() => equipos.filter(e => (e.stockMantenimiento || (e as any).stock_mantenimiento || 0) > 0).length, [equipos]);
+
+  // KPIs
+  const totalModelos = equipos.length;
+  const totalStockFisico = equipos.reduce((acc, eq) => acc + (eq.stockTotal || 0), 0);
+  const totalDisponible = equipos.reduce((acc, eq) => acc + (eq.stockDisponible || 0), 0);
+  const totalEnObra = equipos.reduce((acc, eq) => acc + (eq.stockEnObra || 0), 0);
 
   const handleOpenEdit = (equipo: EquipoUI) => {
     setSelectedEquipo(equipo);
@@ -84,12 +127,9 @@ export default function BodegaPage() {
     setIsKardexModalOpen(true);
   };
 
-
-  // KPIs
-  const totalModelos = equipos.length;
-  const totalStockFisico = equipos.reduce((acc, eq) => acc + (eq.stockTotal || 0), 0);
-  const totalDisponible = equipos.reduce((acc, eq) => acc + (eq.stockDisponible || 0), 0);
-  const totalEnObra = equipos.reduce((acc, eq) => acc + (eq.stockEnObra || 0), 0);
+  if (!isMounted) {
+    return <div className="p-8 text-center text-slate-500">Cargando inventario...</div>;
+  }
 
   return (
     <div className="flex flex-col gap-8 h-full">
@@ -101,7 +141,7 @@ export default function BodegaPage() {
         </div>
         <button 
           onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center justify-center gap-2 bg-brand-salmon hover:bg-brand-salmonDark text-white px-6 py-2.5 rounded-xl transition-colors shadow-sm w-full sm:w-auto text-sm font-semibold"
+          className="flex items-center justify-center gap-2 bg-brand-salmon hover:bg-brand-salmonDark text-white px-6 py-2.5 rounded-xl transition-colors shadow-sm w-full sm:w-auto text-sm font-semibold cursor-pointer"
         >
           <PlusSquare className="w-5 h-5" />
           Añadir Nuevo Equipo
@@ -143,6 +183,83 @@ export default function BodegaPage() {
         </div>
       </div>
 
+      {/* Barra de Búsqueda y Filtros Rápidos (Ergonomía & Zero-Latency) */}
+      <div className="bg-white rounded-2xl p-4 shadow-card border border-slate-200/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        {/* Input de Búsqueda Reactivo */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar por equipo, código (SKU) o categoría..."
+            className="w-full pl-10 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-salmon/20 focus:border-brand-salmon transition-all"
+            aria-label="Buscar equipos en bodega"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition-colors cursor-pointer"
+              aria-label="Limpiar búsqueda"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Pestañas de Filtro por Estado */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          <button
+            type="button"
+            onClick={() => setFiltroEstado('TODOS')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              filtroEstado === 'TODOS'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Todos ({equipos.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFiltroEstado('DISPONIBLES')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+              filtroEstado === 'DISPONIBLES'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+            Disponibles ({countDisponibles})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFiltroEstado('EN_OBRA')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+              filtroEstado === 'EN_OBRA'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+            En Obra ({countEnObra})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFiltroEstado('MANTENIMIENTO')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+              filtroEstado === 'MANTENIMIENTO'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+            Mantenimiento ({countMantenimiento})
+          </button>
+        </div>
+      </div>
+
       {/* Main Content (DataTable) */}
       <div className="bg-white rounded-2xl shadow-card border border-slate-200/80 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-x-auto flex-1">
@@ -162,7 +279,7 @@ export default function BodegaPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm text-slate-900 bg-white">
-              {equipos.map((equipo) => (
+              {equiposFiltrados.map((equipo) => (
                 <tr 
                   key={equipo.id} 
                   onClick={() => handleOpenEdit(equipo)}
@@ -273,9 +390,28 @@ export default function BodegaPage() {
               ))}
               {equipos.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-500">
+                  <td colSpan={10} className="py-12 text-center text-slate-500">
                     <Package className="w-10 h-10 text-slate-300 mb-2 block mx-auto" />
                     No hay equipos registrados en bodega.
+                  </td>
+                </tr>
+              )}
+              {equipos.length > 0 && equiposFiltrados.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="py-12 text-center text-slate-500">
+                    <Search className="w-10 h-10 text-slate-300 mb-2 block mx-auto" />
+                    <p className="text-sm font-semibold text-slate-700">No se encontraron equipos coincidentes</p>
+                    <p className="text-xs text-slate-500 mt-1">Intenta con otro término o limpia los filtros activos.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setFiltroEstado('TODOS');
+                      }}
+                      className="mt-3 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                    >
+                      Restablecer Filtros
+                    </button>
                   </td>
                 </tr>
               )}

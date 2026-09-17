@@ -1,4 +1,5 @@
 import { numeroALetras, formatearMonedaCOP } from "../utils/numero-a-letras";
+import { formatearFechaLocal, calcularDiasEntreFechas } from "../utils/fechas";
 import { EmpresaConfig, DEFAULT_EMPRESA_CONFIG } from "../domain/entities/empresa-config";
 import { resolveCompanyTheme } from "../domain/theme/theme-tokens";
 
@@ -97,12 +98,11 @@ export class EnterprisePDFService {
     const itemsProcesados = rawItems.map((it: any) => {
       const fInicio = it.fechaInicio || it.fecha_inicio || payload.fechaEmision || new Date().toISOString();
       const fFin = it.fechaFin || it.fecha_fin || it.fechaFinEstimada || it.fecha_fin_estimada || fInicio;
-      const diffMs = new Date(fFin).getTime() - new Date(fInicio).getTime();
       const diasCalculados = it.dias && Number(it.dias) > 0 
         ? Number(it.dias) 
         : (it.dias_contratados && Number(it.dias_contratados) > 0 
           ? Number(it.dias_contratados) 
-          : Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24))));
+          : calcularDiasEntreFechas(fInicio, fFin));
       const cant = Number(it.cantidad || 1);
       const tarifa = Number(it.tarifaDiaria ?? it.tarifa_aplicada ?? it.tarifaAplicada ?? it.valor_unitario ?? it.precioDiario ?? it.equipos?.tarifa_diaria ?? it.equipo?.tarifa_diaria ?? 0);
       const subtotalCalc = (it.subtotal !== undefined && Number(it.subtotal) > 0)
@@ -124,8 +124,8 @@ export class EnterprisePDFService {
         dias: diasCalculados,
         tarifaDiaria: tarifa,
         subtotal: subtotalCalc,
-        fechaInicioFormat: new Date(fInicio).toLocaleDateString("es-CO"),
-        fechaFinFormat: new Date(fFin).toLocaleDateString("es-CO"),
+        fechaInicioFormat: formatearFechaLocal(fInicio),
+        fechaFinFormat: formatearFechaLocal(fFin),
       };
     });
 
@@ -493,7 +493,7 @@ export class EnterprisePDFService {
       <div class="doc-badge">
         <h2>${tituloDoc}</h2>
         <p><strong>N°: ${consecutivoDisplay}</strong></p>
-        <p>Fecha: ${fechaEmisionValid.toLocaleDateString("es-CO")}</p>
+        <p>Fecha: ${formatearFechaLocal(fechaEmisionValid)}</p>
       </div>
     </div>
 

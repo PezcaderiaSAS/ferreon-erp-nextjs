@@ -215,8 +215,12 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                       <input 
                         type="number" 
                         min={0} 
-                        value={field.precioDiario}
-                        onChange={(e) => updateItemRow(index, 'precioDiario', parseFloat(e.target.value) || 0)}
+                        value={field.precioDiario === 0 ? '' : field.precioDiario}
+                        placeholder="0"
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          updateItemRow(index, 'precioDiario', v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
+                        }}
                         className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-right font-mono tabular-nums font-semibold" 
                       />
                     </div>
@@ -350,8 +354,12 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                           <input
                             type="number"
                             min={0}
-                            value={field.costoSubcontrato || 0}
-                            onChange={(e) => updateSubcontratoItem && updateSubcontratoItem(index, 'costoSubcontrato', parseFloat(e.target.value) || 0)}
+                            value={field.costoSubcontrato === 0 ? '' : (field.costoSubcontrato || '')}
+                            placeholder="0"
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              updateSubcontratoItem && updateSubcontratoItem(index, 'costoSubcontrato', v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
+                            }}
                             className="px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-right font-mono tabular-nums font-semibold"
                           />
                           <span className={`text-[10px] font-mono font-bold text-right ${
@@ -460,8 +468,12 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
             <input 
               type="number" 
               min={0}
-              value={fleteEntrega}
-              onChange={(e) => setFleteEntrega(parseFloat(e.target.value) || 0)}
+              value={fleteEntrega === 0 ? '' : fleteEntrega}
+              placeholder="0"
+              onChange={(e) => {
+                const v = e.target.value;
+                setFleteEntrega(v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
+              }}
               className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 text-right font-mono tabular-nums focus:bg-white focus:ring-2 focus:ring-teal-600/25 focus:border-teal-600 outline-none transition-all" 
             />
             <span className="text-[10.5px] text-slate-600 font-medium truncate">
@@ -474,8 +486,12 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
             <input 
               type="number" 
               min={0}
-              value={fleteRecogida}
-              onChange={(e) => setFleteRecogida(parseFloat(e.target.value) || 0)}
+              value={fleteRecogida === 0 ? '' : fleteRecogida}
+              placeholder="0"
+              onChange={(e) => {
+                const v = e.target.value;
+                setFleteRecogida(v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
+              }}
               className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 text-right font-mono tabular-nums focus:bg-white focus:ring-2 focus:ring-teal-600/25 focus:border-teal-600 outline-none transition-all" 
             />
             <span className="text-[10.5px] text-slate-600 font-medium truncate">

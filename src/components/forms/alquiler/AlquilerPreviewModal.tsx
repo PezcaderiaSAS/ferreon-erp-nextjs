@@ -2,6 +2,7 @@ import React from 'react';
 import { Printer, FileText, Building2, ShieldCheck } from 'lucide-react';
 import { Modal } from '../../ui/Modal';
 import { formatearMonedaConLetras } from '../../../core/utils/numero-a-letras';
+import { formatearFechaLocal, calcularDiasEntreFechas } from '../../../core/utils/fechas';
 import { ItemRow } from './types';
 
 interface AlquilerPreviewModalProps {
@@ -132,7 +133,7 @@ export const AlquilerPreviewModal: React.FC<AlquilerPreviewModalProps> = ({
                 <span className="text-sm font-black font-mono">
                   #{consecutivoVisible}
                 </span>
-                <span className="text-[10px] text-slate-500 block">Fecha: {fechaRegistro}</span>
+                <span className="text-[10px] text-slate-500 block">Fecha: {formatearFechaLocal(fechaRegistro)}</span>
               </div>
             </div>
 
@@ -171,9 +172,7 @@ export const AlquilerPreviewModal: React.FC<AlquilerPreviewModalProps> = ({
               <tbody className="divide-y divide-slate-100">
                 {items.map((it, idx) => {
                   const eq = equiposActivos.find(e => String(e.id) === String(it.itemId));
-                  const start = new Date(it.fechaInicio);
-                  const end = new Date(it.fechaFinEstimada);
-                  const dias = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+                  const dias = calcularDiasEntreFechas(it.fechaInicio, it.fechaFinEstimada);
                   const sub = (it.precioDiario || 0) * (it.cantidad || 1) * dias;
 
                   return (
@@ -192,8 +191,8 @@ export const AlquilerPreviewModal: React.FC<AlquilerPreviewModalProps> = ({
                         )}
                       </td>
                       <td className="p-2 text-center font-bold">{it.cantidad}</td>
-                      <td className="p-2 text-center">{it.fechaInicio}</td>
-                      <td className="p-2 text-center">{it.fechaFinEstimada}</td>
+                      <td className="p-2 text-center">{formatearFechaLocal(it.fechaInicio)}</td>
+                      <td className="p-2 text-center">{formatearFechaLocal(it.fechaFinEstimada)}</td>
                       <td className="p-2 text-center font-bold">{dias}</td>
                       <td className="p-2 text-right font-mono">{formatearCOP(it.precioDiario)}</td>
                       <td className="p-2 text-right font-bold text-teal-900 font-mono">{formatearCOP(sub)}</td>

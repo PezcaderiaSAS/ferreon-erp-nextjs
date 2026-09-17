@@ -417,8 +417,12 @@ export function CrearCotizacionModal({
                           type="number"
                           min="0"
                           step="1000"
-                          value={it.tarifaDiaria}
-                          onChange={(e) => handleItemChange(idx, 'tarifaDiaria', parseFloat(e.target.value) || 0)}
+                          value={it.tarifaDiaria === 0 ? '' : it.tarifaDiaria}
+                          placeholder="0"
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            handleItemChange(idx, 'tarifaDiaria', v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
+                          }}
                           className="w-full text-xs text-right rounded-lg border-slate-300 focus:border-blue-500 font-mono"
                         />
                       </td>
@@ -513,8 +517,12 @@ export function CrearCotizacionModal({
                   type="number"
                   min="0"
                   step="5000"
-                  value={valorTransporte}
-                  onChange={(e) => setValorTransporte(parseFloat(e.target.value) || 0)}
+                  value={valorTransporte === 0 ? '' : valorTransporte}
+                  placeholder="0"
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setValorTransporte(v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
+                  }}
                   className="w-32 text-right text-xs rounded-md border-slate-300 py-1 font-mono"
                 />
               </div>
@@ -528,8 +536,12 @@ export function CrearCotizacionModal({
                   type="number"
                   min="0"
                   step="5000"
-                  value={depositoGarantia}
-                  onChange={(e) => setDepositoGarantia(parseFloat(e.target.value) || 0)}
+                  value={depositoGarantia === 0 ? '' : depositoGarantia}
+                  placeholder="0"
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setDepositoGarantia(v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
+                  }}
                   className="w-32 text-right text-xs rounded-md border-slate-300 py-1 font-mono"
                 />
               </div>

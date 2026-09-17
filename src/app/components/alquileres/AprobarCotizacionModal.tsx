@@ -88,8 +88,12 @@ export function AprobarCotizacionModal({ isOpen, onClose, cotizacion, onConfirma
               <input 
                 type="number" 
                 min={0}
-                value={fleteEntrega}
-                onChange={(e) => setFleteEntrega(parseFloat(e.target.value) || 0)}
+                value={fleteEntrega === 0 ? '' : fleteEntrega}
+                placeholder="0"
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setFleteEntrega(v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
+                }}
                 className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all"
               />
             </div>
@@ -99,8 +103,12 @@ export function AprobarCotizacionModal({ isOpen, onClose, cotizacion, onConfirma
               <input 
                 type="number" 
                 min={0}
-                value={fleteRecogida}
-                onChange={(e) => setFleteRecogida(parseFloat(e.target.value) || 0)}
+                value={fleteRecogida === 0 ? '' : fleteRecogida}
+                placeholder="0"
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setFleteRecogida(v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
+                }}
                 className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all"
               />
             </div>

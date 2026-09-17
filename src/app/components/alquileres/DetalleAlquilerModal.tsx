@@ -2,10 +2,11 @@
 
 import { Truck, AlignLeft, Pen } from 'lucide-react';
 
-
 import React from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
+import { AlquilerEntity } from '../../../core/domain/entities/alquiler';
+import { formatearFechaLocal } from '../../../core/utils/fechas';
 import { AlquilerUI } from '../../../infrastructure/state/alquilerStore';
 import { useClienteStore } from '../../../infrastructure/state/clienteStore';
 
@@ -65,7 +66,7 @@ export function DetalleAlquilerModal({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Contrato registrado el {alquiler.created_at ? new Date(alquiler.created_at).toLocaleDateString('es-CO') : 'Reciente'}
+                Contrato registrado el {formatearFechaLocal(alquiler.created_at)}
               </p>
             </div>
           </div>
@@ -114,7 +115,7 @@ export function DetalleAlquilerModal({
                       ${(det.tarifaAplicada || 0).toLocaleString('es-CO')}
                     </td>
                     <td className="py-3 px-3 text-center text-slate-500">
-                      {det.fechaInicio ? new Date(det.fechaInicio).toLocaleDateString('es-CO') : 'Hoy'} → {det.fechaFinEstimada ? new Date(det.fechaFinEstimada).toLocaleDateString('es-CO') : 'Abierto'}
+                      {det.fechaInicio ? formatearFechaLocal(det.fechaInicio) : 'Hoy'} → {det.fechaFinEstimada ? formatearFechaLocal(det.fechaFinEstimada) : 'Abierto'}
                     </td>
                     <td className="py-3 px-3 text-right font-bold text-slate-900">
                       ${(det.subtotalLineaEstimado || 0).toLocaleString('es-CO')}

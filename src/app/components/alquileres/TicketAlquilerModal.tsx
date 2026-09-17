@@ -8,6 +8,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { EmpresaConfig } from '../../../core/domain/entities/empresa-config';
 import { AlquilerEntity } from '../../../core/domain/entities/alquiler';
 import { useClienteStore } from '../../../infrastructure/state/clienteStore';
+import { formatearFechaLocal, calcularDiasEntreFechas } from '../../../core/utils/fechas';
 
 interface TicketAlquilerModalProps {
   isOpen: boolean;
@@ -36,7 +37,7 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
   
   // Lectura pasiva de datos (Single Source of Truth)
   const consecutivo = alquiler.consecutivo || alquiler.id;
-  const fechaStr = alquiler.createdAt ? new Date(alquiler.createdAt).toLocaleDateString() : new Date().toLocaleDateString();
+  const fechaStr = formatearFechaLocal(alquiler.createdAt || alquiler.created_at);
   const fleteEntrega = Number(alquiler.fleteEntrega ?? alquiler.flete_entrega ?? alquiler.valor_transporte ?? 0);
   const fleteRecogida = Number(alquiler.fleteRecogida ?? alquiler.flete_recogida ?? 0);
   const fletes = fleteEntrega + fleteRecogida;
@@ -137,9 +138,11 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
             <tbody className="divide-y divide-slate-200">
               {alquiler.detalles?.map((item: any, i: number) => {
                 const subtotalLinea = item.subtotalLineaEstimado || (item.cantidad * (item.tarifaAplicada || 0)); // Respaldo pasivo
-                const start = item.fechaInicio ? new Date(item.fechaInicio) : new Date();
-                const end = item.fechaFinEstimada ? new Date(item.fechaFinEstimada) : new Date();
-                const dias = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+                const start = item.fechaInicio || item.fecha_inicio;
+                const end = item.fechaFinEstimada || item.fecha_fin_estimada || item.fecha_fin;
+                const dias = item.dias && Number(item.dias) > 0 
+                  ? Number(item.dias) 
+                  : calcularDiasEntreFechas(start, end);
                 
                 return (
                   <tr key={i}>
