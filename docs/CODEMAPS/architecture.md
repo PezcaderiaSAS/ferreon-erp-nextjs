@@ -16,6 +16,11 @@ Multi-tenant architecture via Supabase RLS (Row Level Security) and Upstash Redi
   - Generación de `idempotency_key` criptográfica única (UUID v4) transmitida por formulario y RPC.
   - Conversión 1-clic de cotizaciones a contratos con bloqueo pesimista en base de datos (`ORDER BY id ASC FOR UPDATE`) garantizando cero sobreventas y prevención matemática de deadlocks.
 - **Frontend Layer**: React Server Components (RSC) + Client Components con Typeahead Accesible (`EquipoCombobox`, `SelectorProveedorAsistido`), atajos globales (`F2`), rangos maestros, gobernanza de tokens `DESIGN.md`, modales multilínea de recaudo mixto (`RegistrarPagoMixtoModal.tsx`) y apilamiento dinámico de capas (`zIndex: 100`).
+- **UltraAdmin Governance, Licensing & Feature Flags (`src/app/admin/empresas/`, `src/core/services/licencias-modulos.service.ts`, `src/app/actions/ultraadmin.ts`)**:
+  - Supervisión cross-tenant transversal con selector universal en `/configuracion` y panel central en `/admin/empresas`.
+  - Cálculo determinístico de días de vigencia restantes y semáforo de 4 estados (`ACTIVA`, `POR_VENCER`, `EN_GRACIA`, `VENCIDA`) con soporte para días de gracia y extensiones 1-clic (+15d, +30d, +90d, +365d).
+  - Feature flags de módulos por tenant gobernados por `empresas.modulos_activos` (JSONB) con filtrado reactivo en `Sidebar.tsx` y restricción perimetral en `middleware.ts`.
+  - Suspensión y activación instantánea de cuentas con revocación atómica en Upstash Redis (`session:user:{id}`) en $<1$ segundo.
 - **State Management**: Zustand (Modular Client Stores: `alquilerStore`, `bodegaStore`, `empresaStore`, `clienteStore`, `cajaStore`, `layoutStore`, `toastStore`, `ledgerStore`) con transiciones optimistas, rollback ante fallos y reconciliación independiente vía `Promise.allSettled`.
 - **Backend / Server Actions Layer**: Next.js Server Actions (`src/app/actions/`):
   - Contratos, cotizaciones y formalización atómica (`alquileres.ts`, `cotizaciones.ts`).

@@ -1,4 +1,4 @@
-<!-- Generated: 2026-09-15 | Files scanned: ~48 | Token estimate: ~820 -->
+<!-- Generated: 2026-09-17 | Files scanned: ~52 | Token estimate: ~860 -->
 # Backend Architecture (Server Actions & API Routes)
 
 ## Core Actions (`src/app/actions/`)
@@ -12,18 +12,14 @@
 - `subcontrataciones.ts`: Gestión de maquinaria de proveedores aliados (`crearSubcontratacionAction`, `obtenerSubcontratacionesAction`, `cambiarEstadoSubcontratacionAction`, `registrarRetornoAProveedorAction`, `liquidarSubcontratacionAction`). Implementa cómputo de costos a dos tiempos (cliente vs aliado), cálculo de márgenes operativos, aplicación de retenciones tributarias (ReteFuente 2.5%, ReteICA 9.66‰) y generación de asientos contables balanceados en el Ledger (Cuentas `6135` vs `2365`, `2368`, `2205`).
 - `equipos.ts`: Inventario (Kardex) y ajustes Poka-Yoke con RPC `ajustar_stock_equipo` y `reducir_stock_seguro`.
 - `pagos.ts`: Recaudos, abonos simples y recaudos mixtos multilínea (`registrarPagoAction`, `registrarPagoMixtoAction`). Admite división entre Efectivo, Bancos (Bancolombia, Davivienda), Billeteras (Nequi, Daviplata) y Saldo a Favor del Cliente, actualizando `cliente_movimientos_saldo`, `pago_metodos_detalle`, caja activa y asiento en partida doble en Ledger.
-- `ultraadmin.ts`: Supervisión global multi-tenant protegida por `is_ultra_admin()`.
+- `ultraadmin.ts`: Supervisión global multi-tenant protegida por `is_ultra_admin()` y `verificarPermisoUltraAdmin()`. Acciones críticas: `obtenerEmpresasParaSelectorAction` (alimentación del selector universal de tenants), `obtenerDirectorioEmpresasAction` (cálculo de semáforo de licencias y días restantes), `obtenerUsuariosPorEmpresaAction` (auditoría cross-tenant de cuentas), `toggleModuloEmpresaAction` (activación/desactivación perimetral de módulos con purga en Redis), `extenderLicenciaEmpresaAction` (días de cortesía de 1-clic y fechas contractuales) y `cambiarEstadoUsuarioAction` / `actualizarPermisosUsuarioAction` con invalidación inmediata de sesiones activas en Redis (`session:user:{id}`) en $<1$s.
 
-## API Endpoints (`src/app/api/`)
-- `/api/alquileres`: Catálogo de contratos con lectura read-through en Upstash Redis y fallback a Supabase PostgreSQL.
-- `/api/clientes`: Directorio de clientes autenticado con validación Zod.
-- `/api/equipos`: Inventario de maquinaria con tarifas y stock disponible en tiempo real.
-- `/api/auditoria`: Consulta de logs de auditoría inmutables (`audit_logs`) con paginación y filtros por módulo/acción.
-- `/api/devoluciones`: Endpoint para consultas y operaciones de devolución y conciliación de equipos.
-- `/api/webhooks`: Procesamiento de webhooks externos (Stripe / facturación).
-- Cabeceras estándar: `Cache-Control: no-store, no-cache, must-revalidate`.
-
-## Key Files
+## Core Domain Services
+- `src/core/services/licencias-modulos.service.ts` (Servicio determinístico puro: cálculo de vigencia sobre Epoch de 86.400.000 ms, semáforo de 4 estados ACTIVA/POR_VENCER/EN_GRACIA/VENCIDA, períodos de gracia configurables, feature flags de 9 módulos canónicos y resolución de permisos granulares con sobreescrituras)
+- `src/core/services/costo-promedio.service.ts` (Servicio puro de recálculo matemático de Costo Promedio Ponderado PMP, prorrateo de fletes y valuación de inventario)
+- `src/core/services/cartera-proveedores.service.ts` (Servicio puro de Cuentas por Pagar CXP, semáforo de morosidad, liquidación de abonos y balance en Ledger)
+- `src/app/actions/cuentas-por-pagar.ts` (Server Actions para gestión de pasivos con proveedores, semáforo de vencimiento y abonos con Comprobantes de Egreso)
+- `src/app/actions/compras.ts` (Server Actions para órdenes de compra y recepción transaccional en bodega con actualización de PMP en Kardex)
 - `src/core/services/cotizacion-tributaria.service.ts` (Servicio puro de liquidación tributaria de cotizaciones: IVA 19%, Retefuente 2.5%, ReteICA 9.66‰ y fletes)
 - `src/core/services/pago-mixto.service.ts` (Servicio puro de liquidación multilínea de pagos, validación de saldo a favor y balance en partida doble)
 - `src/core/services/arqueo-caja.service.ts` (Servicio puro de arqueo ciego por denominaciones colombianas y ajuste en Ledger)

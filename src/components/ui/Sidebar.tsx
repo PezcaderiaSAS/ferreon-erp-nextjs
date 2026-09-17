@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, FileSpreadsheet, Package, ShoppingBag, Handshake, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X, LogOut, Palette, Wallet } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, FileSpreadsheet, Package, ShoppingBag, Handshake, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X, LogOut, Palette, Wallet, ShieldCheck } from 'lucide-react';
 import { useEmpresaStore, applyThemeToDOM } from '../../infrastructure/state/empresaStore';
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';
 import { useTenantStore } from '../../infrastructure/state/tenantStore';
@@ -12,23 +12,63 @@ import { supabaseClient } from '../../infrastructure/persistence/supabase/client
 import { unifiedLogout } from '../../lib/auth/logout';
 import { useEffect, useState, Suspense } from 'react';
 
-const SIDEBAR_LINKS = [
+import { ModuloKey, moduloEstaHabilitado } from '@/core/services/licencias-modulos.service';
+
+interface SidebarLinkItem {
+  href: string;
+  icon: any;
+  label: string;
+  modulo?: ModuloKey;
+  requireUltraAdmin?: boolean;
+}
+
+const SIDEBAR_LINKS: SidebarLinkItem[] = [
   { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/alquileres', icon: CalendarDays, label: 'Alquileres & Cotizaciones' },
-  { href: '/bodega', icon: Package, label: 'Bodega' },
-  { href: '/compras', icon: ShoppingBag, label: 'Compras' },
-  { href: '/subcontrataciones', icon: Handshake, label: 'Subcontratación' },
-  { href: '/devoluciones', icon: ArrowLeftRight, label: 'Devoluciones' },
-  { href: '/facturacion', icon: FileText, label: 'Facturación' },
-  { href: '/caja', icon: Wallet, label: 'Caja & POS' },
+  { href: '/alquileres', icon: CalendarDays, label: 'Alquileres & Cotizaciones', modulo: 'ALQUILERES' },
+  { href: '/bodega', icon: Package, label: 'Bodega', modulo: 'BODEGA' },
+  { href: '/compras', icon: ShoppingBag, label: 'Compras', modulo: 'COMPRAS' },
+  { href: '/subcontrataciones', icon: Handshake, label: 'Subcontratación', modulo: 'SUBCONTRATACIONES' },
+  { href: '/devoluciones', icon: ArrowLeftRight, label: 'Devoluciones', modulo: 'DEVOLUCIONES' },
+  { href: '/facturacion', icon: FileText, label: 'Facturación', modulo: 'FACTURACION' },
+  { href: '/caja', icon: Wallet, label: 'Caja & POS', modulo: 'CAJA' },
   { href: '/clientes', icon: Users, label: 'Clientes' },
   { href: '/suscripcion', icon: CreditCard, label: 'Suscripción' },
+  { href: '/admin/empresas', icon: ShieldCheck, label: 'Gobernanza UltraAdmin', requireUltraAdmin: true },
 ];
 
-function SidebarNavLinks({ pathname, setMobileMenuOpen }: { pathname: string; setMobileMenuOpen: (open: boolean) => void }) {
+function SidebarNavLinks({ 
+  pathname, 
+  setMobileMenuOpen,
+  isUltraAdmin,
+  modulosActivos 
+}: { 
+  pathname: string; 
+  setMobileMenuOpen: (open: boolean) => void;
+  isUltraAdmin: boolean;
+  modulosActivos?: Record<string, boolean> | null;
+}) {
+  const visibleLinks = SIDEBAR_LINKS.filter((link) => {
+    // Si requiere UltraAdmin, solo mostrar si el usuario tiene ese rol
+    if (link.requireUltraAdmin) {
+      return isUltraAdmin;
+    }
+
+    // UltraAdmin ve todos los módulos para auditoría
+    if (isUltraAdmin) {
+      return true;
+    }
+
+    // Si tiene un módulo asociado y la empresa tiene configuración de módulos
+    if (link.modulo && modulosActivos) {
+      return moduloEstaHabilitado(modulosActivos, link.modulo);
+    }
+
+    return true;
+  });
+
   return (
     <div className="flex flex-col gap-2 flex-grow overflow-y-auto">
-      {SIDEBAR_LINKS.map((link) => {
+      {visibleLinks.map((link) => {
         const isActive = link.href === '/alquileres' 
           ? pathname.startsWith('/alquileres') 
           : pathname === link.href;
@@ -160,7 +200,17 @@ export function Sidebar() {
             })}
           </div>
         }>
-          <SidebarNavLinks pathname={pathname} setMobileMenuOpen={setMobileMenuOpen} />
+          <SidebarNavLinks 
+            pathname={pathname} 
+            setMobileMenuOpen={setMobileMenuOpen} 
+            isUltraAdmin={
+              user?.user_metadata?.rol === 'ULTRAADMIN' || 
+              user?.user_metadata?.rol === 'SUPERADMIN' ||
+              user?.user_metadata?.rol === 'ultraadmin' ||
+              user?.user_metadata?.rol === 'superadmin'
+            }
+            modulosActivos={(config as any)?.modulos_activos}
+          />
         </Suspense>
 
         {/* Badge de Suscripción / Tenant Activo al Pie */}

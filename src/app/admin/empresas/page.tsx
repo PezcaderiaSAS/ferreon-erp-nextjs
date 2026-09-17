@@ -15,7 +15,10 @@ import {
   Shield,
   Layers,
   Sparkles,
-  Lock
+  Lock,
+  CalendarPlus,
+  Clock,
+  Sliders
 } from 'lucide-react';
 import { 
   obtenerDirectorioEmpresasAction, 
@@ -25,6 +28,8 @@ import {
   EmpresaDirectorioItem, 
   UsuarioTenantItem 
 } from '@/app/actions/ultraadmin';
+import { GestionModulosModal } from './GestionModulosModal';
+import { ExtenderLicenciaModal } from './ExtenderLicenciaModal';
 
 export default function UltraAdminEmpresasPage() {
   const [empresas, setEmpresas] = useState<EmpresaDirectorioItem[]>([]);
@@ -38,6 +43,21 @@ export default function UltraAdminEmpresasPage() {
   const [usuariosTenant, setUsuariosTenant] = useState<UsuarioTenantItem[]>([]);
   const [cargandoUsuarios, setCargandoUsuarios] = useState(false);
   const [procesandoAccion, setProcesandoAccion] = useState(false);
+
+  // Estados para modales de gobernanza UltraAdmin
+  const [empresaModulos, setEmpresaModulos] = useState<EmpresaDirectorioItem | null>(null);
+  const [empresaLicencia, setEmpresaLicencia] = useState<EmpresaDirectorioItem | null>(null);
+
+  const handleModulosActualizados = (empresaId: string, nuevosModulos: any) => {
+    setEmpresas(prev => prev.map(e => e.id === empresaId ? { ...e, modulos_activos: nuevosModulos } : e));
+    if (empresaSeleccionada?.id === empresaId) {
+      setEmpresaSeleccionada(prev => prev ? { ...prev, modulos_activos: nuevosModulos } : null);
+    }
+  };
+
+  const handleLicenciaActualizada = () => {
+    cargarDirectorio();
+  };
 
   // Cargar directorio inicial
   const cargarDirectorio = async () => {
@@ -320,21 +340,25 @@ export default function UltraAdminEmpresasPage() {
                   <tr className="border-b border-slate-800/80 bg-slate-950/40 text-xs font-bold text-slate-400 uppercase tracking-wider">
                     <th className="py-3.5 px-4">Empresa / Razón Social</th>
                     <th className="py-3.5 px-4">Slug Identificador</th>
-                    <th className="py-3.5 px-4">Suscripción</th>
-                    <th className="py-3.5 px-4">Plan</th>
+                    <th className="py-3.5 px-4">Licencia & Vigencia</th>
+                    <th className="py-3.5 px-4">Módulos ERP</th>
                     <th className="py-3.5 px-4">Usuarios (Activos / Total)</th>
-                    <th className="py-3.5 px-4 text-right">Acción</th>
+                    <th className="py-3.5 px-4 text-right">Acciones de Plataforma</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
                   {empresasFiltradas.map((emp) => {
                     const isSelected = empresaSeleccionada?.id === emp.id;
-                    const statusColors: Record<string, string> = {
-                      active: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-                      trialing: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
-                      past_due: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-                      canceled: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
+
+                    const estadoLicenciaConfig: Record<string, { badge: string; text: string }> = {
+                      ACTIVA: { badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', text: 'Activa' },
+                      POR_VENCER: { badge: 'bg-amber-500/15 text-amber-400 border-amber-500/30', text: 'Por Vencer' },
+                      EN_GRACIA: { badge: 'bg-orange-500/15 text-orange-400 border-orange-500/30', text: 'En Gracia' },
+                      VENCIDA: { badge: 'bg-rose-500/15 text-rose-400 border-rose-500/30', text: 'Vencida' },
                     };
+                    const licInfo = estadoLicenciaConfig[emp.estadoLicencia] || estadoLicenciaConfig.ACTIVA;
+
+                    const modulosActivosCount = Object.values(emp.modulos_activos || {}).filter(Boolean).length;
 
                     return (
                       <tr 
@@ -357,13 +381,38 @@ export default function UltraAdminEmpresasPage() {
                         </td>
 
                         <td className="py-3.5 px-4">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${statusColors[emp.subscription_status] || 'bg-slate-800 text-slate-400'}`}>
-                            {emp.subscription_status.toUpperCase()}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${licInfo.badge}`}>
+                                {licInfo.text}
+                              </span>
+                              <span className="text-xs font-semibold text-slate-200">
+                                {emp.diasRestantes > 0 
+                                  ? `${emp.diasRestantes}d restantes` 
+                                  : emp.estadoLicencia === 'EN_GRACIA'
+                                  ? `Gracia (${emp.dias_gracia}d)`
+                                  : 'Expirada'}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-slate-400">
+                              {emp.subscription_ends_at 
+                                ? `Vence: ${emp.subscription_ends_at.split('T')[0]}`
+                                : emp.trial_ends_at
+                                ? `Trial: ${emp.trial_ends_at.split('T')[0]}`
+                                : 'Sin fecha'}
+                            </span>
+                          </div>
                         </td>
 
-                        <td className="py-3.5 px-4 text-xs font-medium text-slate-300">
-                          {emp.plan_id === 'plan_lifetime' ? '⭐ Plan Vitalicio' : 'Suscripción Mensual'}
+                        <td className="py-3.5 px-4">
+                          <button
+                            onClick={() => setEmpresaModulos(emp)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300 transition-all hover:text-white"
+                            title="Configurar módulos de este tenant"
+                          >
+                            <Sliders className="w-3.5 h-3.5 text-brand-salmon" />
+                            <span>{modulosActivosCount}/9 Módulos</span>
+                          </button>
                         </td>
 
                         <td className="py-3.5 px-4">
@@ -379,17 +428,28 @@ export default function UltraAdminEmpresasPage() {
                         </td>
 
                         <td className="py-3.5 px-4 text-right">
-                          <button
-                            onClick={() => handleSeleccionarEmpresa(emp)}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                              isSelected
-                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
-                            }`}
-                          >
-                            <span>Inspeccionar Usuarios</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setEmpresaLicencia(emp)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all"
+                              title="Extender días de licencia o asignar contrato"
+                            >
+                              <CalendarPlus className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Extender</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleSeleccionarEmpresa(emp)}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                isSelected
+                                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                              }`}
+                            >
+                              <span>Usuarios</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -502,6 +562,21 @@ export default function UltraAdminEmpresasPage() {
             )}
           </div>
         )}
+
+        {/* Modales de Gobernanza UltraAdmin */}
+        <GestionModulosModal
+          isOpen={!!empresaModulos}
+          empresa={empresaModulos}
+          onClose={() => setEmpresaModulos(null)}
+          onModuloActualizado={handleModulosActualizados}
+        />
+
+        <ExtenderLicenciaModal
+          isOpen={!!empresaLicencia}
+          empresa={empresaLicencia}
+          onClose={() => setEmpresaLicencia(null)}
+          onLicenciaActualizada={handleLicenciaActualizada}
+        />
 
       </div>
     </div>

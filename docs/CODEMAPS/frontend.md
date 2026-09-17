@@ -1,20 +1,27 @@
-<!-- Generated: 2026-09-15 | Files scanned: ~52 | Token estimate: ~880 -->
+<!-- Generated: 2026-09-17 | Files scanned: ~56 | Token estimate: ~940 -->
 # Frontend Architecture
 
 ## Page Tree (`src/app/`)
 - `/alquileres`: Dashboard de contratos, wizard de nuevo alquiler con atajo F2 y rango maestro de fechas, pestaña de Cotizaciones integradas, conversión a contrato, emisión de PDFs, cálculo de colaterales y escudo de bloqueo Poka-Yoke contra doble envío.
 - `/caja`: Control de turnos y tesorería. Incluye apertura de turno con base inicial, registro de ingresos/egresos, arqueo ciego con calculadora de denominaciones de billetes/monedas, determinación de sobrantes/faltantes y generación de comprobantes contables de arqueo.
-- `/compras`: Módulo de compras con pestañas `Órdenes de Compra` y `Directorio de Proveedores`. Incluye KPIs de inversión facturada, neto desembolsado y retenciones practicadas, tabla con botón directo de impresión PDF y búsqueda predictiva.
+- `/compras`: Módulo integral de compras con 4 pestañas operativas: `Órdenes de Compra`, `Recepción en Bodega & PMP`, `Cuentas por Pagar (CXP)` y `Directorio de Proveedores`. Incluye semáforo de morosidad, recálculo de Costo Promedio Ponderado, emisión de Comprobantes de Egreso (CE) y KPIs financieros en tiempo real.
 - `/cotizaciones`: Gestión comercial de cotizaciones con KPIs (Total Cotizado, Aprobadas, Tasa de Conversión), desglose tributario y conversión 1-clic a contrato.
 - `subcontrataciones`: Gestión de maquinaria externa subcontratada a aliados comerciales con ciclo a dos tiempos (`ACTIVA`, `RECIBIDA_EN_BODEGA`, `DEVUELTA_A_PROVEEDOR`, `LIQUIDADA`), alerta en bodega y liquidación contable en Ledger.
 - `facturacion`: Gestión y emisión de facturas comerciales formales en PDF con asientos contables en Ledger.
 - `bodega`: Panel de inventario, Kardex visual y ajustes Poka-Yoke de stock (`EditarEquipoModal.tsx`, `KardexEquipoModal.tsx`).
 - `clientes`: Directorio de clientes con reconciliación estabilizada vía `useCallback([setClientes])`.
 - `devoluciones`: Módulo de recepción física de maquinaria con pestañas de retorno pendiente e historial de actas, inspección técnica granular, Split-Line interactivo y compensación de garantía.
-- `/admin/empresas`: Panel de control UltraAdmin multi-tenant para supervisión global de tenants y usuarios.
-- `/configuracion`: Datos fiscales, logo corporativo con compresión canvas (<150KB), usuarios y pestaña de Auditoría del sistema.
+- `/admin/empresas`: Panel de control UltraAdmin multi-tenant. Incorpora semáforo de vigencia de licencias (`ACTIVA`, `POR_VENCER`, `EN_GRACIA`, `VENCIDA`), cálculo de días restantes, modal de asignación de días de cortesía (`ExtenderLicenciaModal.tsx`), modal de feature flags de módulos (`GestionModulosModal.tsx`) y visor de cuentas vinculadas.
+- `/configuracion`: Datos fiscales, logo corporativo con compresión canvas (<150KB), auditoría y pestaña de usuarios (`UsuariosTab.tsx`) con **Selector Universal de Empresas para UltraAdmin** para auditar y suspender colaboradores de cualquier tenant.
 
 ## Components (`src/components/` & `src/app/components/`)
+- `admin/empresas/GestionModulosModal.tsx`: Modal Glassmorphism con switches interactivos Poka-Yoke para activar/desactivar los 9 módulos canónicos de FerreOn por empresa con actualización optimista y purga de caché Redis.
+- `admin/empresas/ExtenderLicenciaModal.tsx`: Modal de extensión rápida de licencias con botones 1-clic (+15d, +30d, +90d, +365d), selector manual de fecha contractual y registro de motivo para auditoría.
+- `configuracion/UsuariosTab.tsx`: Gestión de usuarios con inyección reactiva del Selector Universal de Empresas, semáforo de vigencia de licencia y suspensión de cuentas con invalidación de sesión en Upstash Redis.
+- `ui/Sidebar.tsx`: Navegación modular con filtrado dinámico de módulos según habilitación en el tenant y acceso directo a Gobernanza UltraAdmin.
+- `compras/RecibirMercanciaModal.tsx`: Modal Poka-Yoke de conteo físico y cotejo de remisiones que ejecuta el RPC transaccional para actualizar el Costo Promedio Ponderado (PMP) de los equipos y asentar en Kardex.
+- `compras/RegistrarAbonoProveedorModal.tsx`: Modal interactivo de abono a proveedores con validación de saldo adeudado, vinculación con caja física en efectivo y emisión de Comprobante de Egreso (CE).
+- `compras/ComprobanteEgresoPDFModal.tsx`: Visor oficial e impresión nativa de Comprobantes de Egreso en formato Carta/A4 y Tirilla Térmica POS 80mm.
 - `devoluciones/InspeccionTecnicaModal.tsx`: Modal orquestador de recepción con Split-Line interactivo, clasificación por ítem (`BUENO`, `MANTENIMIENTO`, `PERDIDA_TOTAL`), tasación de daños y cálculo en vivo (0 ms).
 - `devoluciones/DevolucionBlockingOverlay.tsx`: Escudo visual Poka-Yoke con Glassmorphism (`backdrop-blur-md`), spinner GPU y bloqueo de puntero/teclado (`pointer-events-none`) para evitar dobles envíos.
 - `devoluciones/LiquidacionGarantiaCard.tsx`: Tarjeta financiera reactiva que calcula la compensación neta entre depósito, arriendo causado y reparaciones, vinculando a caja o transferencia.

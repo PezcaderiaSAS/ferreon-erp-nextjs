@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
@@ -17,9 +16,23 @@ import {
   Lock,
   Mail,
   User,
-  Shield
+  Shield,
+  Building2,
+  ExternalLink,
+  Sliders,
+  CalendarPlus,
+  Sparkles,
+  Search
 } from 'lucide-react';
 import { RoleType } from '../../core/domain/entities/usuario';
+import { supabaseClient } from '../../infrastructure/persistence/supabase/client';
+import { 
+  obtenerEmpresasParaSelectorAction, 
+  obtenerUsuariosPorEmpresaAction, 
+  cambiarEstadoUsuarioAction,
+  EmpresaSelectorItem 
+} from '@/app/actions/ultraadmin';
+import Link from 'next/link';
 
 const AVATARS = [
   'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&backgroundColor=b6e3f4',
@@ -61,6 +74,13 @@ export function UsuariosTab() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  // Estados de UltraAdmin
+  const [isUltraAdmin, setIsUltraAdmin] = useState(false);
+  const [empresasSelector, setEmpresasSelector] = useState<EmpresaSelectorItem[]>([]);
+  const [selectedEmpresaId, setSelectedEmpresaId] = useState<string | null>(null);
+  const [selectedEmpresaData, setSelectedEmpresaData] = useState<EmpresaSelectorItem | null>(null);
+  const [cargandoTenant, setCargandoTenant] = useState(false);
+
   // Modal de confirmación de eliminación o bloqueo
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -80,6 +100,40 @@ export function UsuariosTab() {
     avatarUrl: AVATARS[0]
   });
 
+  const cargarUsuariosDeEmpresa = async (empresaId: string) => {
+    setCargandoTenant(true);
+    setErrorMsg(null);
+    try {
+      const res = await obtenerUsuariosPorEmpresaAction(empresaId);
+      if (res.success && res.usuarios) {
+        setUsuarios(res.usuarios.map(u => ({
+          id: u.id,
+          membershipId: u.membershipId,
+          nombre: u.nombre,
+          email: u.email,
+          rol: u.rol as RoleType,
+          estado: u.estado,
+          avatarUrl: u.avatarUrl,
+          ultimoAcceso: u.ultimoAcceso,
+        })));
+      } else {
+        setErrorMsg(res.error || 'Error al obtener usuarios de la empresa seleccionada');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error de conexión');
+    } finally {
+      setCargandoTenant(false);
+      setIsInitializing(false);
+    }
+  };
+
+  const handleCambiarEmpresaSeleccionada = async (empId: string) => {
+    setSelectedEmpresaId(empId);
+    const empData = empresasSelector.find(e => e.id === empId) || null;
+    setSelectedEmpresaData(empData);
+    await cargarUsuariosDeEmpresa(empId);
+  };
+
   const fetchUsuarios = async () => {
     try {
       const res = await fetch('/api/usuarios');
@@ -98,7 +152,28 @@ export function UsuariosTab() {
   };
 
   useEffect(() => {
-    fetchUsuarios();
+    async function initUserAndTenants() {
+      try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        const rol = user?.user_metadata?.rol;
+        if (rol === 'ULTRAADMIN' || rol === 'SUPERADMIN') {
+          setIsUltraAdmin(true);
+          const empRes = await obtenerEmpresasParaSelectorAction();
+          if (empRes.success && empRes.empresas && empRes.empresas.length > 0) {
+            setEmpresasSelector(empRes.empresas);
+            const primera = empRes.empresas[0];
+            setSelectedEmpresaId(primera.id);
+            setSelectedEmpresaData(primera);
+            await cargarUsuariosDeEmpresa(primera.id);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('[UsuariosTab Init Warning]', err);
+      }
+      await fetchUsuarios();
+    }
+    initUserAndTenants();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -145,17 +220,28 @@ export function UsuariosTab() {
     setSuccessMsg(null);
 
     try {
-      const res = await fetch('/api/usuarios', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: usuario.id, estado: nuevoEstado })
-      });
+      if (isUltraAdmin && selectedEmpresaId) {
+        const res = await cambiarEstadoUsuarioAction({
+          membershipId: usuario.membershipId,
+          empresaId: selectedEmpresaId,
+          nuevoEstado,
+        });
+        if (!res.success) throw new Error(res.error || 'Error al cambiar estado');
+        setSuccessMsg(`Usuario actualizado a ${nuevoEstado} (UltraAdmin)`);
+        await cargarUsuariosDeEmpresa(selectedEmpresaId);
+      } else {
+        const res = await fetch('/api/usuarios', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: usuario.id, estado: nuevoEstado })
+        });
 
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || 'Error al cambiar estado');
+        const resData = await res.json();
+        if (!res.ok) throw new Error(resData.error || 'Error al cambiar estado');
 
-      setSuccessMsg(resData.mensaje || `Usuario actualizado a ${nuevoEstado}`);
-      await fetchUsuarios();
+        setSuccessMsg(resData.mensaje || `Usuario actualizado a ${nuevoEstado}`);
+        await fetchUsuarios();
+      }
       setConfirmModal({ isOpen: false, type: 'DELETE', usuario: null });
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
@@ -238,6 +324,79 @@ export function UsuariosTab() {
           <button type="button" onClick={() => setSuccessMsg(null)} className="text-emerald-400 hover:text-emerald-700">
             <X className="w-5 h-5" />
           </button>
+        </div>
+      )}
+
+      {/* Selector Universal de Empresas (Exclusivo UltraAdmin) */}
+      {isUltraAdmin && (
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white shadow-xl border border-indigo-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 animate-fadeIn">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-indigo-500/20 border border-indigo-500/40 rounded-xl text-indigo-300 shrink-0">
+              <Building2 className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider bg-indigo-500/30 text-indigo-300 px-2.5 py-0.5 rounded-full border border-indigo-500/40">
+                  Gobernanza UltraAdmin
+                </span>
+                <span className="text-xs text-slate-400">Auditoría Transversal de Usuarios</span>
+              </div>
+              <h3 className="text-lg font-bold text-white mt-1">
+                {selectedEmpresaData ? selectedEmpresaData.nombre : 'Seleccionar Empresa'}
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {selectedEmpresaData?.nit ? `NIT: ${selectedEmpresaData.nit}` : 'Sin NIT'} • Slug: <span className="font-mono text-indigo-300">{selectedEmpresaData?.slug}</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+            {/* Dropdown de Selección */}
+            <div className="relative min-w-[240px]">
+              <select
+                value={selectedEmpresaId || ''}
+                disabled={cargandoTenant}
+                onChange={(e) => handleCambiarEmpresaSeleccionada(e.target.value)}
+                className="w-full bg-slate-800/90 border border-indigo-500/40 text-white rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer appearance-none pr-8 disabled:opacity-50"
+              >
+                {empresasSelector.map((emp) => (
+                  <option key={emp.id} value={emp.id} className="bg-slate-900 text-white">
+                    {emp.nombre} ({emp.diasRestantes > 0 ? `${emp.diasRestantes}d` : emp.estadoLicencia})
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
+                ▼
+              </div>
+            </div>
+
+            {/* Badge Semáforo de Licencia */}
+            {selectedEmpresaData && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/60 rounded-xl border border-white/10 text-xs shrink-0">
+                <span className={`w-2.5 h-2.5 rounded-full ${
+                  selectedEmpresaData.estadoLicencia === 'ACTIVA' ? 'bg-emerald-400 animate-pulse' :
+                  selectedEmpresaData.estadoLicencia === 'POR_VENCER' ? 'bg-amber-400' :
+                  selectedEmpresaData.estadoLicencia === 'EN_GRACIA' ? 'bg-orange-400' : 'bg-rose-400'
+                }`} />
+                <span className="font-semibold text-slate-200">
+                  {selectedEmpresaData.diasRestantes > 0 
+                    ? `${selectedEmpresaData.diasRestantes} días restantes`
+                    : selectedEmpresaData.estadoLicencia === 'EN_GRACIA'
+                    ? 'En Gracia'
+                    : 'Licencia Vencida'}
+                </span>
+              </div>
+            )}
+
+            {/* Enlace al panel completo */}
+            <Link
+              href="/admin/empresas"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-indigo-600/30 whitespace-nowrap"
+            >
+              <span>Panel Plataforma</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
       )}
 

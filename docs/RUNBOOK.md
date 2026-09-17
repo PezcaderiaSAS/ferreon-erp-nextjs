@@ -1,7 +1,7 @@
 # Runbook Operativo - FerreOn ERP
 
 ## Procedimientos de Despliegue
-1. **Verificación de Tipos y Tests:** Asegurarse de que `npm run typecheck` reporte 0 errores y `npm run test` apruebe las 41 suites de pruebas unitarias (178 tests aprobados, 100% verde).
+1. **Verificación de Tipos y Tests:** Asegurarse de que `npm run typecheck` reporte 0 errores y `npm run test` apruebe las 49 suites de pruebas unitarias (239 tests aprobados, 100% verde).
 2. **Compilación de Producción:** Ejecutar `npm run build` (`prisma generate && next build`) para validar que las 23 rutas estáticas/dinámicas y el middleware de seguridad compilen con código 0.
 3. **Migración de Base de Datos (Supabase):**
    Las migraciones deben ejecutarse en orden cronológico en el SQL Editor del dashboard de Supabase o mediante CLI:
@@ -11,6 +11,8 @@
    - `supabase/migrations/20260911_modulo_wms_bodegas_y_stocks.sql` (Bodegas múltiples y stock por almacén).
    - `supabase/migrations/20260914_modulo_caja_movimientos_y_arqueo.sql` (Control de turnos de caja, movimientos y arqueos).
    - `supabase/migrations/20260915_idempotencia_alquileres.sql` (Columna `idempotency_key`, índice único condicional `idx_alquileres_empresa_idempotency_key` y reemplazo atómico de RPC `crear_alquiler_transaccional`).
+   - `supabase/migrations/20260916_cotizaciones_pesimistas_y_pagos_mixtos.sql` (Tablas `cliente_movimientos_saldo`, `pago_metodos_detalle`, columna `clientes.saldo_a_favor`).
+   - `supabase/migrations/20260917_ultraadmin_licencias_modulos_y_permisos.sql` (Columnas `fecha_vencimiento_licencia`, `plan_licencia`, `modulos_habilitados` en tabla `empresas`).
 4. **Despliegue Continuo (CI/CD):** Al hacer push o merge a la rama `main`, Vercel ejecuta la compilación y despliegue a los edge networks automáticamente.
 
 ---
@@ -58,7 +60,7 @@
 - **Órdenes de Compra, Facturas y Arqueos:** Componentes modales con estilos `@media print` (`ComprobanteEntradaPDFModal.tsx`, `VisorDocumentoPDFModal.tsx`, `ComprobanteArqueoModal.tsx`) para impresión térmica o Carta/A4.
 
 ### 7. Supervisión y Seguridad UltraAdmin
-- El panel `/admin/empresas` permite a los usuarios con rol `ULTRAADMIN` (evaluado con `public.is_ultra_admin()`) auditar eventos inmutables en `audit_logs`, suspender usuarios o gestionar tenants de forma centralizada.
+- El panel `/admin/empresas` permite a los usuarios con rol `SUPER_ADMIN` / `ULTRAADMIN` (evaluado con `public.is_ultra_admin()`) auditar eventos inmutables en `audit_logs`, suspender usuarios o gestionar tenants de forma centralizada.
 
 ### 8. Módulo de Devoluciones Parciales, Split-Line e Inspección Física
 - **Acceso:** Ruta `/devoluciones`.
@@ -79,6 +81,23 @@
   3. `RECIBIDA_EN_BODEGA`: El cliente retorna la máquina. Se suspende la facturación al cliente y el ERP emite alerta ámbar para que bodega devuelva el equipo al aliado.
   4. `DEVUELTA_A_PROVEEDOR`: Se registra el despacho físico de retorno con `registrarRetornoAProveedorAction`, congelando el costo diario del proveedor.
   5. `LIQUIDADA`: En `LiquidarSubcontratacionModal`, se liquidan retenciones DIAN (ReteFuente 2.5%, ReteICA 9.66‰), se computa el margen comercial neto y se asienta la partida doble balanceada en el Ledger (Cuentas `6135` Débito vs `2365`, `2368`, `2205` Crédito).
+
+### 10. Operación y Gobernanza UltraAdmin (Licencias, Módulos e Invalidación de Sesiones)
+- **Acceso:** Tab `Usuarios` en `/configuracion` o `/admin/empresas` (exclusivo para `SUPER_ADMIN`).
+- **Monitoreo Transversal de Tenants:**
+  - Visualización del listado completo de empresas con semáforo de días de licencia restantes:
+    - Verde (`ACTIVA`): > 7 días.
+    - Ámbar (`POR_VENCER`): $\le 7$ días.
+    - Rojo (`VENCIDA`): $\le 0$ días.
+  - Conteo de usuarios activos e inactivos por empresa.
+- **Gestión de Feature Flags por Empresa:**
+  - El modal `GestionModulosModal.tsx` permite encender/apagar módulos (`alquileres`, `inventario`, `compras`, `caja`, `cotizaciones`, `subcontrataciones`, `devoluciones`, `contabilidad`) en tiempo real.
+  - Al modificar un módulo, la Server Action `toggleModuloTenantAction` invalida la clave `cache:tenant:${tenantId}:modulos` y registra el cambio en `audit_logs` con la acción `EDITAR_CONFIGURACION`.
+- **Extensión y Contingencia de Licencias:**
+  - El modal `ExtenderLicenciaModal.tsx` calcula el nuevo vencimiento y ejecuta `extenderLicenciaTenantAction`.
+- **Revocación Forzada de Sesiones en <1s:**
+  - Cuando un UltraAdmin desactiva un usuario o degrada su rol mediante `cambiarEstadoUsuarioGlobalAction` o `cambiarRolUsuarioGlobalAction`, el sistema ejecuta un `del` atómico en Upstash Redis (`session:user:${userId}`).
+  - El usuario es forzado a cerrar sesión o bloqueado de inmediato en su siguiente petición, garantizando gobernanza de acceso en tiempo real.
 
 ---
 

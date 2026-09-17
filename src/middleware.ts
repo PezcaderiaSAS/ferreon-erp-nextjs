@@ -170,7 +170,43 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 9. Inyección Definitiva de Cabeceras Perimetrales y Content-Security-Policy
+  // 9. Verificación Perimetral de Módulos Activos por Tenant (Feature Flags)
+  // Nota: ULTRAADMIN y SUPERADMIN conservan bypass para auditoría de plataforma
+  if (userRole !== 'ULTRAADMIN' && userRole !== 'SUPERADMIN') {
+    const modulosCookie = request.cookies.get('ferreon_modulos_activos')?.value;
+    if (modulosCookie) {
+      try {
+        const modulosActivos = JSON.parse(modulosCookie);
+        const rutaModuloMap: Record<string, string> = {
+          '/alquileres': 'ALQUILERES',
+          '/cotizaciones': 'COTIZACIONES',
+          '/bodega': 'BODEGA',
+          '/compras': 'COMPRAS',
+          '/subcontrataciones': 'SUBCONTRATACIONES',
+          '/devoluciones': 'DEVOLUCIONES',
+          '/facturacion': 'FACTURACION',
+          '/caja': 'CAJA',
+        };
+
+        for (const [ruta, moduloKey] of Object.entries(rutaModuloMap)) {
+          if (pathname.startsWith(ruta)) {
+            if (modulosActivos[moduloKey] === false) {
+              const disabledResponse = NextResponse.rewrite(
+                new URL('/unauthorized?motivo=modulo_deshabilitado', request.url)
+              );
+              applyBaseSecurityHeaders(disabledResponse.headers);
+              return disabledResponse;
+            }
+            break;
+          }
+        }
+      } catch {
+        // En caso de parse error o cookie ausente, permitir que el componente resuelva
+      }
+    }
+  }
+
+  // 10. Inyección Definitiva de Cabeceras Perimetrales y Content-Security-Policy
   applyBaseSecurityHeaders(response.headers);
   response.headers.set('Content-Security-Policy', cspHeader);
 

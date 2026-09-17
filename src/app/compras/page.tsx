@@ -26,15 +26,30 @@ import {
   Mail,
   MapPin,
   Sparkles,
-  DollarSign
+  DollarSign,
+  PackageCheck,
+  Receipt,
+  AlertTriangle,
+  FileCheck2,
+  ArrowDownToLine,
+  CreditCard
 } from 'lucide-react';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { obtenerComprasAction, CompraUI } from '../actions/compras';
 import { obtenerProveedoresAction, ProveedorUI } from '../actions/proveedores';
+import { 
+  obtenerCuentasPorPagarAction, 
+  CuentaPagarUI, 
+  AbonoProveedorUI,
+  obtenerHistorialAbonosAction
+} from '../actions/cuentas-por-pagar';
 import { useCurrencyFormatter } from '../../lib/hooks/useCurrencyFormatter';
 import { useToastStore } from '../../infrastructure/state/toastStore';
 import { ComprobanteEntradaPDFModal } from '../components/compras/ComprobanteEntradaPDFModal';
 import { CrearProveedorModal } from '../components/proveedores/CrearProveedorModal';
+import { RecibirMercanciaModal } from '../components/compras/RecibirMercanciaModal';
+import { RegistrarAbonoProveedorModal } from '../components/compras/RegistrarAbonoProveedorModal';
+import { ComprobanteEgresoPDFModal } from '../components/compras/ComprobanteEgresoPDFModal';
 
 const ModalSkeleton = () => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs">
@@ -56,12 +71,13 @@ export default function ComprasPage() {
   const { formatearMoneda } = useCurrencyFormatter();
   const { showSuccessToast, showErrorToast } = useToastStore();
 
-  // Pestañas del módulo
-  const [pestañaActiva, setPestañaActiva] = useState<'ORDENES' | 'PROVEEDORES'>('ORDENES');
+  // 4 Pestañas del módulo integral de compras
+  const [pestañaActiva, setPestañaActiva] = useState<'ORDENES' | 'RECEPCION' | 'CXP' | 'PROVEEDORES'>('ORDENES');
 
   // Datos
   const [compras, setCompras] = useState<CompraUI[]>([]);
   const [proveedores, setProveedores] = useState<ProveedorUI[]>([]);
+  const [cuentasPagar, setCuentasPagar] = useState<CuentaPagarUI[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -70,7 +86,15 @@ export default function ComprasPage() {
   const [isModalProveedorOpen, setIsModalProveedorOpen] = useState(false);
   const [compraSeleccionadaPDF, setCompraSeleccionadaPDF] = useState<CompraUI | null>(null);
 
-  // Filtros de Compras
+  // Modales Fase 4 (Recepción en Bodega, Abonos CXP y Comprobante de Egreso)
+  const [compraParaRecepcion, setCompraParaRecepcion] = useState<CompraUI | null>(null);
+  const [cuentaPagarParaAbono, setCuentaPagarParaAbono] = useState<CuentaPagarUI | null>(null);
+  const [comprobanteEgresoActivo, setComprobanteEgresoActivo] = useState<{
+    abono: AbonoProveedorUI;
+    cuentaPagar: CuentaPagarUI;
+  } | null>(null);
+
+  // Filtros de Compras & Recepción
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroMetodo, setFiltroMetodo] = useState<'TODOS' | 'EFECTIVO' | 'TRANSFERENCIA' | 'CREDITO'>('TODOS');
   const [compraExpandidaId, setCompraExpandidaId] = useState<string | null>(null);
@@ -78,12 +102,19 @@ export default function ComprasPage() {
   // Filtros de Proveedores
   const [searchProveedor, setSearchProveedor] = useState('');
 
+  // Filtros de CXP
+  const [searchCXP, setSearchCXP] = useState('');
+  const [filtroSemaforoCXP, setFiltroSemaforoCXP] = useState<'TODOS' | 'VENCIDA' | 'POR_VENCER' | 'AL_DIA' | 'PAGADA'>('TODOS');
+  const [cxpExpandidaId, setCxpExpandidaId] = useState<string | null>(null);
+  const [historialAbonosMap, setHistorialAbonosMap] = useState<Record<string, AbonoProveedorUI[]>>({});
+
   const cargarDatos = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [resCompras, resProveedores, resEquipos] = await Promise.all([
-        obtenerComprasAction(50),
+      const [resCompras, resProveedores, resCXP, resEquipos] = await Promise.all([
+        obtenerComprasAction(100),
         obtenerProveedoresAction(),
+        obtenerCuentasPorPagarAction(),
         fetch('/api/equipos', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ success: false, data: [] }))
       ]);
 
@@ -95,12 +126,16 @@ export default function ComprasPage() {
         setProveedores(resProveedores.data);
       }
 
+      if (resCXP.success && resCXP.data) {
+        setCuentasPagar(resCXP.data);
+      }
+
       if (resEquipos.success && Array.isArray(resEquipos.data)) {
         setEquipos(resEquipos.data);
       }
     } catch (err: any) {
       console.error('Error al cargar datos del módulo de compras:', err);
-      showErrorToast('No se pudieron sincronizar las compras y proveedores.');
+      showErrorToast('No se pudieron sincronizar los datos de compras y cuentas por pagar.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -117,13 +152,58 @@ export default function ComprasPage() {
   };
 
   const handleCompraExitosa = () => {
-    showSuccessToast('Compra asentada exitosamente. Stock de equipos y Kardex actualizados.');
+    showSuccessToast('Orden de compra registrada exitosamente.');
     cargarDatos();
   };
 
   const handleProveedorCreado = (nuevo: ProveedorUI) => {
     setProveedores(prev => [nuevo, ...prev]);
     showSuccessToast(`Proveedor "${nuevo.nombre}" guardado en el catálogo.`);
+  };
+
+  const handleRecepcionExitosa = () => {
+    showSuccessToast('Mercancía recibida en bodega. Costo Promedio Ponderado (PMP) actualizado.');
+    cargarDatos();
+  };
+
+  const handleAbonoExitoso = (nuevoAbono: AbonoProveedorUI, cxpActualizada: CuentaPagarUI) => {
+    // Actualizar lista local de CXP
+    setCuentasPagar(prev => prev.map(c => c.id === cxpActualizada.id ? cxpActualizada : c));
+    // Guardar en historial local
+    setHistorialAbonosMap(prev => ({
+      ...prev,
+      [cxpActualizada.id]: [nuevoAbono, ...(prev[cxpActualizada.id] || [])]
+    }));
+    // Ofrecer visualización de Comprobante de Egreso (CE)
+    setComprobanteEgresoActivo({
+      abono: nuevoAbono,
+      cuentaPagar: cxpActualizada
+    });
+    cargarDatos();
+  };
+
+  const cargarHistorialAbonos = async (cxpId: string) => {
+    if (historialAbonosMap[cxpId]) return;
+    try {
+      const res = await obtenerHistorialAbonosAction(cxpId);
+      if (res.success && res.data) {
+        setHistorialAbonosMap(prev => ({
+          ...prev,
+          [cxpId]: res.data!
+        }));
+      }
+    } catch (err) {
+      console.error('Error al cargar historial de abonos:', err);
+    }
+  };
+
+  const toggleExpandirCXP = (id: string) => {
+    if (cxpExpandidaId === id) {
+      setCxpExpandidaId(null);
+    } else {
+      setCxpExpandidaId(id);
+      cargarHistorialAbonos(id);
+    }
   };
 
   // Filtrado de compras
@@ -140,7 +220,12 @@ export default function ComprasPage() {
     });
   }, [compras, searchTerm, filtroMetodo]);
 
-  // Filtrado de proveedores con búsqueda asistida
+  // Órdenes pendientes de recepción en bodega
+  const comprasPendientesRecepcion = useMemo(() => {
+    return compras.filter(c => c.estado === 'PENDIENTE_RECEPCION' || c.estado === 'PARCIAL' || c.estado === 'APROBADA');
+  }, [compras]);
+
+  // Filtrado de proveedores
   const proveedoresFiltrados = useMemo(() => {
     if (!searchProveedor.trim()) return proveedores;
     const term = searchProveedor.toLowerCase().trim();
@@ -153,11 +238,28 @@ export default function ComprasPage() {
     );
   }, [proveedores, searchProveedor]);
 
+  // Filtrado de Cuentas por Pagar (CXP)
+  const cuentasPagarFiltradas = useMemo(() => {
+    return cuentasPagar.filter(cxp => {
+      const coincideBusqueda = 
+        cxp.numero_orden.toLowerCase().includes(searchCXP.toLowerCase()) ||
+        (cxp.proveedor_nombre && cxp.proveedor_nombre.toLowerCase().includes(searchCXP.toLowerCase())) ||
+        (cxp.proveedor_nit && cxp.proveedor_nit.includes(searchCXP));
+
+      const coincideSemaforo = filtroSemaforoCXP === 'TODOS' 
+        ? true 
+        : filtroSemaforoCXP === 'PAGADA' 
+        ? cxp.estado === 'PAGADA' 
+        : cxp.semaforo === filtroSemaforoCXP;
+
+      return coincideBusqueda && coincideSemaforo;
+    });
+  }, [cuentasPagar, searchCXP, filtroSemaforoCXP]);
+
   // Métricas de Compras
-  const metricas = useMemo(() => {
+  const metricasCompras = useMemo(() => {
     const totalInversion = compras.reduce((acc, c) => acc + c.total, 0);
     const totalNetoDesembolsado = compras.reduce((acc, c) => acc + (c.neto_pagar || c.total), 0);
-    const totalRetenciones = compras.reduce((acc, c) => acc + ((c.valor_retefuente || 0) + (c.valor_reteica || 0)), 0);
     const totalEquiposAdquiridos = compras.reduce((acc, c) => {
       const sumItems = (c.detalles || []).reduce((subAcc, d) => subAcc + d.cantidad, 0);
       return acc + sumItems;
@@ -166,12 +268,32 @@ export default function ComprasPage() {
     return {
       totalInversion,
       totalNetoDesembolsado,
-      totalRetenciones,
       ordenesTotal: compras.length,
-      proveedoresUnicos: proveedores.length,
+      pendientesRecepcion: comprasPendientesRecepcion.length,
       totalEquiposAdquiridos
     };
-  }, [compras, proveedores]);
+  }, [compras, comprasPendientesRecepcion]);
+
+  // Métricas de Cuentas por Pagar (CXP)
+  const metricasCXP = useMemo(() => {
+    const totalCarteraPendiente = cuentasPagar.reduce((acc, c) => acc + c.saldo_pendiente, 0);
+    const totalVencido = cuentasPagar
+      .filter(c => c.semaforo === 'VENCIDA')
+      .reduce((acc, c) => acc + c.saldo_pendiente, 0);
+    const totalPorVencer = cuentasPagar
+      .filter(c => c.semaforo === 'POR_VENCER')
+      .reduce((acc, c) => acc + c.saldo_pendiente, 0);
+    const totalAbonado = cuentasPagar.reduce((acc, c) => acc + (c.total_abonos || 0), 0);
+
+    return {
+      totalCarteraPendiente,
+      totalVencido,
+      totalPorVencer,
+      totalAbonado,
+      cuentasPendientesTotal: cuentasPagar.filter(c => c.saldo_pendiente > 0).length,
+      cuentasVencidasTotal: cuentasPagar.filter(c => c.semaforo === 'VENCIDA').length
+    };
+  }, [cuentasPagar]);
 
   const toggleExpandirCompra = (id: string) => {
     setCompraExpandidaId(prev => (prev === id ? null : id));
@@ -187,11 +309,11 @@ export default function ComprasPage() {
               <ShoppingBag className="w-6 h-6" />
             </span>
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-              Compras & Gestión de Proveedores
+              Compras, Bodega & Cartera CXP
             </h1>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Adquisición de maquinaria, catálogo maestro de proveedores, liquidación de retenciones tributarias y asientos en Ledger.
+            Gestión integral de compras, recepción física en bodega, recálculo de Costo Promedio Ponderado (PMP) y Cuentas por Pagar a Proveedores.
           </p>
         </div>
 
@@ -205,15 +327,7 @@ export default function ComprasPage() {
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-brand-salmon' : ''}`} />
           </button>
           
-          {pestañaActiva === 'ORDENES' ? (
-            <button
-              onClick={() => setIsModalCompraOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-salmon hover:bg-brand-salmonDark text-white text-sm font-semibold rounded-xl shadow-xs transition-all active:scale-95"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              Registrar Compra
-            </button>
-          ) : (
+          {pestañaActiva === 'PROVEEDORES' ? (
             <button
               onClick={() => setIsModalProveedorOpen(true)}
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-xs transition-all active:scale-95"
@@ -221,15 +335,23 @@ export default function ComprasPage() {
               <Plus className="w-4 h-4 stroke-[2.5]" />
               Nuevo Proveedor
             </button>
+          ) : (
+            <button
+              onClick={() => setIsModalCompraOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-salmon hover:bg-brand-salmonDark text-white text-sm font-semibold rounded-xl shadow-xs transition-all active:scale-95"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              Registrar Compra
+            </button>
           )}
         </div>
       </div>
 
-      {/* Selector de Pestañas (Órdenes vs Proveedores) */}
-      <div className="flex items-center gap-2 border-b border-slate-200">
+      {/* Selector de las 4 Pestañas Principales */}
+      <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto">
         <button
           onClick={() => setPestañaActiva('ORDENES')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all ${
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             pestañaActiva === 'ORDENES'
               ? 'border-brand-salmon text-brand-salmonDark'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -240,8 +362,42 @@ export default function ComprasPage() {
         </button>
 
         <button
+          onClick={() => setPestañaActiva('RECEPCION')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
+            pestañaActiva === 'RECEPCION'
+              ? 'border-indigo-600 text-indigo-800'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <PackageCheck className="w-4 h-4" />
+          <span>Recepción en Bodega & PMP</span>
+          {comprasPendientesRecepcion.length > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+              {comprasPendientesRecepcion.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setPestañaActiva('CXP')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
+            pestañaActiva === 'CXP'
+              ? 'border-rose-600 text-rose-800'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Receipt className="w-4 h-4" />
+          <span>Cuentas por Pagar ({cuentasPagar.filter(c => c.saldo_pendiente > 0).length})</span>
+          {metricasCXP.cuentasVencidasTotal > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 animate-pulse">
+              {metricasCXP.cuentasVencidasTotal} vencidas
+            </span>
+          )}
+        </button>
+
+        <button
           onClick={() => setPestañaActiva('PROVEEDORES')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all ${
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             pestañaActiva === 'PROVEEDORES'
               ? 'border-emerald-600 text-emerald-800'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -252,7 +408,9 @@ export default function ComprasPage() {
         </button>
       </div>
 
-      {/* VISTA 1: ÓRDENES DE COMPRA */}
+      {/* ========================================================================= */}
+      {/* VISTA 1: ÓRDENES DE COMPRA                                               */}
+      {/* ========================================================================= */}
       {pestañaActiva === 'ORDENES' && (
         <div className="space-y-6 animate-fadeIn">
           {/* Tarjetas de Métricas de Compras */}
@@ -265,9 +423,9 @@ export default function ComprasPage() {
                 </span>
               </div>
               <div className="text-2xl font-bold text-slate-900">
-                {formatearMoneda(metricas.totalInversion)}
+                {formatearMoneda(metricasCompras.totalInversion)}
               </div>
-              <p className="text-xs text-slate-500 mt-1">Total bruto facturas de proveedores</p>
+              <p className="text-xs text-slate-500 mt-1">Total facturado proveedores</p>
             </div>
 
             <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-brand-salmon/40 transition-all">
@@ -278,39 +436,39 @@ export default function ComprasPage() {
                 </span>
               </div>
               <div className="text-2xl font-bold text-slate-900">
-                {formatearMoneda(metricas.totalNetoDesembolsado)}
+                {formatearMoneda(metricasCompras.totalNetoDesembolsado)}
               </div>
               <p className="text-xs text-slate-500 mt-1">Deducidas retenciones tributarias</p>
             </div>
 
             <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-brand-salmon/40 transition-all">
               <div className="flex items-center justify-between text-slate-500 mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider">Retenciones Practicadas</span>
-                <span className="p-1.5 bg-purple-50 text-purple-600 rounded-lg">
-                  <Building2 className="w-4 h-4" />
+                <span className="text-xs font-semibold uppercase tracking-wider">Pendientes de Recepción</span>
+                <span className="p-1.5 bg-amber-50 text-amber-600 rounded-lg">
+                  <PackageCheck className="w-4 h-4" />
                 </span>
               </div>
-              <div className="text-2xl font-bold text-slate-900">
-                {formatearMoneda(metricas.totalRetenciones)}
+              <div className="text-2xl font-bold text-amber-600">
+                {metricasCompras.pendientesRecepcion} órdenes
               </div>
-              <p className="text-xs text-slate-500 mt-1">ReteFuente + ReteICA por pagar</p>
+              <p className="text-xs text-slate-500 mt-1">Por ingresar físicamente a bodega</p>
             </div>
 
             <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-brand-salmon/40 transition-all">
               <div className="flex items-center justify-between text-slate-500 mb-2">
                 <span className="text-xs font-semibold uppercase tracking-wider">Equipos Ingresados</span>
-                <span className="p-1.5 bg-amber-50 text-amber-600 rounded-lg">
+                <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
                   <Package className="w-4 h-4" />
                 </span>
               </div>
               <div className="text-2xl font-bold text-slate-900">
-                {metricas.totalEquiposAdquiridos} un.
+                {metricasCompras.totalEquiposAdquiridos} un.
               </div>
-              <p className="text-xs text-slate-500 mt-1">Incorporados al stock físico en Bodega</p>
+              <p className="text-xs text-slate-500 mt-1">Incorporados al stock en Bodega</p>
             </div>
           </div>
 
-          {/* Barra de Filtros & Búsqueda de Compras */}
+          {/* Barra de Filtros & Búsqueda */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="relative w-full sm:w-80">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -365,10 +523,10 @@ export default function ComprasPage() {
                     <tr>
                       <th className="py-3 px-4">Orden / Fecha</th>
                       <th className="py-3 px-4">Proveedor</th>
+                      <th className="py-3 px-4 text-center">Estado / Recepción</th>
                       <th className="py-3 px-4 text-center">Método Pago</th>
                       <th className="py-3 px-4 text-center">Ítems</th>
-                      <th className="py-3 px-4 text-right">Factura / Neto</th>
-                      <th className="py-3 px-4 text-center">Asiento Ledger</th>
+                      <th className="py-3 px-4 text-right">Neto a Pagar</th>
                       <th className="py-3 px-4 text-center">Acciones</th>
                     </tr>
                   </thead>
@@ -376,6 +534,7 @@ export default function ComprasPage() {
                     {comprasFiltradas.map(compra => {
                       const estaExpandida = compraExpandidaId === compra.id;
                       const cantidadItems = (compra.detalles || []).reduce((acc, d) => acc + d.cantidad, 0);
+                      const requiereRecepcion = compra.estado === 'PENDIENTE_RECEPCION' || compra.estado === 'PARCIAL';
 
                       return (
                         <React.Fragment key={compra.id}>
@@ -391,6 +550,23 @@ export default function ComprasPage() {
                               <div className="font-semibold text-slate-800">{compra.proveedor_nombre}</div>
                               {compra.proveedor_nit && (
                                 <div className="text-[11px] text-slate-400 font-mono">NIT: {compra.proveedor_nit}</div>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              {compra.estado === 'COMPLETADA' && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <CheckCircle2 className="w-3 h-3" /> Recibida / PMP
+                                </span>
+                              )}
+                              {compra.estado === 'PENDIENTE_RECEPCION' && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  <Clock className="w-3 h-3" /> En Tránsito
+                                </span>
+                              )}
+                              {compra.estado === 'PARCIAL' && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                  <AlertTriangle className="w-3 h-3" /> Recibida Parcial
+                                </span>
                               )}
                             </td>
                             <td className="py-3 px-4 text-center">
@@ -412,24 +588,20 @@ export default function ComprasPage() {
                               <div className="text-sm font-bold text-slate-900">
                                 {formatearMoneda(compra.neto_pagar || compra.total)}
                               </div>
-                              {compra.neto_pagar !== compra.total && (
-                                <div className="text-2xs text-slate-400 line-through">
-                                  {formatearMoneda(compra.total)}
-                                </div>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              {compra.transaction_id ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200" title={`Txn ID: ${compra.transaction_id}`}>
-                                  <CheckCircle2 className="w-3 h-3" />
-                                  Asentado
-                                </span>
-                              ) : (
-                                <span className="text-[10px] text-slate-400">Sin Asiento</span>
-                              )}
                             </td>
                             <td className="py-3 px-4 text-center">
                               <div className="flex items-center justify-center gap-1.5">
+                                {requiereRecepcion && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setCompraParaRecepcion(compra)}
+                                    className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-colors border border-indigo-200"
+                                    title="Recibir en Bodega y asentar PMP"
+                                  >
+                                    <ArrowDownToLine className="w-3.5 h-3.5" />
+                                    Recibir
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => setCompraSeleccionadaPDF(compra)}
@@ -443,15 +615,7 @@ export default function ComprasPage() {
                                   onClick={() => toggleExpandirCompra(compra.id)}
                                   className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors"
                                 >
-                                  {estaExpandida ? (
-                                    <>
-                                      <ChevronUp className="w-3.5 h-3.5" />
-                                    </>
-                                  ) : (
-                                    <>
-                                      <ChevronDown className="w-3.5 h-3.5" />
-                                    </>
-                                  )}
+                                  {estaExpandida ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                                 </button>
                               </div>
                             </td>
@@ -465,7 +629,7 @@ export default function ComprasPage() {
                                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                                     <span className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
                                       <Layers className="w-3.5 h-3.5 text-brand-salmon" />
-                                      Desglose de Equipos Incorporados al Inventario
+                                      Desglose de Equipos & Costeo Unitario
                                     </span>
                                     {compra.observaciones && (
                                       <span className="text-xs text-slate-500 italic">
@@ -479,7 +643,7 @@ export default function ComprasPage() {
                                       <thead>
                                         <tr className="text-slate-500 border-b border-slate-100">
                                           <th className="pb-1.5">Equipo / Maquinaria</th>
-                                          <th className="pb-1.5 text-center">Cantidad Ingresada</th>
+                                          <th className="pb-1.5 text-center">Cantidad</th>
                                           <th className="pb-1.5 text-right">Costo Unitario</th>
                                           <th className="pb-1.5 text-right">Subtotal</th>
                                         </tr>
@@ -519,7 +683,380 @@ export default function ComprasPage() {
         </div>
       )}
 
-      {/* VISTA 2: DIRECTORIO MAESTRO DE PROVEEDORES */}
+      {/* ========================================================================= */}
+      {/* VISTA 2: RECEPCIÓN EN BODEGA & PMP                                        */}
+      {/* ========================================================================= */}
+      {pestañaActiva === 'RECEPCION' && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Banner Informativo Poka-Yoke */}
+          <div className="p-4 bg-indigo-50/80 border border-indigo-200 rounded-2xl flex items-start gap-3">
+            <div className="p-2 bg-indigo-600 text-white rounded-xl shrink-0 mt-0.5">
+              <PackageCheck className="w-5 h-5" />
+            </div>
+            <div className="text-xs text-indigo-950 space-y-1">
+              <h3 className="text-sm font-bold text-indigo-900">
+                Punto de Control de Recepción Física & Costeo PMP
+              </h3>
+              <p className="leading-relaxed">
+                Este centro de recepción permite al bodeguero cotejar las cantidades físicas que llegan contra la remisión del transportador. 
+                Al confirmar la entrada, el sistema ejecuta transaccionalmente el cálculo del <strong>Costo Promedio Ponderado (PMP)</strong> con bloqueo pesimista en base de datos, garantizando que el stock valorizado y las rentabilidades de alquiler se mantengan exactas.
+              </p>
+            </div>
+          </div>
+
+          {/* Tabla de Órdenes Pendientes de Recepción */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-600" />
+                Órdenes en Espera de Llegada ({comprasPendientesRecepcion.length})
+              </h3>
+            </div>
+
+            {comprasPendientesRecepcion.length === 0 ? (
+              <div className="p-12 text-center">
+                <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+                <h3 className="text-base font-bold text-slate-800">Almacén al día</h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                  No hay órdenes de compra pendientes de ingreso físico. Todo el inventario comprado ha sido recibido y valorizado.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th className="py-3 px-4">Orden / Emisión</th>
+                      <th className="py-3 px-4">Proveedor</th>
+                      <th className="py-3 px-4 text-center">Equipos por Recibir</th>
+                      <th className="py-3 px-4 text-right">Valor Orden</th>
+                      <th className="py-3 px-4 text-center">Estado</th>
+                      <th className="py-3 px-4 text-center">Acción Poka-Yoke</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {comprasPendientesRecepcion.map(c => {
+                      const totalEquipos = (c.detalles || []).reduce((acc, d) => acc + d.cantidad, 0);
+
+                      return (
+                        <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="py-3 px-4">
+                            <span className="font-bold font-mono text-sm text-slate-900">{c.numero_orden}</span>
+                            <span className="block text-[11px] text-slate-400">{c.fecha_compra}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-slate-800">{c.proveedor_nombre}</div>
+                            {c.proveedor_nit && <div className="text-[11px] text-slate-400 font-mono">NIT: {c.proveedor_nit}</div>}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200">
+                              {totalEquipos} unidades ({c.detalles?.length || 0} ref.)
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right font-bold text-slate-900">
+                            {formatearMoneda(c.total)}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              Pendiente Recepción
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              type="button"
+                              onClick={() => setCompraParaRecepcion(c)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95"
+                            >
+                              <ArrowDownToLine className="w-3.5 h-3.5" />
+                              Recibir & PMP
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* VISTA 3: CUENTAS POR PAGAR (CXP) & SEMÁFORO DE VENCIMIENTO                */}
+      {/* ========================================================================= */}
+      {pestañaActiva === 'CXP' && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Tarjetas de Métricas Financieras de Cartera CXP */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-rose-300 transition-all">
+              <div className="flex items-center justify-between text-slate-500 mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Pasivo Total Pendiente</span>
+                <span className="p-1.5 bg-rose-50 text-rose-600 rounded-lg">
+                  <DollarSign className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-2xl font-bold text-rose-600">
+                {formatearMoneda(metricasCXP.totalCarteraPendiente)}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">{metricasCXP.cuentasPendientesTotal} facturas por pagar</p>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-rose-400 transition-all">
+              <div className="flex items-center justify-between text-slate-500 mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Cartera Vencida</span>
+                <span className="p-1.5 bg-rose-100 text-rose-700 rounded-lg">
+                  <AlertCircle className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-2xl font-black text-rose-700">
+                {formatearMoneda(metricasCXP.totalVencido)}
+              </div>
+              <p className="text-xs text-rose-600 font-medium mt-1">{metricasCXP.cuentasVencidasTotal} facturas en mora</p>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-amber-300 transition-all">
+              <div className="flex items-center justify-between text-slate-500 mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Próximo a Vencer (7 días)</span>
+                <span className="p-1.5 bg-amber-50 text-amber-600 rounded-lg">
+                  <Clock className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-2xl font-bold text-amber-600">
+                {formatearMoneda(metricasCXP.totalPorVencer)}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Requiere previsión de flujo de caja</p>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-emerald-300 transition-all">
+              <div className="flex items-center justify-between text-slate-500 mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Abonos Desembolsados</span>
+                <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+                  <CheckCircle2 className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-2xl font-bold text-emerald-600">
+                {formatearMoneda(metricasCXP.totalAbonado)}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Con Comprobantes de Egreso (CE)</p>
+            </div>
+          </div>
+
+          {/* Filtros de CXP y Semáforo */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchCXP}
+                onChange={e => setSearchCXP(e.target.value)}
+                placeholder="Buscar por orden, proveedor o NIT..."
+                className="w-full text-xs pl-9 pr-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Filter className="w-4 h-4 text-slate-400 shrink-0" />
+              <div className="flex items-center gap-1 overflow-x-auto w-full">
+                {(['TODOS', 'VENCIDA', 'POR_VENCER', 'AL_DIA', 'PAGADA'] as const).map(sem => (
+                  <button
+                    key={sem}
+                    onClick={() => setFiltroSemaforoCXP(sem)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                      filtroSemaforoCXP === sem
+                        ? 'bg-slate-900 text-white'
+                        : 'text-slate-600 hover:bg-slate-100 bg-slate-50'
+                    }`}
+                  >
+                    {sem === 'TODOS' ? 'Todos' : sem === 'VENCIDA' ? 'Vencidos' : sem === 'POR_VENCER' ? 'Por Vencer' : sem === 'AL_DIA' ? 'Al Día' : 'Pagados'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Tabla de Cuentas por Pagar */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            {cuentasPagarFiltradas.length === 0 ? (
+              <div className="p-12 text-center">
+                <Receipt className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <h3 className="text-base font-bold text-slate-800">No hay cuentas por pagar registradas</h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                  Las cuentas por pagar se generan automáticamente al asentar compras a crédito o con saldo pendiente.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th className="py-3 px-4">Orden / Vencimiento</th>
+                      <th className="py-3 px-4">Proveedor</th>
+                      <th className="py-3 px-4 text-center">Semáforo</th>
+                      <th className="py-3 px-4 text-right">Monto Factura</th>
+                      <th className="py-3 px-4 text-right">Saldo Pendiente</th>
+                      <th className="py-3 px-4 text-center">Abonos</th>
+                      <th className="py-3 px-4 text-center">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {cuentasPagarFiltradas.map(cxp => {
+                      const estaExpandida = cxpExpandidaId === cxp.id;
+                      const abonos = historialAbonosMap[cxp.id] || [];
+
+                      return (
+                        <React.Fragment key={cxp.id}>
+                          <tr className="hover:bg-slate-50/70 transition-colors">
+                            <td className="py-3 px-4">
+                              <span className="font-bold font-mono text-sm text-slate-900">{cxp.numero_orden}</span>
+                              <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                <Calendar className="w-3 h-3" />
+                                Vence: {cxp.fecha_vencimiento}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="font-semibold text-slate-800">{cxp.proveedor_nombre}</div>
+                              {cxp.proveedor_nit && <div className="text-[11px] text-slate-400 font-mono">NIT: {cxp.proveedor_nit}</div>}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              {cxp.semaforo === 'VENCIDA' && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                  <AlertCircle className="w-3 h-3" /> Vencido ({cxp.dias_mora}d)
+                                </span>
+                              )}
+                              {cxp.semaforo === 'POR_VENCER' && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                  <Clock className="w-3 h-3" /> Próximo ({cxp.dias_restantes}d)
+                                </span>
+                              )}
+                              {cxp.semaforo === 'AL_DIA' && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                  Al día ({cxp.dias_restantes}d)
+                                </span>
+                              )}
+                              {cxp.estado === 'PAGADA' && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <CheckCircle2 className="w-3 h-3" /> Liquidada
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono text-slate-700">
+                              {formatearMoneda(cxp.monto_total)}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <span className={`font-mono text-sm font-bold ${cxp.saldo_pendiente > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                {formatearMoneda(cxp.saldo_pendiente)}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <button
+                                type="button"
+                                onClick={() => toggleExpandirCXP(cxp.id)}
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors"
+                              >
+                                {formatearMoneda(cxp.total_abonos || 0)}
+                                {estaExpandida ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                              </button>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {cxp.saldo_pendiente > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setCuentaPagarParaAbono(cxp)}
+                                    className="inline-flex items-center gap-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-xl shadow-2xs transition-all active:scale-95"
+                                  >
+                                    <DollarSign className="w-3.5 h-3.5" />
+                                    Abonar
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Historial Expandible de Abonos */}
+                          {estaExpandida && (
+                            <tr className="bg-slate-50/80 border-b border-slate-200">
+                              <td colSpan={7} className="p-4">
+                                <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                      <Receipt className="w-3.5 h-3.5 text-emerald-600" />
+                                      Historial de Comprobantes de Egreso (Abonos)
+                                    </span>
+                                    <span className="text-xs text-slate-400">
+                                      Orden: {cxp.numero_orden}
+                                    </span>
+                                  </div>
+
+                                  {abonos.length === 0 ? (
+                                    <p className="text-xs text-slate-400 py-2 italic text-center">
+                                      No se registran abonos previos para esta cuenta por pagar.
+                                    </p>
+                                  ) : (
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-xs text-left">
+                                        <thead>
+                                          <tr className="text-slate-500 border-b border-slate-100">
+                                            <th className="pb-1.5">Comprobante</th>
+                                            <th className="pb-1.5">Fecha</th>
+                                            <th className="pb-1.5 text-center">Método</th>
+                                            <th className="pb-1.5">Referencia</th>
+                                            <th className="pb-1.5 text-right">Monto Abonado</th>
+                                            <th className="pb-1.5 text-center">Acción</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                          {abonos.map(ab => (
+                                            <tr key={ab.id}>
+                                              <td className="py-2 font-mono font-bold text-slate-800">
+                                                {ab.numero_comprobante}
+                                              </td>
+                                              <td className="py-2 text-slate-600">
+                                                {ab.fecha_abono}
+                                              </td>
+                                              <td className="py-2 text-center font-semibold text-slate-700">
+                                                {ab.metodo_pago}
+                                              </td>
+                                              <td className="py-2 text-slate-500">
+                                                {ab.referencia_bancaria || 'N/A'}
+                                              </td>
+                                              <td className="py-2 text-right font-mono font-bold text-emerald-600">
+                                                {formatearMoneda(ab.monto_abono)}
+                                              </td>
+                                              <td className="py-2 text-center">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setComprobanteEgresoActivo({ abono: ab, cuentaPagar: cxp })}
+                                                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded transition-colors"
+                                                >
+                                                  <Printer className="w-3 h-3" /> Ver CE
+                                                </button>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* VISTA 4: DIRECTORIO MAESTRO DE PROVEEDORES                               */}
+      {/* ========================================================================= */}
       {pestañaActiva === 'PROVEEDORES' && (
         <div className="space-y-6 animate-fadeIn">
           {/* Barra de Filtros & Búsqueda Asistida */}
@@ -661,11 +1198,35 @@ export default function ComprasPage() {
         onProveedorCreado={handleProveedorCreado}
       />
 
-      {/* Modal Visor de Comprobante PDF */}
+      {/* Modal Visor de Comprobante de Entrada (Compra) */}
       <ComprobanteEntradaPDFModal
         isOpen={Boolean(compraSeleccionadaPDF)}
         onClose={() => setCompraSeleccionadaPDF(null)}
         compra={compraSeleccionadaPDF}
+      />
+
+      {/* Modal Recepción Física en Bodega y Recálculo PMP */}
+      <RecibirMercanciaModal
+        isOpen={Boolean(compraParaRecepcion)}
+        onClose={() => setCompraParaRecepcion(null)}
+        compra={compraParaRecepcion}
+        onRecepcionExitosa={handleRecepcionExitosa}
+      />
+
+      {/* Modal de Abono a Proveedor (CXP) */}
+      <RegistrarAbonoProveedorModal
+        isOpen={Boolean(cuentaPagarParaAbono)}
+        onClose={() => setCuentaPagarParaAbono(null)}
+        cuentaPagar={cuentaPagarParaAbono}
+        onAbonoExitoso={handleAbonoExitoso}
+      />
+
+      {/* Modal Visor de Comprobante de Egreso (CE) */}
+      <ComprobanteEgresoPDFModal
+        isOpen={Boolean(comprobanteEgresoActivo)}
+        onClose={() => setComprobanteEgresoActivo(null)}
+        abono={comprobanteEgresoActivo?.abono || null}
+        cuentaPagar={comprobanteEgresoActivo?.cuentaPagar || null}
       />
     </div>
   );

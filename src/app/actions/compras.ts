@@ -27,6 +27,9 @@ export interface CrearCompraInput {
   proveedorEmail?: string;
   fechaCompra?: string;
   metodoPago: 'EFECTIVO' | 'TRANSFERENCIA' | 'CREDITO';
+  modoIngreso?: 'INMEDIATO' | 'ORDEN_RECEPCION';
+  remisionProveedor?: string;
+  fleteTotal?: number;
   observaciones?: string;
   aplicaIva?: boolean;
   aplicaRetefuente?: boolean;
@@ -34,6 +37,13 @@ export interface CrearCompraInput {
   aplicaReteica?: boolean;
   porcentajeReteica?: number;
   items: ItemCompraInput[];
+}
+
+export interface RecibirMercanciaInput {
+  compraId: string;
+  remisionFactura?: string;
+  observacionesBodega?: string;
+  idempotencyKey?: string;
 }
 
 const ItemCompraZodSchema = z.object({
@@ -51,6 +61,9 @@ const CrearCompraZodSchema = z.object({
   proveedorEmail: z.string().email('Email de proveedor inválido').optional().nullable().or(z.literal('')),
   fechaCompra: z.string().optional().nullable(),
   metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'CREDITO']),
+  modoIngreso: z.enum(['INMEDIATO', 'ORDEN_RECEPCION']).optional().default('INMEDIATO'),
+  remisionProveedor: z.string().optional().nullable(),
+  fleteTotal: z.coerce.number().min(0).optional().default(0),
   observaciones: z.string().optional().nullable(),
   aplicaIva: z.boolean().optional().default(false),
   aplicaRetefuente: z.boolean().optional().default(false),
@@ -60,11 +73,19 @@ const CrearCompraZodSchema = z.object({
   items: z.array(ItemCompraZodSchema).min(1, 'Debe incluir al menos un equipo en la compra'),
 }).passthrough();
 
+const RecibirMercanciaZodSchema = z.object({
+  compraId: z.string().uuid('ID de compra inválido'),
+  remisionFactura: z.string().optional().nullable(),
+  observacionesBodega: z.string().optional().nullable(),
+  idempotencyKey: z.string().optional().nullable(),
+}).passthrough();
+
 export interface CompraDetalleUI {
   id: string;
   equipo_id: number;
   equipo_nombre?: string;
   cantidad: number;
+  cantidad_recibida?: number;
   precio_unitario: number;
   subtotal: number;
 }
@@ -93,6 +114,9 @@ export interface CompraUI {
   neto_pagar: number;
   estado: string;
   observaciones?: string;
+  remision_factura_proveedor?: string;
+  fecha_recepcion_bodega?: string;
+  bodeguero_id?: string;
   transaction_id?: string;
   created_at: string;
   detalles?: CompraDetalleUI[];
@@ -269,6 +293,9 @@ export async function crearCompraAction(input: CrearCompraInput) {
       console.warn('[Compras] No se pudo asentar en el Ledger contable (prosiguiendo con inventario):', contableErr);
     }
 
+    const modoIngreso = cleanInput.modoIngreso || 'INMEDIATO';
+    const estadoInicial = modoIngreso === 'ORDEN_RECEPCION' ? 'PENDIENTE_RECEPCION' : 'COMPLETADA';
+
     // 3. Registrar Compra en tabla `compras`
     const compraId: string = crypto.randomUUID();
     const nuevaCompraObjeto: CompraUI = {
@@ -293,8 +320,9 @@ export async function crearCompraAction(input: CrearCompraInput) {
       porcentaje_reteica: cleanInput.porcentajeReteica ?? 0,
       valor_reteica: liquidacion.valorReteica,
       neto_pagar: netoPagar,
-      estado: 'COMPLETADA',
+      estado: estadoInicial,
       observaciones: cleanInput.observaciones?.trim(),
+      remision_factura_proveedor: cleanInput.remisionProveedor?.trim() || undefined,
       transaction_id: transactionId || undefined,
       created_at: new Date().toISOString(),
       detalles: []
@@ -328,8 +356,9 @@ export async function crearCompraAction(input: CrearCompraInput) {
           porcentaje_reteica: cleanInput.porcentajeReteica ?? 0,
           valor_reteica: liquidacion.valorReteica,
           neto_pagar: netoPagar,
-          estado: 'COMPLETADA',
+          estado: 'PENDIENTE_RECEPCION', // Se inserta pendiente y el RPC la pasa a COMPLETADA si es inmediato
           observaciones: cleanInput.observaciones?.trim() || null,
+          remision_factura_proveedor: cleanInput.remisionProveedor?.trim() || null,
           transaction_id: transactionId,
           usuario_id: userId
         }])
@@ -343,7 +372,7 @@ export async function crearCompraAction(input: CrearCompraInput) {
       console.warn('[Compras] Fallback de persistencia para compras:', dbErr);
     }
 
-    // 4. Insertar detalles de la compra y actualizar inventario
+    // 4. Insertar detalles de la compra
     for (const item of cleanInput.items) {
       const numericEquipoId = typeof item.equipoId === 'string' ? parseInt(item.equipoId, 10) : item.equipoId;
       const itemSubtotal = item.cantidad * item.precioUnitario;
@@ -367,46 +396,28 @@ export async function crearCompraAction(input: CrearCompraInput) {
           }]);
         } catch {}
       }
+    }
 
-      // Actualizar stock del equipo
+    // 5. Si el modo es INMEDIATO, invocar el RPC transaccional pesimista para liquidar stock, PMP y CXP
+    if (modoIngreso === 'INMEDIATO' && guardadoEnDb) {
       try {
-        const { data: eqActual } = await supabaseAdmin
-          .from('equipos')
-          .select('id, nombre, stock_total, stock_disponible, valor_reposicion')
-          .eq('id', numericEquipoId)
-          .single();
-
-        if (eqActual) {
-          const nuevoStockTotal = (eqActual.stock_total || 0) + item.cantidad;
-          const nuevoStockDisponible = (eqActual.stock_disponible || 0) + item.cantidad;
-
-          await supabaseAdmin
-            .from('equipos')
-            .update({
-              stock_total: nuevoStockTotal,
-              stock_disponible: nuevoStockDisponible,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', numericEquipoId);
-
-          // 5. Inserción inmutable en Kardex (INGRESO_COMPRA)
-          try {
-            await supabaseAdmin.from('kardex_inventario').insert([{
-              equipo_id: numericEquipoId,
-              tenant_id: tenantId,
-              tipo_movimiento: 'INGRESO_COMPRA',
-              cantidad_delta: item.cantidad,
-              stock_resultante: nuevoStockDisponible,
-              motivo: `Ingreso por Compra ${numeroOrden} - Proveedor: ${cleanInput.proveedorNombre}`,
-              referencia_documento: numeroOrden,
-              usuario_id: userId || 'SISTEMA'
-            }]);
-          } catch (kardexErr) {
-            console.warn('[Compras] Kardex notice:', kardexErr);
+        const { data: rpcRes, error: rpcErr } = await supabaseAdmin.rpc(
+          'recibir_compra_y_actualizar_pmp_transaccional',
+          {
+            p_compra_id: compraId,
+            p_usuario_id: userId,
+            p_remision_factura: cleanInput.remisionProveedor || null,
+            p_observaciones_bodega: cleanInput.observaciones || 'Entrada Inmediata de Mostrador'
           }
+        );
+
+        if (rpcErr) {
+          console.warn('[Compras] RPC transaccional notice:', rpcErr);
+        } else {
+          nuevaCompraObjeto.estado = 'COMPLETADA';
         }
-      } catch (eqErr) {
-        console.warn('[Compras] Error actualizando stock:', eqErr);
+      } catch (rpcEx) {
+        console.warn('[Compras] Excepción al ejecutar RPC de recepción:', rpcEx);
       }
     }
 
@@ -430,17 +441,15 @@ export async function crearCompraAction(input: CrearCompraInput) {
     AuditLogger.logAsync({
       modulo: 'BODEGA',
       accion: 'REGISTRAR_COMPRA',
-      descripcion: `Compra registrada: ${numeroOrden} por valor de $${total.toLocaleString('es-CO')} (Neto a pagar: $${netoPagar.toLocaleString('es-CO')})`,
+      descripcion: `Compra registrada: ${numeroOrden} por valor de $${total.toLocaleString('es-CO')} (Modo: ${modoIngreso})`,
       entidadId: compraId,
       detalles: {
         numeroOrden,
         proveedor: cleanInput.proveedorNombre,
         metodoPago: cleanInput.metodoPago,
+        modoIngreso,
         total,
         netoPagar,
-        aplicaIva: cleanInput.aplicaIva,
-        aplicaRetefuente: cleanInput.aplicaRetefuente,
-        aplicaReteica: cleanInput.aplicaReteica,
         transactionId,
         guardadoEnDb
       },
@@ -460,6 +469,7 @@ export async function crearCompraAction(input: CrearCompraInput) {
         numeroOrden, 
         total, 
         netoPagar,
+        estado: nuevaCompraObjeto.estado,
         transactionId 
       } 
     };
@@ -467,6 +477,81 @@ export async function crearCompraAction(input: CrearCompraInput) {
   } catch (error: any) {
     console.error('[Compras Server Action Exception]:', error);
     return { success: false, error: error.message || 'Error inesperado al registrar compra' };
+  }
+}
+
+/**
+ * Server Action para confirmar la recepción física de mercancía en bodega
+ * utilizando el procedimiento almacenado con bloqueo pesimista y cálculo de PMP.
+ */
+export async function recibirMercanciaEnBodegaAction(input: RecibirMercanciaInput): Promise<{
+  success: boolean;
+  data?: any;
+  error?: string;
+}> {
+  try {
+    const validation = validateActionInput(input, RecibirMercanciaZodSchema);
+    if (!validation.success) {
+      return { success: false, error: validation.error || 'Datos de recepción inválidos' };
+    }
+    const clean = validation.data;
+
+    const supabaseAuth = await createServerSupabaseClient();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const userId = user?.id;
+
+    const supabaseAdmin = createAdminSupabaseClient();
+
+    const { data: rpcRes, error: rpcErr } = await supabaseAdmin.rpc(
+      'recibir_compra_y_actualizar_pmp_transaccional',
+      {
+        p_compra_id: clean.compraId,
+        p_usuario_id: userId,
+        p_remision_factura: clean.remisionFactura?.trim() || null,
+        p_observaciones_bodega: clean.observacionesBodega?.trim() || null
+      }
+    );
+
+    if (rpcErr || !rpcRes?.success) {
+      const errorMsg = rpcErr?.message || rpcRes?.error || 'Error al procesar recepción en bodega';
+      return { success: false, error: errorMsg };
+    }
+
+    // Invalidar caché Redis
+    if (redis) {
+      try {
+        await redis.del('cache:equipos');
+        const keys = await redis.keys('compras:*');
+        if (keys.length > 0) {
+          await redis.del(...keys);
+        }
+      } catch (redisErr) {
+        console.warn('Error invalidando caché tras recepción en bodega:', redisErr);
+      }
+    }
+
+    AuditLogger.logAsync({
+      modulo: 'BODEGA',
+      accion: 'RECEPCION_MERCANCIA',
+      descripcion: `Mercancía recibida en bodega para compra ID: ${clean.compraId}`,
+      entidadId: clean.compraId,
+      detalles: {
+        compraId: clean.compraId,
+        remision: clean.remisionFactura,
+        rpcRes
+      },
+      userId,
+      userEmail: user?.email
+    });
+
+    revalidatePath('/compras');
+    revalidatePath('/bodega');
+    revalidatePath('/');
+
+    return { success: true, data: rpcRes };
+  } catch (error: any) {
+    console.error('[recibirMercanciaEnBodegaAction Exception]:', error);
+    return { success: false, error: error.message || 'Error inesperado al recibir mercancía' };
   }
 }
 

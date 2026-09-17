@@ -14,7 +14,7 @@
 | `npm run start` | Inicia el servidor de producción compilado |
 | `npm run lint` | Ejecuta el linter de código (ESLint con exclusiones en `.eslintignore`) |
 | `npm run typecheck` | Ejecuta validación estricta de TypeScript (`tsc --noEmit`) |
-| `npm run test` | Ejecuta la suite de pruebas unitarias (Vitest, 41 suites, 178 tests) |
+| `npm run test` | Ejecuta la suite de pruebas unitarias (Vitest, 49 suites, 239 tests) |
 | `npm run test:watch` | Modo interactivo continuo para desarrollo guiado por pruebas (TDD) |
 | `npm run test:coverage` | Genera el reporte de cobertura de código con V8 |
 | `npm run test:e2e` | Ejecuta pruebas End-to-End en navegadores reales (Playwright) |
@@ -62,3 +62,8 @@ Cualquier PR o contribución debe asegurar que las interfaces, servicios y migra
   ```bash
   node scripts/diagnosticar_duplicados.mjs
   ```
+
+### 7. Gobernanza UltraAdmin, Licenciamiento y Servicios Puros
+- **Servicios Puros Determinísticos:** Toda lógica de negocio que calcule suscripciones, planes o feature flags (`licencias-modulos.service.ts`) debe implementarse como funciones puras sin dependencias de I/O directo, acompañadas de su suite de tests unitarios en Vitest con 100% de cobertura.
+- **Server Actions con Guard Exclusivo:** Las acciones administrativas transversales (`src/app/actions/ultraadmin.ts`) deben validar obligatoriamente que el usuario emisor posea el rol `SUPER_ADMIN` antes de instanciar `createAdminSupabaseClient()`.
+- **Invalidación Forzada de Sesiones:** Todo cambio que degrade el estado de un usuario (`activo: false`) o modifique sus permisos debe ejecutar una revocación síncrona en Upstash Redis (`session:user:{id}`) y registrar el evento inmutable en `audit_logs` con `AuditLogger.logAsync`.
