@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import { CajaStatusBadge } from '../caja/CajaStatusBadge';
 
 export function TopNav() {
-  const { toggleMobileMenu, setTourOpen } = useLayoutStore();
+  const { toggleMobileMenu, toggleSidebarCollapse, isSidebarCollapsed, setTourOpen, setGuiaBotonesOpen } = useLayoutStore();
   const { tenant } = useTenantStore();
   const router = useRouter();
 
@@ -47,8 +47,17 @@ export function TopNav() {
     <header className="bg-white text-slate-900 font-sans h-16 sticky top-0 z-30 border-b border-slate-200 shadow-sm flex items-center justify-between px-4 sm:px-6">
       <div className="flex items-center gap-3 w-full max-w-md">
         <button 
-          onClick={toggleMobileMenu}
-          className="md:hidden p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none"
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.innerWidth < 768) {
+              toggleMobileMenu();
+            } else {
+              toggleSidebarCollapse();
+            }
+          }}
+          className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none cursor-pointer"
+          title={isSidebarCollapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
+          aria-label="Alternar menú lateral"
         >
           <Menu className="w-6 h-6" />
         </button>
@@ -61,14 +70,26 @@ export function TopNav() {
           />
         </div>
       </div>
-      <div className="flex items-center gap-2 sm:gap-4 ml-4">
+      <div className="flex items-center gap-2 sm:gap-3 ml-4">
         <CajaStatusBadge />
+        
+        {/* Botón Guía de Botones y Acciones */}
         <button 
-          onClick={() => setTourOpen(true)}
-          className="hidden sm:flex items-center gap-2 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors border border-indigo-100"
+          type="button"
+          onClick={() => setGuiaBotonesOpen(true)}
+          className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-all border border-amber-200/90 shadow-2xs cursor-pointer active:scale-95"
+          title="Ver explicación de qué hace cada botón y acción"
         >
-          <HelpCircle className="w-4 h-4" />
-          Guía Paso a Paso
+          <HelpCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <span className="hidden sm:inline">Guía de Botones</span>
+        </button>
+
+        <button 
+          type="button"
+          onClick={() => setTourOpen(true)}
+          className="hidden md:flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors border border-indigo-100 cursor-pointer"
+        >
+          <span>Tour</span>
         </button>
         <button className="text-slate-500 hover:text-brand-salmon transition-colors p-2 rounded-full hover:bg-slate-100">
           <Bell className="w-5 h-5" />

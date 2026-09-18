@@ -1,11 +1,13 @@
 "use client";
-import { Plus, Search, MoreVertical, FileSpreadsheet, FileText, ArrowRightCircle, Sparkles, Printer, CheckCircle, HardHat, History, Clock, Building2, CheckCircle2 } from "lucide-react";
+import { Plus, Search, MoreVertical, FileSpreadsheet, FileText, ArrowRightCircle, Sparkles, Printer, CheckCircle, HardHat, History, Clock, Building2, CheckCircle2, DollarSign, HelpCircle, ArrowLeftRight } from "lucide-react";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAlquilerStore } from '../../infrastructure/state/alquilerStore';
 import { useClienteStore } from '../../infrastructure/state/clienteStore';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
+import { useLayoutStore } from '../../infrastructure/state/layoutStore';
+import { useToastStore } from '../../infrastructure/state/toastStore';
 import dynamic from 'next/dynamic';
 import { Modal } from '../../components/ui/Modal';
 import { ModalSkeleton } from '../../components/ui/ModalSkeleton';
@@ -15,6 +17,8 @@ import { obtenerCotizacionesAction, convertirCotizacionAContratoAction } from '.
 import { CrearCotizacionModal } from '../components/cotizaciones/CrearCotizacionModal';
 import { VisorDocumentoPDFModal } from '../components/pdf/VisorDocumentoPDFModal';
 import { DocumentoPDFPayload } from '../../core/services/pdf-factura-generator.service';
+import { CicloVidaAlquilerBanner } from '../components/alquileres/CicloVidaAlquilerBanner';
+import { GuiaBotonesModal } from '../components/alquileres/GuiaBotonesModal';
 
 export type AlquilerTabType = 'contratos' | 'cotizaciones' | 'historial';
 
@@ -93,6 +97,7 @@ import { EnterprisePDFService } from '../../core/services/pdf-factura-generator.
 export default function AlquileresPage() {
   const { alquileres, setAlquileres, updateAlquiler, sanitizeStore } = useAlquilerStore();
   const { config: empresaConfig } = useEmpresaStore();
+  const setGuiaBotonesOpen = useLayoutStore((state) => state.setGuiaBotonesOpen);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
@@ -448,16 +453,19 @@ export default function AlquileresPage() {
     try {
       const res = await convertirCotizacionAContratoAction({ cotizacionId });
       if (!res.success) {
-        alert(`No se pudo convertir la cotización:\n\n${res.error}`);
+        useToastStore.getState().showErrorToast(`No se pudo formalizar: ${res.error}`);
         return;
       }
 
       await fetchAllData();
-      alert(`¡Cotización convertida con éxito!\n\nSe ha generado el Contrato ALQ-${res.data?.consecutivo || res.data?.alquilerId} y se ha descontado el stock de bodega.`);
+      const consecutivo = res.data?.consecutivo || res.data?.alquilerId || '';
+      useToastStore.getState().showSuccessToast(
+        `¡Cotización formalizada con éxito! Se ha generado el Contrato ALQ-${consecutivo} y se reservó el stock.`
+      );
       handleTabChange('contratos');
     } catch (err: any) {
       console.error('Error al convertir cotización:', err);
-      alert('Ocurrió un error inesperado al convertir la cotización.');
+      useToastStore.getState().showErrorToast('Ocurrió un error inesperado al formalizar la cotización.');
     } finally {
       setConvertiendoCotizacionId(null);
     }
@@ -878,6 +886,16 @@ export default function AlquileresPage() {
         <div className="flex items-center gap-2.5 w-full sm:w-auto">
           <button 
             type="button"
+            onClick={() => setGuiaBotonesOpen(true)}
+            className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/90 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-2xs cursor-pointer active:scale-98"
+            title="Ver glosario de botones y qué hace cada acción"
+          >
+            <HelpCircle className="w-4 h-4 text-amber-600 stroke-[2.5]" />
+            <span>Guía de Botones</span>
+          </button>
+
+          <button 
+            type="button"
             id="tour-nuevo-alquiler"
             onClick={() => {
               setContratoActivo(null);
@@ -894,6 +912,9 @@ export default function AlquileresPage() {
           </button>
         </div>
       </div>
+
+      {/* Banner Interactivo del Ciclo de Vida del Alquiler */}
+      <CicloVidaAlquilerBanner />
 
       {/* Pestañas Corporativas Superiores (Hub Centralizado de Alquileres & Cotizaciones) */}
       <div className="bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row gap-1.5">
@@ -1211,17 +1232,57 @@ export default function AlquileresPage() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right relative">
-                      <button 
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); toggleDropdown(alq.id!); }}
-                        className="text-slate-400 hover:text-teal-700 transition-colors p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
-                        title="Menú de acciones"
-                        aria-label={`Opciones y acciones para contrato #${alq.id}`}
-                        aria-haspopup="true"
-                        aria-expanded={activeDropdown === alq.id}
-                      >
-                        <MoreVertical className="w-5 h-5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        {/* Botón Acción Directa: Recibir Equipos (Devolución) */}
+                        {alq.estado === 'ACTIVO' && (
+                          <button
+                            type="button"
+                            onClick={() => openAction(alq, 'DEVOLUCION')}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                            title="Recibir devolución física de maquinaria e inspección técnica Split-Line"
+                          >
+                            <ArrowLeftRight className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                            <span className="hidden lg:inline">Recibir Equipos</span>
+                          </button>
+                        )}
+
+                        {/* Botón Acción Directa: Registrar Abono */}
+                        {alq.estado === 'ACTIVO' && (
+                          <button
+                            type="button"
+                            onClick={() => openAction(alq, 'ABONO')}
+                            className="inline-flex items-center gap-1 px-2 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                            title="Registrar abono de canon de alquiler o fletes"
+                          >
+                            <DollarSign className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span className="hidden xl:inline">Abonar</span>
+                          </button>
+                        )}
+
+                        {/* Botón Acción Directa: Generar PDF */}
+                        <button
+                          type="button"
+                          onClick={() => openAction(alq, 'PDF')}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                          title="Ver e Imprimir Contrato Oficial en PDF"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                          <span className="hidden sm:inline">PDF</span>
+                        </button>
+
+                        {/* Menú de Opciones Secundarias */}
+                        <button 
+                          type="button"
+                          onClick={() => toggleDropdown(alq.id!)}
+                          className="text-slate-400 hover:text-teal-700 transition-colors p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+                          title="Más opciones del contrato"
+                          aria-label={`Opciones y acciones para contrato #${alq.id}`}
+                          aria-haspopup="true"
+                          aria-expanded={activeDropdown === alq.id}
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </div>
                       
                       {/* Dropdown Menu */}
                       {activeDropdown === alq.id && (() => {
@@ -1235,12 +1296,7 @@ export default function AlquileresPage() {
                             {puedeEditar && (
                               <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'EDITAR'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 text-left w-full cursor-pointer">Editar Contrato</button>
                             )}
-                            <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'PDF'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 text-left w-full border-b border-slate-100 cursor-pointer">Generar PDF</button>
-                            
-                            <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'ABONO'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full cursor-pointer">Registrar Abono</button>
-                            <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'HISTORIAL_PAGOS'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full border-b border-slate-100 cursor-pointer">Historial Pagos</button>
-                            
-                            <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'DEVOLUCION'); }} className="px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 text-left w-full cursor-pointer">Recibir Equipos</button>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'HISTORIAL_PAGOS'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full cursor-pointer">Historial Pagos</button>
                             <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'HISTORIAL_DEVOLUCIONES'); }} className="px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 text-left w-full border-b border-slate-100 cursor-pointer">Historial Devoluciones</button>
                             
                             {alq.estado !== 'FINALIZADO' && alq.estado !== 'CANCELADO' && (
@@ -1370,8 +1426,13 @@ export default function AlquileresPage() {
           setShowConvertirModal(false);
           setCotizacionParaConvertir(null);
           handleTabChange('contratos');
+          const consecutivo = nuevoContrato?.consecutivo || nuevoContrato?.alquilerId || '';
+          useToastStore.getState().showSuccessToast(
+            `¡Cotización formalizada con éxito! Contrato ALQ-${consecutivo} activo en obra. Stock reservado.`
+          );
         }}
       />
+      <GuiaBotonesModal />
       {reciboMixtoGenerado && (
         <ReciboCajaMixtoPDFModal
           isOpen={true}
