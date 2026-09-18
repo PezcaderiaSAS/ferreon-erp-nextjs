@@ -1,18 +1,21 @@
-{
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
-  },
-  "eslint.validate": [
-    "javascript",
-    "typescript",
-    "typescriptreact"
-  ],
-  "errorLens.enabledDiagnosticLevels": ["error", "warning", "info"],
-  "errorLens.followCursor": "allLines",
-  "livePreview.portNumber": 3001,
-  "livePreview.defaultPreviewPath": "/",
-  "gitlens.codeLens.enabled": true,
-  "gitlens.hovers.currentLine.enabled": true
+﻿{
+    "workbench.colorCustomizations":  {
+                                          "activityBar.activeBorder":  "#ffffff",
+                                          "statusBarItem.hoverBackground":  "#ffffff33",
+                                          "activityBarBadge.foreground":  "#15202b",
+                                          "statusBar.foreground":  "#ffffff",
+                                          "titleBar.activeBackground":  "#00f0ff",
+                                          "titleBar.inactiveBackground":  "#00f0ff99",
+                                          "titleBar.inactiveForeground":  "#ffffff99",
+                                          "statusBar.background":  "#00f0ff",
+                                          "activityBar.foreground":  "#ffffff",
+                                          "activityBar.inactiveForeground":  "#ffffff99",
+                                          "activityBarBadge.background":  "#ffffff",
+                                          "activityBar.background":  "#00f0ff",
+                                          "titleBar.activeForeground":  "#ffffff"
+                                      },
+    "peacock.color":  "#00f0ff",
+    "ferreon.swarm.topology":  "star",
+    "ferreon.swarm.feature":  "alquileres-core",
+    "ferreon.swarm.role":  "frontend-specialist"
 }
