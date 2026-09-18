@@ -1,22 +1,33 @@
-{
-  "mcpServers": {
-    "ricoui-stitch": {
-      "command": "node",
-      "args": ["scripts/ricoui-mcp.mjs"]
-    },
-    "vp0-design-alternative": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@vp0/mcp-server-untitled"
-      ],
-      "env": {
-        "VP0_API_KEY": "vp0_da6dc995_8b583e38628c7ffa1139eca2ebfa491757173ebb62a08bd5bf42b21a"
-      }
-    },
-    "open-design": {
-      "command": "od",
-      "args": ["mcp"]
-    }
-  }
+﻿{
+    "mcpServers":  {
+                       "gitnexus":  {
+                                        "args":  [
+                                                     "C:/Users/Personal/Documents/FRIOSPEZCADERIA/FerreOn/.gitnexus/run.cjs",
+                                                     "serve"
+                                                 ],
+                                        "command":  "node"
+                                    },
+                       "docscout":  {
+                                        "args":  [
+                                                     "-y",
+                                                     "@docscout/mcp-server",
+                                                     "--topics",
+                                                     "nextjs14,supabase,tailwindcss"
+                                                 ],
+                                        "command":  "npx"
+                                    },
+                       "ricoui-stitch":  {
+                                             "args":  [
+                                                          "C:/Users/Personal/Documents/FRIOSPEZCADERIA/FerreOn/scripts/ricoui-mcp.mjs"
+                                                      ],
+                                             "command":  "node"
+                                         },
+                       "supabase":  {
+                                        "args":  [
+                                                     "-y",
+                                                     "@supabase/mcp-server"
+                                                 ],
+                                        "command":  "npx"
+                                    }
+                   }
 }
