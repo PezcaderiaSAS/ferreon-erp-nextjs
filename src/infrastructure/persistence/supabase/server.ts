@@ -95,19 +95,8 @@ export async function resolveEmpresaId(userId?: string | null): Promise<string> 
   return DEFAULT_EMPRESA_ID;
 }
 
-export interface SupabaseHealthResult {
-  ok: boolean;
-  latenciaMs: number;
-  url: string;
-  timestamp: string;
-  empresaId?: string;
-  detalles?: {
-    servicioUrlConfigurado: boolean;
-    serviceKeyConfigurada: boolean;
-    anonKeyConfigurada: boolean;
-  };
-  error?: string;
-}
+import type { SupabaseHealthResult } from '@/core/types/supabase-health';
+export type { SupabaseHealthResult };
 
 /**
  * Verifica la conectividad en vivo con la base de datos Supabase,

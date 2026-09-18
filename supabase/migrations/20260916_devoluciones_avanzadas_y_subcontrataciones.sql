@@ -148,19 +148,19 @@ ALTER TABLE public.devoluciones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.devolucion_detalles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Permitir select devoluciones" ON public.devoluciones;
-CREATE POLICY "Permitir select devoluciones" ON public.devoluciones FOR SELECT USING (true);
+CREATE POLICY "Permitir select devoluciones" ON public.devoluciones FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Permitir insert devoluciones" ON public.devoluciones;
-CREATE POLICY "Permitir insert devoluciones" ON public.devoluciones FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir insert devoluciones" ON public.devoluciones FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
 
 DROP POLICY IF EXISTS "Permitir update devoluciones" ON public.devoluciones;
-CREATE POLICY "Permitir update devoluciones" ON public.devoluciones FOR UPDATE USING (true);
+CREATE POLICY "Permitir update devoluciones" ON public.devoluciones FOR UPDATE TO authenticated USING (auth.uid() IS NOT NULL);
 
 DROP POLICY IF EXISTS "Permitir select devolucion_detalles" ON public.devolucion_detalles;
-CREATE POLICY "Permitir select devolucion_detalles" ON public.devolucion_detalles FOR SELECT USING (true);
+CREATE POLICY "Permitir select devolucion_detalles" ON public.devolucion_detalles FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Permitir insert devolucion_detalles" ON public.devolucion_detalles;
-CREATE POLICY "Permitir insert devolucion_detalles" ON public.devolucion_detalles FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir insert devolucion_detalles" ON public.devolucion_detalles FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
 
 -- 8. PROCEDIMIENTO ALMACENADO ATÓMICO: procesar_devolucion_avanzada
 CREATE OR REPLACE FUNCTION public.procesar_devolucion_avanzada(p_payload JSONB)

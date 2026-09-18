@@ -83,24 +83,28 @@ CREATE INDEX IF NOT EXISTS idx_abonos_cxp_fecha ON public.proveedor_abonos_cxp (
 ALTER TABLE public.proveedor_cuentas_pagar ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.proveedor_abonos_cxp ENABLE ROW LEVEL SECURITY;
 
--- Políticas RLS Permisivas para usuarios autenticados y service_role
+-- Políticas RLS Seguras para usuarios autenticados
 DO $$
 BEGIN
     DROP POLICY IF EXISTS "cxp_authenticated_policy" ON public.proveedor_cuentas_pagar;
-    CREATE POLICY "cxp_authenticated_policy" ON public.proveedor_cuentas_pagar
-        FOR ALL TO authenticated USING (true) WITH CHECK (true);
-
     DROP POLICY IF EXISTS "cxp_service_role_policy" ON public.proveedor_cuentas_pagar;
-    CREATE POLICY "cxp_service_role_policy" ON public.proveedor_cuentas_pagar
-        FOR ALL TO service_role USING (true) WITH CHECK (true);
+    DROP POLICY IF EXISTS "cxp_authenticated_select_policy" ON public.proveedor_cuentas_pagar;
+    CREATE POLICY "cxp_authenticated_select_policy" ON public.proveedor_cuentas_pagar
+        FOR SELECT TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "cxp_authenticated_write_policy" ON public.proveedor_cuentas_pagar;
+    CREATE POLICY "cxp_authenticated_write_policy" ON public.proveedor_cuentas_pagar
+        FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 
     DROP POLICY IF EXISTS "abonos_authenticated_policy" ON public.proveedor_abonos_cxp;
-    CREATE POLICY "abonos_authenticated_policy" ON public.proveedor_abonos_cxp
-        FOR ALL TO authenticated USING (true) WITH CHECK (true);
-
     DROP POLICY IF EXISTS "abonos_service_role_policy" ON public.proveedor_abonos_cxp;
-    CREATE POLICY "abonos_service_role_policy" ON public.proveedor_abonos_cxp
-        FOR ALL TO service_role USING (true) WITH CHECK (true);
+    DROP POLICY IF EXISTS "abonos_authenticated_select_policy" ON public.proveedor_abonos_cxp;
+    CREATE POLICY "abonos_authenticated_select_policy" ON public.proveedor_abonos_cxp
+        FOR SELECT TO authenticated USING (true);
+
+    DROP POLICY IF EXISTS "abonos_authenticated_write_policy" ON public.proveedor_abonos_cxp;
+    CREATE POLICY "abonos_authenticated_write_policy" ON public.proveedor_abonos_cxp
+        FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 END $$;
 
 -- 6. Procedimiento Almacenado Transaccional Pesimista

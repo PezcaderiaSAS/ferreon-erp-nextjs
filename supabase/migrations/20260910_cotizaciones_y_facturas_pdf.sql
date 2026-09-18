@@ -140,10 +140,10 @@ CREATE POLICY "Tenants can update own cotizaciones" ON public.cotizaciones
 
 DROP POLICY IF EXISTS "Tenants can view own cotizaciones_detalles" ON public.cotizaciones_detalles;
 CREATE POLICY "Tenants can view own cotizaciones_detalles" ON public.cotizaciones_detalles 
-    FOR SELECT USING (true);
+    FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Tenants can insert own cotizaciones_detalles" ON public.cotizaciones_detalles;
 CREATE POLICY "Tenants can insert own cotizaciones_detalles" ON public.cotizaciones_detalles 
-    FOR INSERT WITH CHECK (true);
+    FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
 
 COMMIT;

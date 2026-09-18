@@ -123,8 +123,9 @@ DROP POLICY IF EXISTS "Tenants can view own compras_detalles" ON public.compras_
 CREATE POLICY "Tenants can view own compras_detalles" ON public.compras_detalles 
     FOR SELECT USING (true);
 
-DROP POLICY IF EXISTS "Tenants can insert own compras_detalles" ON public.compras_detalles 
-    FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Tenants can insert own compras_detalles" ON public.compras_detalles;
+CREATE POLICY "Tenants can insert own compras_detalles" ON public.compras_detalles 
+    FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
 
 -- Políticas para contabilidad
 DROP POLICY IF EXISTS "Tenants can view financial_accounts" ON public.financial_accounts;

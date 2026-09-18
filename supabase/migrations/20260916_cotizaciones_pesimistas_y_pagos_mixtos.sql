@@ -36,7 +36,7 @@ CREATE INDEX IF NOT EXISTS idx_cliente_mov_saldo_empresa ON public.cliente_movim
 ALTER TABLE public.cliente_movimientos_saldo ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Tenants can manage own cliente_movimientos_saldo" ON public.cliente_movimientos_saldo;
 CREATE POLICY "Tenants can manage own cliente_movimientos_saldo" ON public.cliente_movimientos_saldo 
-    FOR ALL USING (true);
+    FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 
 -- 3. TABLA DE DESGLOSE DE MÉTODOS DE PAGO MIXTO (MULTILÍNEA)
 CREATE TABLE IF NOT EXISTS public.pago_metodos_detalle (
@@ -57,7 +57,7 @@ CREATE INDEX IF NOT EXISTS idx_pago_metodos_sesion ON public.pago_metodos_detall
 ALTER TABLE public.pago_metodos_detalle ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Tenants can manage own pago_metodos_detalle" ON public.pago_metodos_detalle;
 CREATE POLICY "Tenants can manage own pago_metodos_detalle" ON public.pago_metodos_detalle 
-    FOR ALL USING (true);
+    FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 
 -- 4. PROCEDIMIENTO ALMACENADO ATÓMICO: CONVERTIR COTIZACIÓN A ALQUILER (CON BLOQUEO PESIMISTA ANTI-DEADLOCK)
 CREATE OR REPLACE FUNCTION public.convertir_cotizacion_a_alquiler_transaccional(

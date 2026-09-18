@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Database, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { verificarConexionSupabaseAction } from '../../app/actions/caja';
-import { SupabaseHealthResult } from '../../infrastructure/persistence/supabase/server';
+import type { SupabaseHealthResult } from '@/core/types/supabase-health';
 
 export function SupabaseConnectionBadge() {
   const [health, setHealth] = useState<SupabaseHealthResult | null>(null);

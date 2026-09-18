@@ -27,10 +27,15 @@ CREATE TABLE IF NOT EXISTS public.clientes (
 ALTER TABLE public.equipos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.clientes ENABLE ROW LEVEL SECURITY;
 
--- Create policies to allow all operations (for development phase)
--- IMPORTANT: In production, these should be restricted to authenticated users.
-CREATE POLICY "Allow all operations for development on equipos" 
-ON public.equipos FOR ALL USING (true) WITH CHECK (true);
+-- Create policies scoped to authenticated users
+CREATE POLICY "Permitir lectura en equipos para usuarios autenticados" 
+ON public.equipos FOR SELECT TO authenticated USING (true);
 
-CREATE POLICY "Allow all operations for development on clientes" 
-ON public.clientes FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Permitir escritura en equipos para usuarios autenticados" 
+ON public.equipos FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Permitir lectura en clientes para usuarios autenticados" 
+ON public.clientes FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Permitir escritura en clientes para usuarios autenticados" 
+ON public.clientes FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);

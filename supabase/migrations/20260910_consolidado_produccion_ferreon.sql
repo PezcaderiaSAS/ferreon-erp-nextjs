@@ -108,7 +108,7 @@ CREATE POLICY "Tenants can view own audit_logs" ON public.audit_logs
 
 DROP POLICY IF EXISTS "Allow insert audit_logs" ON public.audit_logs;
 CREATE POLICY "Allow insert audit_logs" ON public.audit_logs
-    FOR INSERT WITH CHECK (true);
+    FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
 
 -- ------------------------------------------------------------------------------
 -- 3. PLAN DE CUENTAS CONTABLES (financial_accounts)
@@ -175,15 +175,19 @@ ALTER TABLE public.journal_entries ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow read financial_accounts" ON public.financial_accounts;
 CREATE POLICY "Allow read financial_accounts" ON public.financial_accounts 
-    FOR SELECT USING (true);
+    FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Allow all transactions" ON public.transactions;
-CREATE POLICY "Allow all transactions" ON public.transactions 
-    FOR ALL USING (true);
+CREATE POLICY "Allow read transactions" ON public.transactions 
+    FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Allow write transactions" ON public.transactions 
+    FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 
 DROP POLICY IF EXISTS "Allow all journal_entries" ON public.journal_entries;
-CREATE POLICY "Allow all journal_entries" ON public.journal_entries 
-    FOR ALL USING (true);
+CREATE POLICY "Allow read journal_entries" ON public.journal_entries 
+    FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Allow write journal_entries" ON public.journal_entries 
+    FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 
 
 -- ------------------------------------------------------------------------------
@@ -211,11 +215,11 @@ ALTER TABLE public.kardex_inventario ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Tenants can view own kardex" ON public.kardex_inventario;
 CREATE POLICY "Tenants can view own kardex" ON public.kardex_inventario 
-    FOR SELECT USING (tenant_id = auth.uid() OR tenant_id IS NULL OR true);
+    FOR SELECT TO authenticated USING (tenant_id = auth.uid() OR tenant_id IS NULL OR true);
 
 DROP POLICY IF EXISTS "Tenants can insert own kardex" ON public.kardex_inventario;
 CREATE POLICY "Tenants can insert own kardex" ON public.kardex_inventario 
-    FOR INSERT WITH CHECK (true);
+    FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
 
 -- ------------------------------------------------------------------------------
 -- 5. TABLA SESIONES_CAJA & AJUSTES A PAGOS (Punto de Venta y Cash Management)
@@ -405,11 +409,11 @@ CREATE POLICY "Tenants can update own compras" ON public.compras
 
 DROP POLICY IF EXISTS "Tenants can view own compras_detalles" ON public.compras_detalles;
 CREATE POLICY "Tenants can view own compras_detalles" ON public.compras_detalles 
-    FOR SELECT USING (true);
+    FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Tenants can insert own compras_detalles" ON public.compras_detalles;
 CREATE POLICY "Tenants can insert own compras_detalles" ON public.compras_detalles 
-    FOR INSERT WITH CHECK (true);
+    FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
 
 -- ------------------------------------------------------------------------------
 -- 8. TABLA COTIZACIONES & COTIZACIONES_DETALLES (Cotizaciones de Obra)
@@ -478,23 +482,23 @@ ALTER TABLE public.cotizaciones_detalles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Tenants can view own cotizaciones" ON public.cotizaciones;
 CREATE POLICY "Tenants can view own cotizaciones" ON public.cotizaciones 
-    FOR SELECT USING (tenant_id = auth.uid() OR tenant_id IS NULL OR true);
+    FOR SELECT TO authenticated USING (tenant_id = auth.uid() OR tenant_id IS NULL OR true);
 
 DROP POLICY IF EXISTS "Tenants can insert own cotizaciones" ON public.cotizaciones;
 CREATE POLICY "Tenants can insert own cotizaciones" ON public.cotizaciones 
-    FOR INSERT WITH CHECK (tenant_id = auth.uid() OR tenant_id IS NULL OR true);
+    FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
 
 DROP POLICY IF EXISTS "Tenants can update own cotizaciones" ON public.cotizaciones;
 CREATE POLICY "Tenants can update own cotizaciones" ON public.cotizaciones 
-    FOR UPDATE USING (tenant_id = auth.uid() OR tenant_id IS NULL OR true);
+    FOR UPDATE TO authenticated USING (auth.uid() IS NOT NULL);
 
 DROP POLICY IF EXISTS "Tenants can view own cotizaciones_detalles" ON public.cotizaciones_detalles;
 CREATE POLICY "Tenants can view own cotizaciones_detalles" ON public.cotizaciones_detalles 
-    FOR SELECT USING (true);
+    FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Tenants can insert own cotizaciones_detalles" ON public.cotizaciones_detalles;
 CREATE POLICY "Tenants can insert own cotizaciones_detalles" ON public.cotizaciones_detalles 
-    FOR INSERT WITH CHECK (true);
+    FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
 
 -- ------------------------------------------------------------------------------
 -- 9. EXTENSIÓN DE TABLA ALQUILERES (Sincronización con Cotizaciones Convertidas)

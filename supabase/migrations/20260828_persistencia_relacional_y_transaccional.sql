@@ -289,9 +289,11 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_policies 
-        WHERE tablename = 'pagos' AND policyname = 'Permitir todo en pagos'
+        WHERE tablename = 'pagos' AND policyname = 'Permitir lectura en pagos para usuarios autenticados'
     ) THEN
-        CREATE POLICY "Permitir todo en pagos" ON public.pagos
-            FOR ALL USING (true) WITH CHECK (true);
+        CREATE POLICY "Permitir lectura en pagos para usuarios autenticados" ON public.pagos
+            FOR SELECT TO authenticated USING (true);
+        CREATE POLICY "Permitir escritura en pagos para usuarios autenticados" ON public.pagos
+            FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
     END IF;
 END $$;

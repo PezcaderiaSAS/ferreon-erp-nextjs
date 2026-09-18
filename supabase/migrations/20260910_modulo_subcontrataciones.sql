@@ -99,11 +99,11 @@ CREATE POLICY "Tenants can update own subcontrataciones" ON public.subcontrataci
 
 DROP POLICY IF EXISTS "Tenants can view own subcontrataciones_detalles" ON public.subcontrataciones_detalles;
 CREATE POLICY "Tenants can view own subcontrataciones_detalles" ON public.subcontrataciones_detalles 
-    FOR SELECT USING (true);
+    FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Tenants can insert own subcontrataciones_detalles" ON public.subcontrataciones_detalles;
 CREATE POLICY "Tenants can insert own subcontrataciones_detalles" ON public.subcontrataciones_detalles 
-    FOR INSERT WITH CHECK (true);
+    FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
 
 COMMIT;
 

@@ -15,13 +15,13 @@ ALTER TABLE idempotency_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Permitir inserts a usuarios autenticados"
 ON idempotency_logs FOR INSERT
 TO authenticated
-WITH CHECK (true);
+WITH CHECK (auth.uid() IS NOT NULL);
 
--- Opcionalmente, evitar que alguien lea las llaves (solo insertan)
-CREATE POLICY "Permitir lectura a service_role (Admin)"
+-- Permitir lectura únicamente a usuarios autenticados
+CREATE POLICY "Permitir lectura a usuarios autenticados"
 ON idempotency_logs FOR SELECT
-TO service_role
-USING (true);
+TO authenticated
+USING (auth.uid() IS NOT NULL);
 
 -- Paso 3: Crear el Job Automático (Garbage Collection) para limpiar las llaves después de 7 días
 -- Ejecuta todos los días a las 00:00.
