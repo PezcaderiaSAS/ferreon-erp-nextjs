@@ -31,7 +31,7 @@ export function AppShell({ children }: AppShellProps) {
     }
   }, [config]);
 
-  const isStandaloneRoute = pathname?.startsWith('/design-system') || pathname?.startsWith('/auth');
+  const isStandaloneRoute = pathname === '/' || pathname?.startsWith('/design-system') || pathname?.startsWith('/auth');
 
   if (isStandaloneRoute) {
     return (

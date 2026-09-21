@@ -125,7 +125,7 @@ export async function procesarDevolucionAvanzadaAction(input: ProcesarDevolucion
     try {
       const { data: sesionActiva } = await supabase
         .from('sesiones_caja')
-        .select('id, estado, empresa_id')
+        .select('id, estado, empresa_id, usuario_id')
         .eq('id', cleanInput.sesionCajaId)
         .single();
 
@@ -140,12 +140,15 @@ export async function procesarDevolucionAvanzadaAction(input: ProcesarDevolucion
         const { data: nuevoMov } = await supabase
           .from('movimientos_caja')
           .insert({
-            sesion_id: cleanInput.sesionCajaId,
+            tenant_id: user?.id || null,
             empresa_id: sesionActiva.empresa_id,
+            sesion_caja_id: cleanInput.sesionCajaId,
+            usuario_id: user?.id || sesionActiva.usuario_id,
             tipo: tipoMov,
             monto: montoMov,
-            motivo: motivoMov,
-            categoria: 'DEVOLUCION_GARANTIA'
+            concepto: motivoMov,
+            beneficiario: 'CLIENTE',
+            comprobante: resultRPC.consecutivo || 'DEV_GARANTIA'
           })
           .select('id')
           .single();

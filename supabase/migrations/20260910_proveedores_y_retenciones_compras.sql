@@ -124,6 +124,8 @@ WHERE NOT EXISTS (SELECT 1 FROM public.financial_accounts WHERE name = 'ReteICA 
 
 -- 5. POLÍTICAS DE ROW LEVEL SECURITY (RLS)
 ALTER TABLE public.proveedores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.compras ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.compras_detalles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Tenants can view own proveedores" ON public.proveedores;
 CREATE POLICY "Tenants can view own proveedores" ON public.proveedores 

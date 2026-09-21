@@ -62,8 +62,8 @@ export async function middleware(request: NextRequest) {
     return apiResponse;
   }
 
-  // 5. FAST-PATH PARA RUTAS PÚBLICAS / AUTH: Inyectar cabeceras perimetrales completas y CSP
-  if (pathname.startsWith('/auth') || pathname === '/unauthorized' || pathname === '/suscripcion') {
+  // 5. FAST-PATH PARA RUTAS PÚBLICAS / AUTH / LANDING: Inyectar cabeceras perimetrales completas y CSP
+  if (pathname === '/' || pathname.startsWith('/auth') || pathname === '/unauthorized' || pathname === '/suscripcion') {
     const publicResponse = NextResponse.next({
       request: {
         headers: requestHeaders,

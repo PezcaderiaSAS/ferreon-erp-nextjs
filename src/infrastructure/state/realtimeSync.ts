@@ -14,9 +14,7 @@ import { ClienteUI } from './clienteStore';
  * Escucha cambios en las tablas 'equipos', 'alquileres' y 'clientes' para alimentar los stores
  * de Zustand en segundo plano con latencia mínima (<100ms).
  */
-export function setupRealtimeSubscriptions() {
-  if (typeof window === 'undefined') return () => {};
-
+export function setupRealtimeChannel() {
   const channel = supabaseClient
     .channel('schema-db-changes')
     .on(
@@ -92,7 +90,6 @@ export function setupRealtimeSubscriptions() {
         }
       }
     )
-
     .on(
       'postgres_changes',
       {
@@ -131,8 +128,8 @@ export function setupRealtimeSubscriptions() {
         if (eventType === 'INSERT' && newRecord) {
           const cliente: ClienteUI = {
             id: newRecord.id,
-            nit_cedula: newRecord.nit_cedula || newRecord.nit || '',
-            nit: newRecord.nit_cedula || newRecord.nit || '',
+            nit_cedula: newRecord.numero_documento || newRecord.nit_cedula || newRecord.nit || '',
+            nit: newRecord.numero_documento || newRecord.nit_cedula || newRecord.nit || '',
             nombre: newRecord.nombre,
             telefono: newRecord.telefono || newRecord.contacto || '',
             contacto: newRecord.contacto || newRecord.telefono || '',
@@ -148,8 +145,8 @@ export function setupRealtimeSubscriptions() {
         } else if (eventType === 'UPDATE' && newRecord) {
           const updatedCliente: ClienteUI = {
             id: newRecord.id,
-            nit_cedula: newRecord.nit_cedula || newRecord.nit || '',
-            nit: newRecord.nit_cedula || newRecord.nit || '',
+            nit_cedula: newRecord.numero_documento || newRecord.nit_cedula || newRecord.nit || '',
+            nit: newRecord.numero_documento || newRecord.nit_cedula || newRecord.nit || '',
             nombre: newRecord.nombre,
             telefono: newRecord.telefono || newRecord.contacto || '',
             contacto: newRecord.contacto || newRecord.telefono || '',
@@ -198,11 +195,7 @@ export function setupRealtimeSubscriptions() {
         }
       }
     )
-    .subscribe();
-
-  return () => {
-    supabaseClient.removeChannel(channel);
-  };
+  return channel;
 }
 
 /**
@@ -211,35 +204,22 @@ export function setupRealtimeSubscriptions() {
  */
 export function useRealtimeSync() {
   useEffect(() => {
-    let unsubscribe = setupRealtimeSubscriptions();
-
-    const handleVisibilityOrFocus = () => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        try {
-          const channels = supabaseClient.getChannels();
-          channels.forEach((ch) => {
-            if (ch.state === 'closed' || ch.state === 'errored') {
-              console.info('[RealtimeSync] Reconectando canal tras evento de foco/visibilidad en macOS');
-              ch.subscribe();
-            }
-          });
-        } catch (e) {
-          console.warn('[RealtimeSync] Error al verificar canales en reconexión:', e);
-        }
-      }
-    };
-
-    if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', handleVisibilityOrFocus);
-      window.addEventListener('focus', handleVisibilityOrFocus);
-    }
+    const channel = setupRealtimeChannel();
+    channel.subscribe();
 
     return () => {
-      unsubscribe();
-      if (typeof document !== 'undefined') {
-        document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
-        window.removeEventListener('focus', handleVisibilityOrFocus);
-      }
+      channel.unsubscribe();
+      supabaseClient.removeChannel(channel);
     };
   }, []);
 }
+
+export function setupRealtimeSubscriptions() {
+  const channel = setupRealtimeChannel();
+  channel.subscribe();
+  return () => {
+    channel.unsubscribe();
+    supabaseClient.removeChannel(channel);
+  };
+}
+

@@ -114,3 +114,11 @@ CREATE TABLE IF NOT EXISTS public.facturas (
 CREATE INDEX IF NOT EXISTS idx_facturas_alquiler_id ON public.facturas (alquiler_id);
 CREATE INDEX IF NOT EXISTS idx_facturas_cliente_id ON public.facturas (cliente_id);
 CREATE INDEX IF NOT EXISTS idx_facturas_estado ON public.facturas (estado_pago) WHERE deleted_at IS NULL;
+
+-- Habilitar Row Level Security (RLS) en todas las tablas
+ALTER TABLE public.clientes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.equipos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.alquileres ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.alquiler_detalles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.facturas ENABLE ROW LEVEL SECURITY;
+

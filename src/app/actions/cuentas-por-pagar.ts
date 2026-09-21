@@ -231,13 +231,13 @@ export async function registrarAbonoProveedorAction(input: RegistrarAbonoInput):
     if (clean.metodoPago === 'EFECTIVO') {
       const { data: sesionCaja } = await supabaseAdmin
         .from('sesiones_caja')
-        .select('id, saldo_efectivo_actual, saldo_inicial')
+        .select('id, monto_apertura')
         .eq('estado', 'ABIERTA')
         .order('fecha_apertura', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      const saldoCajaDisponible = sesionCaja ? Number(sesionCaja.saldo_efectivo_actual || sesionCaja.saldo_inicial || 0) : 0;
+      const saldoCajaDisponible = sesionCaja ? Number(sesionCaja.monto_apertura || 0) : 0;
 
       const validacionCaja = validarEgresoCajaParaAbono({
         metodoPago: clean.metodoPago,
@@ -254,23 +254,16 @@ export async function registrarAbonoProveedorAction(input: RegistrarAbonoInput):
       // Registrar movimiento de egreso en caja
       try {
         await supabaseAdmin.from('movimientos_caja').insert([{
-          sesion_id: sesionCajaId,
+          tenant_id: cxp.tenant_id,
+          empresa_id: cxp.empresa_id || empresaId,
+          sesion_caja_id: sesionCajaId,
+          usuario_id: userId,
           tipo: 'EGRESO',
           monto: clean.montoAbono,
           concepto: `Pago a Proveedor ${cxp.proveedores?.nombre || ''} - Orden ${cxp.numero_orden}`,
-          metodo_pago: 'EFECTIVO',
-          referencia_id: clean.cuentaPagarId,
-          usuario_id: userId
+          beneficiario: cxp.proveedores?.nombre || 'PROVEEDOR',
+          comprobante: cxp.numero_orden || 'ABONO_CXP'
         }]);
-
-        // Actualizar saldo_efectivo_actual en sesion de caja
-        await supabaseAdmin
-          .from('sesiones_caja')
-          .update({
-            saldo_efectivo_actual: Math.max(0, saldoCajaDisponible - clean.montoAbono),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', sesionCajaId);
       } catch (cajaErr) {
         console.warn('[registrarAbonoProveedorAction] Notice al asentar en caja:', cajaErr);
       }

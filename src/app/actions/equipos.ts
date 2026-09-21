@@ -212,16 +212,17 @@ export async function ajustarStockEquipoAction(equipoId: string | number, delta:
     let tipo_mov = tipoMovimiento;
 
     // Para saber el stock resultante real que quedó (la RPC lo devolvió en `data` o consultamos)
-    const { data: eqAct } = await supabaseAdmin.from('equipos').select('stock_disponible, tenant_id').eq('id', numericEquipoId).single();
+    const { data: eqAct } = await supabaseAdmin.from('equipos').select('stock_disponible, empresa_id').eq('id', numericEquipoId).single();
 
     await supabaseAdmin.from('kardex_inventario').insert([{
       equipo_id: numericEquipoId,
-      tenant_id: eqAct?.tenant_id,
+      empresa_id: eqAct?.empresa_id || null,
+      tenant_id: eqAct?.empresa_id || null,
       tipo_movimiento: tipo_mov,
       cantidad_delta: delta,
       stock_resultante: eqAct?.stock_disponible || 0,
       motivo: motivo,
-      usuario_id: user?.id || 'SISTEMA'
+      usuario_id: user?.id || eqAct?.empresa_id || null
     }]);
   } catch (kardexErr) {
     console.error('Error insertando en Kardex (pero el stock fue ajustado):', kardexErr);

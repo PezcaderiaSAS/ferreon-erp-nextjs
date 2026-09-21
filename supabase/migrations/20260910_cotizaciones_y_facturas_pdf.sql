@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS public.financial_accounts (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE public.financial_accounts ENABLE ROW LEVEL SECURITY;
+
 INSERT INTO public.financial_accounts (name, type, is_cash_equivalent, description)
 SELECT 'Impuesto sobre las Ventas por Pagar (IVA 19%)', 'LIABILITY', false, 'Pasivo fiscal por IVA recaudado/generado en alquileres'
 WHERE NOT EXISTS (SELECT 1 FROM public.financial_accounts WHERE name = 'Impuesto sobre las Ventas por Pagar (IVA 19%)');

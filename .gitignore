@@ -7,6 +7,8 @@
 /out/
 /build
 /dist
+.system_generated/
+*.tsbuildinfo
 
 # Variables de Entorno y Secretos (NUNCA subir a GitHub)
 .env

@@ -1,8 +1,8 @@
 {
-  "name": "alquileres-erp-nextjs",
+  "name": "alquileres-system",
   "version": "1.0.0",
   "private": true,
-  "description": "Alquileres ERP - Sistema de Gestión de Alquileres, Facturación y Equipos de Construcción (Next.js + Supabase + Vercel)",
+  "description": "Alquileres System - Sistema Integral de Gestión de Alquileres, Facturación y Equipos de Maquinaria y Construcción (Next.js + Supabase + Vercel)",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
