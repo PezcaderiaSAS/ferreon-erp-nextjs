@@ -1,13 +1,13 @@
 import React from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  Truck, 
-  Wrench, 
-  Handshake, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Building2, 
+import {
+  Plus,
+  Trash2,
+  Truck,
+  Wrench,
+  Handshake,
+  AlertTriangle,
+  CheckCircle2,
+  Building2,
   Calendar,
   Layers,
   ArrowRight,
@@ -112,21 +112,21 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <button 
-              type="button" 
-              onClick={() => setIsCreandoEquipo(true)} 
+            <button
+              type="button"
+              onClick={() => setIsCreandoEquipo(true)}
               className="px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold rounded-xl text-xs transition-colors flex items-center space-x-1.5 cursor-pointer"
             >
               <span>+ Nuevo Equipo</span>
             </button>
-            <button 
-              type="button" 
-              onClick={() => { 
-                addItemRow(); 
-                setTimeout(() => { 
-                  const el = document.getElementById('items-list-end'); 
-                  el?.scrollIntoView({ behavior: 'smooth', block: 'end' }); 
-                }, 50); 
+            <button
+              type="button"
+              onClick={() => {
+                addItemRow();
+                setTimeout(() => {
+                  const el = document.getElementById('items-list-end');
+                  el?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 50);
               }}
               className="px-3 py-1.5 bg-teal-600 text-white hover:bg-teal-700 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
               title="Atajo de teclado: Tecla F2"
@@ -148,22 +148,21 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
               const subtotalFila = (field.precioDiario || 0) * (field.cantidad || 1) * diasFila;
               const isComboboxOpen = openComboboxRowId === field.id;
 
-              const stockCheck = verificarStockItem 
-                ? verificarStockItem(field.itemId, field.cantidad) 
+              const stockCheck = verificarStockItem
+                ? verificarStockItem(field.itemId, field.cantidad)
                 : { disponible: 0, stockInsuficiente: false, faltante: 0, equipo: null };
 
               const margenDiarioUnitario = (field.precioDiario || 0) - (field.costoSubcontrato || 0);
 
               return (
-                <div 
-                  key={field.id} 
-                  className={`p-3 sm:p-3.5 rounded-2xl border transition-all ${
-                    isComboboxOpen 
-                      ? 'bg-white border-teal-500 shadow-xl ring-2 ring-teal-500/20' 
+                <div
+                  key={field.id}
+                  className={`p-3 sm:p-3.5 rounded-2xl border transition-all ${isComboboxOpen
+                      ? 'bg-white border-teal-500 shadow-xl ring-2 ring-teal-500/20'
                       : field.esSubcontratado
-                      ? 'bg-indigo-50/40 border-indigo-200/90 shadow-2xs'
-                      : 'bg-slate-50/90 border-slate-200/90 hover:border-slate-300'
-                  } flex flex-col gap-2.5 relative`}
+                        ? 'bg-indigo-50/40 border-indigo-200/90 shadow-2xs'
+                        : 'bg-slate-50/90 border-slate-200/90 hover:border-slate-300'
+                    } flex flex-col gap-2.5 relative`}
                   style={{ zIndex: isComboboxOpen ? 100 : Math.max(1, 40 - index) }}
                 >
                   <div className="flex flex-col gap-3">
@@ -172,11 +171,10 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                       <div className="flex items-center justify-between">
                         <label className="text-[11px] font-bold text-slate-700">Equipo Requerido *</label>
                         {stockCheck.equipo && (
-                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold ${
-                            stockCheck.disponible > 0 
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold ${stockCheck.disponible > 0
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : 'bg-rose-50 text-rose-700 border border-rose-200'
-                          }`}>
+                            }`}>
                             {stockCheck.disponible > 0 ? `Stock propio: ${stockCheck.disponible}` : 'Stock propio: 0'}
                           </span>
                         )}
@@ -194,20 +192,20 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                         onChange={(eqId, equipo) => {
                           if (!equipo) {
                             const newItems = [...items];
-                            newItems[index] = { 
-                              ...newItems[index], 
-                              itemId: '', 
-                              precioDiario: 0 
+                            newItems[index] = {
+                              ...newItems[index],
+                              itemId: '',
+                              precioDiario: 0
                             };
                             setItems(newItems);
                             return;
                           }
 
                           const tarifa = equipo.tarifa_diaria ?? equipo.tarifaDiaria ?? 0;
-                          
-                          const existingIndex = items.findIndex((it, i) => 
-                            i !== index && String(it.itemId) === String(eqId) && 
-                            it.fechaInicio === field.fechaInicio && 
+
+                          const existingIndex = items.findIndex((it, i) =>
+                            i !== index && String(it.itemId) === String(eqId) &&
+                            it.fechaInicio === field.fechaInicio &&
                             it.fechaFinEstimada === field.fechaFinEstimada
                           );
 
@@ -216,10 +214,10 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                             newItems[existingIndex].cantidad += field.cantidad;
                             newItems.splice(index, 1);
                           } else {
-                            newItems[index] = { 
-                              ...newItems[index], 
-                              itemId: eqId, 
-                              precioDiario: tarifa 
+                            newItems[index] = {
+                              ...newItems[index],
+                              itemId: eqId,
+                              precioDiario: tarifa
                             };
                           }
                           setItems(newItems);
@@ -232,50 +230,50 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                       {/* Valor Diario */}
                       <div className="flex-1 min-w-[100px] flex flex-col gap-1">
                         <label className="text-[11px] font-bold text-slate-700">Tarifa / Día</label>
-                        <input 
-                          type="number" 
-                          min={0} 
+                        <input
+                          type="number"
+                          min={0}
                           value={field.precioDiario === 0 ? '' : field.precioDiario}
                           placeholder="0"
                           onChange={(e) => {
                             const v = e.target.value;
                             updateItemRow(index, 'precioDiario', v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
                           }}
-                          className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-right font-mono tabular-nums font-semibold" 
+                          className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-right font-mono tabular-nums font-semibold"
                         />
                       </div>
 
                       {/* Cantidad */}
                       <div className="w-16 flex flex-col gap-1">
                         <label className="text-[11px] font-bold text-slate-700">Cant.</label>
-                        <input 
-                          type="number" 
-                          min={1} 
+                        <input
+                          type="number"
+                          min={1}
                           value={field.cantidad}
                           onChange={(e) => updateItemRow(index, 'cantidad', parseInt(e.target.value, 10) || 1)}
-                          className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-center font-bold font-mono" 
+                          className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-center font-bold font-mono"
                         />
                       </div>
 
                       {/* Fecha Inicio */}
                       <div className="flex-1 min-w-[120px] flex flex-col gap-1">
                         <label className="text-[11px] font-bold text-slate-700">Desde</label>
-                        <input 
-                          type="date" 
+                        <input
+                          type="date"
                           value={field.fechaInicio}
                           onChange={(e) => updateItemRow(index, 'fechaInicio', e.target.value)}
-                          className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none" 
+                          className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none"
                         />
                       </div>
 
                       {/* Fecha Fin Estimada */}
                       <div className="flex-1 min-w-[120px] flex flex-col gap-1">
                         <label className="text-[11px] font-bold text-slate-700">Hasta</label>
-                        <input 
-                          type="date" 
+                        <input
+                          type="date"
                           value={field.fechaFinEstimada}
                           onChange={(e) => updateItemRow(index, 'fechaFinEstimada', e.target.value)}
-                          className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none" 
+                          className="px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none"
                         />
                       </div>
 
@@ -297,9 +295,9 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                             </span>
                           )}
                         </div>
-                        <input 
-                          type="number" 
-                          min={0} 
+                        <input
+                          type="number"
+                          min={0}
                           value={subtotalFila === 0 ? '' : subtotalFila}
                           placeholder="0"
                           onChange={(e) => {
@@ -307,11 +305,10 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                             const sub = v === '' ? 0 : Math.max(0, parseFloat(v) || 0);
                             updateItemRow(index, 'subtotal', sub);
                           }}
-                          className={`px-2 py-2 bg-white border ${
-                            field.subtotalPersonalizado 
-                              ? 'border-amber-400 bg-amber-50/20 ring-1 ring-amber-300' 
+                          className={`px-2 py-2 bg-white border ${field.subtotalPersonalizado
+                              ? 'border-amber-400 bg-amber-50/20 ring-1 ring-amber-300'
                               : 'border-slate-300'
-                          } rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-right font-mono tabular-nums font-bold`} 
+                            } rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-right font-mono tabular-nums font-bold`}
                         />
                       </div>
 
@@ -330,9 +327,9 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                         )}
 
                         {items.length > 1 && (
-                          <button 
-                            type="button" 
-                            onClick={() => removeItemRow(index)} 
+                          <button
+                            type="button"
+                            onClick={() => removeItemRow(index)}
                             className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl text-xs transition-colors cursor-pointer"
                             title="Eliminar fila"
                           >
@@ -431,9 +428,8 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                             }}
                             className="px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-right font-mono tabular-nums font-semibold"
                           />
-                          <span className={`text-[10px] font-mono font-bold text-right ${
-                            margenDiarioUnitario >= 0 ? 'text-emerald-700' : 'text-rose-600'
-                          }`}>
+                          <span className={`text-[10px] font-mono font-bold text-right ${margenDiarioUnitario >= 0 ? 'text-emerald-700' : 'text-rose-600'
+                            }`}>
                             Margen: {formatearCOP(margenDiarioUnitario)}/día
                           </span>
                         </div>
@@ -534,8 +530,8 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-700">Flete de Entrega a Obra ($ COP)</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               min={0}
               value={fleteEntrega === 0 ? '' : fleteEntrega}
               placeholder="0"
@@ -543,7 +539,7 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                 const v = e.target.value;
                 setFleteEntrega(v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
               }}
-              className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 text-right font-mono tabular-nums focus:bg-white focus:ring-2 focus:ring-teal-600/25 focus:border-teal-600 outline-none transition-all" 
+              className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 text-right font-mono tabular-nums focus:bg-white focus:ring-2 focus:ring-teal-600/25 focus:border-teal-600 outline-none transition-all"
             />
             <span className="text-[10.5px] text-slate-600 font-medium truncate">
               {formatearMonedaConLetras(fleteEntrega)}
@@ -552,8 +548,8 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-700">Flete de Recogida / Retorno ($ COP)</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               min={0}
               value={fleteRecogida === 0 ? '' : fleteRecogida}
               placeholder="0"
@@ -561,7 +557,7 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                 const v = e.target.value;
                 setFleteRecogida(v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
               }}
-              className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 text-right font-mono tabular-nums focus:bg-white focus:ring-2 focus:ring-teal-600/25 focus:border-teal-600 outline-none transition-all" 
+              className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 text-right font-mono tabular-nums focus:bg-white focus:ring-2 focus:ring-teal-600/25 focus:border-teal-600 outline-none transition-all"
             />
             <span className="text-[10.5px] text-slate-600 font-medium truncate">
               {formatearMonedaConLetras(fleteRecogida)}

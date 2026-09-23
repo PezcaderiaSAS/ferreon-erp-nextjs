@@ -287,10 +287,10 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
       prev.map((l, i) =>
         i === lineaIndex
           ? {
-              ...l,
-              fechaInicio: nuevaFechaInicio,
-              fechaFinEstimada: nuevaFin,
-            }
+            ...l,
+            fechaInicio: nuevaFechaInicio,
+            fechaFinEstimada: nuevaFin,
+          }
           : l
       )
     );
@@ -307,10 +307,10 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
       prev.map((l, i) =>
         i === lineaIndex
           ? {
-              ...l,
-              cantidad: cant,
-              subtotal: l.tarifaDiaria * cant * l.dias,
-            }
+            ...l,
+            cantidad: cant,
+            subtotal: l.tarifaDiaria * cant * l.dias,
+          }
           : l
       )
     );
@@ -419,44 +419,43 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center bg-white p-3 border border-slate-200/90 rounded-xl shadow-sm mb-1">
-             <div className="flex items-center gap-2">
-                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                  <Wrench className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Maquinaria y Equipos Solicitados</span>
-                </h3>
-             </div>
-             <div className="text-right">
-                <span className="text-xs text-slate-500 mr-2">Subtotal Total:</span>
-                <span className="text-sm font-bold font-mono text-slate-900">
-                  ${subtotalTotal.toLocaleString('es-CO')}
-                </span>
-             </div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <Wrench className="w-3.5 h-3.5 text-slate-500" />
+                <span>Maquinaria y Equipos Solicitados</span>
+              </h3>
+            </div>
+            <div className="text-right">
+              <span className="text-xs text-slate-500 mr-2">Subtotal Total:</span>
+              <span className="text-sm font-bold font-mono text-slate-900">
+                ${subtotalTotal.toLocaleString('es-CO')}
+              </span>
+            </div>
           </div>
 
           {lineas.map((linea, idx) => {
             const isError = lineaConErrorIndex === idx;
             const isComboboxOpen = openComboboxRowId === linea.clientId;
-            
+
             // Dummy logic for stock verification in standalone component since we don't have the parent's full logic.
             // Ideally this would be passed down, but for now we map directly from the selected equipment in catalogoEquipos
             const eqSelected = catalogoEquipos.find((e) => String(e.id) === String(linea.itemId));
             const stockCheck = {
-               disponible: eqSelected?.stock_disponible ?? 0,
-               equipo: eqSelected ?? null,
+              disponible: eqSelected?.stock_disponible ?? 0,
+              equipo: eqSelected ?? null,
             };
 
             return (
-              <div 
+              <div
                 key={linea.clientId}
-                className={`p-3 sm:p-3.5 rounded-2xl border transition-all flex flex-col gap-2.5 relative ${
-                  isError 
-                    ? 'border-rose-500 bg-rose-50/80' 
-                    : isComboboxOpen 
-                      ? 'bg-white border-slate-400 shadow-xl ring-2 ring-slate-400/20' 
-                      : linea.esSubcontratado 
-                        ? 'bg-sky-50/50 border-sky-200' 
+                className={`p-3 sm:p-3.5 rounded-2xl border transition-all flex flex-col gap-2.5 relative ${isError
+                    ? 'border-rose-500 bg-rose-50/80'
+                    : isComboboxOpen
+                      ? 'bg-white border-slate-400 shadow-xl ring-2 ring-slate-400/20'
+                      : linea.esSubcontratado
+                        ? 'bg-sky-50/50 border-sky-200'
                         : 'bg-white border-slate-200/90 hover:border-slate-300'
-                }`}
+                  }`}
                 style={{ zIndex: isComboboxOpen ? 100 : Math.max(1, 40 - idx) }}
               >
                 {/* Header de Card */}
@@ -498,16 +497,15 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                   {/* Sección Equipo */}
                   <div className="w-full flex flex-col gap-1">
                     <div className="flex items-center justify-between">
-                       <label htmlFor={`eq-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Equipo Requerido *</label>
-                       {stockCheck.equipo && (
-                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold truncate ${
-                            stockCheck.disponible > 0 
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                              : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      <label htmlFor={`eq-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Equipo Requerido *</label>
+                      {stockCheck.equipo && (
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold truncate ${stockCheck.disponible > 0
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200'
                           }`}>
-                            Stock propio: {stockCheck.disponible}
-                          </span>
-                       )}
+                          Stock propio: {stockCheck.disponible}
+                        </span>
+                      )}
                     </div>
                     <EquipoCombobox
                       equipos={catalogoEquipos}
@@ -520,7 +518,7 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                       }}
                       onChange={(eqId, equipo) => {
                         if (equipo) {
-                           handleEquipoSelect(idx, String(equipo.id));
+                          handleEquipoSelect(idx, String(equipo.id));
                         }
                       }}
                     />
@@ -537,11 +535,10 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                         min="0"
                         value={linea.tarifaDiaria}
                         onChange={(e) => handleTarifaManualChange(idx, parseFloat(e.target.value) || 0)}
-                        className={`px-2.5 py-2 w-full border rounded-xl text-xs text-right focus:ring-2 outline-none font-mono font-semibold tabular-nums ${
-                          linea.tarifaPersonalizada 
-                            ? 'border-sky-500 bg-sky-50 text-sky-900 focus:ring-sky-500/20' 
+                        className={`px-2.5 py-2 w-full border rounded-xl text-xs text-right focus:ring-2 outline-none font-mono font-semibold tabular-nums ${linea.tarifaPersonalizada
+                            ? 'border-sky-500 bg-sky-50 text-sky-900 focus:ring-sky-500/20'
                             : 'border-slate-300 bg-white text-slate-900 focus:ring-slate-900/20 focus:border-slate-900'
-                        }`}
+                          }`}
                       />
                     </div>
 
@@ -586,7 +583,7 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                     <div className="flex-1 min-w-[120px] flex flex-col gap-1">
                       <label htmlFor={`fin-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Hasta</label>
                       <div className="relative">
-                         <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input
                           id={`fin-${linea.clientId}`}
                           type="date"
@@ -615,31 +612,30 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                         min="0"
                         value={linea.subtotal}
                         onChange={(e) => handleSubtotalManualChange(idx, parseFloat(e.target.value) || 0)}
-                        className={`px-2.5 py-2 w-full border rounded-xl text-xs text-right focus:ring-2 outline-none font-mono font-bold tabular-nums ${
-                          linea.subtotalPersonalizado
+                        className={`px-2.5 py-2 w-full border rounded-xl text-xs text-right focus:ring-2 outline-none font-mono font-bold tabular-nums ${linea.subtotalPersonalizado
                             ? 'border-amber-500 bg-amber-50 text-amber-900 focus:ring-amber-500/20'
                             : 'border-slate-300 bg-white text-slate-900 focus:ring-slate-900/20 focus:border-slate-900'
-                        }`}
+                          }`}
                       />
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Texto de cálculo */}
                 <div className="mt-1 border-t border-slate-100/50 pt-2 flex flex-col md:flex-row md:items-center justify-between gap-2">
-                   <p className="text-[11px] text-slate-500 font-mono">
-                      ${linea.tarifaDiaria.toLocaleString('es-CO')} × {linea.cantidad} unid. × {linea.dias} día(s) = <span className="font-semibold text-slate-700 capitalize">{formatearMonedaConLetras(linea.subtotal)}</span>
-                   </p>
-                   {isError && conflictoOverbooking && conflictoOverbooking.lineaIndex === idx && (
-                      <p className="text-[11px] font-bold text-rose-600 animate-pulse">
-                         ¡Stock insuficiente para cubrir este rango de fechas!
-                      </p>
-                   )}
+                  <p className="text-[11px] text-slate-500 font-mono">
+                    ${linea.tarifaDiaria.toLocaleString('es-CO')} × {linea.cantidad} unid. × {linea.dias} día(s) = <span className="font-semibold text-slate-700 capitalize">{formatearMonedaConLetras(linea.subtotal)}</span>
+                  </p>
+                  {isError && conflictoOverbooking && conflictoOverbooking.lineaIndex === idx && (
+                    <p className="text-[11px] font-bold text-rose-600 animate-pulse">
+                      ¡Stock insuficiente para cubrir este rango de fechas!
+                    </p>
+                  )}
                 </div>
               </div>
             );
           })}
-          
+
           <div className="flex justify-start pt-2">
             <button
               type="button"
