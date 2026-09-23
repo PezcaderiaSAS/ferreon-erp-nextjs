@@ -524,10 +524,12 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                     />
                   </div>
 
-                  {/* Contenedor Flex Wrap para Fechas y Numéricos */}
-                  <div className="flex flex-row flex-wrap items-end gap-2 w-full flex-1">
+                  {/* ── GRID RESPONSIVO DE VALORES ─────────────────────────────── */}
+                  <div className="grid gap-x-2 gap-y-3 w-full"
+                    style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))' }}
+                  >
                     {/* Tarifa / Día */}
-                    <div className="flex-1 min-w-[100px] flex flex-col gap-1">
+                    <div className="flex flex-col gap-1">
                       <label htmlFor={`tarifa-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Tarifa / Día</label>
                       <input
                         id={`tarifa-${linea.clientId}`}
@@ -543,7 +545,7 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                     </div>
 
                     {/* Cantidad */}
-                    <div className="w-16 flex flex-col gap-1">
+                    <div className="flex flex-col gap-1">
                       <label htmlFor={`cant-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Cant.</label>
                       <input
                         id={`cant-${linea.clientId}`}
@@ -564,7 +566,7 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                     </div>
 
                     {/* Fecha Inicio */}
-                    <div className="flex-1 min-w-[120px] flex flex-col gap-1">
+                    <div className="flex flex-col gap-1">
                       <label htmlFor={`ini-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Desde</label>
                       <div className="relative">
                         <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -573,14 +575,14 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                           type="date"
                           value={linea.fechaInicio}
                           onChange={(e) => handleFechaChange(idx, 'fechaInicio', e.target.value)}
-                          className="pl-8 pr-2.5 py-2 w-full bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 outline-none"
+                          className="pl-8 pr-2 py-2 w-full bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 outline-none"
                           required
                         />
                       </div>
                     </div>
 
                     {/* Fecha Fin Estimada */}
-                    <div className="flex-1 min-w-[120px] flex flex-col gap-1">
+                    <div className="flex flex-col gap-1">
                       <label htmlFor={`fin-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Hasta</label>
                       <div className="relative">
                         <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -589,22 +591,22 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                           type="date"
                           value={linea.fechaFinEstimada}
                           onChange={(e) => handleFechaChange(idx, 'fechaFinEstimada', e.target.value)}
-                          className="pl-8 pr-2.5 py-2 w-full bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 outline-none"
+                          className="pl-8 pr-2 py-2 w-full bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 outline-none"
                           required
                         />
                       </div>
                     </div>
 
                     {/* Días Calculados */}
-                    <div className="w-12 flex flex-col gap-1">
+                    <div className="flex flex-col gap-1">
                       <label className="text-[11px] font-bold text-slate-700 text-center">Días</label>
-                      <div className="px-2 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono font-bold text-center flex items-center justify-center">
+                      <div className="w-full px-2 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono font-bold text-center flex items-center justify-center">
                         {linea.dias}d
                       </div>
                     </div>
 
                     {/* Subtotal */}
-                    <div className="flex-1 min-w-[110px] flex flex-col gap-1">
+                    <div className="flex flex-col gap-1">
                       <label htmlFor={`sub-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Subtotal</label>
                       <input
                         id={`sub-${linea.clientId}`}

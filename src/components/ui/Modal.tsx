@@ -83,7 +83,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
         </div>
         
         {/* Body Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 custom-scrollbar text-slate-700 dark:text-slate-300">
+        <div className="p-4 sm:p-6 overflow-y-auto overflow-x-hidden flex-1 custom-scrollbar text-slate-700 dark:text-slate-300">
           {children}
         </div>
       </div>
