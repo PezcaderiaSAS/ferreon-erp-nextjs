@@ -1,4 +1,4 @@
-<!-- Generated: 2026-09-22 | Files scanned: ~86 | Token estimate: ~980 -->
+<!-- Generated: 2026-09-23 | Files scanned: ~86 | Token estimate: ~980 -->
 # Alquileres System - Arquitectura Frontend
 
 ## Árbol de Rutas (`src/app/`)

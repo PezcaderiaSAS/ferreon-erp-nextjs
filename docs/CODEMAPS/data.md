@@ -1,4 +1,4 @@
-<!-- Generated: 2026-09-22 | Files scanned: ~30 | Token estimate: ~940 -->
+<!-- Generated: 2026-09-23 | Files scanned: ~30 | Token estimate: ~940 -->
 # Alquileres System - Arquitectura de Datos (Supabase PostgreSQL)
 
 ## Tablas Principales de Gobernanza y Multitenancy

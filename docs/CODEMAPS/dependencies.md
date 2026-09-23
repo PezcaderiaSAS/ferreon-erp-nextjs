@@ -1,4 +1,4 @@
-<!-- Generated: 2026-09-22 | Files scanned: ~15 | Token estimate: ~620 -->
+<!-- Generated: 2026-09-23 | Files scanned: ~15 | Token estimate: ~620 -->
 # Alquileres System - Arquitectura de Dependencias
 
 ## Core Framework & Runtime

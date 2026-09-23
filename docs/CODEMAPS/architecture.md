@@ -1,4 +1,4 @@
-<!-- Generated: 2026-09-22 | Files scanned: ~98 | Token estimate: ~820 -->
+<!-- Generated: 2026-09-23 | Files scanned: ~98 | Token estimate: ~820 -->
 # Alquileres System - Arquitectura de Alto Nivel
 
 ## Tipo de Sistema

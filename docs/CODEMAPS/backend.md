@@ -1,4 +1,4 @@
-<!-- Generated: 2026-09-22 | Files scanned: ~56 | Token estimate: ~880 -->
+<!-- Generated: 2026-09-23 | Files scanned: ~56 | Token estimate: ~880 -->
 # Alquileres System - Arquitectura Backend (Server Actions & API Routes)
 
 ## Acciones del Servidor (`src/app/actions/`)
