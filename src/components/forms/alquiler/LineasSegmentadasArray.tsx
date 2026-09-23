@@ -527,41 +527,25 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                   </div>
 
                   {/* Contenedor Flex Wrap para Fechas y Numéricos */}
-                  <div className="flex flex-row flex-wrap items-end gap-2 w-full lg:w-auto flex-1">
-                    {/* Sección Fechas */}
-                    <div className="flex flex-row gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
-                      <div className="flex-1 min-w-[120px] flex flex-col gap-1">
-                      <label htmlFor={`ini-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Desde</label>
-                      <div className="relative">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        <input
-                          id={`ini-${linea.clientId}`}
-                          type="date"
-                          value={linea.fechaInicio}
-                          onChange={(e) => handleFechaChange(idx, 'fechaInicio', e.target.value)}
-                          className="pl-8 pr-2.5 py-2 w-full bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 outline-none"
-                          required
-                        />
-                      </div>
+                  <div className="flex flex-row flex-wrap items-end gap-2 w-full flex-1">
+                    {/* Tarifa / Día */}
+                    <div className="flex-1 min-w-[100px] flex flex-col gap-1">
+                      <label htmlFor={`tarifa-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Tarifa / Día</label>
+                      <input
+                        id={`tarifa-${linea.clientId}`}
+                        type="number"
+                        min="0"
+                        value={linea.tarifaDiaria}
+                        onChange={(e) => handleTarifaManualChange(idx, parseFloat(e.target.value) || 0)}
+                        className={`px-2.5 py-2 w-full border rounded-xl text-xs text-right focus:ring-2 outline-none font-mono font-semibold tabular-nums ${
+                          linea.tarifaPersonalizada 
+                            ? 'border-sky-500 bg-sky-50 text-sky-900 focus:ring-sky-500/20' 
+                            : 'border-slate-300 bg-white text-slate-900 focus:ring-slate-900/20 focus:border-slate-900'
+                        }`}
+                      />
                     </div>
-                    <div className="flex-1 min-w-[120px] flex flex-col gap-1">
-                      <label htmlFor={`fin-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Hasta</label>
-                      <div className="relative">
-                         <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        <input
-                          id={`fin-${linea.clientId}`}
-                          type="date"
-                          value={linea.fechaFinEstimada}
-                          onChange={(e) => handleFechaChange(idx, 'fechaFinEstimada', e.target.value)}
-                          className="pl-8 pr-2.5 py-2 w-full bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 outline-none"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Sección Numérica */}
-                  <div className="flex flex-row flex-wrap gap-2 w-full md:w-auto">
+                    {/* Cantidad */}
                     <div className="w-16 flex flex-col gap-1">
                       <label htmlFor={`cant-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Cant.</label>
                       <input
@@ -581,26 +565,51 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                         required
                       />
                     </div>
-                    
-                      <div className="flex-1 min-w-[110px] flex flex-col gap-1">
-                       <label htmlFor={`tarifa-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Tarifa / Día</label>
-                       <input
-                        id={`tarifa-${linea.clientId}`}
-                        type="number"
-                        min="0"
-                        value={linea.tarifaDiaria}
-                        onChange={(e) => handleTarifaManualChange(idx, parseFloat(e.target.value) || 0)}
-                        className={`px-2.5 py-2 w-full border rounded-xl text-xs text-right focus:ring-2 outline-none font-mono font-semibold tabular-nums ${
-                          linea.tarifaPersonalizada 
-                            ? 'border-sky-500 bg-sky-50 text-sky-900 focus:ring-sky-500/20' 
-                            : 'border-slate-300 bg-white text-slate-900 focus:ring-slate-900/20 focus:border-slate-900'
-                        }`}
-                      />
+
+                    {/* Fecha Inicio */}
+                    <div className="flex-1 min-w-[120px] flex flex-col gap-1">
+                      <label htmlFor={`ini-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Desde</label>
+                      <div className="relative">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          id={`ini-${linea.clientId}`}
+                          type="date"
+                          value={linea.fechaInicio}
+                          onChange={(e) => handleFechaChange(idx, 'fechaInicio', e.target.value)}
+                          className="pl-8 pr-2.5 py-2 w-full bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 outline-none"
+                          required
+                        />
+                      </div>
                     </div>
 
+                    {/* Fecha Fin Estimada */}
                     <div className="flex-1 min-w-[120px] flex flex-col gap-1">
-                       <label htmlFor={`sub-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Subtotal</label>
-                       <input
+                      <label htmlFor={`fin-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Hasta</label>
+                      <div className="relative">
+                         <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          id={`fin-${linea.clientId}`}
+                          type="date"
+                          value={linea.fechaFinEstimada}
+                          onChange={(e) => handleFechaChange(idx, 'fechaFinEstimada', e.target.value)}
+                          className="pl-8 pr-2.5 py-2 w-full bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 outline-none"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Días Calculados */}
+                    <div className="w-12 flex flex-col gap-1">
+                      <label className="text-[11px] font-bold text-slate-700 text-center">Días</label>
+                      <div className="px-2 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono font-bold text-center flex items-center justify-center">
+                        {linea.dias}d
+                      </div>
+                    </div>
+
+                    {/* Subtotal */}
+                    <div className="flex-1 min-w-[110px] flex flex-col gap-1">
+                      <label htmlFor={`sub-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Subtotal</label>
+                      <input
                         id={`sub-${linea.clientId}`}
                         type="number"
                         min="0"
@@ -612,7 +621,6 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                             : 'border-slate-300 bg-white text-slate-900 focus:ring-slate-900/20 focus:border-slate-900'
                         }`}
                       />
-                      </div>
                     </div>
                   </div>
                 </div>
