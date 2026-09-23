@@ -165,183 +165,175 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                     } flex flex-col gap-2.5 relative`}
                   style={{ zIndex: isComboboxOpen ? 100 : Math.max(1, 40 - index) }}
                 >
-                  <div className="flex flex-col gap-3">
-                    {/* Combobox con búsqueda y creación rápida */}
-                    <div className="w-full flex flex-col gap-1">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-bold text-slate-700">Equipo Requerido *</label>
-                        {stockCheck.equipo && (
-                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold ${stockCheck.disponible > 0
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-rose-50 text-rose-700 border border-rose-200'
-                            }`}>
-                            {stockCheck.disponible > 0 ? `Stock propio: ${stockCheck.disponible}` : 'Stock propio: 0'}
-                          </span>
-                        )}
-                      </div>
+                  {/* ═══ LAYOUT DE 2 FILAS ═══════════════════════════════════════
+                      Fila 1: Equipo Requerido (ancho completo)
+                      Fila 2: Grid de 7 columnas explícitas sin overflow
+                  ══════════════════════════════════════════════════════════════ */}
 
-                      <EquipoCombobox
-                        equipos={equiposActivos}
-                        value={field.itemId}
-                        placeholder="Escriba nombre o código..."
-                        autoFocus={autoFocusRowId === field.id}
-                        onCrearNuevo={() => setIsCreandoEquipo(true)}
-                        onOpenChange={(isOpen) => {
-                          setOpenComboboxRowId(isOpen ? field.id : null);
-                        }}
-                        onChange={(eqId, equipo) => {
-                          if (!equipo) {
-                            const newItems = [...items];
-                            newItems[index] = {
-                              ...newItems[index],
-                              itemId: '',
-                              precioDiario: 0
-                            };
-                            setItems(newItems);
-                            return;
-                          }
-
-                          const tarifa = equipo.tarifa_diaria ?? equipo.tarifaDiaria ?? 0;
-
-                          const existingIndex = items.findIndex((it, i) =>
-                            i !== index && String(it.itemId) === String(eqId) &&
-                            it.fechaInicio === field.fechaInicio &&
-                            it.fechaFinEstimada === field.fechaFinEstimada
-                          );
-
+                  {/* FILA 1 — Buscador de Equipo (100% ancho) */}
+                  <div className="w-full flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-slate-700">Equipo Requerido *</label>
+                      {stockCheck.equipo && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${stockCheck.disponible > 0
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}>
+                          {stockCheck.disponible > 0 ? `Stock: ${stockCheck.disponible}` : 'Sin stock'}
+                        </span>
+                      )}
+                    </div>
+                    <EquipoCombobox
+                      equipos={equiposActivos}
+                      value={field.itemId}
+                      placeholder="Escriba nombre o código..."
+                      autoFocus={autoFocusRowId === field.id}
+                      onCrearNuevo={() => setIsCreandoEquipo(true)}
+                      onOpenChange={(isOpen) => {
+                        setOpenComboboxRowId(isOpen ? field.id : null);
+                      }}
+                      onChange={(eqId, equipo) => {
+                        if (!equipo) {
                           const newItems = [...items];
-                          if (existingIndex !== -1) {
-                            newItems[existingIndex].cantidad += field.cantidad;
-                            newItems.splice(index, 1);
-                          } else {
-                            newItems[index] = {
-                              ...newItems[index],
-                              itemId: eqId,
-                              precioDiario: tarifa
-                            };
-                          }
+                          newItems[index] = { ...newItems[index], itemId: '', precioDiario: 0 };
                           setItems(newItems);
+                          return;
+                        }
+                        const tarifa = equipo.tarifa_diaria ?? equipo.tarifaDiaria ?? 0;
+                        const existingIndex = items.findIndex((it, i) =>
+                          i !== index && String(it.itemId) === String(eqId) &&
+                          it.fechaInicio === field.fechaInicio &&
+                          it.fechaFinEstimada === field.fechaFinEstimada
+                        );
+                        const newItems = [...items];
+                        if (existingIndex !== -1) {
+                          newItems[existingIndex].cantidad += field.cantidad;
+                          newItems.splice(index, 1);
+                        } else {
+                          newItems[index] = { ...newItems[index], itemId: eqId, precioDiario: tarifa };
+                        }
+                        setItems(newItems);
+                      }}
+                    />
+                  </div>
+
+                  {/* FILA 2 — Grid de campos numéricos/fechas (7 cols) */}
+                  <div className="grid grid-cols-7 gap-2 w-full">
+
+                    {/* Tarifa / Día */}
+                    <div className="col-span-2 flex flex-col gap-0.5">
+                      <label className="text-[10px] font-bold text-slate-600 truncate">Tarifa/Día</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={field.precioDiario === 0 ? '' : field.precioDiario}
+                        placeholder="0"
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          updateItemRow(index, 'precioDiario', v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
                         }}
+                        className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-right font-mono tabular-nums font-semibold"
                       />
                     </div>
 
-                    {/* ── GRID RESPONSIVO DE VALORES ─────────────────────────────── */}
-                    {/* grid-cols usa minmax para distribuir automáticamente sin overflow */}
-                    <div className="grid gap-x-2 gap-y-3 w-full"
-                      style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))' }}
-                    >
-                      {/* Tarifa / Día */}
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[11px] font-bold text-slate-700">Tarifa / Día</label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={field.precioDiario === 0 ? '' : field.precioDiario}
-                          placeholder="0"
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            updateItemRow(index, 'precioDiario', v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
-                          }}
-                          className="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-right font-mono tabular-nums font-semibold"
-                        />
-                      </div>
+                    {/* Cantidad */}
+                    <div className="flex flex-col gap-0.5">
+                      <label className="text-[10px] font-bold text-slate-600">Cant.</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={field.cantidad}
+                        onChange={(e) => updateItemRow(index, 'cantidad', parseInt(e.target.value, 10) || 1)}
+                        className="w-full px-1.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-center font-bold font-mono"
+                      />
+                    </div>
 
-                      {/* Cantidad */}
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[11px] font-bold text-slate-700">Cant.</label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={field.cantidad}
-                          onChange={(e) => updateItemRow(index, 'cantidad', parseInt(e.target.value, 10) || 1)}
-                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-center font-bold font-mono"
-                        />
-                      </div>
+                    {/* Desde */}
+                    <div className="flex flex-col gap-0.5">
+                      <label className="text-[10px] font-bold text-slate-600">Desde</label>
+                      <input
+                        type="date"
+                        value={field.fechaInicio}
+                        onChange={(e) => updateItemRow(index, 'fechaInicio', e.target.value)}
+                        className="w-full px-1.5 py-1.5 bg-white border border-slate-300 rounded-lg text-[11px] text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none"
+                      />
+                    </div>
 
-                      {/* Fecha Inicio */}
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[11px] font-bold text-slate-700">Desde</label>
-                        <input
-                          type="date"
-                          value={field.fechaInicio}
-                          onChange={(e) => updateItemRow(index, 'fechaInicio', e.target.value)}
-                          className="w-full px-2 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none"
-                        />
-                      </div>
+                    {/* Hasta */}
+                    <div className="flex flex-col gap-0.5">
+                      <label className="text-[10px] font-bold text-slate-600">Hasta</label>
+                      <input
+                        type="date"
+                        value={field.fechaFinEstimada}
+                        onChange={(e) => updateItemRow(index, 'fechaFinEstimada', e.target.value)}
+                        className="w-full px-1.5 py-1.5 bg-white border border-slate-300 rounded-lg text-[11px] text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none"
+                      />
+                    </div>
 
-                      {/* Fecha Fin Estimada */}
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[11px] font-bold text-slate-700">Hasta</label>
-                        <input
-                          type="date"
-                          value={field.fechaFinEstimada}
-                          onChange={(e) => updateItemRow(index, 'fechaFinEstimada', e.target.value)}
-                          className="w-full px-2 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none"
-                        />
-                      </div>
-
-                      {/* Días Calculados */}
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[11px] font-bold text-slate-700 text-center">Días</label>
-                        <div className="w-full px-2 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono font-bold text-center flex items-center justify-center">
-                          {diasFila}d
-                        </div>
-                      </div>
-
-                      {/* Subtotal Editable */}
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-bold text-slate-700">Subtotal</label>
-                          {field.subtotalPersonalizado && (
-                            <span className="text-[9px] bg-amber-100 text-amber-800 px-1 rounded font-bold" title="Subtotal fijado manualmente">
-                              Fijo*
-                            </span>
-                          )}
-                        </div>
-                        <input
-                          type="number"
-                          min={0}
-                          value={subtotalFila === 0 ? '' : subtotalFila}
-                          placeholder="0"
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            const sub = v === '' ? 0 : Math.max(0, parseFloat(v) || 0);
-                            updateItemRow(index, 'subtotal', sub);
-                          }}
-                          className={`w-full px-2 py-2 bg-white border ${
-                            field.subtotalPersonalizado
-                              ? 'border-amber-400 bg-amber-50/20 ring-1 ring-amber-300'
-                              : 'border-slate-300'
-                          } rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-right font-mono tabular-nums font-bold`}
-                        />
-                      </div>
-
-                      {/* Acciones: Segmentar + Eliminar — última celda, alineada al final */}
-                      <div className="flex items-end gap-1 justify-end">
-                        {segmentarItemRow && field.itemId && (
-                          <button
-                            type="button"
-                            onClick={() => segmentarItemRow(index)}
-                            className="p-2 text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200/80 rounded-xl text-xs transition-colors flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
-                            title="Segmentar período: agrega otra línea para este mismo equipo con fechas independientes"
-                          >
-                            <Split className="w-4 h-4" />
-                            <span className="text-[10px] font-bold">Segmentar</span>
-                          </button>
-                        )}
-                        {items.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeItemRow(index)}
-                            className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl text-xs transition-colors cursor-pointer"
-                            title="Eliminar fila"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                    {/* Días */}
+                    <div className="flex flex-col gap-0.5">
+                      <label className="text-[10px] font-bold text-slate-600 text-center">Días</label>
+                      <div className="w-full py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-700 font-mono font-bold text-center flex items-center justify-center">
+                        {diasFila}d
                       </div>
                     </div>
+
+                    {/* Subtotal — ocupa 2 cols */}
+                    <div className="col-span-2 flex flex-col gap-0.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-slate-600">Subtotal</label>
+                        {field.subtotalPersonalizado && (
+                          <span className="text-[9px] bg-amber-100 text-amber-800 px-1 rounded font-bold">Fijo*</span>
+                        )}
+                      </div>
+                      <input
+                        type="number"
+                        min={0}
+                        value={subtotalFila === 0 ? '' : subtotalFila}
+                        placeholder="0"
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          updateItemRow(index, 'subtotal', v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
+                        }}
+                        className={`w-full px-2 py-1.5 bg-white border ${
+                          field.subtotalPersonalizado
+                            ? 'border-amber-400 bg-amber-50/20 ring-1 ring-amber-300'
+                            : 'border-slate-300'
+                        } rounded-lg text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-right font-mono tabular-nums font-bold`}
+                      />
+                    </div>
                   </div>
+
+                  {/* Acciones + Resumen en una fila */}
+                  <div className="flex items-center justify-between border-t border-slate-200/60 pt-1.5">
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {formatearCOP(field.precioDiario || 0)} × {field.cantidad || 1} × {diasFila}d = <span className="font-semibold text-slate-700">{formatearCOP(subtotalFila)}</span>
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {segmentarItemRow && field.itemId && (
+                        <button
+                          type="button"
+                          onClick={() => segmentarItemRow(index)}
+                          className="px-2.5 py-1.5 text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200/80 rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Segmentar"
+                        >
+                          <Split className="w-3.5 h-3.5" />
+                          <span>Segmentar</span>
+                        </button>
+                      )}
+                      {items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeItemRow(index)}
+                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg text-xs transition-colors cursor-pointer"
+                          title="Eliminar fila"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
                   {/* ALERTA DE STOCK Y TOGGLE DE SUBCONTRATACIÓN (RE-RENTING) */}
                   {field.itemId && stockCheck.stockInsuficiente && !field.esSubcontratado && (
