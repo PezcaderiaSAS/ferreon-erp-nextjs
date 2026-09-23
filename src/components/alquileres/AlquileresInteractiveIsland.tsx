@@ -1260,7 +1260,7 @@ export function AlquileresInteractiveIsland({
             ? (contratoActivo.estado === 'COTIZACION' ? "Editar Cotización Comercial" : "Editar Contrato de Alquiler") 
             : (modoCreacionInicial === 'COTIZACION' ? "Registrar Nueva Cotización Comercial" : "Registrar Nuevo Contrato de Alquiler")
         }
-        maxWidth="4xl"
+        maxWidth="6xl"
       >
         <AlquilerForm 
           key={contratoActivo ? `edit_${contratoActivo.id}` : `create_${modoCreacionInicial}`}
