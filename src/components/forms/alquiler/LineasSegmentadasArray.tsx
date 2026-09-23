@@ -508,7 +508,7 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                       )}
                     </div>
                     <EquipoCombobox
-                      equipos={catalogoEquipos}
+                      equipos={catalogoEquipos as any}
                       value={linea.itemId}
                       placeholder="Seleccione equipo..."
                       autoFocus={autoFocusRowId === linea.clientId}
