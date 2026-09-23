@@ -494,9 +494,9 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                 </div>
 
                 {/* Body de Card */}
-                <div className="flex flex-col md:flex-row items-stretch md:items-start gap-3">
+                <div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-start gap-3">
                   {/* Sección Equipo */}
-                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <div className="flex-1 min-w-[280px] flex flex-col gap-1">
                     <div className="flex items-center justify-between">
                        <label htmlFor={`eq-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Equipo Requerido *</label>
                        {stockCheck.equipo && (
@@ -526,9 +526,11 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                     />
                   </div>
 
-                  {/* Sección Fechas */}
-                  <div className="flex flex-row gap-2 w-full md:w-auto min-w-0">
-                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  {/* Contenedor Flex Wrap para Fechas y Numéricos */}
+                  <div className="flex flex-row flex-wrap items-end gap-2 w-full lg:w-auto flex-1">
+                    {/* Sección Fechas */}
+                    <div className="flex flex-row gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+                      <div className="flex-1 min-w-[120px] flex flex-col gap-1">
                       <label htmlFor={`ini-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Desde</label>
                       <div className="relative">
                         <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -542,7 +544,7 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                         />
                       </div>
                     </div>
-                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <div className="flex-1 min-w-[120px] flex flex-col gap-1">
                       <label htmlFor={`fin-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Hasta</label>
                       <div className="relative">
                          <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -580,7 +582,7 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                       />
                     </div>
                     
-                    <div className="w-28 flex flex-col gap-1">
+                      <div className="flex-1 min-w-[110px] flex flex-col gap-1">
                        <label htmlFor={`tarifa-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Tarifa / Día</label>
                        <input
                         id={`tarifa-${linea.clientId}`}
@@ -610,6 +612,7 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                             : 'border-slate-300 bg-white text-slate-900 focus:ring-slate-900/20 focus:border-slate-900'
                         }`}
                       />
+                      </div>
                     </div>
                   </div>
                 </div>
