@@ -140,7 +140,7 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
 
         {/* Filas de equipos con scroll optimizado */}
         <div className="flex flex-col">
-          <div className="space-y-3 max-h-[600px] sm:max-h-[640px] overflow-y-auto pr-1 pb-32" id="items-scroll-area">
+          <div className="space-y-3 max-h-[600px] sm:max-h-[640px] overflow-y-auto overflow-x-hidden pr-1 pb-32" id="items-scroll-area">
             {items.map((field, index) => {
               const start = new Date(field.fechaInicio);
               const end = new Date(field.fechaFinEstimada);
@@ -166,9 +166,9 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                   } flex flex-col gap-2.5 relative`}
                   style={{ zIndex: isComboboxOpen ? 100 : Math.max(1, 40 - index) }}
                 >
-                  <div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-center gap-3">
+                  <div className="flex flex-col gap-3">
                     {/* Combobox con búsqueda y creación rápida */}
-                    <div className="flex-1 min-w-[280px] flex flex-col gap-1">
+                    <div className="w-full flex flex-col gap-1">
                       <div className="flex items-center justify-between">
                         <label className="text-[11px] font-bold text-slate-700">Equipo Requerido *</label>
                         {stockCheck.equipo && (

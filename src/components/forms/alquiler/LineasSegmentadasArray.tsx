@@ -494,9 +494,9 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                 </div>
 
                 {/* Body de Card */}
-                <div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-start gap-3">
+                <div className="flex flex-col gap-3">
                   {/* Sección Equipo */}
-                  <div className="flex-1 min-w-[280px] flex flex-col gap-1">
+                  <div className="w-full flex flex-col gap-1">
                     <div className="flex items-center justify-between">
                        <label htmlFor={`eq-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Equipo Requerido *</label>
                        {stockCheck.equipo && (
