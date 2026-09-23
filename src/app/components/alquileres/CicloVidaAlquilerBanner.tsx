@@ -23,8 +23,10 @@ export function CicloVidaAlquilerBanner() {
 
   useEffect(() => {
     setMounted(true);
+    // Only collapse if user explicitly collapsed it before (default: expanded)
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(STORAGE_KEY);
+      // Default is expanded (false). Only collapse if explicitly saved as 'true'.
       if (saved === 'true') {
         setIsCollapsed(true);
       }
@@ -87,7 +89,7 @@ export function CicloVidaAlquilerBanner() {
   if (!mounted) return null;
 
   return (
-    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl shadow-sm border border-slate-700/60 overflow-hidden transition-all duration-300">
+    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl shadow-sm border border-slate-700/60 transition-all duration-300">
       {/* Header del Banner */}
       <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3 border-b border-slate-700/50 bg-white/[0.02]">
         <div className="flex items-center gap-2.5">
@@ -139,34 +141,42 @@ export function CicloVidaAlquilerBanner() {
       </div>
 
       {/* Contenido de las 4 Fases (Colapsable) */}
-      {!isCollapsed && (
+      <div
+        className={`transition-all duration-300 ${
+          isCollapsed
+            ? 'max-h-0 overflow-hidden opacity-0'
+            : 'max-h-[600px] overflow-visible opacity-100'
+        }`}
+      >
         <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-900/40">
           {pasos.map((paso, idx) => {
             const Icon = paso.icono;
             return (
-              <div 
+              <div
                 key={paso.numero}
-                className={`bg-slate-800/80 border border-slate-700/80 rounded-xl p-3.5 flex flex-col justify-between transition-all ${paso.bordeHover} relative group`}
+                className={`bg-slate-800/80 border border-slate-700/80 rounded-xl p-3.5 flex flex-col gap-2.5 h-auto transition-colors ${paso.bordeHover} relative group`}
               >
-                <div className="flex items-center justify-between mb-2">
+                {/* Cabecera: número + título + icono */}
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-xs font-black text-white">
+                    <span className="w-6 h-6 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-xs font-black text-white shrink-0">
                       {paso.numero}
                     </span>
                     <span className="text-xs font-black text-white">
                       {paso.titulo}
                     </span>
                   </div>
-                  <div className={`p-1.5 rounded-lg ${paso.iconBg}`}>
+                  <div className={`p-1.5 rounded-lg shrink-0 ${paso.iconBg}`}>
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                 </div>
 
-                <div className="mb-2">
-                  <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border mb-1.5 ${paso.badgeColor}`}>
+                {/* Badge + descripción — sin truncamiento, altura auto */}
+                <div className="flex flex-col gap-1">
+                  <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border self-start whitespace-normal ${paso.badgeColor}`}>
                     {paso.subtitulo}
                   </span>
-                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                  <p className="text-[11px] text-slate-300 leading-relaxed whitespace-normal break-words">
                     {paso.descripcion}
                   </p>
                 </div>
@@ -180,7 +190,7 @@ export function CicloVidaAlquilerBanner() {
             );
           })}
         </div>
-      )}
+      </div>
     </div>
   );
 }

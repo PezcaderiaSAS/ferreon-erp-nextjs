@@ -140,7 +140,7 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
 
         {/* Filas de equipos con scroll optimizado */}
         <div className="flex flex-col">
-          <div className="space-y-3 max-h-[600px] sm:max-h-[640px] overflow-y-auto overflow-x-hidden pr-1 pb-32" id="items-scroll-area">
+          <div className="space-y-3 max-h-[480px] overflow-y-auto overflow-x-hidden pb-4 pr-1" id="items-scroll-area">
             {items.map((field, index) => {
               const start = new Date(field.fechaInicio);
               const end = new Date(field.fechaFinEstimada);
