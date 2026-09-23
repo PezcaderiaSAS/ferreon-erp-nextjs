@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, AlertTriangle, CheckCircle, Package } from 'lucide-react';
 import { NeuStepper } from '../ui/neumorphism/NeuStepper';

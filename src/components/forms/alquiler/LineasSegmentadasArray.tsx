@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Trash2, Calendar, AlertTriangle, Loader2, CheckCircle2, Split } from 'lucide-react';
+import { Plus, Trash2, Calendar, AlertTriangle, Loader2, CheckCircle2, Split, Wrench } from 'lucide-react';
 import { crearAlquilerSegmentadoAction, ActionStandardResponse } from '@/app/actions/alquiler-segmentado';
 import { ModalResolucionOverbooking, OverbookingConflictInfo } from './ModalResolucionOverbooking';
+import { EquipoCombobox } from '../../ui/EquipoCombobox';
+import { formatearMonedaConLetras } from '../../../core/utils/numero-a-letras';
 
 export interface FormLineaItem {
   clientId: string;
@@ -32,6 +34,7 @@ export interface LineasSegmentadasArrayProps {
   detallesLogistica?: string;
   onSuccess?: (data: any) => void;
   onLineasChange?: (lineas: FormLineaItem[]) => void;
+  setIsCreandoEquipo?: (val: boolean) => void;
 }
 
 export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
@@ -46,6 +49,7 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
   detallesLogistica,
   onSuccess,
   onLineasChange,
+  setIsCreandoEquipo,
 }) => {
   const hoy = new Date().toISOString().split('T')[0];
 
@@ -71,6 +75,8 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [conflictoOverbooking, setConflictoOverbooking] = useState<OverbookingConflictInfo | null>(null);
   const [isModalOverbookingOpen, setIsModalOverbookingOpen] = useState(false);
+  const [openComboboxRowId, setOpenComboboxRowId] = useState<string | null>(null);
+  const [autoFocusRowId, setAutoFocusRowId] = useState<string | null>(null);
 
   // Recalcular diferencia en días naturales
   const calcularDias = (inicio: string, fin: string): number => {
@@ -100,6 +106,7 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
       if (onLineasChange) onLineasChange(next);
       return next;
     });
+    setAutoFocusRowId(nuevaLinea.clientId);
     setErrorServidor(null);
     setLineaConErrorIndex(null);
   };
@@ -410,60 +417,153 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
 
       {/* Tabla Dinámica de Líneas Segmentadas */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-900 text-white uppercase text-[10px] tracking-wider">
-              <tr>
-                <th className="p-2.5 w-8">#</th>
-                <th className="p-2.5 w-1/4">Equipo / Maquinaria</th>
-                <th className="p-2.5 w-16 text-center">Cant.</th>
-                <th className="p-2.5">Desde</th>
-                <th className="p-2.5">Hasta</th>
-                <th className="p-2.5 w-12 text-center">Días</th>
-                <th className="p-2.5 w-28 text-right">Tarifa/Día</th>
-                <th className="p-2.5 w-32 text-right">Subtotal</th>
-                <th className="p-2.5 w-16 text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {lineas.map((linea, idx) => {
-                const isError = lineaConErrorIndex === idx;
-                return (
-                  <tr
-                    key={linea.clientId}
-                    className={`transition-colors ${
-                      isError
-                        ? 'bg-rose-50/80 border-2 border-rose-500'
-                        : linea.esSubcontratado
-                        ? 'bg-sky-50/50'
-                        : 'hover:bg-slate-50'
-                    }`}
-                  >
-                    <td className="p-2.5 font-bold text-slate-500">{idx + 1}</td>
-                    <td className="p-2.5">
-                      <div className="space-y-1">
-                        <select
-                          value={linea.itemId}
-                          onChange={(e) => handleEquipoSelect(idx, e.target.value)}
-                          className="w-full p-1.5 border border-slate-200 rounded bg-white text-xs font-medium focus:ring-1 focus:ring-slate-900"
-                          required
-                        >
-                          <option value="">Seleccione equipo...</option>
-                          {catalogoEquipos.map((eq) => (
-                            <option key={eq.id} value={eq.id}>
-                              {eq.nombre} (Stock actual: {eq.stock_disponible})
-                            </option>
-                          ))}
-                        </select>
-                        {linea.esSubcontratado && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded">
-                            <Split className="w-3 h-3" /> Subcontratado (Re-Rent)
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-between items-center bg-white p-3 border border-slate-200/90 rounded-xl shadow-sm mb-1">
+             <div className="flex items-center gap-2">
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                  <Wrench className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Maquinaria y Equipos Solicitados</span>
+                </h3>
+             </div>
+             <div className="text-right">
+                <span className="text-xs text-slate-500 mr-2">Subtotal Total:</span>
+                <span className="text-sm font-bold font-mono text-slate-900">
+                  ${subtotalTotal.toLocaleString('es-CO')}
+                </span>
+             </div>
+          </div>
+
+          {lineas.map((linea, idx) => {
+            const isError = lineaConErrorIndex === idx;
+            const isComboboxOpen = openComboboxRowId === linea.clientId;
+            
+            // Dummy logic for stock verification in standalone component since we don't have the parent's full logic.
+            // Ideally this would be passed down, but for now we map directly from the selected equipment in catalogoEquipos
+            const eqSelected = catalogoEquipos.find((e) => String(e.id) === String(linea.itemId));
+            const stockCheck = {
+               disponible: eqSelected?.stock_disponible ?? 0,
+               equipo: eqSelected ?? null,
+            };
+
+            return (
+              <div 
+                key={linea.clientId}
+                className={`p-3 sm:p-3.5 rounded-2xl border transition-all flex flex-col gap-2.5 relative ${
+                  isError 
+                    ? 'border-rose-500 bg-rose-50/80' 
+                    : isComboboxOpen 
+                      ? 'bg-white border-slate-400 shadow-xl ring-2 ring-slate-400/20' 
+                      : linea.esSubcontratado 
+                        ? 'bg-sky-50/50 border-sky-200' 
+                        : 'bg-white border-slate-200/90 hover:border-slate-300'
+                }`}
+                style={{ zIndex: isComboboxOpen ? 100 : Math.max(1, 40 - idx) }}
+              >
+                {/* Header de Card */}
+                <div className="flex justify-between items-center mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold bg-slate-900 text-white px-1.5 py-0.5 rounded-sm">
+                      #{idx + 1}
+                    </span>
+                    {linea.esSubcontratado && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded">
+                        <Split className="w-3 h-3" /> Subcontratado (Re-Rent)
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      title="Dividir o continuar tramo temporal siguiente"
+                      disabled={!linea.itemId}
+                      onClick={() => handleContinuarTramo(idx)}
+                      className="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-md disabled:opacity-20 transition-colors"
+                    >
+                      <Split className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Eliminar línea"
+                      disabled={lineas.length <= 1}
+                      onClick={() => handleEliminarLinea(idx)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md disabled:opacity-20 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Body de Card */}
+                <div className="flex flex-col md:flex-row items-stretch md:items-start gap-3">
+                  {/* Sección Equipo */}
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                       <label htmlFor={`eq-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Equipo Requerido *</label>
+                       {stockCheck.equipo && (
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold truncate ${
+                            stockCheck.disponible > 0 
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                              : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}>
+                            Stock propio: {stockCheck.disponible}
                           </span>
-                        )}
+                       )}
+                    </div>
+                    <EquipoCombobox
+                      equipos={catalogoEquipos}
+                      value={linea.itemId}
+                      placeholder="Seleccione equipo..."
+                      autoFocus={autoFocusRowId === linea.clientId}
+                      onCrearNuevo={() => setIsCreandoEquipo?.(true)}
+                      onOpenChange={(isOpen) => {
+                        setOpenComboboxRowId(isOpen ? linea.clientId : null);
+                      }}
+                      onChange={(eqId, equipo) => {
+                        if (equipo) {
+                           handleEquipoSelect(idx, String(equipo.id));
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Sección Fechas */}
+                  <div className="flex flex-row gap-2 w-full md:w-auto min-w-0">
+                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                      <label htmlFor={`ini-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Desde</label>
+                      <div className="relative">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          id={`ini-${linea.clientId}`}
+                          type="date"
+                          value={linea.fechaInicio}
+                          onChange={(e) => handleFechaChange(idx, 'fechaInicio', e.target.value)}
+                          className="pl-8 pr-2.5 py-2 w-full bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 outline-none"
+                          required
+                        />
                       </div>
-                    </td>
-                    <td className="p-2.5 text-center">
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                      <label htmlFor={`fin-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Hasta</label>
+                      <div className="relative">
+                         <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          id={`fin-${linea.clientId}`}
+                          type="date"
+                          value={linea.fechaFinEstimada}
+                          onChange={(e) => handleFechaChange(idx, 'fechaFinEstimada', e.target.value)}
+                          className="pl-8 pr-2.5 py-2 w-full bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 outline-none"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sección Numérica */}
+                  <div className="flex flex-row flex-wrap gap-2 w-full md:w-auto">
+                    <div className="w-16 flex flex-col gap-1">
+                      <label htmlFor={`cant-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Cant.</label>
                       <input
+                        id={`cant-${linea.clientId}`}
                         type="number"
                         min="1"
                         value={linea.cantidad}
@@ -475,96 +575,68 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
                             )
                           );
                         }}
-                        className="w-14 p-1.5 border border-slate-200 rounded text-center font-mono text-xs"
+                        className="px-2.5 py-2 w-full bg-white border border-slate-300 rounded-xl text-xs text-center text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 outline-none font-mono"
                         required
                       />
-                    </td>
-                    <td className="p-2.5">
-                      <input
-                        type="date"
-                        value={linea.fechaInicio}
-                        onChange={(e) => handleFechaChange(idx, 'fechaInicio', e.target.value)}
-                        className="p-1 border border-slate-200 rounded text-xs w-full"
-                        required
-                      />
-                    </td>
-                    <td className="p-2.5">
-                      <input
-                        type="date"
-                        value={linea.fechaFinEstimada}
-                        onChange={(e) => handleFechaChange(idx, 'fechaFinEstimada', e.target.value)}
-                        className="p-1 border border-slate-200 rounded text-xs w-full"
-                        required
-                      />
-                    </td>
-                    <td className="p-2.5 text-center font-mono font-bold text-slate-700">{linea.dias}</td>
-                    <td className="p-2.5 text-right">
-                      <input
+                    </div>
+                    
+                    <div className="w-28 flex flex-col gap-1">
+                       <label htmlFor={`tarifa-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Tarifa / Día</label>
+                       <input
+                        id={`tarifa-${linea.clientId}`}
                         type="number"
                         min="0"
                         value={linea.tarifaDiaria}
                         onChange={(e) => handleTarifaManualChange(idx, parseFloat(e.target.value) || 0)}
-                        className={`w-full p-1.5 text-right font-mono text-xs border rounded ${
-                          linea.tarifaPersonalizada ? 'border-sky-500 bg-sky-50 font-bold' : 'border-slate-200'
+                        className={`px-2.5 py-2 w-full border rounded-xl text-xs text-right focus:ring-2 outline-none font-mono font-semibold tabular-nums ${
+                          linea.tarifaPersonalizada 
+                            ? 'border-sky-500 bg-sky-50 text-sky-900 focus:ring-sky-500/20' 
+                            : 'border-slate-300 bg-white text-slate-900 focus:ring-slate-900/20 focus:border-slate-900'
                         }`}
                       />
-                    </td>
-                    <td className="p-2.5 text-right">
-                      <input
+                    </div>
+
+                    <div className="flex-1 min-w-[120px] flex flex-col gap-1">
+                       <label htmlFor={`sub-${linea.clientId}`} className="text-[11px] font-bold text-slate-700">Subtotal</label>
+                       <input
+                        id={`sub-${linea.clientId}`}
                         type="number"
                         min="0"
                         value={linea.subtotal}
                         onChange={(e) => handleSubtotalManualChange(idx, parseFloat(e.target.value) || 0)}
-                        className={`w-full p-1.5 text-right font-mono text-xs font-bold border rounded ${
+                        className={`px-2.5 py-2 w-full border rounded-xl text-xs text-right focus:ring-2 outline-none font-mono font-bold tabular-nums ${
                           linea.subtotalPersonalizado
-                            ? 'border-amber-500 bg-amber-50 text-amber-900'
-                            : 'border-slate-200 text-slate-900'
+                            ? 'border-amber-500 bg-amber-50 text-amber-900 focus:ring-amber-500/20'
+                            : 'border-slate-300 bg-white text-slate-900 focus:ring-slate-900/20 focus:border-slate-900'
                         }`}
                       />
-                    </td>
-                    <td className="p-2.5 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          type="button"
-                          title="Dividir o continuar tramo temporal siguiente"
-                          disabled={!linea.itemId}
-                          onClick={() => handleContinuarTramo(idx)}
-                          className="p-1 text-slate-400 hover:text-sky-600 disabled:opacity-20 transition-colors"
-                        >
-                          <Split className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          title="Eliminar línea"
-                          disabled={lineas.length <= 1}
-                          onClick={() => handleEliminarLinea(idx)}
-                          className="p-1 text-slate-400 hover:text-rose-600 disabled:opacity-20 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {/* Barra de Acciones del Formulario */}
-          <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Texto de cálculo */}
+                <div className="mt-1 border-t border-slate-100/50 pt-2 flex flex-col md:flex-row md:items-center justify-between gap-2">
+                   <p className="text-[11px] text-slate-500 font-mono">
+                      ${linea.tarifaDiaria.toLocaleString('es-CO')} × {linea.cantidad} unid. × {linea.dias} día(s) = <span className="font-semibold text-slate-700 capitalize">{formatearMonedaConLetras(linea.subtotal)}</span>
+                   </p>
+                   {isError && conflictoOverbooking && conflictoOverbooking.lineaIndex === idx && (
+                      <p className="text-[11px] font-bold text-rose-600 animate-pulse">
+                         ¡Stock insuficiente para cubrir este rango de fechas!
+                      </p>
+                   )}
+                </div>
+              </div>
+            );
+          })}
+          
+          <div className="flex justify-start pt-2">
             <button
               type="button"
               onClick={handleAgregarLinea}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 rounded shadow-sm hover:bg-slate-100 text-slate-700 transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-white border border-slate-300 rounded-xl shadow-sm hover:bg-slate-50 text-slate-700 transition-colors focus:ring-2 focus:ring-slate-900/20 outline-none"
             >
-              <Plus className="w-3.5 h-3.5" /> Agregar Línea de Alquiler
+              <Plus className="w-4 h-4" /> Agregar Línea de Alquiler
             </button>
-            <div className="text-right">
-              <span className="text-xs text-slate-500 mr-2">Total Equipos:</span>
-              <span className="text-sm font-bold font-mono text-slate-900">
-                ${subtotalTotal.toLocaleString('es-CO')}
-              </span>
-            </div>
           </div>
         </div>
 

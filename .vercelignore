@@ -1,0 +1,10 @@
+.git/
+node_modules/
+tests/
+docs/
+agency-agents/
+.system_generated/
+/supabase/
+playwright-report/
+test-results/
+coverage/
