@@ -1,18 +1,10 @@
-{
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
-  },
-  "eslint.validate": [
-    "javascript",
-    "typescript",
-    "typescriptreact"
-  ],
-  "errorLens.enabledDiagnosticLevels": ["error", "warning", "info"],
-  "errorLens.followCursor": "allLines",
-  "livePreview.portNumber": 3001,
-  "livePreview.defaultPreviewPath": "/",
-  "gitlens.codeLens.enabled": true,
-  "gitlens.hovers.currentLine.enabled": true
+﻿{
+    "peacock.affectTitleBar":  true,
+    "peacock.color":  "#00f0ff",
+    "peacock.affectActivityBar":  true,
+    "peacock.affectStatusBar":  true,
+    "files.readonlyFromRepositories":  {
+                                           "**/package-lock.json":  true,
+                                           "**/pnpm-lock.yaml":  true
+                                       }
 }
