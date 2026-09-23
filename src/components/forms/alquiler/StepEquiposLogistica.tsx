@@ -333,7 +333,6 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                       )}
                     </div>
                   </div>
-                </div>
 
                   {/* ALERTA DE STOCK Y TOGGLE DE SUBCONTRATACIÓN (RE-RENTING) */}
                   {field.itemId && stockCheck.stockInsuficiente && !field.esSubcontratado && (
