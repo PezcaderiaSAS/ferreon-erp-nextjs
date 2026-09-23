@@ -11,6 +11,7 @@ export type TemaColorCorporativo = 'salmon-pastel' | 'cyber-cyan' | 'monochrome'
 
 export interface EmpresaConfig {
   razonSocial: string;
+  nombre?: string;
   nit: string;
   telefono: string;
   email: string;

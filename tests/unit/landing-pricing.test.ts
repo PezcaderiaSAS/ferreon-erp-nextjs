@@ -49,3 +49,49 @@ describe('Landing Page Pricing & Currency Consistency', () => {
     expect(formattedPro).not.toContain(',00');
   });
 });
+
+describe('Landing Page ERP Modules & Navigation Consistency', () => {
+  const { erpModules, navigation } = LANDING_CONFIG;
+
+  it('debe incluir el enlace al nuevo explorador de módulos en la navegación', () => {
+    const modulesLink = navigation.links.find(l => l.href === '#modules');
+    expect(modulesLink).toBeDefined();
+    expect(modulesLink?.label).toBe('Módulos ERP');
+  });
+
+  it('debe contener exactamente 4 categorías de módulos', () => {
+    expect(erpModules.categories).toHaveLength(4);
+    const categoryIds = erpModules.categories.map(c => c.id);
+    expect(categoryIds).toEqual([
+      'operacion',
+      'bodega_compras',
+      'logistica_facturacion',
+      'tesoreria_admin'
+    ]);
+  });
+
+  it('debe totalizar exactamente 8 módulos operativos', () => {
+    const allModules = erpModules.categories.flatMap(c => c.modules);
+    expect(allModules).toHaveLength(8);
+    const moduleIds = allModules.map(m => m.id);
+    expect(moduleIds).toEqual([
+      'alquileres',
+      'devoluciones',
+      'bodega',
+      'compras',
+      'subcontrataciones',
+      'facturacion',
+      'caja',
+      'ultraadmin'
+    ]);
+  });
+
+  it('todos los módulos deben enlazar a rutas válidas del ERP con RLS y prefijo "/"', () => {
+    const allModules = erpModules.categories.flatMap(c => c.modules);
+    allModules.forEach(mod => {
+      expect(mod.route.startsWith('/')).toBe(true);
+      expect(mod.kpis.length).toBeGreaterThanOrEqual(3);
+      expect(mod.highlights.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+});

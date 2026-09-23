@@ -36,8 +36,8 @@ vi.mock('../src/infrastructure/persistence/supabase/server', () => ({
         getUser: async () => ({ data: { user: { email: 'admin@ferreon.com', id: 'usr-1' } } })
       },
       rpc: async (fn: string, params: any) => {
-        if (fn === 'crear_alquiler_transaccional') {
-          return { data: { id: 1, consecutivo: 101, ...params.p_payload }, error: null };
+        if (fn === 'crear_alquiler_transaccional' || fn === 'alquiler_despachar_items_v1') {
+          return { data: { id: 1, consecutivo: 101, subtotal_equipos: 200, ...params?.p_payload }, error: null };
         }
         return { data: { success: true }, error: null };
       },

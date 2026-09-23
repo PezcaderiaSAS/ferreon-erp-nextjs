@@ -40,7 +40,8 @@ export type AuditActionType =
   | "RETORNO_A_PROVEEDOR"
   | "LIQUIDAR_SUBCONTRATACION"
   | "RECEPCION_MERCANCIA"
-  | "ABONO_PROVEEDOR";
+  | "ABONO_PROVEEDOR"
+  | "LIBERAR_MANTENIMIENTO";
 
 export type AuditModuloType =
   | "SEGURIDAD"

@@ -128,6 +128,11 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
             setFleteRecogida={form.setFleteRecogida}
             formatearCOP={form.formatearCOP}
             formErrors={form.formErrors}
+            segmentarItemRow={form.segmentarItemRow}
+            conflictoOverbooking={form.conflictoOverbooking}
+            isModalOverbookingOpen={form.isModalOverbookingOpen}
+            setIsModalOverbookingOpen={form.setIsModalOverbookingOpen}
+            resolverConflictoOverbooking={form.resolverConflictoOverbooking}
           />
         )}
 

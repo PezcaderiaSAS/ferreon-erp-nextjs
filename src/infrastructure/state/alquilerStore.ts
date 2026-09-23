@@ -346,14 +346,14 @@ export const useAlquilerStore = create<AlquilerStore>()(
     {
       name: 'alquiler-storage',
       partialize: (state) => ({ 
-        alquileres: state.alquileres.filter(a => typeof a.id === 'number' || !String(a.id).startsWith('temp_')), 
+        // Desacoplado: Las colecciones de negocio residen en el servidor/DB, no en localStorage
         idempotencyKeys: state.idempotencyKeys 
       }),
       merge: (persistedState: any, currentState) => {
-        if (persistedState?.alquileres) {
-          persistedState.alquileres = persistedState.alquileres.filter((a: any) => typeof a.id === 'number' || !String(a.id).startsWith('temp_'));
-        }
-        return { ...currentState, ...persistedState };
+        return { 
+          ...currentState, 
+          idempotencyKeys: persistedState?.idempotencyKeys || []
+        };
       }
     } as any
   )

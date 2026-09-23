@@ -523,3 +523,5 @@ export const InspeccionTecnicaModal: React.FC<InspeccionTecnicaModalProps> = ({
     </>
   );
 };
+
+export default InspeccionTecnicaModal;

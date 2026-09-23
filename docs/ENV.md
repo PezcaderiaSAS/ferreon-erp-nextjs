@@ -1,25 +1,25 @@
 <!-- AUTO-GENERATED: Environment Documentation from .env.example -->
-# Environment Variables Reference
+# Referencia de Variables de Entorno - Alquileres System
 
-Las siguientes variables son necesarias para levantar el entorno de FerreOn ERP localmente o en producción (Vercel).
+Las siguientes variables son requeridas para ejecutar **Alquileres System** en desarrollo local o en producción (Vercel / Supabase).
 
-| Variable | Requerido | Descripción | Ejemplo |
-|----------|:---------:|-------------|---------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Sí | URL Pública del proyecto en Supabase (API endpoint). | `https://tu-proyecto.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sí | Clave anónima pública JWT de Supabase (Frontend). | `eyJhbGciOiJIUz...` |
-| `SUPABASE_SECRET_KEY` | Sí | Clave de servidor para nuevo SDK `@supabase/server`. NUNCA exponer al cliente. | `sb_secret_...` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Sí | Clave service_role para omitir RLS en acciones administrativas de UltraAdmin y auditoría transversal. | `eyJhbGciOiJIUz...` |
-| `DATABASE_URL` | Sí | Cadena de conexión PostgreSQL para Prisma ORM (Connection Pooling pgbouncer). | `postgresql://postgres.[REF]:[PASS]@...:6543/postgres?pgbouncer=true` |
-| `UPSTASH_REDIS_REST_URL` | Sí | URL REST API de Upstash Redis (Serverless Cache, Rate Limit e invalidación atómica forzada de sesiones en <1s). | `https://tu-endpoint.upstash.io` |
-| `UPSTASH_REDIS_REST_TOKEN` | Sí | Token REST de autenticación Upstash Redis. | `tu-token-seguro-upstash` |
-| `CRON_SECRET` | No | Token secreto para proteger invocaciones de Cron Jobs en Vercel. | `token_secreto_cron_...` |
-| `STRIPE_SECRET_KEY` | No | Llave privada de Stripe para suscripciones SaaS. | `sk_test_...` |
-| `NEXT_PUBLIC_APP_URL` | Sí | URL base de la aplicación para redirecciones y callbacks. | `http://localhost:3000` |
-| `NODE_ENV` | Sí | Entorno de ejecución (`development` o `production`). | `development` |
+| Variable | Requerido | Descripción | Ejemplo / Formato |
+|----------|:---------:|-------------|-------------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Sí | URL Pública del proyecto en Supabase (API endpoint HTTPS). | `https://tu-proyecto.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sí | Clave anónima pública JWT de Supabase para acceso seguro desde el navegador. | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Sí | Clave service_role con bypass de RLS exclusivo para acciones administrativas UltraAdmin. NUNCA exponer al cliente. | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
+| `DATABASE_URL` | Sí | Cadena de conexión PostgreSQL con connection pooling (pgbouncer) para Prisma ORM. | `postgresql://postgres.[REF]:[PASS]@aws-0-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true` |
+| `UPSTASH_REDIS_REST_URL` | Sí | Endpoint REST API de Upstash Redis para caché distribuida e invalidación forzada de sesiones en <1s. | `https://tu-endpoint.upstash.io` |
+| `UPSTASH_REDIS_REST_TOKEN` | Sí | Token de autenticación REST para Upstash Redis. | `tu-token-seguro-upstash` |
+| `CRON_SECRET` | No | Token secreto tipo Bearer para autorizar la ejecución de Cron Jobs automáticos (ej. `/api/cron/check-licenses`). | `token_secreto_para_proteger_endpoints_de_cron` |
+| `STRIPE_SECRET_KEY` | No | Llave secreta de Stripe para facturación SaaS de suscripciones por empresa. | `sk_test_...` |
+| `NEXT_PUBLIC_APP_URL` | Sí | URL canónica base de la aplicación para redirecciones OAuth y callbacks. | `http://localhost:3000` o `https://alquileres-system.com` |
+| `NODE_ENV` | Sí | Entorno de ejecución (`development`, `test` o `production`). | `development` |
 
-## Notas de Seguridad y Gobernanza
-- **Separación de Privilegios:** `SUPABASE_SERVICE_ROLE_KEY` solo debe usarse en Server Actions protegidas por el guard `is_ultra_admin()` (`src/app/actions/ultraadmin.ts`), garantizando que solo el rol `SUPER_ADMIN` pueda ejecutar consultas o mutaciones transversales entre empresas.
-- **Revocación Atómica en Redis:** `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN` son indispensables para la revocación instantánea de sesiones (`session:user:{id}`) cuando un UltraAdmin desactiva un usuario o degrada sus permisos, impidiendo accesos no autorizados con tokens JWT en caché.
-- Las variables que comienzan con `NEXT_PUBLIC_` se incrustan en el bundle compilado de JavaScript del navegador. Nunca almacenes secretos, llaves maestras de API ni contraseñas bajo este prefijo.
-- En despliegues en Vercel, asegúrate de configurar las variables tanto para el entorno `Preview` como para `Production`.
-<!-- END AUTO-GENERATED -->
+<!-- AUTO-GENERATED END -->
+
+## Directrices de Seguridad y Gobernanza de Secretos
+- **Protección de Credenciales de Servidor:** `SUPABASE_SERVICE_ROLE_KEY` solo debe consumirse en Server Actions (`src/app/actions/ultraadmin.ts`) protegidas por la verificación estricta `is_ultra_admin()`. Prohibido referenciar esta variable en componentes que tengan la directiva `'use client'`.
+- **Aislamiento de Sesiones en Redis:** `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN` permiten la revocación atómica e inmediata de sesiones (`session:user:{id}`) cuando un administrador suspende una cuenta, evitando que tokens JWT vigentes mantengan acceso no autorizado.
+- **Prefijo `NEXT_PUBLIC_`:** Todo identificador con el prefijo `NEXT_PUBLIC_` se incrusta en el paquete cliente compilado por Webpack/Turbopack. Nunca almacenes claves privadas, credenciales de base de datos ni tokens de API de terceros bajo este prefijo.
+- **Configuración en CI/CD y Vercel:** Al desplegar en Vercel, asegúrate de suministrar todas las variables requeridas en los entornos `Production`, `Preview` y `Development`.

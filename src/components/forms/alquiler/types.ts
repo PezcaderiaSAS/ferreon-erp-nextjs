@@ -28,6 +28,12 @@ export const alquilerSchema = z.object({
     precioDiario: z.number().min(0, 'El precio no puede ser negativo'),
     fechaInicio: z.string().min(1, 'Fecha inicio requerida'),
     fechaFinEstimada: z.string().min(1, 'Fecha fin estimada requerida'),
+    // Segmentación y Concurrencia Temporal
+    lineaNumero: z.number().int().min(1).optional(),
+    dias: z.number().int().min(1).optional(),
+    subtotal: z.number().min(0).optional(),
+    subtotalPersonalizado: z.boolean().default(false),
+    tarifaPersonalizada: z.boolean().default(false),
     // Soporte para Subcontratación de Maquinaria (Re-Renting)
     esSubcontratado: z.boolean().default(false),
     proveedorAliadoNombre: z.string().optional(),
@@ -46,6 +52,12 @@ export interface ItemRow {
   precioDiario: number;
   fechaInicio: string;
   fechaFinEstimada: string;
+  // Segmentación y Concurrencia Temporal
+  lineaNumero?: number;
+  dias?: number;
+  subtotal?: number;
+  subtotalPersonalizado?: boolean;
+  tarifaPersonalizada?: boolean;
   // Subcontratación
   esSubcontratado?: boolean;
   proveedorAliadoNombre?: string;

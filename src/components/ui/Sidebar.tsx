@@ -23,7 +23,7 @@ interface SidebarLinkItem {
 }
 
 const SIDEBAR_LINKS: SidebarLinkItem[] = [
-  { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/alquileres', icon: CalendarDays, label: 'Alquileres & Cotizaciones', modulo: 'ALQUILERES' },
   { href: '/bodega', icon: Package, label: 'Bodega', modulo: 'BODEGA' },
   { href: '/compras', icon: ShoppingBag, label: 'Compras', modulo: 'COMPRAS' },

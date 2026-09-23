@@ -169,6 +169,9 @@ const getStyles = (pageSize: 'LETTER' | 'A5', tokens: ThemeTokens) => {
     tableRowZebra: {
       backgroundColor: colors.bgZebra,
     },
+    tableRowCorrupt: {
+      backgroundColor: '#fee2e2',
+    },
     colItem: { width: '30%' },
     colCant: { width: '8%', textAlign: 'center' },
     colInicio: { width: '13%', textAlign: 'center' },
@@ -179,6 +182,11 @@ const getStyles = (pageSize: 'LETTER' | 'A5', tokens: ThemeTokens) => {
     cellText: {
       fontSize: isA5 ? 6.8 : 7.8,
       color: colors.textDark,
+    },
+    cellDanger: {
+      fontSize: isA5 ? 6.8 : 7.8,
+      color: '#b91c1c',
+      fontWeight: 'bold',
     },
     cellBold: {
       fontWeight: 'bold',
@@ -284,6 +292,141 @@ const getStyles = (pageSize: 'LETTER' | 'A5', tokens: ThemeTokens) => {
   });
 };
 
+export interface LineaAlquilerPDFProcesada {
+  lineaNumero: number;
+  idOriginal: string;
+  rawTimeInicio: number;
+  equipoId?: string | number;
+  nombre: string;
+  codigo: string;
+  cantidad: number;
+  fechaInicio: string;
+  fechaFin: string;
+  fechaInicioRaw: string;
+  fechaFinRaw: string;
+  dias: number;
+  tarifaDiaria: number;
+  tarifaPersonalizada: boolean;
+  subtotal: number;
+  subtotalPersonalizado: boolean;
+  esSubcontratado: boolean;
+  isCorrupt: boolean;
+  errorMessage?: string;
+}
+
+/**
+ * Sanitiza, normaliza y ordena cronológicamente las líneas de un contrato de alquiler.
+ * Implementa aislamiento defensivo por fila (try-catch) para evitar caídas en el motor PDF.
+ * Criterio de ordenamiento: 1) fecha_inicio ASC, 2) nombre/equipo ASC, 3) linea_numero ASC.
+ */
+export function sanitizarYOrdenarLineas(
+  rawDetalles: any[], 
+  fechaDocFallback: string = new Date().toISOString()
+): LineaAlquilerPDFProcesada[] {
+  const lista = Array.isArray(rawDetalles) ? rawDetalles : [];
+
+  return lista.map((item: any, idx: number): LineaAlquilerPDFProcesada => {
+    const lineaIdx = Number(item.lineaNumero || item.linea_numero || (idx + 1));
+    const idRef = String(item.id || item.itemId || item.equipo_id || `row_${idx}`);
+
+    try {
+      const fInicio = item.fecha_inicio || item.fechaInicio || fechaDocFallback;
+      const fFin = item.fecha_fin_estimada || item.fechaFinEstimada || item.fecha_fin || item.fechaFin || fInicio;
+      
+      const dias = item.dias && Number(item.dias) > 0 
+        ? Number(item.dias) 
+        : (item.dias_contratados && Number(item.dias_contratados) > 0 
+          ? Number(item.dias_contratados) 
+          : calcularDiasEntreFechas(fInicio, fFin));
+          
+      const cantidad = Number(item.cantidad || 1);
+      const tarifa = Number(
+        item.tarifa_aplicada ?? 
+        item.tarifaAplicada ?? 
+        item.valor_unitario ?? 
+        item.tarifaDiaria ?? 
+        item.precioDiario ?? 
+        item.equipos?.tarifa_diaria ?? 
+        item.equipo?.tarifa_diaria ?? 
+        0
+      );
+      
+      const subtotalLinea = (item.subtotal !== undefined && Number(item.subtotal) > 0)
+        ? Number(item.subtotal)
+        : ((item.subtotal_linea !== undefined && Number(item.subtotal_linea) > 0)
+          ? Number(item.subtotal_linea)
+          : ((item.subtotalLineaEstimado !== undefined && Number(item.subtotalLineaEstimado) > 0)
+            ? Number(item.subtotalLineaEstimado)
+            : cantidad * tarifa * dias));
+
+      const nombreBase = item.equipos?.nombre || item.equipo?.nombre || item.nombreItem || item.nombre || 'Equipo de Construcción';
+      const codigoDisplay = item.equipos?.codigo || item.equipo?.codigo || item.codigo || item.sku || '';
+      const esSub = Boolean(item.es_subcontratado || item.esSubcontratado);
+      const nombreFinal = `${nombreBase}${codigoDisplay ? ` (${codigoDisplay})` : ''}${esSub ? ' [Re-Rent]' : ''}`;
+      
+      const timeParsed = new Date(fInicio).getTime();
+      const rawTimeInicio = isNaN(timeParsed) ? 0 : timeParsed;
+      const equipoId = item.equipo_id || item.equipoId || item.itemId || '';
+
+      return {
+        lineaNumero: lineaIdx,
+        idOriginal: idRef,
+        rawTimeInicio,
+        equipoId,
+        nombre: nombreFinal,
+        codigo: String(codigoDisplay),
+        cantidad,
+        fechaInicio: formatearFechaLocal(fInicio),
+        fechaFin: formatearFechaLocal(fFin),
+        fechaInicioRaw: String(fInicio),
+        fechaFinRaw: String(fFin),
+        dias,
+        tarifaDiaria: tarifa,
+        tarifaPersonalizada: Boolean(item.tarifaPersonalizada || item.tarifa_personalizada),
+        subtotal: subtotalLinea,
+        subtotalPersonalizado: Boolean(item.subtotalPersonalizado || item.subtotal_personalizado),
+        esSubcontratado: esSub,
+        isCorrupt: false,
+      };
+    } catch (err: any) {
+      console.error(`[PDF_ENGINE_WARN] Error procesando línea #${lineaIdx} (ID: ${idRef}): ${err.message}. Path: ContratoAlquilerPDF.tsx:sanitizarYOrdenarLineas`);
+      return {
+        lineaNumero: lineaIdx,
+        idOriginal: idRef,
+        rawTimeInicio: 0,
+        equipoId: '',
+        nombre: `[INCONSISTENCIA EN LÍNEA #${lineaIdx}]`,
+        codigo: '',
+        cantidad: 0,
+        fechaInicio: 'N/A',
+        fechaFin: 'N/A',
+        fechaInicioRaw: '',
+        fechaFinRaw: '',
+        dias: 0,
+        tarifaDiaria: 0,
+        tarifaPersonalizada: false,
+        subtotal: 0,
+        subtotalPersonalizado: false,
+        esSubcontratado: false,
+        isCorrupt: true,
+        errorMessage: err?.message || 'Error de parseo en fila',
+      };
+    }
+  }).sort((a, b) => {
+    // 1) Orden cronológico por fecha de inicio ASC
+    if (a.rawTimeInicio !== b.rawTimeInicio) {
+      return a.rawTimeInicio - b.rawTimeInicio;
+    }
+    // 2) Nombre del equipo ASC
+    const cmpNombre = a.nombre.localeCompare(b.nombre);
+    if (cmpNombre !== 0) {
+      return cmpNombre;
+    }
+    // 3) Desempate por número de línea ASC
+    return a.lineaNumero - b.lineaNumero;
+  });
+}
+
 interface ContratoAlquilerPDFProps {
   data: any;
   pageSize?: 'LETTER' | 'A5';
@@ -307,7 +450,6 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
     config.logoBase64.length > 50
   );
 
-
   const formatearCOP = (valor: number) => {
     return new Intl.NumberFormat('es-CO', { 
       style: 'currency', 
@@ -327,45 +469,14 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
   const rawTel = data.clienteTelefono || data.telefono || data.contacto || rawCliente?.telefono;
   const clienteTelefono = (rawTel && rawTel !== 'No registrado' && rawTel !== 'No especificado') ? rawTel : (rawTel || 'No registrado');
 
-  // Procesamiento y cálculo matemático dinámico de ítems tolerante
+  // Procesamiento y ordenamiento cronológico tolerante con aislamiento defensivo por línea
   const rawDetalles = (data.detalles && data.detalles.length > 0) 
     ? data.detalles 
     : ((data.alquiler_detalles && data.alquiler_detalles.length > 0) 
       ? data.alquiler_detalles 
       : (data.items || []));
 
-  const detallesProcesados = rawDetalles.map((item: any) => {
-    const fInicio = item.fecha_inicio || item.fechaInicio || fechaDoc;
-    const fFin = item.fecha_fin_estimada || item.fechaFinEstimada || item.fecha_fin || item.fechaFin || fInicio;
-    
-    const dias = item.dias && Number(item.dias) > 0 
-      ? Number(item.dias) 
-      : (item.dias_contratados && Number(item.dias_contratados) > 0 
-        ? Number(item.dias_contratados) 
-        : calcularDiasEntreFechas(fInicio, fFin));
-    const cantidad = Number(item.cantidad || 1);
-    const tarifa = Number(item.tarifa_aplicada ?? item.tarifaAplicada ?? item.valor_unitario ?? item.tarifaDiaria ?? item.precioDiario ?? item.equipos?.tarifa_diaria ?? item.equipo?.tarifa_diaria ?? 0);
-    const subtotalLinea = (item.subtotal !== undefined && Number(item.subtotal) > 0)
-      ? Number(item.subtotal)
-      : ((item.subtotal_linea !== undefined && Number(item.subtotal_linea) > 0)
-        ? Number(item.subtotal_linea)
-        : ((item.subtotalLineaEstimado !== undefined && Number(item.subtotalLineaEstimado) > 0)
-          ? Number(item.subtotalLineaEstimado)
-          : cantidad * tarifa * dias));
-
-    const nombreDisplay = item.equipos?.nombre || item.equipo?.nombre || item.nombreItem || item.nombre || 'Equipo de Construcción';
-    const codigoDisplay = item.equipos?.codigo || item.equipo?.codigo || item.codigo || item.sku || '';
-
-    return {
-      nombre: codigoDisplay ? `${nombreDisplay} (${codigoDisplay})` : nombreDisplay,
-      cantidad,
-      fechaInicio: formatearFechaLocal(fInicio),
-      fechaFin: formatearFechaLocal(fFin),
-      dias,
-      tarifaDiaria: tarifa,
-      subtotal: subtotalLinea,
-    };
-  });
+  const detallesProcesados = sanitizarYOrdenarLineas(rawDetalles, fechaDoc);
 
   const subtotalEquipos = Number(data.subtotal_equipos || data.subtotalEquipos || data.subtotalEquiposEstimado || detallesProcesados.reduce((acc: number, it: any) => acc + it.subtotal, 0));
   const fleteEntrega = Number(data.flete_entrega ?? data.fleteEntrega ?? (data as any).valor_transporte ?? (data as any).valorTransporte ?? (data as any).costoEnvio ?? 0);
@@ -465,17 +576,39 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
           </View>
 
           {detallesProcesados.map((item: any, index: number) => (
-            <View wrap={false} key={index} style={[styles.tableRow, index % 2 === 1 ? styles.tableRowZebra : {}]}>
-              <View style={styles.colItem}><Text style={styles.cellText}>{item.nombre}</Text></View>
+            <View wrap={false} key={item.idOriginal || index} style={[
+              styles.tableRow, 
+              index % 2 === 1 ? styles.tableRowZebra : {},
+              item.isCorrupt ? styles.tableRowCorrupt : {}
+            ]}>
+              <View style={styles.colItem}>
+                <Text style={item.isCorrupt ? styles.cellDanger : styles.cellText}>
+                  {item.lineaNumero ? `${item.lineaNumero}. ` : ''}{item.nombre}
+                </Text>
+              </View>
               <View style={styles.colCant}><Text style={[styles.cellText, styles.cellBold]}>{item.cantidad}</Text></View>
               <View style={styles.colInicio}><Text style={styles.cellText}>{item.fechaInicio}</Text></View>
               <View style={styles.colFin}><Text style={styles.cellText}>{item.fechaFin}</Text></View>
               <View style={styles.colDias}><Text style={[styles.cellText, styles.cellBold]}>{item.dias}</Text></View>
-              <View style={styles.colTarifa}><Text style={styles.cellText}>{formatearCOP(item.tarifaDiaria)}</Text></View>
-              <View style={styles.colSubtotal}><Text style={[styles.cellText, styles.cellBold]}>{formatearCOP(item.subtotal)}</Text></View>
+              <View style={styles.colTarifa}>
+                <Text style={styles.cellText}>
+                  {formatearCOP(item.tarifaDiaria)}{item.tarifaPersonalizada ? '*' : ''}
+                </Text>
+              </View>
+              <View style={styles.colSubtotal}>
+                <Text style={[styles.cellText, styles.cellBold]}>
+                  {formatearCOP(item.subtotal)}{item.subtotalPersonalizado ? '*' : ''}
+                </Text>
+              </View>
             </View>
           ))}
         </View>
+
+        {detallesProcesados.some(it => it.tarifaPersonalizada || it.subtotalPersonalizado) && (
+          <Text style={[styles.metaText, { fontSize: pageSize === 'A5' ? 5.5 : 6.5, marginTop: -4, marginBottom: 8, fontStyle: 'italic', color: '#475569' }]}>
+            * Tarifa o subtotal personalizado pactado por tramo temporal especial según condiciones del contrato.
+          </Text>
+        )}
 
         {/* RESUMEN FINANCIERO Y VALOR EN LETRAS */}
         <View style={styles.totalsWrapper} wrap={false}>

@@ -259,3 +259,5 @@ export const ComprobanteDevolucionPDFModal: React.FC<ComprobanteDevolucionPDFMod
     </div>
   );
 };
+
+export default ComprobanteDevolucionPDFModal;

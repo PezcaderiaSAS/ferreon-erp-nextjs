@@ -1,45 +1,39 @@
-<!-- Generated: 2026-09-17 | Files scanned: ~12 | Token estimate: ~550 -->
-# Dependencies Architecture
+<!-- Generated: 2026-09-22 | Files scanned: ~15 | Token estimate: ~620 -->
+# Alquileres System - Arquitectura de Dependencias
 
-## Core Framework
-- **Next.js 14 (v14.2.5)**: Server Actions, App Router, SSR, React Server Components. Compilación limpia 23/23 rutas.
-- **React 18**: UI Library, Client Components & Hooks (`useId`, `useRef`, `useMemo`, `useCallback`, `useState`, `useEffect`).
-- **TailwindCSS**: Utility-first styling y Glassmorphism según tokens de `DESIGN.md`.
+## Core Framework & Runtime
+- **Next.js 14 (v14.2.5)**: App Router, Server Actions, Server Components (RSC) y Streaming Hydration. Compilación limpia de 24 rutas estáticas y dinámicas.
+- **React 18 (v18.3.1)**: Biblioteca UI, hooks de concurrencia y memoización (`useCallback`, `useMemo`, `useId`).
+- **TailwindCSS (v3.4.9)**: Utilidades de estilo y componentes Glassmorphism según el sistema de diseño corporativo.
 
-## ORM & Database BaaS
-- **Supabase**: Base de datos (PostgreSQL), Auth, Storage y RLS.
-  - `@supabase/ssr`: Manejo de auth y cookies seguras en Server Components y Server Actions.
-  - `@supabase/supabase-js`: Cliente genérico para mutaciones y suscripciones WebSockets (`wss://*.supabase.co`).
-  - RPCs con soporte de deduplicación atómica (`crear_alquiler_transaccional`), tablas de gobernanza (`empresas`, `usuarios`, `roles`, `audit_logs`) e índices únicos condicionales.
-- **Prisma (v7.10.0)**: Generación de tipos y cliente de datos (`@prisma/client`).
+## Base de Datos & BaaS
+- **Supabase BaaS (PostgreSQL 15)**:
+  - `@supabase/ssr (v0.4.1)`: Manejo seguro de autenticación basada en cookies HttpOnly para Next.js App Router.
+  - `@supabase/supabase-js (v2.112.4)`: Cliente JavaScript para RPCs transaccionales y mutaciones con RLS.
+  - `@supabase/server (v1.4.1)`: Cliente de servidor seguro para operaciones en Server Actions y API Routes.
+- **Prisma ORM (v7.10.0)**: Generación de tipos y cliente de datos (`@prisma/client`).
 
-## State Management
-- **Zustand (v5.0.15)**: Manejo de estado local en cliente con persistencia en `localStorage`, transiciones optimistas y rollback ante errores (`alquilerStore`, `bodegaStore`, `cajaStore`, `clienteStore`, `empresaStore`, `toastStore`, `ledgerStore`).
+## Estado y Caché Distribuida
+- **Zustand (v5.0.15)**: Gestión de estado global y de módulo en cliente con persistencia (`localStorage`), soporte para transiciones optimistas y reconciliación atómica.
+- **Upstash Redis (@upstash/redis v1.34.0)**: Caché serverless con invalidación atómica por tenant:
+  - Claves de datos: `cache:compras:${tenantId}`, `cache:proveedores:${tenantId}`, `cache:equipos:${tenantId}`, `cache:cotizaciones:${tenantId}`.
+  - Gobernanza de licencias: `cache:tenant:${tenantId}:modulos`.
+  - Sesiones y revocación forzada: `session:user:${userId}` (<1s tras suspensión por UltraAdmin).
 
-## Distributed Caching & Performance
-- **Upstash Redis**: Caché distribuida serverless con claves por tenant y control de sesiones:
-  - `cache:compras:${tenantId}`
-  - `cache:proveedores:${tenantId}`
-  - `cache:equipos:${tenantId}`
-  - `cache:cotizaciones:${tenantId}`
-  - `cache:tenant:${tenantId}:modulos`: Caché de módulos habilitados por empresa.
-  - `session:user:${userId}`: Hash de sesión activa para invalidación atómica instantánea (<1s) ante revocación de acceso o cambio de rol por UltraAdmin.
-  - Invalidadas atómicamente tras cada mutación.
+## Motores de Emisión de Documentos y PDF
+- **Dual PDF Architecture**:
+  1. `@react-pdf/renderer (v3.4.5)`: Generación vectorial en cliente para contratos de alquiler con control estricto de fuentes y márgenes.
+  2. Modales de Impresión Nativos HTML / CSS (`@media print`): Comprobantes de Pago Mixto (POS 80mm y Carta), Actas de Devolución con firma, Órdenes de Compra, Cotizaciones y Comprobantes de Arqueo.
 
-## Integrations & Services
-- **Motor de Idempotencia & Poka-Yoke**: Validación dual-layer con esquemas Zod (`idempotency_key`), overlays visuales bloqueantes (`AlquilerBlockingOverlay.tsx`, `DevolucionBlockingOverlay.tsx`), supresión de teclado (`Enter`/`Escape`) y deshabilitación síncrona de botones en cliente.
-- **Servicios Puros de Dominio, Contabilidad & Gobernanza**:
-  - `licencias-modulos.service.ts`: Cálculo determinístico de días restantes de licencia, estado operativo (`ACTIVA`, `POR_VENCER`, `VENCIDA`), resolución de módulos por plan y feature flags dinámicos.
-  - `cotizacion-tributaria.service.ts`: Liquidación tributaria completa de cotizaciones (IVA 19%, Retefuente 2.5%, ReteICA 9.66‰) y fletes de obra.
-  - `pago-mixto.service.ts`: Validación multilínea de recaudos, imputación de saldo a favor y balance en partida doble ($\sum D + \sum C = 0$).
-  - `arqueo-caja.service.ts`: Conteo ciego por denominaciones de billetes/monedas colombianas, justificación obligatoria y asiento contable de descuadre en Ledger.
-  - `liquidacion-devolucion.service.ts`: Cálculo de split-line, deducción de daños/pérdidas y balance neto de garantías.
-  - `liquidacion-subcontratacion.service.ts`: Cómputo a dos tiempos con aliados, retenciones DIAN (ReteFuente 2.5%, ReteICA 9.66‰) y partida doble balanceada en Ledger.
-  - `calculo-compras-tributario.ts`: Liquidación tributaria de compras e inventario.
-- **Dual PDF Engines**:
-  1. `@react-pdf/renderer` (v3.4.5): Generación vectorial en cliente para contratos de alquiler.
-  2. `EnterprisePDFService` / Modales HTML (`ReciboCajaMixtoPDFModal.tsx`, `ComprobanteDevolucionPDFModal.tsx`, `OrdenSubcontratacionPDFModal.tsx`, `VisorDocumentoPDFModal.tsx`, `ComprobanteEntradaPDFModal.tsx`, `ComprobanteArqueoModal.tsx`): Emisión de Recibos Oficiales de Caja (Térmica POS 80mm y Carta), Actas de Devolución, Órdenes de Subcontratación, Facturas Comerciales, Cotizaciones de Obra, Órdenes de Compra y Comprobantes de Arqueo.
-- **Zod (v3.23.8)**: Validación de esquemas y tipos estáticos de payloads (Security-First) en rutas API y Server Actions (`ultraadmin.ts`, etc.).
-- **Stripe (v16.8.0)**: Pagos recurrentes y facturación multi-tenant (`js.stripe.com`).
-- **Lucide React (v0.428.0)**: Biblioteca de iconos SVG ligeros para UI/UX de alta fidelidad.
-- **Content-Security-Policy (CSP 3)**: Cabecera perimetral HTTP generada dinámicamente, optimizada para Next.js streaming hydration y Apple iOS WebKit.
+## Validación, Seguridad y Utilidades
+- **Zod (v3.23.8)**: Esquemas de validación estricta y tipado en tiempo de compilación/ejecución (Security-First) para formularios y Server Actions.
+- **Lucide React (v0.428.0)**: Iconografía vectorial para la Landing Page y el ERP.
+- **Date-fns (v3.6.0)**: Manipulación de fechas complementaria a las utilidades canónicas de `fechas.ts`.
+- **Recharts (v3.10.1)**: Visualización de métricas y gráficas financieras en dashboards.
+- **Stripe (v16.8.0)**: Facturación de suscripciones SaaS para empresas clientes.
+
+## Calidad, Testing y Diagnóstico
+- **Vitest (v2.0.5)**: Suite de pruebas unitarias y de integración. Cobertura: 53 suites de prueba, 272 tests pasando (100% verde).
+- **Playwright (@playwright/test v1.46.0)**: Pruebas End-to-End en navegadores Chromium, Firefox y WebKit.
+- **React Doctor (v0.9.14)**: Auditoría de buenas prácticas y rendimiento de componentes React.
+- **TypeScript (v5.5.4)**: Verificación estricta de tipos sin emisiones (`tsc --noEmit`).

@@ -6,11 +6,25 @@ import { redis } from '@/lib/redis';
 import { z } from 'zod';
 import { validateActionInput } from '@/lib/security/validation';
 import { AuditLogger } from '@/lib/security/audit-logger';
-import { 
-  calcularLiquidacionCompra, 
-  generarAsientosContablesCompra,
-  AccountsLedgerCompraMap 
-} from '@/core/services/calculo-compras-tributario';
+import {
+  ComprasTransaccionalService,
+  ItemCompraParam,
+} from '@/core/services/compras-transaccional.service';
+
+/**
+ * Revalidación segura compatible con Server Actions y tests unitarios
+ */
+function safeRevalidatePath(path: string) {
+  try {
+    revalidatePath(path);
+  } catch {
+    // Ignorado en entorno de pruebas unitarias sin RequestStore de Next.js
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Interfaces y DTOs de Entrada
+// ----------------------------------------------------------------------------
 
 export interface ItemCompraInput {
   equipoId: number | string;
@@ -45,40 +59,6 @@ export interface RecibirMercanciaInput {
   observacionesBodega?: string;
   idempotencyKey?: string;
 }
-
-const ItemCompraZodSchema = z.object({
-  equipoId: z.union([z.string(), z.number()]),
-  cantidad: z.coerce.number().int().min(1, 'La cantidad debe ser al menos 1 unidad'),
-  precioUnitario: z.coerce.number().min(0, 'El precio unitario no puede ser negativo'),
-}).passthrough();
-
-const CrearCompraZodSchema = z.object({
-  numeroOrden: z.string().optional().nullable(),
-  proveedorId: z.string().optional().nullable(),
-  proveedorNombre: z.string().min(2, 'El nombre del proveedor es obligatorio'),
-  proveedorNit: z.string().optional().nullable(),
-  proveedorTelefono: z.string().optional().nullable(),
-  proveedorEmail: z.string().email('Email de proveedor inválido').optional().nullable().or(z.literal('')),
-  fechaCompra: z.string().optional().nullable(),
-  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'CREDITO']),
-  modoIngreso: z.enum(['INMEDIATO', 'ORDEN_RECEPCION']).optional().default('INMEDIATO'),
-  remisionProveedor: z.string().optional().nullable(),
-  fleteTotal: z.coerce.number().min(0).optional().default(0),
-  observaciones: z.string().optional().nullable(),
-  aplicaIva: z.boolean().optional().default(false),
-  aplicaRetefuente: z.boolean().optional().default(false),
-  porcentajeRetefuente: z.coerce.number().min(0).optional().default(0),
-  aplicaReteica: z.boolean().optional().default(false),
-  porcentajeReteica: z.coerce.number().min(0).optional().default(0),
-  items: z.array(ItemCompraZodSchema).min(1, 'Debe incluir al menos un equipo en la compra'),
-}).passthrough();
-
-const RecibirMercanciaZodSchema = z.object({
-  compraId: z.string().uuid('ID de compra inválido'),
-  remisionFactura: z.string().optional().nullable(),
-  observacionesBodega: z.string().optional().nullable(),
-  idempotencyKey: z.string().optional().nullable(),
-}).passthrough();
 
 export interface CompraDetalleUI {
   id: string;
@@ -122,10 +102,50 @@ export interface CompraUI {
   detalles?: CompraDetalleUI[];
 }
 
+// ----------------------------------------------------------------------------
+// Esquemas de Validación Zod
+// ----------------------------------------------------------------------------
+
+const ItemCompraZodSchema = z.object({
+  equipoId: z.union([z.string(), z.number()]),
+  cantidad: z.coerce.number().int().min(1, 'La cantidad debe ser al menos 1 unidad'),
+  precioUnitario: z.coerce.number().min(0, 'El precio unitario no puede ser negativo'),
+}).passthrough();
+
+const CrearCompraZodSchema = z.object({
+  numeroOrden: z.string().optional().nullable(),
+  proveedorId: z.string().optional().nullable(),
+  proveedorNombre: z.string().min(2, 'El nombre del proveedor es obligatorio'),
+  proveedorNit: z.string().optional().nullable(),
+  proveedorTelefono: z.string().optional().nullable(),
+  proveedorEmail: z.string().email('Email inválido').optional().nullable().or(z.literal('')),
+  fechaCompra: z.string().optional().nullable(),
+  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'CREDITO']),
+  modoIngreso: z.enum(['INMEDIATO', 'ORDEN_RECEPCION']).optional().default('INMEDIATO'),
+  remisionProveedor: z.string().optional().nullable(),
+  fleteTotal: z.coerce.number().min(0).optional().default(0),
+  observaciones: z.string().optional().nullable(),
+  aplicaIva: z.boolean().optional().default(false),
+  aplicaRetefuente: z.boolean().optional().default(false),
+  porcentajeRetefuente: z.coerce.number().min(0).optional().default(0),
+  aplicaReteica: z.boolean().optional().default(false),
+  porcentajeReteica: z.coerce.number().min(0).optional().default(0),
+  items: z.array(ItemCompraZodSchema).min(1, 'Debe incluir al menos un equipo en la compra'),
+}).passthrough();
+
+const RecibirMercanciaZodSchema = z.object({
+  compraId: z.string().uuid('ID de compra inválido'),
+  remisionFactura: z.string().optional().nullable(),
+  observacionesBodega: z.string().optional().nullable(),
+  idempotencyKey: z.string().optional().nullable(),
+}).passthrough();
+
+// ----------------------------------------------------------------------------
+// Server Actions Delgadas
+// ----------------------------------------------------------------------------
+
 /**
- * Server Action para registrar compras de maquinaria/equipos,
- * sumarlos al stock disponible, emitir Kardex (INGRESO_COMPRA)
- * y asentar la partida doble rigurosa en el Ledger contable.
+ * Server Action: Registro de Compras de Maquinaria y Sincronización WMS
  */
 export async function crearCompraAction(input: CrearCompraInput) {
   try {
@@ -138,35 +158,9 @@ export async function crearCompraAction(input: CrearCompraInput) {
     const supabaseAuth = await createServerSupabaseClient();
     const { data: { user } } = await supabaseAuth.auth.getUser();
     const userId = user?.id;
+    const userEmail = user?.email;
 
     const supabaseAdmin = createAdminSupabaseClient();
-
-    // 1. Calcular liquidación tributaria exacta
-    const itemsParaCalculo = cleanInput.items.map(it => ({
-      equipoId: it.equipoId,
-      cantidad: it.cantidad,
-      precioUnitario: it.precioUnitario
-    }));
-
-    const liquidacion = calcularLiquidacionCompra(itemsParaCalculo, {
-      aplicaIva: cleanInput.aplicaIva ?? false,
-      aplicaRetefuente: cleanInput.aplicaRetefuente ?? false,
-      porcentajeRetefuente: cleanInput.porcentajeRetefuente ?? 0,
-      aplicaReteica: cleanInput.aplicaReteica ?? false,
-      porcentajeReteica: cleanInput.porcentajeReteica ?? 0
-    });
-
-    const subtotal = liquidacion.subtotal;
-    const impuestos = liquidacion.valorIva;
-    const total = liquidacion.totalFactura;
-    const netoPagar = liquidacion.netoPagar;
-
-    // Generar número de orden si no fue proveído
-    const fechaStr = cleanInput.fechaCompra || new Date().toISOString().split('T')[0];
-    const sufijoAleatorio = Math.floor(1000 + Math.random() * 9000);
-    const numeroOrden = cleanInput.numeroOrden?.trim() || `OC-${fechaStr.replace(/-/g, '')}-${sufijoAleatorio}`;
-
-    // Obtener tenant del usuario
     let tenantId: string | null = null;
     if (userId) {
       const { data: empUser } = await supabaseAdmin
@@ -178,311 +172,82 @@ export async function crearCompraAction(input: CrearCompraInput) {
       tenantId = empUser?.empresa_id || null;
     }
 
-    // 2. Registrar asiento contable en Ledger (Partida Doble)
-    let transactionId: string | null = null;
-    try {
-      const { data: accounts } = await supabaseAdmin
-        .from('financial_accounts')
-        .select('id, name, type, is_cash_equivalent');
+    // Delegación al servicio de dominio puro
+    const result = await ComprasTransaccionalService.registrarCompra(supabaseAdmin, {
+      ...cleanInput,
+      proveedorNombre: String(cleanInput.proveedorNombre || ''),
+      metodoPago: cleanInput.metodoPago,
+      items: cleanInput.items as ItemCompraParam[],
+      tenantId,
+      userId,
+      userEmail,
+    });
 
-      // Buscar o crear cuenta de Activo Maquinaria
-      let cuentaActivoMaquinaria = accounts?.find(a => a.name === 'Equipos y Maquinaria' || a.name === 'Equipos (Activo Fijo)');
-      if (!cuentaActivoMaquinaria) {
-        const { data: nc } = await supabaseAdmin
-          .from('financial_accounts')
-          .insert([{ name: 'Equipos y Maquinaria', type: 'ASSET', is_cash_equivalent: false, description: 'Activo fijo en maquinaria' }])
-          .select().single();
-        cuentaActivoMaquinaria = nc;
-      }
-
-      // Buscar o crear cuenta de IVA Descontable
-      let cuentaIva = accounts?.find(a => a.name === 'IVA Descontable en Compras');
-      if (!cuentaIva && liquidacion.valorIva > 0) {
-        const { data: nc } = await supabaseAdmin
-          .from('financial_accounts')
-          .insert([{ name: 'IVA Descontable en Compras', type: 'ASSET', is_cash_equivalent: false, description: 'IVA descontable compras' }])
-          .select().single();
-        cuentaIva = nc;
-      }
-
-      // Buscar o crear cuenta de ReteFuente
-      let cuentaRetefuente = accounts?.find(a => a.name === 'ReteFuente por Pagar (Compras)');
-      if (!cuentaRetefuente && liquidacion.valorRetefuente > 0) {
-        const { data: nc } = await supabaseAdmin
-          .from('financial_accounts')
-          .insert([{ name: 'ReteFuente por Pagar (Compras)', type: 'LIABILITY', is_cash_equivalent: false, description: 'Retención compras' }])
-          .select().single();
-        cuentaRetefuente = nc;
-      }
-
-      // Buscar o crear cuenta de ReteICA
-      let cuentaReteica = accounts?.find(a => a.name === 'ReteICA por Pagar (Compras)');
-      if (!cuentaReteica && liquidacion.valorReteica > 0) {
-        const { data: nc } = await supabaseAdmin
-          .from('financial_accounts')
-          .insert([{ name: 'ReteICA por Pagar (Compras)', type: 'LIABILITY', is_cash_equivalent: false, description: 'ReteICA compras' }])
-          .select().single();
-        cuentaReteica = nc;
-      }
-
-      // Cuenta Contrapartida (Caja, Banco o CxP Proveedores)
-      let cuentaContrapartida: any = null;
-      if (cleanInput.metodoPago === 'EFECTIVO') {
-        cuentaContrapartida = accounts?.find(a => a.name === 'Caja Principal') || accounts?.find(a => a.is_cash_equivalent);
-        if (!cuentaContrapartida) {
-          const { data: nc } = await supabaseAdmin
-            .from('financial_accounts')
-            .insert([{ name: 'Caja Principal', type: 'ASSET', is_cash_equivalent: true, description: 'Caja general' }])
-            .select().single();
-          cuentaContrapartida = nc;
-        }
-      } else if (cleanInput.metodoPago === 'TRANSFERENCIA') {
-        cuentaContrapartida = accounts?.find(a => a.name === 'Bancolombia Ahorros' || a.name === 'Nequi') || accounts?.find(a => a.is_cash_equivalent);
-        if (!cuentaContrapartida) {
-          const { data: nc } = await supabaseAdmin
-            .from('financial_accounts')
-            .insert([{ name: 'Bancolombia Ahorros', type: 'ASSET', is_cash_equivalent: true, description: 'Cuenta bancaria' }])
-            .select().single();
-          cuentaContrapartida = nc;
-        }
-      } else {
-        // CREDITO -> Cuentas por Pagar (Proveedores)
-        cuentaContrapartida = accounts?.find(a => a.name === 'Cuentas por Pagar (Proveedores)' || a.type === 'LIABILITY');
-        if (!cuentaContrapartida) {
-          const { data: nc } = await supabaseAdmin
-            .from('financial_accounts')
-            .insert([{ name: 'Cuentas por Pagar (Proveedores)', type: 'LIABILITY', is_cash_equivalent: false, description: 'Cuentas por pagar' }])
-            .select().single();
-          cuentaContrapartida = nc;
-        }
-      }
-
-      if (cuentaActivoMaquinaria && cuentaContrapartida && total > 0) {
-        const idempotencyKey = `compra_${numeroOrden}_${Date.now()}`;
-        
-        const { data: txn, error: txnError } = await supabaseAdmin
-          .from('transactions')
-          .insert([{
-            description: `Compra de Equipos - ${numeroOrden} (Prov: ${cleanInput.proveedorNombre})`,
-            reference_id: numeroOrden,
-            created_by: userId,
-            idempotency_key: idempotencyKey,
-            timestamp: new Date().toISOString()
-          }])
-          .select('id')
-          .single();
-
-        if (txn && !txnError) {
-          transactionId = txn.id;
-
-          const ledgerMap: AccountsLedgerCompraMap = {
-            cuentaActivoMaquinariaId: cuentaActivoMaquinaria.id,
-            cuentaIvaDescontableId: cuentaIva?.id,
-            cuentaRetefuentePasivoId: cuentaRetefuente?.id,
-            cuentaReteicaPasivoId: cuentaReteica?.id,
-            cuentaContrapartidaId: cuentaContrapartida.id
-          };
-
-          const asientos = generarAsientosContablesCompra(txn.id, liquidacion, ledgerMap);
-          if (asientos.length > 0) {
-            await supabaseAdmin.from('journal_entries').insert(asientos);
-          }
-        }
-      }
-    } catch (contableErr) {
-      console.warn('[Compras] No se pudo asentar en el Ledger contable (prosiguiendo con inventario):', contableErr);
+    if (!result.success || !result.data) {
+      return { success: false, error: result.error || 'Error al procesar la compra' };
     }
 
-    const modoIngreso = cleanInput.modoIngreso || 'INMEDIATO';
-    const estadoInicial = modoIngreso === 'ORDEN_RECEPCION' ? 'PENDIENTE_RECEPCION' : 'COMPLETADA';
+    const { compraId, numeroOrden, total, netoPagar, estado, transactionId, nuevaCompraObjeto } = result.data;
 
-    // 3. Registrar Compra en tabla `compras`
-    const compraId: string = crypto.randomUUID();
-    const nuevaCompraObjeto: CompraUI = {
-      id: compraId,
-      numero_orden: numeroOrden,
-      proveedor_id: cleanInput.proveedorId,
-      proveedor_nombre: cleanInput.proveedorNombre.trim(),
-      proveedor_nit: cleanInput.proveedorNit?.trim(),
-      proveedor_telefono: cleanInput.proveedorTelefono?.trim(),
-      proveedor_email: cleanInput.proveedorEmail?.trim(),
-      fecha_compra: fechaStr,
-      metodo_pago: cleanInput.metodoPago,
-      subtotal: subtotal,
-      impuestos: impuestos,
-      total: total,
-      aplica_iva: cleanInput.aplicaIva ?? false,
-      valor_iva: liquidacion.valorIva,
-      aplica_retefuente: cleanInput.aplicaRetefuente ?? false,
-      porcentaje_retefuente: cleanInput.porcentajeRetefuente ?? 0,
-      valor_retefuente: liquidacion.valorRetefuente,
-      aplica_reteica: cleanInput.aplicaReteica ?? false,
-      porcentaje_reteica: cleanInput.porcentajeReteica ?? 0,
-      valor_reteica: liquidacion.valorReteica,
-      neto_pagar: netoPagar,
-      estado: estadoInicial,
-      observaciones: cleanInput.observaciones?.trim(),
-      remision_factura_proveedor: cleanInput.remisionProveedor?.trim() || undefined,
-      transaction_id: transactionId || undefined,
-      created_at: new Date().toISOString(),
-      detalles: []
-    };
-
-    // Intentar inserción en base de datos
-    let guardadoEnDb = false;
-    try {
-      const { data: compraData, error: compraError } = await supabaseAdmin
-        .from('compras')
-        .insert([{
-          id: compraId,
-          tenant_id: tenantId,
-          numero_orden: numeroOrden,
-          proveedor_id: cleanInput.proveedorId || null,
-          proveedor_nombre: cleanInput.proveedorNombre.trim(),
-          proveedor_nit: cleanInput.proveedorNit?.trim() || null,
-          proveedor_telefono: cleanInput.proveedorTelefono?.trim() || null,
-          proveedor_email: cleanInput.proveedorEmail?.trim() || null,
-          fecha_compra: fechaStr,
-          metodo_pago: cleanInput.metodoPago,
-          subtotal: subtotal,
-          impuestos: impuestos,
-          total: total,
-          aplica_iva: cleanInput.aplicaIva ?? false,
-          valor_iva: liquidacion.valorIva,
-          aplica_retefuente: cleanInput.aplicaRetefuente ?? false,
-          porcentaje_retefuente: cleanInput.porcentajeRetefuente ?? 0,
-          valor_retefuente: liquidacion.valorRetefuente,
-          aplica_reteica: cleanInput.aplicaReteica ?? false,
-          porcentaje_reteica: cleanInput.porcentajeReteica ?? 0,
-          valor_reteica: liquidacion.valorReteica,
-          neto_pagar: netoPagar,
-          estado: 'PENDIENTE_RECEPCION', // Se inserta pendiente y el RPC la pasa a COMPLETADA si es inmediato
-          observaciones: cleanInput.observaciones?.trim() || null,
-          remision_factura_proveedor: cleanInput.remisionProveedor?.trim() || null,
-          transaction_id: transactionId,
-          usuario_id: userId
-        }])
-        .select('id')
-        .single();
-
-      if (!compraError && compraData) {
-        guardadoEnDb = true;
-      }
-    } catch (dbErr) {
-      console.warn('[Compras] Fallback de persistencia para compras:', dbErr);
-    }
-
-    // 4. Insertar detalles de la compra
-    for (const item of cleanInput.items) {
-      const numericEquipoId = typeof item.equipoId === 'string' ? parseInt(item.equipoId, 10) : item.equipoId;
-      const itemSubtotal = item.cantidad * item.precioUnitario;
-
-      nuevaCompraObjeto.detalles?.push({
-        id: crypto.randomUUID(),
-        equipo_id: numericEquipoId,
-        cantidad: item.cantidad,
-        precio_unitario: item.precioUnitario,
-        subtotal: itemSubtotal
-      });
-
-      if (guardadoEnDb) {
-        try {
-          await supabaseAdmin.from('compras_detalles').insert([{
-            compra_id: compraId,
-            equipo_id: numericEquipoId,
-            cantidad: item.cantidad,
-            precio_unitario: item.precioUnitario,
-            subtotal: itemSubtotal
-          }]);
-        } catch {}
-      }
-    }
-
-    // 5. Si el modo es INMEDIATO, invocar el RPC transaccional pesimista para liquidar stock, PMP y CXP
-    if (modoIngreso === 'INMEDIATO' && guardadoEnDb) {
-      try {
-        const { data: rpcRes, error: rpcErr } = await supabaseAdmin.rpc(
-          'recibir_compra_y_actualizar_pmp_transaccional',
-          {
-            p_compra_id: compraId,
-            p_usuario_id: userId,
-            p_remision_factura: cleanInput.remisionProveedor || null,
-            p_observaciones_bodega: cleanInput.observaciones || 'Entrada Inmediata de Mostrador'
-          }
-        );
-
-        if (rpcErr) {
-          console.warn('[Compras] RPC transaccional notice:', rpcErr);
-        } else {
-          nuevaCompraObjeto.estado = 'COMPLETADA';
-        }
-      } catch (rpcEx) {
-        console.warn('[Compras] Excepción al ejecutar RPC de recepción:', rpcEx);
-      }
-    }
-
-    // Guardar en Redis para persistencia y lectura optimizada
+    // Actualizar caché Redis
     const cacheKeyCompras = `compras:${tenantId || 'global'}`;
     if (redis) {
       try {
         const cachedRaw = await redis.get<string>(cacheKeyCompras);
-        const lista: CompraUI[] = cachedRaw 
+        const lista: CompraUI[] = cachedRaw
           ? (typeof cachedRaw === 'string' ? JSON.parse(cachedRaw) : cachedRaw)
           : [];
         lista.unshift(nuevaCompraObjeto);
         await redis.set(cacheKeyCompras, JSON.stringify(lista.slice(0, 100)), { ex: 86400 });
         await redis.del('cache:equipos');
       } catch (redisErr) {
-        console.warn('Error invalidando redis cache:', redisErr);
+        console.warn('[crearCompraAction] Error actualizando Redis:', redisErr);
       }
     }
 
-    // 6. Auditoría
+    // Auditoría Inmutable
     AuditLogger.logAsync({
       modulo: 'BODEGA',
       accion: 'REGISTRAR_COMPRA',
-      descripcion: `Compra registrada: ${numeroOrden} por valor de $${total.toLocaleString('es-CO')} (Modo: ${modoIngreso})`,
+      descripcion: `Compra registrada: ${numeroOrden} por valor de $${total.toLocaleString('es-CO')} (Modo: ${cleanInput.modoIngreso})`,
       entidadId: compraId,
       detalles: {
         numeroOrden,
         proveedor: cleanInput.proveedorNombre,
         metodoPago: cleanInput.metodoPago,
-        modoIngreso,
+        modoIngreso: cleanInput.modoIngreso,
         total,
         netoPagar,
         transactionId,
-        guardadoEnDb
       },
-      userId: userId,
-      userEmail: user?.email
+      userId,
+      userEmail,
     });
 
-    revalidatePath('/compras');
-    revalidatePath('/bodega');
-    revalidatePath('/facturacion');
-    revalidatePath('/');
+    safeRevalidatePath('/compras');
+    safeRevalidatePath('/bodega');
+    safeRevalidatePath('/facturacion');
+    safeRevalidatePath('/');
 
-    return { 
-      success: true, 
-      data: { 
-        compraId, 
-        numeroOrden, 
-        total, 
+    return {
+      success: true,
+      data: {
+        compraId,
+        numeroOrden,
+        total,
         netoPagar,
-        estado: nuevaCompraObjeto.estado,
-        transactionId 
-      } 
+        estado,
+        transactionId,
+      },
     };
-
   } catch (error: any) {
-    console.error('[Compras Server Action Exception]:', error);
+    console.error('[crearCompraAction Exception]:', error);
     return { success: false, error: error.message || 'Error inesperado al registrar compra' };
   }
 }
 
 /**
- * Server Action para confirmar la recepción física de mercancía en bodega
- * utilizando el procedimiento almacenado con bloqueo pesimista y cálculo de PMP.
+ * Server Action: Confirmar Recepción Física de Mercancía en Bodega
  */
 export async function recibirMercanciaEnBodegaAction(input: RecibirMercanciaInput): Promise<{
   success: boolean;
@@ -502,19 +267,16 @@ export async function recibirMercanciaEnBodegaAction(input: RecibirMercanciaInpu
 
     const supabaseAdmin = createAdminSupabaseClient();
 
-    const { data: rpcRes, error: rpcErr } = await supabaseAdmin.rpc(
-      'recibir_compra_y_actualizar_pmp_transaccional',
-      {
-        p_compra_id: clean.compraId,
-        p_usuario_id: userId,
-        p_remision_factura: clean.remisionFactura?.trim() || null,
-        p_observaciones_bodega: clean.observacionesBodega?.trim() || null
-      }
-    );
+    // Delegación al servicio de dominio puro
+    const result = await ComprasTransaccionalService.recibirMercancia(supabaseAdmin, {
+      compraId: clean.compraId,
+      remisionFactura: clean.remisionFactura,
+      observacionesBodega: clean.observacionesBodega,
+      userId,
+    });
 
-    if (rpcErr || !rpcRes?.success) {
-      const errorMsg = rpcErr?.message || rpcRes?.error || 'Error al procesar recepción en bodega';
-      return { success: false, error: errorMsg };
+    if (!result.success) {
+      return { success: false, error: result.error || 'Error al procesar recepción en bodega' };
     }
 
     // Invalidar caché Redis
@@ -526,7 +288,7 @@ export async function recibirMercanciaEnBodegaAction(input: RecibirMercanciaInpu
           await redis.del(...keys);
         }
       } catch (redisErr) {
-        console.warn('Error invalidando caché tras recepción en bodega:', redisErr);
+        console.warn('[recibirMercanciaEnBodegaAction] Error invalidando Redis:', redisErr);
       }
     }
 
@@ -538,17 +300,17 @@ export async function recibirMercanciaEnBodegaAction(input: RecibirMercanciaInpu
       detalles: {
         compraId: clean.compraId,
         remision: clean.remisionFactura,
-        rpcRes
+        rpcRes: result.data,
       },
       userId,
-      userEmail: user?.email
+      userEmail: user?.email,
     });
 
-    revalidatePath('/compras');
-    revalidatePath('/bodega');
-    revalidatePath('/');
+    safeRevalidatePath('/compras');
+    safeRevalidatePath('/bodega');
+    safeRevalidatePath('/');
 
-    return { success: true, data: rpcRes };
+    return { success: true, data: result.data };
   } catch (error: any) {
     console.error('[recibirMercanciaEnBodegaAction Exception]:', error);
     return { success: false, error: error.message || 'Error inesperado al recibir mercancía' };
@@ -556,7 +318,7 @@ export async function recibirMercanciaEnBodegaAction(input: RecibirMercanciaInpu
 }
 
 /**
- * Server Action para consultar las compras registradas con sus ítems asociados.
+ * Server Action: Consulta de Compras con Ítems para SSR / RSC y Caché
  */
 export async function obtenerComprasAction(limite = 50): Promise<{ success: boolean; data?: CompraUI[]; error?: string }> {
   try {
@@ -633,8 +395,8 @@ export async function obtenerComprasAction(limite = 50): Promise<{ success: bool
             equipo_nombre: d.equipos?.nombre || `Equipo #${d.equipo_id}`,
             cantidad: d.cantidad,
             precio_unitario: Number(d.precio_unitario),
-            subtotal: Number(d.subtotal)
-          }))
+            subtotal: Number(d.subtotal),
+          })),
         }));
 
         if (redis) {

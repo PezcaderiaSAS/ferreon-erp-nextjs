@@ -13,10 +13,10 @@ export function Footer() {
           {/* Brand Info Column */}
           <div className="lg:col-span-2 space-y-4">
             <Link href="/" className="inline-flex items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-orange-500 via-amber-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform duration-200">
                 <Layers className="w-4 h-4" />
               </div>
-              <span className="text-lg font-bold text-white tracking-tight group-hover:text-blue-400 transition-colors">
+              <span className="text-lg font-bold text-white tracking-tight group-hover:text-orange-400 transition-colors">
                 {brand.name}
               </span>
             </Link>

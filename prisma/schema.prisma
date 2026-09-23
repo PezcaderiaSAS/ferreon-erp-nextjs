@@ -293,15 +293,27 @@ model RentalDetail {
   alquilerId Int     @map("alquiler_id")
   equipoId   BigInt  @map("equipo_id")
 
-  cantidad         Int // Cantidad en unidades enteras
-  cantidadDevuelta Int       @default(0) @map("cantidad_devuelta")
-  diasContratados  Int       @map("dias_contratados")
-  fechaInicio      DateTime  @map("fecha_inicio") @db.Date
-  fechaFin         DateTime? @map("fecha_fin") @db.Date
-  tarifaAplicada   Decimal   @map("tarifa_aplicada") @db.Decimal(12, 2)
-  subtotalLinea    Decimal   @map("subtotal_linea") @db.Decimal(12, 2)
-  devuelto         Boolean   @default(false)
-  costoDano        Decimal   @default(0) @map("costo_dano") @db.Decimal(12, 2)
+  // Control de segmentación por línea independiente
+  lineaNumero           Int       @default(1) @map("linea_numero")
+  cantidad              Int       // Cantidad en unidades enteras
+  cantidadDevuelta      Int       @default(0) @map("cantidad_devuelta")
+  diasContratados       Int       @map("dias_contratados")
+  fechaInicio           DateTime  @map("fecha_inicio") @db.Date
+  fechaFin              DateTime? @map("fecha_fin") @db.Date
+
+  // Tarifas persistentes y control de edición manual
+  tarifaAplicada        Decimal   @map("tarifa_aplicada") @db.Decimal(12, 2)
+  tarifaPersonalizada   Boolean   @default(false) @map("tarifa_personalizada")
+  subtotalLinea         Decimal   @map("subtotal_linea") @db.Decimal(12, 2)
+  subtotalPersonalizado Boolean   @default(false) @map("subtotal_personalizado")
+  devuelto              Boolean   @default(false)
+  costoDano             Decimal   @default(0) @map("costo_dano") @db.Decimal(12, 2)
+
+  // Subcontratación / Re-Renting
+  esSubcontratado          Boolean?  @default(false) @map("es_subcontratado")
+  proveedorSubcontratadoId String?   @map("proveedor_subcontratado_id") @db.Uuid
+  costoDiarioProveedor     Decimal?  @default(0) @map("costo_diario_proveedor") @db.Decimal(12, 2)
+
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   tenant    Tenant?        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
@@ -309,8 +321,8 @@ model RentalDetail {
   equipment Equipment      @relation(fields: [equipoId], references: [id], onDelete: Restrict)
 
   @@index([empresaId])
-  @@index([alquilerId])
-  @@index([equipoId])
+  @@index([alquilerId, lineaNumero])
+  @@index([equipoId, fechaInicio, fechaFin])
   @@map("alquiler_detalles")
 }
 

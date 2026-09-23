@@ -27,20 +27,17 @@ export function PricingSection() {
   };
 
   return (
-    <section id="pricing" className="py-20 md:py-28 relative overflow-hidden bg-slate-950">
-      {/* Background Lighting */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-blue-600/10 blur-[130px] rounded-full pointer-events-none -z-10" />
-
+    <section id="pricing" className="py-20 md:py-28 relative overflow-hidden bg-slate-50 border-t border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-12">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-semibold tracking-wider uppercase mb-4">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-orange-200 bg-orange-50 text-orange-600 text-xs font-semibold tracking-wider uppercase mb-4 shadow-sm">
             {pricing.badge}
           </div>
-          <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight mb-4">
+          <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mb-4">
             {pricing.title}
           </h2>
-          <p className="text-base sm:text-lg text-slate-400 font-normal leading-relaxed">
+          <p className="text-base sm:text-lg text-slate-600 font-normal leading-relaxed">
             {pricing.subtitle}
           </p>
         </div>
@@ -48,14 +45,14 @@ export function PricingSection() {
         {/* Dual Switchers (Billing Cycle & Currency) */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
           {/* Monthly / Annual Toggle */}
-          <div className="flex items-center bg-slate-900/90 p-1.5 rounded-xl border border-slate-800 shadow-inner">
+          <div className="flex items-center bg-slate-200/80 p-1.5 rounded-xl border border-slate-300 shadow-inner">
             <button
               type="button"
               onClick={() => setBillingCycle('monthly')}
               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 billingCycle === 'monthly'
-                  ? 'bg-blue-600 text-white font-semibold shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-white text-slate-900 font-bold shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Facturación Mensual
@@ -65,26 +62,26 @@ export function PricingSection() {
               onClick={() => setBillingCycle('annual')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 billingCycle === 'annual'
-                  ? 'bg-blue-600 text-white font-semibold shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-white text-slate-900 font-bold shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <span>Anual</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">
                 -20%
               </span>
             </button>
           </div>
 
           {/* Currency Switcher (COP / USD) */}
-          <div className="flex items-center bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
+          <div className="flex items-center bg-slate-200/80 p-1.5 rounded-xl border border-slate-300">
             <button
               type="button"
               onClick={() => setCurrency('COP')}
               className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 currency === 'COP'
-                  ? 'bg-slate-800 text-blue-400 font-bold border border-slate-700'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-white text-orange-600 font-bold shadow-sm border border-slate-200'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               COP ($)
@@ -94,8 +91,8 @@ export function PricingSection() {
               onClick={() => setCurrency('USD')}
               className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 currency === 'USD'
-                  ? 'bg-slate-800 text-blue-400 font-bold border border-slate-700'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-white text-orange-600 font-bold shadow-sm border border-slate-200'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               USD ($)
@@ -112,15 +109,15 @@ export function PricingSection() {
             return (
               <div
                 key={tier.id}
-                className={`relative rounded-2xl p-7 sm:p-8 flex flex-col justify-between transition-all duration-300 transform-gpu ${
+                className={`relative rounded-2xl p-7 sm:p-8 flex flex-col justify-between transition-all duration-300 transform-gpu bg-white ${
                   tier.isPopular
-                    ? 'bg-slate-900/90 border-2 border-blue-500 shadow-2xl shadow-blue-500/20 lg:-translate-y-2'
-                    : 'bg-slate-900/60 border border-slate-800 hover:border-slate-700'
+                    ? 'border-2 border-[#FF8A65] shadow-xl shadow-orange-500/10 lg:-translate-y-2 ring-1 ring-orange-500/20'
+                    : 'border border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md'
                 }`}
               >
                 {/* Popular Pill Badge */}
                 {tier.isPopular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-600 text-white text-xs font-bold shadow-md shadow-blue-600/30 uppercase tracking-wide">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-gradient-to-r from-[#FF8A65] to-[#F4683E] text-white text-xs font-bold shadow-md shadow-orange-500/25 uppercase tracking-wide">
                     <Sparkles className="w-3.5 h-3.5" />
                     {tier.badge}
                   </div>
@@ -128,17 +125,17 @@ export function PricingSection() {
 
                 <div>
                   {/* Plan Name & Description */}
-                  <h3 className="text-xl font-bold text-white mb-2">{tier.name}</h3>
-                  <p className="text-xs sm:text-sm text-slate-400 mb-6 leading-relaxed">
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">{tier.name}</h3>
+                  <p className="text-xs sm:text-sm text-slate-600 mb-6 leading-relaxed">
                     {tier.description}
                   </p>
 
                   {/* Price Display */}
-                  <div className="flex items-baseline gap-1 mb-8 pb-6 border-b border-slate-800">
-                    <span className="text-4xl sm:text-5xl font-extrabold text-white font-mono tracking-tight tabular-nums">
+                  <div className="flex items-baseline gap-1 mb-8 pb-6 border-b border-slate-100">
+                    <span className="text-4xl sm:text-5xl font-extrabold text-slate-900 font-mono tracking-tight tabular-nums">
                       {priceText}
                     </span>
-                    <span className="text-xs sm:text-sm text-slate-400 font-medium">
+                    <span className="text-xs sm:text-sm text-slate-500 font-medium">
                       {cycleSuffix}
                     </span>
                   </div>
@@ -146,8 +143,8 @@ export function PricingSection() {
                   {/* Features List */}
                   <ul className="space-y-3.5 mb-8" aria-label={`Características del plan ${tier.name}`}>
                     {tier.features.map((feat) => (
-                      <li key={feat} className="flex items-start gap-3 text-xs sm:text-sm text-slate-300">
-                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <li key={feat} className="flex items-start gap-3 text-xs sm:text-sm text-slate-700">
+                        <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
                         <span>{feat}</span>
                       </li>
                     ))}
@@ -159,8 +156,8 @@ export function PricingSection() {
                   href={tier.ctaHref}
                   className={`w-full inline-flex items-center justify-center gap-2 text-sm font-semibold py-3.5 px-4 rounded-xl transition-all duration-150 ${
                     tier.isPopular
-                      ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 focus-visible:ring-2 focus-visible:ring-blue-400'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 focus-visible:ring-2 focus-visible:ring-slate-400'
+                      ? 'bg-gradient-to-r from-[#FF8A65] to-[#F4683E] hover:from-[#F4683E] hover:to-[#E76E4A] text-white shadow-lg shadow-orange-500/25 focus-visible:ring-2 focus-visible:ring-orange-400'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 focus-visible:ring-2 focus-visible:ring-slate-400'
                   }`}
                 >
                   {tier.ctaLabel}

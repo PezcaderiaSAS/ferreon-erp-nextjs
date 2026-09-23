@@ -6,6 +6,7 @@ import { redis, invalidateTenantCache } from '@/lib/redis';
 import { z } from 'zod';
 import { validateActionInput } from '@/lib/security/validation';
 import { AuditLogger } from '@/lib/security/audit-logger';
+import { BodegaTransaccionalService } from '@/core/services/bodega-transaccional.service';
 
 export interface CrearEquipoInput {
   sku: string;
@@ -239,5 +240,84 @@ export async function ajustarStockEquipoAction(equipoId: string | number, delta:
   revalidatePath('/bodega');
   return { success: true, data };
 }
+
+/**
+ * Server Action: Obtiene el catálogo completo de equipos de bodega con stock y disponibilidad.
+ */
+export async function obtenerEquiposAction() {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const empresaId = await resolveEmpresaId(user?.id);
+
+    const result = await BodegaTransaccionalService.obtenerEquipos(supabase, empresaId);
+    return result;
+  } catch (error: any) {
+    console.error('Error en obtenerEquiposAction:', error);
+    return { success: false, data: [], error: error.message || 'Error al obtener equipos.' };
+  }
+}
+
+/**
+ * Server Action: Libera unidades en mantenimiento devolviéndolas a disponibles con validación Poka-Yoke.
+ */
+export async function liberarMantenimientoAction(
+  equipoId: string | number,
+  cantidad: number,
+  motivo?: string
+) {
+  try {
+    const supabaseAdmin = createAdminSupabaseClient();
+    const supabaseUser = await createServerSupabaseClient();
+    const { data: { user } } = await supabaseUser.auth.getUser();
+    const empresaId = await resolveEmpresaId(user?.id);
+
+    const result = await BodegaTransaccionalService.liberarMantenimiento(supabaseAdmin, {
+      equipoId,
+      cantidad,
+      motivo,
+      userId: user?.id,
+      userEmail: user?.email,
+      empresaId
+    });
+
+    if (!result.success) {
+      return result;
+    }
+
+    // Invalida caché y registra auditoría
+    await invalidateTenantCache(user?.id, ['equipos'], equipoId);
+
+    AuditLogger.logAsync({
+      modulo: 'BODEGA',
+      accion: 'LIBERAR_MANTENIMIENTO',
+      descripcion: `Liberadas ${cantidad} unidades de equipo ${equipoId} hacia disponibles. Motivo: ${motivo || 'Revisión técnica finalizada'}`,
+      entidadId: equipoId,
+      detalles: { equipoId, cantidad, motivo },
+      userId: user?.id,
+      userEmail: user?.email
+    });
+
+    revalidatePath('/bodega');
+    return { success: true, data: result.data };
+  } catch (error: any) {
+    console.error('Error en liberarMantenimientoAction:', error);
+    return { success: false, error: error.message || 'Error al liberar mantenimiento.' };
+  }
+}
+
+/**
+ * Server Action: Obtiene el historial inmutable de Kardex para un equipo.
+ */
+export async function obtenerKardexEquipoAction(equipoId: string | number, limit: number = 50) {
+  try {
+    const supabase = await createServerSupabaseClient();
+    return await BodegaTransaccionalService.obtenerKardexEquipo(supabase, equipoId, limit);
+  } catch (error: any) {
+    console.error('Error en obtenerKardexEquipoAction:', error);
+    return { success: false, data: [], error: error.message || 'Error al obtener historial de Kardex.' };
+  }
+}
+
 
 

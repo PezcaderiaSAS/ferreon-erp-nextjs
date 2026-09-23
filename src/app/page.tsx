@@ -4,6 +4,7 @@ import { Header } from '../components/landing/Header';
 import { HeroSection } from '../components/landing/HeroSection';
 import { TrustSection } from '../components/landing/TrustSection';
 import { FeaturesSection } from '../components/landing/FeaturesSection';
+import { ModulesExplorerSection } from '../components/landing/ModulesExplorerSection';
 import { ProductShowcase } from '../components/landing/ProductShowcase';
 import { PricingSection } from '../components/landing/PricingSection';
 import { TestimonialsSection } from '../components/landing/TestimonialsSection';
@@ -12,7 +13,7 @@ import { Footer } from '../components/landing/Footer';
 import { LANDING_CONFIG } from '../config/landing';
 
 export const metadata: Metadata = {
-  title: "Alquileres System — La Plataforma Todo en Uno para Equipos Modernos",
+  title: "Alquileres System — La Plataforma Todo en Uno para Equipos Modernos de Maquinaria y Obras",
   description: "Planifica contratos de alquiler, controla despachos de maquinaria pesada y maximiza la rentabilidad operativa de tu flota con Alquileres System.",
   keywords: [
     "alquiler de maquinaria",
@@ -22,9 +23,10 @@ export const metadata: Metadata = {
     "control de flota",
     "facturación de alquileres",
     "Alquileres System",
+    "FerreOn ERP",
   ],
   openGraph: {
-    title: "Alquileres System — The All-in-One Platform for Modern Teams",
+    title: "Alquileres System — Plataforma Integral para Alquileres y Maquinaria",
     description: "La solución integral para empresas de alquiler de maquinaria y equipos de construcción.",
     type: "website",
     locale: "es_CO",
@@ -54,7 +56,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-blue-600 selection:text-white font-sans antialiased">
+    <div className="min-h-screen flex flex-col selection:bg-[#FF8A65] selection:text-white font-sans antialiased bg-slate-50 text-slate-900">
       {/* Schema.org JSON-LD Structured Data */}
       <script
         type="application/ld+json"
@@ -74,7 +76,10 @@ export default function LandingPage() {
         {/* Sección 4: Features Section (4 Cards Grid) */}
         <FeaturesSection />
 
-        {/* Sección 5: Product Showcase con Tablero Kanban Interactivo */}
+        {/* Sección 5: Explorador Interactivo de los 8 Módulos ERP */}
+        <ModulesExplorerSection />
+
+        {/* Sección 6: Product Showcase con Tablero Kanban Interactivo */}
         <ProductShowcase />
 
         {/* Sección 6: Pricing Section (Dual Currency COP/USD y Mensual/Anual) */}

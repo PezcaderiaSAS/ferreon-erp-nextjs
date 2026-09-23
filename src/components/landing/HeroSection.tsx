@@ -10,14 +10,14 @@ export function HeroSection() {
   const { hero } = LANDING_CONFIG;
 
   return (
-    <section className="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden">
-      {/* Background Radial Glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-blue-600/15 blur-[120px] rounded-full pointer-events-none -z-10" />
+    <section className="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden bg-slate-950 text-white border-b border-slate-800/80">
+      {/* Background Radial Glow con tokens de DESIGN.md */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[360px] bg-gradient-to-r from-[#FF8A65]/15 via-slate-900/0 to-[#0EA5E9]/15 blur-[120px] rounded-full pointer-events-none -z-10" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
         {/* Top Announcement Pill Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs sm:text-sm font-medium mb-6 shadow-sm shadow-blue-500/10 animate-fadeIn">
-          <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-400 text-xs sm:text-sm font-medium mb-6 shadow-sm shadow-orange-500/10 animate-fadeIn">
+          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
           <span>{hero.badge}</span>
         </div>
 
@@ -35,7 +35,7 @@ export function HeroSection() {
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mb-8">
           <Link
             href={hero.primaryCta.href}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-base font-semibold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-7 py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transition-all duration-200 transform-gpu hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-base font-semibold text-white bg-gradient-to-r from-[#FF8A65] to-[#F4683E] hover:from-[#F4683E] hover:to-[#E76E4A] active:bg-orange-800 px-7 py-3.5 rounded-xl shadow-lg shadow-orange-500/25 transition-all duration-200 transform-gpu hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
           >
             {hero.primaryCta.label}
           </Link>
@@ -43,7 +43,7 @@ export function HeroSection() {
             href={hero.secondaryCta.href}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-base font-medium text-slate-200 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 hover:border-slate-600 px-6 py-3.5 rounded-xl backdrop-blur-md transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
           >
-            <div className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-blue-400">
+            <div className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-orange-400">
               <Play className="w-3 h-3 fill-current ml-0.5" />
             </div>
             {hero.secondaryCta.label}

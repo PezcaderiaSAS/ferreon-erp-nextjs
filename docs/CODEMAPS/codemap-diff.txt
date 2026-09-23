@@ -1,29 +1,43 @@
-Codemap Update Summary - 2026-09-17 (Sesión 2: Corrección de 3 Bugs Críticos & Refinamiento)
-=============================================================================================
-Files Scanned: ~92
+Codemap Update Summary - 2026-09-22 (Sesión: Landing Page Institucional, Desacoplamiento de Rutas y Verificación Live E2E)
+======================================================================================================================
+Files Scanned: ~98
 Architecture Changes:
-  - Neutralizador Canónico de Fechas Calendario (`src/core/utils/fechas.ts`):
-    - Creación de `parsearFechaLocal` y `formatearFechaLocal` con fijación canónica de mediodía (`12:00:00`).
-    - Neutralización matemática del desfase horario UTC-5 Colombia en `@react-pdf/renderer` (`ContratoAlquilerPDF.tsx`), modales de ticket y detalle de contratos, y generador de facturas PDF.
-    - Suite de 13 pruebas unitarias en `tests/unit/fechas-local.test.ts`.
-  - Buscador y Filtros Rápidos en Inventario de Bodega (`src/app/bodega/page.tsx`):
-    - Filtrado reactivo en memoria con latencia cero (0 ms) insensible a tildes y mayúsculas mediante `normalize("NFD")`.
-    - Búsqueda multi-campo sobre Nombre, SKU y Categoría.
-    - Pestañas de estado físico (`Todos`, `Disponibles`, `En Obra`, `Mantenimiento`) con contadores en tiempo real.
-    - Optimización de KPIs y contadores en una sola pasada acumulativa $O(N)$ sobre el array de equipos.
-    - Botón de limpieza rápida (`X`) y vista vacía amigable con restablecimiento de filtros.
-  - Ergonomía en Inputs Numéricos y de Logística (`src/lib/utils.ts`):
-    - Creación de `parsearNumeroErgonomico` y `formatearValorErgonomico` en `src/lib/utils.ts`.
-    - Implementación de valor vacío con placeholder `0` (`value === 0 ? '' : value`) y parseo tolerante en `StepEquiposLogistica.tsx`, `AprobarCotizacionModal.tsx` y `CrearCotizacionModal.tsx`, eliminando el rebote del cero al borrar con Backspace.
-    - Suite de pruebas unitarias en `tests/unit/utils-ergonomia.test.ts`.
+  - Arquitectura Dual-Híbrida y Landing Page Institucional (`/`):
+    - Implementación completa de la Landing Page pública en `src/app/page.tsx` con tema Dark Industrial (`#0F172A`, `#1E293B`, `#F59E0B` Ámbar de Maquinaria).
+    - Creación y estructuración de 12 componentes modulares en `src/components/landing/`:
+      - `Header.tsx`: Barra de navegación fija con enlaces de sección, login a ERP y CTA.
+      - `HeroSection.tsx`: Encabezado de alto impacto con gradientes, insignias y CTAs.
+      - `HeroMockup.tsx`: Maqueta interactiva flotante de alta fidelidad del dashboard operativo.
+      - `TrustSection.tsx`: Cintillo con métricas de tracción comercial (+250 empresas, +45k contratos).
+      - `FeaturesSection.tsx`: Rejilla de 6 tarjetas de pilares de valor del software.
+      - `ModulesExplorerSection.tsx`: Explorador interactivo de 8 módulos funcionales del ERP.
+      - `ProductShowcase.tsx`: Destacado de alta precisión en control de obra y maquinaria.
+      - `KanbanShowcase.tsx`: Tablero Kanban interactivo representativo del ciclo de alquileres.
+      - `PricingSection.tsx`: Selector interactivo de periodicidad (Mensual / Anual -20%) y 3 planes de suscripción.
+      - `TestimonialsSection.tsx`: Reseñas verificadas de empresas del sector de la construcción y maquinaria.
+      - `CTABanner.tsx`: Banner final de captación y prueba gratuita.
+      - `Footer.tsx`: Pie de página corporativo con enlaces legales, soporte y copyright Alquileres System.
+    - Centralización de contenido en `src/config/landing.ts`.
+  - Desacoplamiento Perimetral de Rutas y Redirecciones (`src/components/layout/AppShell.tsx`):
+    - `isStandaloneRoute`: Rutas públicas (`/`, `/design-system`, `/auth/*`, `/unauthorized`) aisladas del AppShell corporativo (sin Sidebar ni barra de herramientas ERP).
+    - Traslado y desacoplamiento del dashboard operativo a `/dashboard` (`src/app/dashboard/page.tsx`).
+    - Actualización de `/api/auth/callback` y login flow para redirigir a `/dashboard` tras autenticación exitosa.
+  - Generación de Usuario Demo y Script Operativo:
+    - Creación de `scripts/setup_demo_user.mjs` para aprovisionar `demo@alquileres-system.com` / `Alquileres2026*` en Supabase Auth y vincularlo en `empresa_usuarios` con el tenant principal `ac8719ea-f16a-4538-b308-40d9511a14cb`.
+  - Verificación Live E2E con Browser Subagent:
+    - Grabación completa de la landing: `landing_live_verify_1790082763774.webp`.
+    - Grabación completa del flujo de login: `login_flow_demo_1790085290971.webp`.
+    - Capturas de alta fidelidad del formulario de inicio de sesión y dashboard cargado con datos operativos.
 
 Updated Codemaps:
-  - docs/CODEMAPS/architecture.md: Registrado módulo canónico `src/core/utils/fechas.ts`, buscador de bodega y patrón de inputs ergonómicos.
-  - docs/CODEMAPS/frontend.md: Mapeado buscador con filtros y KPIs en `BodegaPage`, componentes ergonómicos de fletes y utilidades.
-  - docs/CODEMAPS/codemap-diff.txt: Registro de trazabilidad y métricas de calidad.
+  - docs/CODEMAPS/architecture.md: Registrada arquitectura dual-híbrida, marca Alquileres System y enrutamiento perimetral.
+  - docs/CODEMAPS/frontend.md: Mapeadas rutas `/` y `/dashboard`, los 12 componentes de landing y configuración `landing.ts`.
+  - docs/CODEMAPS/backend.md: Mapeado flujo de autenticación a `/dashboard`, scripts y servicios de dominio.
+  - docs/CODEMAPS/dependencies.md: Actualizadas métricas a 24 rutas prerenderizadas, 53 suites de prueba y 272 tests.
+  - docs/CODEMAPS/data.md: Mapeadas tablas de gobernanza `empresas` y `empresa_usuarios` y tenant principal.
+  - docs/CODEMAPS/codemap-diff.txt: Trazabilidad completa de cambios y validación de calidad.
 
-Production Build Status: 23/23 routes passing clean (Exit code 0).
-Unit Tests Status: 51 test suites passed, 258 tests passed (100% green).
-Linter Status: Next.js lint clean (Exit code 0).
+Production Build Status: 24/24 routes passing clean (Exit code 0).
+Unit Tests Status: 53 test suites passed, 272 tests passed (100% green).
 Typecheck Status: TypeScript npx tsc clean (Exit code 0).
-
+Staleness Warnings: 0 docs desactualizados.

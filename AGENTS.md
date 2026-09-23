@@ -42,3 +42,11 @@ This project is indexed by GitNexus as **ferreon-erp-nextjs** (1562 symbols, 303
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+## Banco de Memoria Canónico (Ground Truth para Agentes)
+Todo agente o subagente que opere sobre este proyecto DEBE consultar obligatoriamente los 5 archivos de `docs/memory-bank/` antes de proponer cambios estructurales o modificar código:
+1. `docs/memory-bank/productContext.md`: Visión del producto, terminología oficial y directriz de marca (**Alquileres System**).
+2. `docs/memory-bank/systemPatterns.md`: Estándares de Next.js App Router (RSC, Client Islands, Server Actions delgadas, RPC pesimista y límites de Zustand).
+3. `docs/memory-bank/techContext.md`: Stack técnico consolidado, directrices de pooler (6543 vs 5432) y Upstash Redis.
+4. `docs/memory-bank/activeContext.md`: Registro de decisiones de arquitectura y el hito activo (`SPEC-2026-ARCH-RESTRUCT-001`).
+5. `docs/memory-bank/progress.md`: Mapa de deuda técnica y checklist de optimización.

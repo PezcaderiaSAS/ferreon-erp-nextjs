@@ -75,7 +75,7 @@ export default function LoginPage() {
         if (error) throw error;
 
         if (data.session) {
-          window.location.href = '/';
+          window.location.href = '/dashboard';
         } else {
           setSuccessMsg('¡Cuenta creada con éxito! Revisa tu bandeja de correo para confirmar e ingresar al ERP.');
         }
@@ -89,7 +89,7 @@ export default function LoginPage() {
         if (error) throw error;
 
         if (data.session) {
-          window.location.href = '/';
+          window.location.href = '/dashboard';
         }
       }
     } catch (err: any) {

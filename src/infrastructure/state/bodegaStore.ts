@@ -265,15 +265,14 @@ export const useBodegaStore = create<BodegaState>()(
     {
       name: 'bodega-storage',
       partialize: (state) => ({ 
-        // Filtramos cualquier item que tenga un ID temporal para que no se guarde en localStorage
-        equipos: state.equipos.filter(e => typeof e.id === 'number' || !String(e.id).startsWith('temp_')), 
+        // Desacoplado: Las colecciones de negocio residen en el servidor/DB, no en localStorage
         idempotencyKeys: state.idempotencyKeys 
       }),
       merge: (persistedState: any, currentState) => {
-        if (persistedState?.equipos) {
-          persistedState.equipos = persistedState.equipos.filter((e: any) => typeof e.id === 'number' || !String(e.id).startsWith('temp_'));
-        }
-        return { ...currentState, ...persistedState };
+        return { 
+          ...currentState, 
+          idempotencyKeys: persistedState?.idempotencyKeys || []
+        };
       }
     } as any
   )

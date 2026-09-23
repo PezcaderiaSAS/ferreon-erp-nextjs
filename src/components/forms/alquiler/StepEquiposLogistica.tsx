@@ -10,11 +10,13 @@ import {
   Building2, 
   Calendar,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Split
 } from 'lucide-react';
 import { EquipoCombobox } from '../../ui/EquipoCombobox';
 import { formatearMonedaConLetras } from '../../../core/utils/numero-a-letras';
 import { ItemRow } from './types';
+import { ModalResolucionOverbooking, OverbookingConflictInfo } from './ModalResolucionOverbooking';
 
 export interface StepEquiposLogisticaProps {
   items: ItemRow[];
@@ -22,6 +24,7 @@ export interface StepEquiposLogisticaProps {
   equiposActivos: any[];
   tipoDocumento?: 'COTIZACION' | 'CONTRATO';
   addItemRow: () => void;
+  segmentarItemRow?: (index: number) => void;
   removeItemRow: (index: number) => void;
   updateItemRow: (index: number, field: keyof ItemRow, value: any) => void;
   verificarStockItem?: (itemId: string, cantidad: number) => {
@@ -45,6 +48,16 @@ export interface StepEquiposLogisticaProps {
   setFleteRecogida: (val: number) => void;
   formatearCOP: (val: number) => string;
   formErrors: { [key: string]: string };
+  // Modal de Overbooking Concurrente
+  conflictoOverbooking?: OverbookingConflictInfo | null;
+  isModalOverbookingOpen?: boolean;
+  setIsModalOverbookingOpen?: (open: boolean) => void;
+  resolverConflictoOverbooking?: (
+    accion: 'DIVIDIR' | 'AJUSTAR_FECHAS' | 'AJUSTAR_CANTIDAD',
+    lineaIndex: number,
+    param1?: any,
+    param2?: any
+  ) => void;
 }
 
 export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
@@ -53,6 +66,7 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
   equiposActivos,
   tipoDocumento = 'COTIZACION',
   addItemRow,
+  segmentarItemRow,
   removeItemRow,
   updateItemRow,
   verificarStockItem,
@@ -71,6 +85,10 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
   setFleteRecogida,
   formatearCOP,
   formErrors,
+  conflictoOverbooking,
+  isModalOverbookingOpen,
+  setIsModalOverbookingOpen,
+  resolverConflictoOverbooking,
 }) => {
   return (
     <div className="space-y-4 animate-fadeIn">
@@ -238,7 +256,7 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                     </div>
 
                     {/* Fecha Inicio */}
-                    <div className="w-full sm:w-36 flex flex-col gap-1">
+                    <div className="w-full sm:w-32 flex flex-col gap-1">
                       <label className="text-[11px] font-bold text-slate-700">Desde</label>
                       <input 
                         type="date" 
@@ -249,7 +267,7 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                     </div>
 
                     {/* Fecha Fin Estimada */}
-                    <div className="w-full sm:w-36 flex flex-col gap-1">
+                    <div className="w-full sm:w-32 flex flex-col gap-1">
                       <label className="text-[11px] font-bold text-slate-700">Hasta</label>
                       <input 
                         type="date" 
@@ -259,9 +277,57 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                       />
                     </div>
 
-                    {/* Eliminar fila */}
-                    {items.length > 1 && (
-                      <div className="flex items-end pt-1 md:pt-0">
+                    {/* Días Calculados */}
+                    <div className="w-full sm:w-16 flex flex-col gap-1">
+                      <label className="text-[11px] font-bold text-slate-700 text-center">Días</label>
+                      <div className="px-2 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono font-bold text-center flex items-center justify-center">
+                        {diasFila}d
+                      </div>
+                    </div>
+
+                    {/* Subtotal Editable */}
+                    <div className="w-full sm:w-28 flex flex-col gap-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-slate-700">Subtotal</label>
+                        {field.subtotalPersonalizado && (
+                          <span className="text-[9px] bg-amber-100 text-amber-800 px-1 rounded font-bold" title="Subtotal fijado manualmente">
+                            Fijo*
+                          </span>
+                        )}
+                      </div>
+                      <input 
+                        type="number" 
+                        min={0} 
+                        value={subtotalFila === 0 ? '' : subtotalFila}
+                        placeholder="0"
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          const sub = v === '' ? 0 : Math.max(0, parseFloat(v) || 0);
+                          updateItemRow(index, 'subtotal', sub);
+                        }}
+                        className={`px-2 py-2 bg-white border ${
+                          field.subtotalPersonalizado 
+                            ? 'border-amber-400 bg-amber-50/20 ring-1 ring-amber-300' 
+                            : 'border-slate-300'
+                        } rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-right font-mono tabular-nums font-bold`} 
+                      />
+                    </div>
+
+                    {/* Acciones de Fila: Segmentar y Eliminar */}
+                    <div className="flex items-end gap-1 pt-1 md:pt-0">
+                      {segmentarItemRow && field.itemId && (
+                        <button
+                          type="button"
+                          onClick={() => segmentarItemRow(index)}
+                          className="p-2 text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200/80 rounded-xl text-xs transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                          title="Segmentar período: agrega otra línea para este mismo equipo con fechas independientes"
+                        >
+                          <Split className="w-4 h-4" />
+                          <span className="hidden xl:inline text-[10px] font-bold">Segmentar</span>
+                        </button>
+                      )}
+
+                      {items.length > 1 && (
                         <button 
                           type="button" 
                           onClick={() => removeItemRow(index)} 
@@ -270,8 +336,8 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
 
                   {/* ALERTA DE STOCK Y TOGGLE DE SUBCONTRATACIÓN (RE-RENTING) */}
@@ -500,6 +566,30 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Modal Asistido de Resolución de Overbooking Concurrente */}
+      {conflictoOverbooking && isModalOverbookingOpen && setIsModalOverbookingOpen && (
+        <ModalResolucionOverbooking
+          isOpen={isModalOverbookingOpen}
+          conflicto={conflictoOverbooking}
+          onClose={() => setIsModalOverbookingOpen(false)}
+          onDividirLinea={(lineaIndex, cantidadDisponible, cantidadSubcontratada) => {
+            if (resolverConflictoOverbooking) {
+              resolverConflictoOverbooking('DIVIDIR', lineaIndex, cantidadDisponible, cantidadSubcontratada);
+            }
+          }}
+          onAjustarFechas={(lineaIndex, nuevaFechaInicio) => {
+            if (resolverConflictoOverbooking) {
+              resolverConflictoOverbooking('AJUSTAR_FECHAS', lineaIndex, nuevaFechaInicio);
+            }
+          }}
+          onAjustarCantidad={(lineaIndex, nuevaCantidad) => {
+            if (resolverConflictoOverbooking) {
+              resolverConflictoOverbooking('AJUSTAR_CANTIDAD', lineaIndex, nuevaCantidad);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

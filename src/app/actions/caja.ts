@@ -11,17 +11,22 @@ import { revalidatePath } from 'next/cache';
 import { invalidateTenantCache } from '@/lib/redis';
 import { z } from 'zod';
 import { AuditLogger } from '@/lib/security/audit-logger';
-import { 
-  calcularTotalFisicoArqueo, 
-  calcularBalanceSesionCaja, 
-  validarDisponibilidadEgreso,
-  ConteoDenominaciones
-} from '@/core/services/calculoCajaArqueo';
-import { generarAsientoAjusteDescuadre } from '@/core/services/arqueo-caja.service';
+import { ConteoDenominaciones } from '@/core/services/calculoCajaArqueo';
+import { CajaTransaccionalService } from '@/core/services/caja-transaccional.service';
 
 /**
- * Server Action para validar la conectividad en vivo con Supabase,
- * garantizando que la base de datos esté lista para persistir registros.
+ * Revalidación segura compatible con Server Actions y tests unitarios
+ */
+function safeRevalidatePath(path: string) {
+  try {
+    revalidatePath(path);
+  } catch {
+    // Ignorado en entorno de pruebas unitarias sin RequestStore de Next.js
+  }
+}
+
+/**
+ * Server Action para validar la conectividad en vivo con Supabase
  */
 export async function verificarConexionSupabaseAction(): Promise<SupabaseHealthResult> {
   try {
@@ -67,12 +72,11 @@ const CerrarCajaZodSchema = z.object({
 });
 
 // ============================================================================
-// SERVER ACTIONS: GESTIÓN INTEGRAL DE CAJA Y PUNTO DE VENTA (POS)
+// SERVER ACTIONS DELGADAS: CAJA Y PUNTO DE VENTA (POS)
 // ============================================================================
 
 /**
- * Consulta la sesión de caja actualmente ABIERTA para el usuario autenticado en su empresa activa,
- * junto con el consolidado en tiempo real de cobros en efectivo y movimientos menores.
+ * Consulta la sesión de caja actualmente ABIERTA para el usuario autenticado
  */
 export async function obtenerSesionActivaAction() {
   try {
@@ -80,92 +84,35 @@ export async function obtenerSesionActivaAction() {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return { success: false, error: 'No se detectó una sesión autenticada.', sesion: null };
+      return {
+        success: false,
+        error: 'No se detectó una sesión autenticada.',
+        sesion: null,
+        resumen: null,
+        movimientos: [],
+        pagosEfectivo: [],
+      };
     }
 
     const empresaId = await resolveEmpresaId(user.id);
     const admin = createAdminSupabaseClient();
 
-    // 1. Buscar sesión abierta para este usuario y empresa
-    const { data: sesion, error: sesionError } = await admin
-      .from('sesiones_caja')
-      .select('*')
-      .eq('usuario_id', user.id)
-      .eq('estado', 'ABIERTA')
-      .maybeSingle();
-
-    if (sesionError) {
-      console.error('[Caja] Error al consultar sesión activa:', sesionError);
-      return { success: false, error: 'Error al consultar la sesión de caja activa.', sesion: null };
-    }
-
-    if (!sesion) {
-      return { 
-        success: true, 
-        sesion: null, 
-        resumen: null, 
-        movimientos: [], 
-        pagosEfectivo: [] 
-      };
-    }
-
-    // 2. Consultar pagos registrados en EFECTIVO vinculados a esta sesión
-    const { data: pagos, error: pagosError } = await admin
-      .from('pagos')
-      .select('id, consecutivo, monto, efectivo_recibido, cambio_entregado, fecha_pago, alquiler_id, cliente_id, clientes (nombre)')
-      .eq('sesion_caja_id', sesion.id);
-
-    if (pagosError) {
-      console.warn('[Caja] Error consultando pagos de la sesión:', pagosError);
-    }
-
-    // 3. Consultar movimientos de caja menor (ingresos y egresos)
-    const { data: movimientos, error: movsError } = await admin
-      .from('movimientos_caja')
-      .select('*')
-      .eq('sesion_caja_id', sesion.id)
-      .order('created_at', { ascending: false });
-
-    if (movsError) {
-      console.warn('[Caja] Error consultando movimientos de caja:', movsError);
-    }
-
-    const listaPagos = pagos || [];
-    const listaMovimientos = movimientos || [];
-
-    const totalCobrosEfectivo = listaPagos.reduce((acc, p) => acc + Math.round(Number(p.monto) || 0), 0);
-    const totalIngresos = listaMovimientos
-      .filter(m => m.tipo === 'INGRESO')
-      .reduce((acc, m) => acc + Math.round(Number(m.monto) || 0), 0);
-    const totalEgresos = listaMovimientos
-      .filter(m => m.tipo === 'EGRESO')
-      .reduce((acc, m) => acc + Math.round(Number(m.monto) || 0), 0);
-
-    const montoApertura = Math.round(Number(sesion.monto_apertura) || 0);
-    const saldoEsperado = montoApertura + totalCobrosEfectivo + totalIngresos - totalEgresos;
-
-    return {
-      success: true,
-      sesion,
-      resumen: {
-        montoApertura,
-        totalCobrosEfectivo,
-        cantidadPagos: listaPagos.length,
-        totalIngresos,
-        totalEgresos,
-        saldoEsperado
-      },
-      movimientos: listaMovimientos,
-      pagosEfectivo: listaPagos
-    };
+    return await CajaTransaccionalService.obtenerSesionActiva(admin, user.id, empresaId);
   } catch (err: any) {
-    console.error('[Caja] Error crítico en obtenerSesionActivaAction:', err);
-    return { success: false, error: err.message || 'Error interno de servidor.', sesion: null };
+    console.error('[obtenerSesionActivaAction Error]:', err);
+    return {
+      success: false,
+      error: err.message || 'Error al obtener sesión activa.',
+      sesion: null,
+      resumen: null,
+      movimientos: [],
+      pagosEfectivo: [],
+    };
   }
 }
 
 /**
- * Realiza la Apertura Formal de Sesión de Caja con Poka-Yoke anti-duplicidad.
+ * Server Action: Apertura de Sesión de Caja
  */
 export async function abrirSesionCajaAction(input: {
   montoApertura: number;
@@ -188,56 +135,19 @@ export async function abrirSesionCajaAction(input: {
     const empresaId = await resolveEmpresaId(user.id);
     const admin = createAdminSupabaseClient();
 
-    // POKA-YOKE: Verificar que el usuario NO tenga ya una caja abierta
-    const { data: existente } = await admin
-      .from('sesiones_caja')
-      .select('id, fecha_apertura')
-      .eq('usuario_id', user.id)
-      .eq('estado', 'ABIERTA')
-      .maybeSingle();
+    const result = await CajaTransaccionalService.abrirSesion(admin, {
+      userId: user.id,
+      empresaId,
+      montoApertura: parsed.data.montoApertura,
+      observaciones: parsed.data.observaciones,
+      userEmail: user.email,
+    });
 
-    if (existente) {
-      return { 
-        success: false, 
-        error: 'Poka-Yoke: Ya tienes una sesión de caja ABIERTA actualmente. Debes realizar el cierre antes de iniciar una nueva.' 
-      };
+    if (!result.success || !result.sesion) {
+      return result;
     }
 
-    const montoAperturaEntero = Math.round(parsed.data.montoApertura);
-
-    // Insertar nueva sesión
-    const { data: nuevaSesion, error: insertError } = await admin
-      .from('sesiones_caja')
-      .insert([{
-        tenant_id: user.id,
-        empresa_id: empresaId,
-        usuario_id: user.id,
-        estado: 'ABIERTA',
-        monto_apertura: montoAperturaEntero,
-        observaciones: parsed.data.observaciones?.trim() || null,
-        fecha_apertura: new Date().toISOString()
-      }])
-      .select()
-      .single();
-
-    if (insertError || !nuevaSesion || !nuevaSesion.id) {
-      console.error('[Caja] Error al insertar sesión de caja en Supabase:', insertError);
-      return { 
-        success: false, 
-        error: `Fallo de persistencia en Supabase: ${insertError?.message || 'No se confirmó el ID de la sesión creada en la base de datos.'}` 
-      };
-    }
-
-    // Doble verificación de campos críticos guardados
-    if (Math.round(Number(nuevaSesion.monto_apertura)) !== montoAperturaEntero || nuevaSesion.estado !== 'ABIERTA') {
-      console.error('[Caja] Discrepancia en datos persistidos de sesión:', nuevaSesion);
-      return {
-        success: false,
-        error: 'Discrepancia de integridad: los datos confirmados por la base de datos no coinciden con la apertura solicitada.'
-      };
-    }
-
-    // Registro forense en audit_logs
+    // Auditoría Inmutable
     AuditLogger.logAsync({
       empresaId,
       userId: user.id,
@@ -246,28 +156,29 @@ export async function abrirSesionCajaAction(input: {
       userRol: 'CAJERO',
       modulo: 'CAJA_POS',
       accion: 'APERTURA_CAJA',
-      entidadId: nuevaSesion.id,
-      descripcion: `Apertura de sesión de caja con base inicial de $${montoAperturaEntero.toLocaleString('es-CO')} COP`,
+      entidadId: result.sesion.id,
+      descripcion: `Apertura de sesión de caja con base inicial de $${result.montoAperturaEntero.toLocaleString('es-CO')} COP`,
       detalles: {
-        sesionId: nuevaSesion.id,
-        montoApertura: montoAperturaEntero,
+        sesionId: result.sesion.id,
+        montoApertura: result.montoAperturaEntero,
         observaciones: parsed.data.observaciones
       }
     });
 
-    await invalidateTenantCache(empresaId, ['caja']);
-    revalidatePath('/caja');
+    try {
+      await invalidateTenantCache(empresaId, ['caja']);
+    } catch {}
 
-    return { success: true, sesion: nuevaSesion };
+    safeRevalidatePath('/caja');
+    return { success: true, sesion: result.sesion };
   } catch (err: any) {
-    console.error('[Caja] Error crítico en abrirSesionCajaAction:', err);
+    console.error('[abrirSesionCajaAction Error]:', err);
     return { success: false, error: err.message || 'Error inesperado al abrir la caja.' };
   }
 }
 
 /**
- * Registra un movimiento menor en efectivo (Gasto Menor / Egreso o Inyección / Ingreso).
- * Ejecuta validación estricta de disponibilidad de saldo en caja para evitar saldos negativos.
+ * Server Action: Registrar Movimiento Menor en Efectivo (Ingreso / Egreso)
  */
 export async function registrarMovimientoCajaAction(input: {
   sesionCajaId: string;
@@ -294,91 +205,22 @@ export async function registrarMovimientoCajaAction(input: {
     const empresaId = await resolveEmpresaId(user.id);
     const admin = createAdminSupabaseClient();
 
-    // 1. Validar que la sesión exista y esté ABIERTA
-    const { data: sesion, error: sesionError } = await admin
-      .from('sesiones_caja')
-      .select('*')
-      .eq('id', parsed.data.sesionCajaId)
-      .single();
+    const result = await CajaTransaccionalService.registrarMovimiento(admin, {
+      userId: user.id,
+      empresaId,
+      sesionCajaId: parsed.data.sesionCajaId,
+      tipo: parsed.data.tipo,
+      monto: parsed.data.monto,
+      concepto: parsed.data.concepto,
+      beneficiario: parsed.data.beneficiario,
+      comprobante: parsed.data.comprobante,
+      userEmail: user.email,
+    });
 
-    if (sesionError || !sesion) {
-      return { success: false, error: 'No se encontró la sesión de caja especificada.' };
+    if (!result.success || !result.movimiento) {
+      return result;
     }
 
-    if (sesion.estado !== 'ABIERTA') {
-      return { success: false, error: 'Esta sesión de caja ya se encuentra CERRADA. No se permiten nuevos movimientos.' };
-    }
-
-    const montoEntero = Math.round(parsed.data.monto);
-
-    // 2. Si es EGRESO, validar saldo disponible en tiempo real
-    if (parsed.data.tipo === 'EGRESO') {
-      const { data: pagos } = await admin
-        .from('pagos')
-        .select('monto')
-        .eq('sesion_caja_id', sesion.id);
-
-      const { data: movsPrevios } = await admin
-        .from('movimientos_caja')
-        .select('tipo, monto')
-        .eq('sesion_caja_id', sesion.id);
-
-      const totalCobros = (pagos || []).reduce((acc, p) => acc + Math.round(Number(p.monto) || 0), 0);
-      const totalIngresos = (movsPrevios || [])
-        .filter(m => m.tipo === 'INGRESO')
-        .reduce((acc, m) => acc + Math.round(Number(m.monto) || 0), 0);
-      const totalEgresosPrevios = (movsPrevios || [])
-        .filter(m => m.tipo === 'EGRESO')
-        .reduce((acc, m) => acc + Math.round(Number(m.monto) || 0), 0);
-
-      const validacion = validarDisponibilidadEgreso({
-        montoApertura: Number(sesion.monto_apertura) || 0,
-        totalCobrosEfectivo: totalCobros,
-        totalIngresosCaja: totalIngresos,
-        totalEgresosPrevios: totalEgresosPrevios,
-        montoEgresoSolicitado: montoEntero
-      });
-
-      if (!validacion.esValido) {
-        return { success: false, error: validacion.error || 'Saldo insuficiente en caja para autorizar el egreso.' };
-      }
-    }
-
-    // 3. Insertar el movimiento en movimientos_caja
-    const { data: nuevoMovimiento, error: insertError } = await admin
-      .from('movimientos_caja')
-      .insert([{
-        tenant_id: user.id,
-        empresa_id: empresaId,
-        sesion_caja_id: sesion.id,
-        usuario_id: user.id,
-        tipo: parsed.data.tipo,
-        monto: montoEntero,
-        concepto: parsed.data.concepto.trim(),
-        beneficiario: parsed.data.beneficiario?.trim() || null,
-        comprobante: parsed.data.comprobante?.trim() || null
-      }])
-      .select()
-      .single();
-
-    if (insertError || !nuevoMovimiento || !nuevoMovimiento.id) {
-      console.error('[Caja] Error al registrar movimiento de caja en Supabase:', insertError);
-      return { 
-        success: false, 
-        error: `Fallo de persistencia en Supabase: ${insertError?.message || 'No se confirmó el ID del movimiento registrado en la base de datos.'}` 
-      };
-    }
-
-    // Doble verificación de monto y tipo en la persistencia
-    if (Math.round(Number(nuevoMovimiento.monto)) !== montoEntero || nuevoMovimiento.tipo !== parsed.data.tipo) {
-      console.error('[Caja] Discrepancia en datos persistidos del movimiento:', nuevoMovimiento);
-      return {
-        success: false,
-        error: 'Discrepancia de integridad: el monto o tipo registrado en la base de datos difiere de la solicitud.'
-      };
-    }
-
-    // Registro forense
     AuditLogger.logAsync({
       empresaId,
       userId: user.id,
@@ -387,88 +229,44 @@ export async function registrarMovimientoCajaAction(input: {
       userRol: 'CAJERO',
       modulo: 'CAJA_POS',
       accion: parsed.data.tipo === 'EGRESO' ? 'EGRESO_CAJA_MENOR' : 'INGRESO_CAJA_MENOR',
-      entidadId: nuevoMovimiento.id,
-      descripcion: `${parsed.data.tipo}: $${montoEntero.toLocaleString('es-CO')} - ${parsed.data.concepto}`,
+      entidadId: result.movimiento.id,
+      descripcion: `${parsed.data.tipo}: $${result.montoEntero.toLocaleString('es-CO')} - ${parsed.data.concepto}`,
       detalles: {
-        sesionId: sesion.id,
+        sesionId: result.sesionId,
         tipo: parsed.data.tipo,
-        monto: montoEntero,
+        monto: result.montoEntero,
         concepto: parsed.data.concepto,
         beneficiario: parsed.data.beneficiario
       }
     });
 
-    await invalidateTenantCache(empresaId, ['caja']);
-    revalidatePath('/caja');
+    try {
+      await invalidateTenantCache(empresaId, ['caja']);
+    } catch {}
 
-    return { success: true, movimiento: nuevoMovimiento };
+    safeRevalidatePath('/caja');
+    return { success: true, movimiento: result.movimiento };
   } catch (err: any) {
-    console.error('[Caja] Error crítico en registrarMovimientoCajaAction:', err);
+    console.error('[registrarMovimientoCajaAction Error]:', err);
     return { success: false, error: err.message || 'Error inesperado al registrar el movimiento.' };
   }
 }
 
 /**
- * Consulta el resumen consolidado de arqueo para la pantalla de cierre.
+ * Server Action: Resumen Consolidado de Arqueo para Cierre
  */
 export async function obtenerResumenArqueoCajaAction(sesionCajaId: string) {
   try {
     const admin = createAdminSupabaseClient();
-
-    const { data: sesion, error: sErr } = await admin
-      .from('sesiones_caja')
-      .select('*')
-      .eq('id', sesionCajaId)
-      .single();
-
-    if (sErr || !sesion) {
-      return { success: false, error: 'Sesión no encontrada.' };
-    }
-
-    const { data: pagos } = await admin
-      .from('pagos')
-      .select('id, consecutivo, monto, fecha_pago, clientes (nombre)')
-      .eq('sesion_caja_id', sesion.id);
-
-    const { data: movs } = await admin
-      .from('movimientos_caja')
-      .select('*')
-      .eq('sesion_caja_id', sesion.id);
-
-    const listaPagos = pagos || [];
-    const listaMovs = movs || [];
-
-    const totalCobrosEfectivo = listaPagos.reduce((acc, p) => acc + Math.round(Number(p.monto) || 0), 0);
-    const totalIngresos = listaMovs
-      .filter(m => m.tipo === 'INGRESO')
-      .reduce((acc, m) => acc + Math.round(Number(m.monto) || 0), 0);
-    const totalEgresos = listaMovs
-      .filter(m => m.tipo === 'EGRESO')
-      .reduce((acc, m) => acc + Math.round(Number(m.monto) || 0), 0);
-
-    const montoApertura = Math.round(Number(sesion.monto_apertura) || 0);
-    const saldoEsperado = montoApertura + totalCobrosEfectivo + totalIngresos - totalEgresos;
-
-    return {
-      success: true,
-      sesion,
-      montoApertura,
-      totalCobrosEfectivo,
-      totalIngresos,
-      totalEgresos,
-      saldoEsperado,
-      pagos: listaPagos,
-      movimientos: listaMovs
-    };
+    return await CajaTransaccionalService.obtenerResumenArqueo(admin, sesionCajaId);
   } catch (err: any) {
-    console.error('[Caja] Error en obtenerResumenArqueoCajaAction:', err);
+    console.error('[obtenerResumenArqueoCajaAction Error]:', err);
     return { success: false, error: err.message || 'Error al obtener resumen de arqueo.' };
   }
 }
 
 /**
- * Cierre Formal de Sesión de Caja (Inmutable).
- * Ejecuta el cálculo exacto de descuadre y guarda el acta de arqueo.
+ * Server Action: Cierre Formal e Inmutable de Sesión de Caja
  */
 export async function cerrarSesionCajaAction(input: {
   sesionCajaId: string;
@@ -494,135 +292,21 @@ export async function cerrarSesionCajaAction(input: {
     const empresaId = await resolveEmpresaId(user.id);
     const admin = createAdminSupabaseClient();
 
-    // 1. Verificar estado actual de la sesión
-    const { data: sesion, error: sErr } = await admin
-      .from('sesiones_caja')
-      .select('*')
-      .eq('id', parsed.data.sesionCajaId)
-      .single();
-
-    if (sErr || !sesion) {
-      return { success: false, error: 'No se encontró la sesión de caja para cerrar.' };
-    }
-
-    if (sesion.estado === 'CERRADA') {
-      return { success: false, error: 'Esta sesión de caja ya fue CERRADA anteriormente.' };
-    }
-
-    // 2. Consolidar cobros y movimientos para cálculo de balance
-    const { data: pagos } = await admin
-      .from('pagos')
-      .select('monto')
-      .eq('sesion_caja_id', sesion.id);
-
-    const { data: movs } = await admin
-      .from('movimientos_caja')
-      .select('tipo, monto')
-      .eq('sesion_caja_id', sesion.id);
-
-    const totalCobros = (pagos || []).reduce((acc, p) => acc + Math.round(Number(p.monto) || 0), 0);
-    const totalIngresos = (movs || [])
-      .filter(m => m.tipo === 'INGRESO')
-      .reduce((acc, m) => acc + Math.round(Number(m.monto) || 0), 0);
-    const totalEgresos = (movs || [])
-      .filter(m => m.tipo === 'EGRESO')
-      .reduce((acc, m) => acc + Math.round(Number(m.monto) || 0), 0);
-
-    const montoFisico = Math.round(parsed.data.montoCierreFisico);
-
-    const balance = calcularBalanceSesionCaja({
-      montoApertura: Number(sesion.monto_apertura) || 0,
-      totalCobrosEfectivo: totalCobros,
-      totalIngresosCaja: totalIngresos,
-      totalEgresosCaja: totalEgresos,
-      montoFisicoContado: montoFisico
+    const result = await CajaTransaccionalService.cerrarSesion(admin, {
+      userId: user.id,
+      empresaId,
+      sesionCajaId: parsed.data.sesionCajaId,
+      montoCierreFisico: parsed.data.montoCierreFisico,
+      arqueoDetalle: parsed.data.arqueoDetalle,
+      motivoDescuadre: parsed.data.motivoDescuadre,
+      observaciones: parsed.data.observaciones,
+      userEmail: user.email,
     });
 
-    if (balance.requiereJustificacion && (!parsed.data.motivoDescuadre || parsed.data.motivoDescuadre.trim().length < 3)) {
-      return {
-        success: false,
-        error: `Se detectó un descuadre (${balance.clasificacionDescuadre}) de $${Math.abs(balance.diferencia).toLocaleString('es-CO')} COP. Se requiere justificar el motivo del descuadre obligatoriamente.`
-      };
+    if (!result.success || !result.sesion) {
+      return result;
     }
 
-    // 3. Ejecutar actualización atómica a estado CERRADA
-    const fechaCierre = new Date().toISOString();
-    const { data: sesionCerrada, error: updateErr } = await admin
-      .from('sesiones_caja')
-      .update({
-        estado: 'CERRADA',
-        monto_cierre: montoFisico,
-        monto_esperado: balance.saldoEsperado,
-        diferencia: balance.diferencia,
-        motivo_descuadre: parsed.data.motivoDescuadre?.trim() || null,
-        arqueo_detalle: parsed.data.arqueoDetalle || null,
-        observaciones: parsed.data.observaciones?.trim() || sesion.observaciones,
-        fecha_cierre: fechaCierre
-      })
-      .eq('id', sesion.id)
-      .select()
-      .single();
-
-    if (updateErr || !sesionCerrada || !sesionCerrada.id || sesionCerrada.estado !== 'CERRADA') {
-      console.error('[Caja] Error al cerrar sesión de caja en Supabase:', updateErr);
-      return { 
-        success: false, 
-        error: `Fallo de persistencia en Supabase: ${updateErr?.message || 'La sesión no confirmó su estado CERRADA en la base de datos.'}` 
-      };
-    }
-
-    // Doble verificación de balance persistido
-    if (Math.round(Number(sesionCerrada.monto_cierre)) !== montoFisico) {
-      console.error('[Caja] Discrepancia en monto de cierre persistido:', sesionCerrada);
-      return {
-        success: false,
-        error: 'Discrepancia de integridad: el monto de cierre persistido no coincide con el conteo reportado.'
-      };
-    }
-
-    // 3.1 Asiento Contable Balanceado en el Ledger por Descuadre (Decisión /grill-me Aprobada)
-    let transactionIdAjuste: string | null = null;
-    if (balance.diferencia !== 0) {
-      try {
-        const { data: accounts } = await admin
-          .from('financial_accounts')
-          .select('id, name, code, type');
-
-        const asientoAjuste = generarAsientoAjusteDescuadre({
-          sesionCajaId: sesion.id,
-          diferencia: balance.diferencia,
-          cuentas: (accounts as any) || []
-        });
-
-        if (asientoAjuste) {
-          const { data: txn } = await admin
-            .from('transactions')
-            .insert([{
-              description: asientoAjuste.description,
-              reference_id: asientoAjuste.referenceId,
-              created_by: user.id,
-              idempotency_key: `ajuste_caja_${sesion.id}_${Date.now()}`,
-              timestamp: new Date().toISOString()
-            }])
-            .select('id')
-            .single();
-
-          if (txn) {
-            transactionIdAjuste = txn.id;
-            const entriesPayload = asientoAjuste.entries.map(e => ({
-              transaction_id: txn.id,
-              account_id: e.accountId,
-              amount: e.amount
-            }));
-            await admin.from('journal_entries').insert(entriesPayload);
-          }
-        }
-      } catch (adjErr) {
-        console.warn('[Caja] Advertencia al generar asiento de descuadre en Ledger:', adjErr);
-      }
-    }
-
-    // 4. Registro forense en audit_logs
     AuditLogger.logAsync({
       empresaId,
       userId: user.id,
@@ -631,76 +315,60 @@ export async function cerrarSesionCajaAction(input: {
       userRol: 'CAJERO',
       modulo: 'CAJA_POS',
       accion: 'CIERRE_CAJA',
-      entidadId: sesion.id,
-      descripcion: `Cierre de caja: Esperado $${balance.saldoEsperado.toLocaleString('es-CO')}, Físico $${montoFisico.toLocaleString('es-CO')} (${balance.clasificacionDescuadre})`,
+      entidadId: result.sesion.id,
+      descripcion: `Cierre de sesión de caja: Físico $${result.montoFisico.toLocaleString('es-CO')} vs Sistema $${result.balance.saldoEsperado.toLocaleString('es-CO')} (${result.balance.clasificacionDescuadre})`,
       detalles: {
-        sesionId: sesion.id,
-        montoApertura: sesion.monto_apertura,
-        totalCobros,
-        totalIngresos,
-        totalEgresos,
-        saldoEsperado: balance.saldoEsperado,
-        montoCierreFisico: montoFisico,
-        diferencia: balance.diferencia,
-        clasificacionDescuadre: balance.clasificacionDescuadre,
-        motivoDescuadre: parsed.data.motivoDescuadre,
-        transactionIdAjuste
+        sesionId: result.sesion.id,
+        montoApertura: result.sesion.monto_apertura,
+        saldoEsperado: result.balance.saldoEsperado,
+        montoFisico: result.montoFisico,
+        diferencia: result.balance.diferencia,
+        clasificacion: result.balance.clasificacionDescuadre,
+        motivoDescuadre: parsed.data.motivoDescuadre
       }
     });
 
-    await invalidateTenantCache(empresaId, ['caja']);
-    revalidatePath('/caja');
+    try {
+      await invalidateTenantCache(empresaId, ['caja']);
+    } catch {}
 
-    return { 
-      success: true, 
-      sesion: sesionCerrada,
-      balance
-    };
+    safeRevalidatePath('/caja');
+    return { success: true, sesion: result.sesion, balance: result.balance };
   } catch (err: any) {
-    console.error('[Caja] Error crítico en cerrarSesionCajaAction:', err);
-    return { success: false, error: err.message || 'Error inesperado al cerrar la caja.' };
+    console.error('[cerrarSesionCajaAction Error]:', err);
+    return { success: false, error: err.message || 'Error inesperado al cerrar la sesión de caja.' };
   }
 }
 
 /**
- * Consulta el historial de sesiones de caja de la empresa con filtros por fecha y paginación.
+ * Server Action: Listar Historial de Sesiones de Caja
  */
 export async function listarHistorialSesionesCajaAction(filtros?: {
-  fechaDesde?: string;
-  fechaHasta?: string;
+  desde?: string;
+  hasta?: string;
+  cajeroId?: string;
   limite?: number;
 }) {
   try {
     const supabase = await createServerSupabaseClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    const empresaId = await resolveEmpresaId(user?.id);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'Debes iniciar sesión para consultar el historial.', historial: [], sesiones: [] };
+    }
+
+    const empresaId = await resolveEmpresaId(user.id);
     const admin = createAdminSupabaseClient();
 
-    let query = admin
-      .from('sesiones_caja')
-      .select('*')
-      .order('fecha_apertura', { ascending: false });
-
-    if (filtros?.fechaDesde) {
-      query = query.gte('fecha_apertura', filtros.fechaDesde);
-    }
-    if (filtros?.fechaHasta) {
-      query = query.lte('fecha_apertura', filtros.fechaHasta);
-    }
-
-    const limite = filtros?.limite || 30;
-    query = query.limit(limite);
-
-    const { data: sesiones, error } = await query;
-
-    if (error) {
-      console.error('[Caja] Error listando historial de sesiones:', error);
-      return { success: false, error: 'Error al consultar historial de cajas.', sesiones: [] };
-    }
-
-    return { success: true, sesiones: sesiones || [] };
+    return await CajaTransaccionalService.listarHistorial(admin, {
+      empresaId,
+      desde: filtros?.desde,
+      hasta: filtros?.hasta,
+      cajeroId: filtros?.cajeroId,
+      limite: filtros?.limite,
+    });
   } catch (err: any) {
-    console.error('[Caja] Error en listarHistorialSesionesCajaAction:', err);
-    return { success: false, error: err.message || 'Error inesperado.', sesiones: [] };
+    console.error('[listarHistorialSesionesCajaAction Error]:', err);
+    return { success: false, error: err.message || 'Error inesperado al consultar historial.', historial: [], sesiones: [] };
   }
 }

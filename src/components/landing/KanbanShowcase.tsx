@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Layers, MoreHorizontal, ArrowRight, CheckCircle, RefreshCw } from 'lucide-react';
+import { Layers, ArrowRight } from 'lucide-react';
 import { LANDING_CONFIG, KanbanCard } from '../../config/landing';
 
 export function KanbanShowcase() {
@@ -24,26 +24,29 @@ export function KanbanShowcase() {
   };
 
   const columns = [
-    { id: 'todo' as const, label: 'Por Despachar', dotColor: 'bg-amber-400' },
-    { id: 'inprogress' as const, label: 'En Alquiler', dotColor: 'bg-blue-400' },
-    { id: 'done' as const, label: 'Liquidado', dotColor: 'bg-emerald-400' },
+    { id: 'todo' as const, label: '1. Por Despachar', dotColor: 'bg-amber-500' },
+    { id: 'inprogress' as const, label: '2. En Obra (Activo)', dotColor: 'bg-blue-500' },
+    { id: 'done' as const, label: '3. Inspección & Liquidado', dotColor: 'bg-emerald-500' },
   ];
 
+  const formatCOP = (val: number) =>
+    `$${new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(val)}`;
+
   return (
-    <div className="w-full rounded-2xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 shadow-2xl p-4 sm:p-6 text-slate-100">
+    <div className="w-full rounded-2xl bg-white border border-slate-200 shadow-xl p-4 sm:p-6 text-slate-900">
       {/* Board Topbar */}
-      <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
+      <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-blue-600/20 text-blue-400 flex items-center justify-center">
-            <Layers className="w-3.5 h-3.5" />
+          <div className="w-7 h-7 rounded-lg bg-orange-50 border border-orange-200 text-orange-600 flex items-center justify-center">
+            <Layers className="w-4 h-4" />
           </div>
-          <span className="text-sm font-bold text-white">Tablero de Operaciones</span>
-          <span className="text-[11px] font-medium text-slate-400 hidden sm:inline-block">
-            (Haz clic en cualquier tarjeta para moverla)
+          <span className="text-sm font-bold text-slate-900">Ciclo de Contratos & Devoluciones</span>
+          <span className="text-[11px] font-medium text-slate-500 hidden sm:inline-block">
+            (Haz clic en una tarjeta para avanzar su estado)
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono">
+          <span className="text-xs px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-mono border border-slate-200 font-semibold">
             {tasks.length} contratos
           </span>
         </div>
@@ -56,24 +59,24 @@ export function KanbanShowcase() {
           return (
             <div
               key={col.id}
-              className="bg-slate-950/60 rounded-xl p-3 border border-slate-800/80 flex flex-col gap-2 min-h-[260px]"
+              className="bg-slate-50 rounded-xl p-3 border border-slate-200/80 flex flex-col gap-2 min-h-[300px]"
             >
               {/* Column Header */}
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800/60">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
                 <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${col.dotColor}`} />
-                  <span className="text-xs font-semibold text-slate-300">{col.label}</span>
+                  <span className={`w-2.5 h-2.5 rounded-full ${col.dotColor}`} />
+                  <span className="text-xs font-bold text-slate-700 truncate">{col.label}</span>
                 </div>
-                <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded">
+                <span className="text-[11px] font-mono text-slate-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded font-bold">
                   {colTasks.length}
                 </span>
               </div>
 
               {/* Tasks in Column */}
-              <div className="flex flex-col gap-2 pt-1 flex-1">
+              <div className="flex flex-col gap-2.5 pt-1 flex-1">
                 {colTasks.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-[11px] text-slate-400 italic py-8">
-                    Columna vacía
+                    Sin contratos en esta etapa
                   </div>
                 ) : (
                   colTasks.map((task) => (
@@ -88,27 +91,39 @@ export function KanbanShowcase() {
                           moveTask(task.id);
                         }
                       }}
-                      className="group p-3 rounded-lg bg-slate-900/90 hover:bg-slate-850 border border-slate-800 hover:border-blue-500/50 transition-all duration-200 cursor-pointer shadow-sm flex flex-col gap-2 select-none"
+                      className="group p-3.5 rounded-xl bg-white hover:bg-orange-50/30 border border-slate-200 hover:border-orange-400/80 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md flex flex-col gap-2 select-none"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono font-bold text-slate-400">
+                        <span className="text-[11px] font-mono font-bold text-slate-500">
                           {task.contractId}
                         </span>
-                        <span
-                          className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${task.tagColor}`}
-                        >
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                           {task.tag}
                         </span>
                       </div>
 
-                      <h4 className="text-xs font-semibold text-white group-hover:text-blue-300 transition-colors line-clamp-1">
+                      <h4 className="text-xs font-bold text-slate-900 group-hover:text-orange-600 transition-colors line-clamp-1">
                         {task.title}
                       </h4>
 
-                      <div className="flex items-center justify-between pt-1 border-t border-slate-800/40 text-[11px] text-slate-400">
-                        <span className="truncate max-w-[110px]">{task.avatarName}</span>
-                        <span className="flex items-center gap-1 text-blue-400 text-[10px] group-hover:translate-x-0.5 transition-transform">
-                          Mover <ArrowRight className="w-3 h-3" />
+                      {/* Client and Deposit Info */}
+                      <div className="space-y-1 text-[11px] text-slate-500">
+                        <div className="flex items-center justify-between">
+                          <span className="truncate max-w-[120px] font-medium text-slate-700">
+                            {task.clientName}
+                          </span>
+                          <span className="font-mono text-emerald-600 font-bold tabular-nums">
+                            {formatCOP(task.depositCOP)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px] text-slate-500">
+                        <span className="text-slate-400 group-hover:text-slate-600 transition-colors">
+                          Avanzar flujo
+                        </span>
+                        <span className="flex items-center gap-1 text-orange-600 group-hover:translate-x-0.5 transition-transform font-bold">
+                          Siguiente <ArrowRight className="w-3 h-3" />
                         </span>
                       </div>
                     </div>
