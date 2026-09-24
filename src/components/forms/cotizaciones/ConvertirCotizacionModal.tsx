@@ -189,21 +189,21 @@ export function ConvertirCotizacionModal({
   return (
     <>
       <div 
-        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-conversion-title"
       >
-        <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-8 animate-in zoom-in-95 duration-200">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-auto max-h-[94vh] flex flex-col animate-in zoom-in-95 duration-200">
           
           {/* Encabezado Institucional */}
-          <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20 shrink-0">
                 <FileText className="w-5 h-5" />
               </div>
               <div>
-                <h2 id="modal-conversion-title" className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                <h2 id="modal-conversion-title" className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
                   Formalizar Contrato (1-Clic)
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -221,7 +221,7 @@ export function ConvertirCotizacionModal({
           </div>
 
           {/* Cuerpo del Modal */}
-          <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+          <div className="p-4 sm:p-5 space-y-3.5 sm:space-y-4 max-h-[75vh] md:max-h-[78vh] overflow-y-auto custom-scrollbar">
             
             {/* Mensaje de Error si aplica */}
             {errorMsg && (
@@ -381,12 +381,12 @@ export function ConvertirCotizacionModal({
           </div>
 
           {/* Pie de Acciones */}
-          <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between gap-3">
+          <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={onClose}
               disabled={isPending}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/50 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/50 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               Cancelar
             </button>
@@ -395,7 +395,7 @@ export function ConvertirCotizacionModal({
               type="button"
               onClick={handleFormalizar}
               disabled={isPending}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-98 shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-98 shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
             >
               <span>Formalizar Contrato (1-Clic)</span>
               <ArrowRight className="w-4 h-4" />

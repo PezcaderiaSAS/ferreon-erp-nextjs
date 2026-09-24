@@ -57,7 +57,7 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         )}
         <TopNav />
-        <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto overflow-x-hidden safe-area-pb">
+        <main className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 overflow-y-auto overflow-x-hidden safe-area-pb custom-scrollbar">
           {children}
         </main>
       </div>

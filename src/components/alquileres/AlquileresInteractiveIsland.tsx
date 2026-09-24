@@ -777,16 +777,16 @@ export function AlquileresInteractiveIsland({
   };
 
   return (
-    <div className="flex flex-col gap-6 h-full" onClick={() => setActiveDropdown(null)}>
+    <div className="flex flex-col gap-3.5 sm:gap-5 lg:gap-6 h-full" onClick={() => setActiveDropdown(null)}>
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 sm:gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-teal-700 bg-teal-50 border border-teal-200 px-2.5 py-0.5 rounded-full">
+            <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-teal-700 bg-teal-50 border border-teal-200 px-2.5 py-0.5 rounded-full">
               Alquileres System • Plataforma Integral WMS
             </span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
             {activeTab === 'contratos' && "Contratos de Alquiler en Obra"}
             {activeTab === 'cotizaciones' && "Cotizaciones Comerciales de Obra"}
             {activeTab === 'historial' && "Historial y Liquidaciones"}
@@ -921,39 +921,39 @@ export function AlquileresInteractiveIsland({
         </div>
 
         {/* Data Table Container con Virtualización */}
-        <div ref={tableContainerRef} className="flex-1 overflow-auto min-h-[400px]">
+        <div ref={tableContainerRef} className="flex-1 overflow-auto min-h-[380px] custom-scrollbar table-compact">
           {activeTab === 'cotizaciones' ? (
-            <div className="space-y-4 p-4">
+            <div className="space-y-3.5 p-3 sm:p-4">
               {/* Tarjetas KPI de Cotizaciones */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3.5 flex flex-col justify-between">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Cotizaciones Activas</span>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+                <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 flex flex-col justify-between">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider">Cotizaciones Activas</span>
                   <div className="flex items-baseline justify-between mt-1">
-                    <span className="text-2xl font-black text-slate-900 font-mono tabular-nums">{metricasCotizaciones.totalActivas}</span>
+                    <span className="text-xl sm:text-2xl font-black text-slate-900 font-mono tabular-nums">{metricasCotizaciones.totalActivas}</span>
                     <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold">En Propuesta</span>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3.5 flex flex-col justify-between">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pipeline Cotizado</span>
+                <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 flex flex-col justify-between">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pipeline Cotizado</span>
                   <div className="flex items-baseline justify-between mt-1">
-                    <span className="text-xl font-black text-blue-700 font-mono tabular-nums">{formatearMoneda(metricasCotizaciones.valorPipeline)}</span>
+                    <span className="text-lg sm:text-xl font-black text-blue-700 font-mono tabular-nums">{formatearMoneda(metricasCotizaciones.valorPipeline)}</span>
                     <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold">Proyectado</span>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3.5 flex flex-col justify-between">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Equipos Demandados</span>
+                <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 flex flex-col justify-between">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider">Equipos Demandados</span>
                   <div className="flex items-baseline justify-between mt-1">
-                    <span className="text-2xl font-black text-slate-900 font-mono tabular-nums">{metricasCotizaciones.totalEquiposCotizados}</span>
+                    <span className="text-xl sm:text-2xl font-black text-slate-900 font-mono tabular-nums">{metricasCotizaciones.totalEquiposCotizados}</span>
                     <span className="text-[10px] text-slate-400">unidades</span>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3.5 flex flex-col justify-between">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Formalizadas a Contrato</span>
+                <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 flex flex-col justify-between">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider">Formalizadas a Contrato</span>
                   <div className="flex items-baseline justify-between mt-1">
-                    <span className="text-2xl font-black text-emerald-700 font-mono tabular-nums">{metricasCotizaciones.totalConvertidas}</span>
+                    <span className="text-xl sm:text-2xl font-black text-emerald-700 font-mono tabular-nums">{metricasCotizaciones.totalConvertidas}</span>
                     <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">Cierres</span>
                   </div>
                 </div>
@@ -961,16 +961,16 @@ export function AlquileresInteractiveIsland({
 
               {/* TABLA DE COTIZACIONES */}
               <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse table-compact">
                   <thead className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 text-xs text-slate-700 font-bold shadow-2xs">
                     <tr>
-                      <th className="py-3 px-4">Consecutivo</th>
-                      <th className="py-3 px-4">Cliente / Obra</th>
-                      <th className="py-3 px-4">Fecha Emisión</th>
-                      <th className="py-3 px-4 text-right">Subtotal</th>
-                      <th className="py-3 px-4 text-right">Total Cotizado</th>
-                      <th className="py-3 px-4 text-center">Estado</th>
-                      <th className="py-3 px-4 text-right">Acciones de Emisión</th>
+                      <th className="py-2.5 px-3">Consecutivo</th>
+                      <th className="py-2.5 px-3">Cliente / Obra</th>
+                      <th className="py-2.5 px-3">Fecha Emisión</th>
+                      <th className="py-2.5 px-3 text-right">Subtotal</th>
+                      <th className="py-2.5 px-3 text-right">Total Cotizado</th>
+                      <th className="py-2.5 px-3 text-center">Estado</th>
+                      <th className="py-2.5 px-3 text-right">Acciones de Emisión</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white text-xs">
@@ -980,13 +980,13 @@ export function AlquileresInteractiveIsland({
 
                       return (
                         <tr key={cot.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-4 font-medium">
-                            <span className="font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-md">
+                          <td className="py-2.5 px-3 font-medium">
+                            <span className="font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
                               #{cot.consecutivo || cot.id}
                             </span>
                           </td>
-                          <td className="py-3 px-4">
-                            <div className="font-bold text-slate-900 text-sm">{cot.clienteNombre || cot.cliente_nombre}</div>
+                          <td className="py-2.5 px-3">
+                            <div className="font-bold text-slate-900 text-xs sm:text-sm">{cot.clienteNombre || cot.cliente_nombre}</div>
                             {cot.obraNombre && (
                               <div className="text-[11px] text-slate-500 font-medium">Obra: {cot.obraNombre}</div>
                             )}
@@ -994,16 +994,16 @@ export function AlquileresInteractiveIsland({
                               {itemsCount} equipo(s) en cotización
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-slate-600">
+                          <td className="py-2.5 px-3 text-slate-600">
                             {new Date(cot.fechaEmision || cot.fecha_emision || cot.created_at).toLocaleDateString('es-CO')}
                           </td>
-                          <td className="py-3 px-4 text-right font-mono font-medium text-slate-700">
+                          <td className="py-2.5 px-3 text-right font-mono font-medium text-slate-700">
                             {formatearMoneda(cot.subtotal || 0)}
                           </td>
-                          <td className="py-3 px-4 text-right font-mono font-black text-slate-900 text-sm">
+                          <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900 text-xs sm:text-sm">
                             {formatearMoneda(cot.total || 0)}
                           </td>
-                          <td className="py-3 px-4 text-center">
+                          <td className="py-2.5 px-3 text-center">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                               isConvertida
                                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
@@ -1089,16 +1089,16 @@ export function AlquileresInteractiveIsland({
             </div>
           ) : (
             /* TABLA DE CONTRATOS */
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse table-compact">
               <thead className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 text-xs text-slate-700 font-bold shadow-2xs">
                 <tr>
-                  <th className="py-3 px-4 text-xs font-bold text-slate-700">ID / Consecutivo</th>
-                  <th className="py-3 px-4 text-xs font-bold text-slate-700">Cliente</th>
-                  <th className="py-3 px-4 text-xs font-bold text-slate-700">Fecha Inicio</th>
-                  <th className="py-3 px-4 text-xs font-bold text-slate-700">Total Estimado</th>
-                  <th className="py-3 px-4 text-xs font-bold text-slate-700">Equipos</th>
-                  <th className="py-3 px-4 text-xs font-bold text-slate-700">Estado</th>
-                  <th className="py-3 px-4 text-xs font-bold text-slate-700 text-right">Acciones</th>
+                  <th className="py-2.5 px-3 sm:px-3.5 text-xs font-bold text-slate-700">ID / Consecutivo</th>
+                  <th className="py-2.5 px-3 sm:px-3.5 text-xs font-bold text-slate-700">Cliente</th>
+                  <th className="py-2.5 px-3 sm:px-3.5 text-xs font-bold text-slate-700">Fecha Inicio</th>
+                  <th className="py-2.5 px-3 sm:px-3.5 text-xs font-bold text-slate-700">Total Estimado</th>
+                  <th className="py-2.5 px-3 sm:px-3.5 text-xs font-bold text-slate-700">Equipos</th>
+                  <th className="py-2.5 px-3 sm:px-3.5 text-xs font-bold text-slate-700">Estado</th>
+                  <th className="py-2.5 px-3 sm:px-3.5 text-xs font-bold text-slate-700 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
@@ -1125,7 +1125,7 @@ export function AlquileresInteractiveIsland({
                           }}
                           className="hover:bg-slate-50/80 transition-colors group cursor-pointer relative"
                         >
-                    <td className="py-3 px-4 text-xs text-slate-900 font-medium">
+                    <td className="py-2.5 px-3 sm:px-3.5 text-xs text-slate-900 font-medium">
                       <div className="flex items-center gap-1.5">
                         <span className="font-mono font-bold text-slate-800 bg-slate-100 group-hover:bg-slate-200 px-2 py-0.5 rounded transition-colors">
                           #{alq.consecutivo || alq.id}
@@ -1137,20 +1137,20 @@ export function AlquileresInteractiveIsland({
                         )}
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-xs text-slate-900 font-semibold group-hover:text-teal-700 transition-colors">
+                    <td className="py-2.5 px-3 sm:px-3.5 text-xs text-slate-900 font-semibold group-hover:text-teal-700 transition-colors">
                       {alq.clienteNombre || 'Sin Nombre'}
                     </td>
-                    <td className="py-3 px-4 text-xs text-slate-600">{new Date(alq.created_at || Date.now()).toLocaleDateString('es-CO')}</td>
-                    <td className="py-3 px-4 text-xs font-bold text-slate-800 font-mono tabular-nums">{formatearMoneda(alq.total || 0)}</td>
-                    <td className="py-3 px-4">
+                    <td className="py-2.5 px-3 sm:px-3.5 text-xs text-slate-600">{new Date(alq.created_at || Date.now()).toLocaleDateString('es-CO')}</td>
+                    <td className="py-2.5 px-3 sm:px-3.5 text-xs font-bold text-slate-800 font-mono tabular-nums">{formatearMoneda(alq.total || 0)}</td>
+                    <td className="py-2.5 px-3 sm:px-3.5">
                       <div className="flex flex-wrap gap-1">
-                        <span className="px-2 py-1 bg-slate-100 rounded text-[11px] font-medium text-slate-600">
+                        <span className="px-2 py-0.5 sm:py-1 bg-slate-100 rounded text-[11px] font-medium text-slate-600">
                           {alq.detalles?.length || 0} Equipo(s)
                         </span>
                       </div>
                     </td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                    <td className="py-2.5 px-3 sm:px-3.5">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                         alq.estado === 'ACTIVO' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
                         alq.estado === 'COTIZACION' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
                         alq.estado === 'FORMALIZADA' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
@@ -1159,7 +1159,7 @@ export function AlquileresInteractiveIsland({
                         {alq.estado}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right relative">
+                    <td className="py-2.5 px-3 sm:px-3.5 text-right relative">
                       <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                         {alq.estado === 'ACTIVO' && (
                           <button

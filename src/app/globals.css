@@ -402,6 +402,74 @@ body {
     opacity: 0.28;
     pointer-events: none;
   }
+
+  /* ========================================================================= */
+  /* UTILIDADES DE SCROLLBAR ERGONÓMICAS (Laptops & Pantallas Compactas)      */
+  /* ========================================================================= */
+  .custom-scrollbar,
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar,
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track,
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb,
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.4);
+    border-radius: 9999px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover,
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.7);
+  }
+}
+
+/* ========================================================================= */
+/* OPTIMIZACIÓN ERGONÓMICA PARA PANTALLAS DE LAPTOPS                         */
+/* Resoluciones: 1280x720, 1366x768, 1440x900 y laptops con escala Windows  */
+/* ========================================================================= */
+
+/* 1. Laptops con altura vertical reducida (viewport libre < 820px) */
+@media (max-height: 820px) {
+  /* Reducir altura del header y márgenes para ganar espacio vertical */
+  .laptop-compact-y {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  /* Modales más compactos para que botones de acción no queden ocultos */
+  .modal-compact-h {
+    max-height: 88vh !important;
+  }
+
+  /* Tablas de datos con densidad mejorada */
+  .table-compact th {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  .table-compact td {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+}
+
+/* 2. Ancho de laptops (1024px a 1440px) */
+@media (min-width: 1024px) and (max-width: 1440px) {
+  /* Evitar quiebres forzados de tarjetas métricas */
+  .laptop-grid-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
 
 /* Accessibility: Respetar preferencias de reducción de movimiento */

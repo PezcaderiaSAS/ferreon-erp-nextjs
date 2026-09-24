@@ -91,10 +91,10 @@ export function CicloVidaAlquilerBanner() {
   return (
     <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl shadow-sm border border-slate-700/60 transition-all duration-300">
       {/* Header del Banner */}
-      <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3 border-b border-slate-700/50 bg-white/[0.02]">
+      <div className="p-2.5 sm:p-3.5 flex items-center justify-between gap-3 border-b border-slate-700/50 bg-white/[0.02]">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-amber-400/20 border border-amber-400/30 flex items-center justify-center text-amber-300 shrink-0 shadow-xs">
-            <Sparkles className="w-4 h-4" />
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-400/20 border border-amber-400/30 flex items-center justify-center text-amber-300 shrink-0 shadow-xs">
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -106,7 +106,7 @@ export function CicloVidaAlquilerBanner() {
               </span>
             </div>
             {!isCollapsed && (
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">
                 Conoce las 4 etapas para gestionar maquinaria con máxima velocidad y cero errores de stock.
               </p>
             )}
@@ -117,7 +117,7 @@ export function CicloVidaAlquilerBanner() {
           <button
             type="button"
             onClick={() => setGuiaBotonesOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-700/70 hover:bg-slate-700 text-amber-300 hover:text-amber-200 border border-slate-600/80 text-xs font-bold transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-700/70 hover:bg-slate-700 text-amber-300 hover:text-amber-200 border border-slate-600/80 text-xs font-bold transition-colors cursor-pointer"
             title="Ver qué hace cada botón en detalle"
           >
             <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
@@ -148,13 +148,13 @@ export function CicloVidaAlquilerBanner() {
             : 'max-h-[600px] overflow-visible opacity-100'
         }`}
       >
-        <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-900/40">
+        <div className="p-2.5 sm:p-3.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 bg-slate-900/40">
           {pasos.map((paso, idx) => {
             const Icon = paso.icono;
             return (
               <div
                 key={paso.numero}
-                className={`bg-slate-800/80 border border-slate-700/80 rounded-xl p-3.5 flex flex-col gap-2.5 h-auto transition-colors ${paso.bordeHover} relative group`}
+                className={`bg-slate-800/80 border border-slate-700/80 rounded-xl p-2.5 sm:p-3 flex flex-col gap-2 h-auto transition-colors ${paso.bordeHover} relative group`}
               >
                 {/* Cabecera: número + título + icono */}
                 <div className="flex items-center justify-between">

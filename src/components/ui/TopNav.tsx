@@ -44,7 +44,7 @@ export function TopNav() {
   };
 
   return (
-    <header className="bg-white text-slate-900 font-sans h-16 sticky top-0 z-30 border-b border-slate-200 shadow-sm flex items-center justify-between px-4 sm:px-6">
+    <header className="bg-white text-slate-900 font-sans h-14 sm:h-16 sticky top-0 z-30 border-b border-slate-200 shadow-sm flex items-center justify-between px-3 sm:px-6">
       <div className="flex items-center gap-3 w-full max-w-md">
         <button 
           type="button"

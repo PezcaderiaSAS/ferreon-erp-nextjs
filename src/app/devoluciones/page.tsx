@@ -47,10 +47,10 @@ async function DevolucionesDataWrapper() {
  */
 export default function DevolucionesPage() {
   return (
-    <main className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8">
+    <div className="w-full">
       <Suspense fallback={<DevolucionesSkeleton />}>
         <DevolucionesDataWrapper />
       </Suspense>
-    </main>
+    </div>
   );
 }

@@ -50,7 +50,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
   const widthClass = maxWidthMap[maxWidth] || 'max-w-md';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto animate-fadeIn">
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity"
@@ -64,18 +64,18 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl w-full ${widthClass} relative z-10 flex flex-col max-h-[92vh] border border-slate-100 dark:border-slate-800 overflow-hidden transition-all duration-300 outline-none`}
+        className={`bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl w-full ${widthClass} relative z-10 flex flex-col max-h-[94vh] border border-slate-100 dark:border-slate-800 overflow-hidden transition-all duration-300 outline-none`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-sm">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <div className="flex items-center space-x-2">
             <span className="w-2.5 h-2.5 rounded-full bg-brand-salmon animate-pulse" />
-            <h2 id={titleId} className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">{title}</h2>
+            <h2 id={titleId} className="text-base sm:text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight">{title}</h2>
           </div>
           <button 
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 p-2 rounded-xl transition-all"
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 p-1.5 sm:p-2 rounded-xl transition-all"
             aria-label="Cerrar modal"
           >
             <X className="text-[20px] block w-5 h-5" />
@@ -83,7 +83,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
         </div>
         
         {/* Body Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto overflow-x-hidden flex-1 custom-scrollbar text-slate-700 dark:text-slate-300">
+        <div className="p-3 sm:p-5 md:p-6 overflow-y-auto overflow-x-hidden flex-1 custom-scrollbar text-slate-700 dark:text-slate-300">
           {children}
         </div>
       </div>

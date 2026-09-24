@@ -71,7 +71,7 @@ function SidebarNavLinks({
   });
 
   return (
-    <div className="flex flex-col gap-1.5 flex-grow overflow-y-auto">
+    <div className="flex flex-col gap-1 sm:gap-1.5 flex-grow overflow-y-auto custom-scrollbar">
       {visibleLinks.map((link) => {
         const isActive = link.href === '/alquileres' 
           ? pathname.startsWith('/alquileres') 
@@ -90,10 +90,10 @@ function SidebarNavLinks({
             href={link.href}
             title={isSidebarCollapsed ? link.label : undefined}
             onClick={() => setMobileMenuOpen(false)}
-            className={`rounded-xl text-sm font-bold flex items-center transition-all duration-200 active:scale-95 group relative ${
+            className={`rounded-xl text-xs sm:text-sm font-semibold sm:font-bold flex items-center transition-all duration-200 active:scale-95 group relative ${
               isSidebarCollapsed 
-                ? 'justify-center p-3' 
-                : 'gap-3.5 px-3.5 py-2.5'
+                ? 'justify-center p-2.5 sm:p-3' 
+                : 'gap-3 px-3 py-2 sm:py-2.5'
             } ${
               isActive 
                 ? 'bg-brand-salmonLight text-brand-salmonDark shadow-2xs' 
@@ -173,12 +173,12 @@ export function Sidebar() {
       {/* Sidebar Navigation */}
       <nav 
         id="tour-sidebar"
-        className={`bg-white text-slate-900 font-sans h-[100dvh] fixed left-0 top-0 border-r border-slate-200 shadow-sm flex flex-col gap-2 z-50 transition-all duration-300 ease-in-out ${
+        className={`bg-white text-slate-900 font-sans h-[100dvh] fixed left-0 top-0 border-r border-slate-200 shadow-sm flex flex-col gap-1.5 sm:gap-2 z-50 transition-all duration-300 ease-in-out ${
           isMobileMenuOpen ? 'translate-x-0 w-64 p-4' : '-translate-x-full'
-        } md:translate-x-0 ${isSidebarCollapsed ? 'md:w-16 md:p-2' : 'md:w-64 md:p-4'}`}
+        } md:translate-x-0 ${isSidebarCollapsed ? 'md:w-16 md:p-2' : 'md:w-64 md:p-3 lg:p-4'}`}
       >
         {/* Header con Logo / Isotipo */}
-        <div className={`mb-6 flex items-center justify-between relative ${isSidebarCollapsed ? 'px-1 py-1' : 'px-4 py-2 gap-3'}`}>
+        <div className={`mb-3 sm:mb-4 lg:mb-6 flex items-center justify-between relative ${isSidebarCollapsed ? 'px-1 py-1' : 'px-3 py-1.5 lg:px-4 lg:py-2 gap-3'}`}>
           {isSidebarCollapsed ? (
             <button
               onClick={toggleSidebarCollapse}
