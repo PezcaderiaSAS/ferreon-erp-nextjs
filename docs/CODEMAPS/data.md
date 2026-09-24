@@ -29,5 +29,7 @@
 - `reducir_stock_seguro` & `ajustar_stock_equipo`: Control de concurrencia y ajustes de bodega.
 
 ## RLS & Seguridad Multitenant
-- Row Level Security (RLS) habilitado en el 100% de las tablas con aislamiento estricto por `empresa_id`.
+- Supabase Auth Hook (`custom_access_token_hook`): Inyecta `empresa_id` en `auth.jwt() -> 'app_metadata' ->> 'empresa_id'` durante el Sign-In.
+- Row Level Security (RLS) habilitado en el 100% de las tablas con aislamiento estricto validando el token de sesión (ej. `empresa_id = (auth.jwt() -> 'app_metadata' ->> 'empresa_id')::uuid`).
+- Claves foráneas obligatorias (`empresaId String`) en Prisma Schema para evitar inserciones huérfanas o bypass accidental.
 - Políticas de bypass autorizadas exclusivamente para la función `public.is_ultra_admin()` y el rol `ULTRAADMIN`.

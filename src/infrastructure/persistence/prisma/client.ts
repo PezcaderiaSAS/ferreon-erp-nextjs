@@ -93,7 +93,15 @@ export function getTenantPrismaClient(tenantId: string, baseClient?: PrismaClien
           return query(args);
         },
         async findUnique({ model, args, query }) {
-          return query(args);
+          const result = await query(args);
+          if (result && TENANT_AWARE_MODELS.has(model)) {
+            // Validación post-query: si el registro pertenece a otra empresa, abortar.
+            if ((result as any).empresaId !== tenantId) {
+               console.error(`[SECURITY_LEAK_PREVENTED] Intento de acceso cross-tenant en modelo ${model} bloqueado.`);
+               throw new Error("[Security Exception] Acceso denegado a registros fuera del entorno del inquilino.");
+            }
+          }
+          return result;
         },
         async count({ model, args, query }) {
           if (TENANT_AWARE_MODELS.has(model)) {

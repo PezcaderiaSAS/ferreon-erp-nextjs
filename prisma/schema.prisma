@@ -289,7 +289,7 @@ model RentalContract {
 
 model RentalDetail {
   id         Int     @id @default(autoincrement())
-  empresaId  String? @map("empresa_id") @db.Uuid
+  empresaId  String  @map("empresa_id") @db.Uuid
   alquilerId Int     @map("alquiler_id")
   equipoId   BigInt  @map("equipo_id")
 
@@ -316,7 +316,7 @@ model RentalDetail {
 
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  tenant    Tenant?        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tenant    Tenant         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   rental    RentalContract @relation(fields: [alquilerId], references: [id], onDelete: Cascade)
   equipment Equipment      @relation(fields: [equipoId], references: [id], onDelete: Restrict)
 
@@ -364,7 +364,7 @@ model InventoryMovement {
 
 model AuditLog {
   id            String   @id @default(uuid()) @db.Uuid
-  empresaId     String?  @map("empresa_id") @db.Uuid
+  empresaId     String   @map("empresa_id") @db.Uuid
   usuarioId     String?  @map("usuario_id") @db.Uuid
   usuarioNombre String   @default("Sistema") @map("usuario_nombre") @db.VarChar(255)
   usuarioEmail  String   @default("sistema@ferreon.com") @map("usuario_email") @db.VarChar(255)
@@ -377,7 +377,7 @@ model AuditLog {
   ipAddress     String?  @default("127.0.0.1") @map("ip_address") @db.VarChar(50)
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  tenant Tenant? @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
   @@index([empresaId, createdAt(sort: Desc)])
   @@index([modulo, accion])
@@ -392,7 +392,7 @@ model AuditLog {
 model CashSession {
   id              String    @id @default(uuid()) @db.Uuid
   tenantId        String?   @map("tenant_id") @db.Uuid
-  empresaId       String?   @map("empresa_id") @db.Uuid
+  empresaId       String    @map("empresa_id") @db.Uuid
   usuarioId       String    @map("usuario_id") @db.Uuid
   estado          String    @default("ABIERTA") @db.VarChar(20)
   montoApertura   Decimal   @default(0) @map("monto_apertura") @db.Decimal(15, 2)
@@ -405,7 +405,7 @@ model CashSession {
   fechaApertura   DateTime? @default(now()) @map("fecha_apertura") @db.Timestamptz(6)
   fechaCierre     DateTime? @map("fecha_cierre") @db.Timestamptz(6)
 
-  tenant      Tenant?        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tenant      Tenant         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   movements   CashMovement[]
 
   @@index([empresaId])
@@ -418,7 +418,7 @@ model CashSession {
 model CashMovement {
   id            String    @id @default(uuid()) @db.Uuid
   tenantId      String?   @map("tenant_id") @db.Uuid
-  empresaId     String?   @map("empresa_id") @db.Uuid
+  empresaId     String    @map("empresa_id") @db.Uuid
   sesionCajaId  String    @map("sesion_caja_id") @db.Uuid
   usuarioId     String    @map("usuario_id") @db.Uuid
   tipo          String    @db.VarChar(20)
@@ -428,7 +428,7 @@ model CashMovement {
   comprobante   String?   @db.VarChar(100)
   createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  tenant        Tenant?     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tenant        Tenant      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   cashSession   CashSession @relation(fields: [sesionCajaId], references: [id], onDelete: Cascade)
 
   @@index([empresaId])

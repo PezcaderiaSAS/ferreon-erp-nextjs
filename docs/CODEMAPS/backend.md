@@ -36,6 +36,10 @@
 - `audit-logger.ts`: Registro inmutable asíncrono en `audit_logs`.
 - `validation.ts`: Validación perimetral con esquemas Zod.
 
+## Infraestructura de Seguridad (HOC & Prisma)
+- `withTenantContext.ts` (`src/infrastructure/security/`): HOC (Middleware) obligatorio para todas las Server Actions. Extrae y certifica el token JWT vía `zod`, capturando la claim `app_metadata.empresa_id` e inyectando un Prisma Client contextualizado (`TenantPrismaClient`). Arroja `AuthorizationError` en caso de brechas.
+- `client.ts` (`src/infrastructure/persistence/prisma/`): Extensión Prisma Multi-Tenant con Validación Post-Query obligatoria en `findUnique`, bloqueando intentos de lectura trans-inquilino.
+
 ## Scripts de Soporte y Operación (`scripts/`)
 - `scripts/setup_demo_user.mjs`: Creación y vinculación de usuario demo de prueba (`demo@alquileres-system.com`) con la empresa principal `ac8719ea-f16a-4538-b308-40d9511a14cb` en `empresa_usuarios`.
 - `scripts/diagnosticar_duplicados.mjs`: Diagnóstico forense de integridad referencial y detección de registros duplicados en PostgreSQL.
