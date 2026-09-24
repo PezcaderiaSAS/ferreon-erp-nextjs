@@ -43,6 +43,9 @@ export async function getTenantSubscriptionAction(): Promise<{
       .single();
 
     if (memberError || !membership || !membership.empresas) {
+      if (memberError) {
+        console.error('[Billing Action] Error consultando membership en empresa_usuarios:', memberError);
+      }
       return { success: false, error: 'No se encontró una empresa activa vinculada al usuario' };
     }
 
