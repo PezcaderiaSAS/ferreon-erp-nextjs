@@ -75,7 +75,7 @@ BEGIN
     END IF;
 
     -- D. Ratificación de Fechas si la fecha de inicio cotizada quedó en el pasado
-    SELECT MIN(fecha_inicio) INTO v_fecha_min_orig 
+    SELECT MIN(fecha_inicio::date) INTO v_fecha_min_orig 
     FROM public.alquiler_detalles 
     WHERE alquiler_id = v_alquiler_id;
 
@@ -84,17 +84,11 @@ BEGIN
         IF v_fecha_min_orig IS NOT NULL AND v_nueva_fecha_inicio <> v_fecha_min_orig THEN
             v_shift_dias := (v_nueva_fecha_inicio - v_fecha_min_orig);
             
-            -- Desplazar fechas en líneas de detalle
+            -- Desplazar fechas en líneas de detalle (timestamptz + interval)
             UPDATE public.alquiler_detalles
-            SET fecha_inicio = fecha_inicio + v_shift_dias,
-                fecha_fin = fecha_fin + v_shift_dias
+            SET fecha_inicio = fecha_inicio + (v_shift_dias || ' days')::INTERVAL,
+                fecha_fin = fecha_fin + (v_shift_dias || ' days')::INTERVAL
             WHERE alquiler_id = v_alquiler_id;
-
-            -- Actualizar cabecera si tiene fecha_inicio
-            UPDATE public.alquileres
-            SET fecha_inicio = v_nueva_fecha_inicio,
-                fecha_fin_estimada = fecha_fin_estimada + v_shift_dias
-            WHERE id = v_alquiler_id;
             
             v_fecha_min_orig := v_nueva_fecha_inicio;
         END IF;
