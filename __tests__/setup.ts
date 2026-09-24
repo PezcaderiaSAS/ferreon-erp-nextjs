@@ -1,4 +1,6 @@
 import { beforeAll, afterEach } from 'vitest';
+import '@testing-library/jest-dom/vitest';
+import { cleanup } from '@testing-library/react';
 
 beforeAll(() => {
   // Simular variables de entorno si es necesario
@@ -7,5 +9,6 @@ beforeAll(() => {
 });
 
 afterEach(() => {
-  // Limpieza global después de cada prueba
+  // Limpieza global después de cada prueba de componente
+  cleanup();
 });

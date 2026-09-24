@@ -41,9 +41,10 @@ export interface CrearCotizacionInput {
 }
 
 export interface ConvertirCotizacionInput {
-  cotizacionId: string;
+  cotizacionId: string | number;
   idempotencyKey?: string;
   detallesLogistica?: string;
+  nuevaFechaInicio?: string;
 }
 
 const CotizacionItemZodSchema = z.object({
@@ -376,8 +377,12 @@ export async function actualizarEstadoCotizacionAction(id: string, nuevoEstado: 
 
 /**
  * Server Action: CONVERSIÓN POKA-YOKE 1-CLIC DE COTIZACIÓN A CONTRATO DE ALQUILER
+ * Server Action: CONVERSIÓN POKA-YOKE 1-CLIC DE COTIZACIÓN A CONTRATO DE ALQUILER (POLIMÓRFICA)
  * Ejecuta el procedimiento SQL atómico con bloqueo pesimista ordenado (ORDER BY id ASC FOR UPDATE)
  * en base de datos para prevenir sobreventas y deadlocks concurrentes de forma absoluta.
+ * Soporta polimórficamente:
+ * 1. Registros en tabla 'alquileres' con ID entero/BIGINT (formalización in-situ con stock dinámico).
+ * 2. Registros en tabla 'cotizaciones' con ID UUID (conversión con bloqueo pesimista y stock dinámico).
  */
 export async function convertirCotizacionAContratoAction(input: ConvertirCotizacionInput) {
   try {
@@ -385,30 +390,63 @@ export async function convertirCotizacionAContratoAction(input: ConvertirCotizac
       return { success: false, error: 'El ID de la cotización es obligatorio para la conversión.' };
     }
 
+    const rawIdStr = String(input.cotizacionId).trim();
+    const isNumericId = /^\d+$/.test(rawIdStr);
+
     const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const userIdentifier = user?.email || user?.id || 'SISTEMA_OPERADOR';
-    const idempotencyKey = input.idempotencyKey || `conv_cot_${input.cotizacionId}_${Date.now()}`;
+    const idempotencyKey = input.idempotencyKey || `conv_cot_${rawIdStr}_${Date.now()}`;
 
-    // 1. Invocar el procedimiento SQL atómico en Supabase con bloqueo pesimista
-    const { data: rpcRes, error: rpcErr } = await supabase.rpc('convertir_cotizacion_a_alquiler_transaccional', {
-      p_payload: {
-        cotizacion_id: input.cotizacionId,
-        idempotency_key: idempotencyKey,
-        usuario_id: user?.id,
-        detalles_logistica: input.detallesLogistica || ''
-      }
-    });
+    let rpcRes: any = null;
+    let rpcErr: any = null;
+
+    if (isNumericId) {
+      // 1.A Flujo Alquiler In-Situ (ID numérico de tabla alquileres): RPC formalizar_alquiler_cotizacion_transaccional
+      const { data, error } = await supabase.rpc('formalizar_alquiler_cotizacion_transaccional', {
+        p_payload: {
+          alquiler_id: Number(rawIdStr),
+          nueva_fecha_inicio: input.nuevaFechaInicio || null,
+          detalles_logistica: input.detallesLogistica || '',
+          idempotency_key: idempotencyKey,
+          usuario_id: user?.id
+        }
+      });
+      rpcRes = data;
+      rpcErr = error;
+    } else {
+      // 1.B Flujo Módulo Cotizaciones (ID UUID de tabla cotizaciones): RPC convertir_cotizacion_a_alquiler_transaccional
+      const { data, error } = await supabase.rpc('convertir_cotizacion_a_alquiler_transaccional', {
+        p_payload: {
+          cotizacion_id: rawIdStr,
+          nueva_fecha_inicio: input.nuevaFechaInicio || null,
+          idempotency_key: idempotencyKey,
+          usuario_id: user?.id,
+          detalles_logistica: input.detallesLogistica || ''
+        }
+      });
+      rpcRes = data;
+      rpcErr = error;
+    }
 
     if (rpcErr) {
       console.error('[convertirCotizacionAContratoAction] Error RPC Supabase:', rpcErr);
       const errMsg = rpcErr.message || '';
 
-      if (errMsg.includes('STOCK_INSUFICIENTE')) {
+      if (errMsg.includes('ERR_OVERBOOKING_CONCURRENTE') || errMsg.includes('STOCK_INSUFICIENTE')) {
         return {
           success: false,
           esErrorStock: true,
-          error: `[POKA-YOKE INVENTARIO] ${errMsg.replace('STOCK_INSUFICIENTE:', '').trim()}. Puede derivar las unidades faltantes a Subcontratación con Proveedor Aliado o ajustar el pedido.`
+          codigoError: 'ERR_OVERBOOKING_CONCURRENTE',
+          error: `[POKA-YOKE INVENTARIO] ${errMsg.replace('ERR_OVERBOOKING_CONCURRENTE:', '').replace('STOCK_INSUFICIENTE:', '').trim()}. Puede derivar las unidades faltantes a Subcontratación con Proveedor Aliado o ajustar el pedido.`
+        };
+      }
+
+      if (errMsg.includes('ERR_FECHA_INICIO_PASADA')) {
+        return {
+          success: false,
+          esErrorFechaPasada: true,
+          codigoError: 'ERR_FECHA_INICIO_PASADA',
+          error: errMsg.replace('ERR_FECHA_INICIO_PASADA:', '').trim()
         };
       }
 
@@ -420,22 +458,23 @@ export async function convertirCotizacionAContratoAction(input: ConvertirCotizac
 
     const nuevoAlquilerId = rpcRes?.alquiler_id;
     const consecutivoAlquiler = rpcRes?.consecutivo;
-    const consecutivoCotizacion = rpcRes?.cotizacion_consecutivo;
+    const consecutivoCotizacion = rpcRes?.cotizacion_consecutivo || consecutivoAlquiler;
 
     // 2. Registro de Auditoría Inmutable
     AuditLogger.logAsync({
       modulo: 'ALQUILERES',
       accion: 'CONVERTIR_COTIZACION_A_CONTRATO',
-      descripcion: `Cotización ${consecutivoCotizacion} convertida formalmente en Contrato ALQ-${consecutivoAlquiler || nuevoAlquilerId}. Idempotente: ${!!rpcRes?.idempotent}`,
+      descripcion: `Cotización #${consecutivoCotizacion} formalizada como Contrato ALQ-${consecutivoAlquiler || nuevoAlquilerId}. Idempotente: ${!!rpcRes?.idempotent}`,
       entidadId: String(nuevoAlquilerId),
       detalles: {
-        cotizacionId: input.cotizacionId,
+        cotizacionId: rawIdStr,
         alquilerId: nuevoAlquilerId,
         consecutivoAlquiler,
         consecutivoCotizacion,
         idempotencyKey,
         idempotente: !!rpcRes?.idempotent,
-        total: rpcRes?.total
+        total: rpcRes?.total,
+        origen: isNumericId ? 'ALQUILER_IN_SITU' : 'COTIZACION_MODULO'
       },
       userId: user?.id,
       userEmail: user?.email,

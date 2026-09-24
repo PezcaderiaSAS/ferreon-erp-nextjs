@@ -7,22 +7,29 @@ import { useBodegaStore } from '../../src/infrastructure/state/bodegaStore';
 let mockSelectResponse: any = { data: null, error: null };
 let mockRpcResponse: any = { data: { id: 999, consecutivo: 101, estado: 'ACTIVO' }, error: null };
 
-vi.mock('@/infrastructure/persistence/supabase/server', () => ({
-  createServerSupabaseClient: vi.fn(async () => ({
-    auth: {
-      getUser: vi.fn(async () => ({
-        data: { user: { id: 'usr-001', email: 'operador@ferreon.com' } }
+const mockSupabaseClient = {
+  auth: {
+    getUser: vi.fn(async () => ({
+      data: { user: { id: 'usr-001', email: 'operador@ferreon.com' } }
+    }))
+  },
+  from: vi.fn((table: string) => ({
+    select: vi.fn(() => ({
+      eq: vi.fn(() => ({
+        maybeSingle: vi.fn(async () => mockSelectResponse)
       }))
-    },
-    from: vi.fn((table: string) => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          maybeSingle: vi.fn(async () => mockSelectResponse)
-        }))
-      }))
-    })),
-    rpc: vi.fn(async (fn: string, args: any) => mockRpcResponse)
+    }))
   })),
+  rpc: vi.fn(async (fn: string, args: any) => mockRpcResponse)
+};
+
+vi.mock('../../src/infrastructure/persistence/supabase/server', () => ({
+  createServerSupabaseClient: vi.fn(async () => mockSupabaseClient),
+  resolveEmpresaId: vi.fn(async () => 'empresa-test-uuid')
+}));
+
+vi.mock('@/infrastructure/persistence/supabase/server', () => ({
+  createServerSupabaseClient: vi.fn(async () => mockSupabaseClient),
   resolveEmpresaId: vi.fn(async () => 'empresa-test-uuid')
 }));
 

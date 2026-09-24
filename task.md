@@ -59,3 +59,35 @@
 ## Tarea 10: Integración Final en Ruta /admin/empresas [✅ COMPLETADA]
 - [x] Modificar `src/app/admin/empresas/page.tsx` para importar el Store y renderizar `<TenantListTable />` y `<TenantDetailDrawer />`.
 - [x] Conectar los Server Actions a los eventos UI utilizando llaves criptográficas (Idempotencia UUID v4).
+
+---
+
+# Speckit Tasks: Formalización 1-Clic Polimórfica y Stock Dinámico (SPEC-2026-COTIZACION-FORMALIZACION-002)
+
+## Tarea 11: Función RPC / Migración SQL de Formalización In-Situ [✅ COMPLETADA]
+- [x] Crear migración SQL con función transaccional `formalizar_alquiler_cotizacion_transaccional(p_payload JSONB)` para registros en `alquileres` con ID entero (`BIGINT`).
+- [x] Aplicar bloqueo pesimista `SELECT ... FOR UPDATE` ordenado por ID ascendente para prevenir deadlocks.
+- [x] Validar curva de ocupación concurrente en el rango de fechas `[fecha_inicio, fecha_fin]`.
+- [x] Si no hay overbooking, actualizar `estado = 'ACTIVO'` (o `'ACTIVO_EN_OBRA'`), descontar stock disponible y registrar auditoría.
+
+## Tarea 12: Server Action Polimórfica 'convertirCotizacionAContratoAction' [✅ COMPLETADA]
+- [x] Refactorizar `convertirCotizacionAContratoAction` en `src/app/actions/cotizaciones.ts`.
+- [x] Detectar tipo de ID: si es numérico (alquiler existente), invocar `formalizar_alquiler_cotizacion_transaccional`; si es UUID, invocar `convertir_cotizacion_a_alquiler_transaccional`.
+- [x] Implementar soporte para ratificación de nueva fecha de inicio si la fecha original expiró.
+- [x] Mapear errores de overbooking para retornar código `ERR_OVERBOOKING_CONCURRENTE` con detalle de día pico y déficit.
+
+## Tarea 13: Adaptación de 'ConvertirCotizacionModal.tsx' [✅ COMPLETADA]
+- [x] Eliminar validación estática engañosa contra `equipoEnBodega.stock_disponible` actual.
+- [x] Excluir de la verificación ítems con `es_subcontratado: true`.
+- [x] Detectar si `fecha_inicio` es anterior a hoy (`CURRENT_DATE`); en caso afirmativo, mostrar selector de ratificación de fecha de despacho antes de formalizar.
+- [x] Manejar respuesta de overbooking conectando fluidamente con `ModalResolucionOverbooking` para derivar faltantes a subcontratación o PIN gerencial.
+
+## Tarea 14: Sincronización en 'AlquileresInteractiveIsland.tsx' [✅ COMPLETADA]
+- [x] Asegurar que al pulsar "Formalizar Contrato (1-Clic)" se entregue el objeto completo con fechas, detalles y tipo de origen.
+- [x] Manejar la actualización reactiva en el store de Zustand e invalidar caché de cotizaciones y contratos.
+
+## Tarea 15: Pruebas Unitarias y de Integración [✅ COMPLETADA]
+- [x] Crear test en `tests/unit/formalizar-cotizacion-polimorfica.test.ts` validando la formalización exitosa de ID numérico y UUID.
+- [x] Validar prevención de overbooking por curva de fechas y resolución asistida.
+
+

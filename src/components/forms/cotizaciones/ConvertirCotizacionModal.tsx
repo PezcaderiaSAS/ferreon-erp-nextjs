@@ -11,7 +11,10 @@ import {
   ExternalLink,
   Info,
   X,
-  ShieldCheck
+  ShieldCheck,
+  Calendar,
+  Layers,
+  Sparkles
 } from 'lucide-react';
 import { useBodegaStore } from '../../../infrastructure/state/bodegaStore';
 import { useAlquilerStore } from '../../../infrastructure/state/alquilerStore';
@@ -35,11 +38,14 @@ export function ConvertirCotizacionModal({
   const { equipos } = useBodegaStore();
   const { addAlquiler } = useAlquilerStore();
 
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+
   const [detallesLogistica, setDetallesLogistica] = useState('');
   const [isPending, startTransition] = useTransition();
   const [overlayEtapa, setOverlayEtapa] = useState<EtapaConversion>('VERIFICANDO_STOCK');
   const [showOverlay, setShowOverlay] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [esErrorStock, setEsErrorStock] = useState(false);
 
   // Normalizar ítems de la cotización
   const itemsCotizacion = useMemo(() => {
@@ -47,8 +53,8 @@ export function ConvertirCotizacionModal({
     if (Array.isArray(cotizacion.detalles) && cotizacion.detalles.length > 0) {
       return cotizacion.detalles;
     }
-    if (Array.isArray(cotizacion.cotizacion_detalles) && cotizacion.cotizacion_detalles.length > 0) {
-      return cotizacion.cotizacion_detalles;
+    if (Array.isArray(cotizacion.cotizaciones_detalles) && cotizacion.cotizaciones_detalles.length > 0) {
+      return cotizacion.cotizaciones_detalles;
     }
     if (Array.isArray(cotizacion.equipos) && cotizacion.equipos.length > 0) {
       return cotizacion.equipos;
@@ -56,13 +62,38 @@ export function ConvertirCotizacionModal({
     return [];
   }, [cotizacion]);
 
-  // Validación de Stock en Vivo (Poka-Yoke)
+  // Detección de fecha de inicio mínima y expiración temporal
+  const { fechaInicioOriginal, fechaExpirada } = useMemo(() => {
+    if (!cotizacion) return { fechaInicioOriginal: todayStr, fechaExpirada: false };
+
+    let minFecha = cotizacion.fecha_inicio || cotizacion.fechaInicio || cotizacion.fecha_emision || cotizacion.fechaEmision || todayStr;
+    
+    // Si los ítems traen fecha_inicio, buscar la menor
+    itemsCotizacion.forEach((it: any) => {
+      const f = it.fecha_inicio || it.fechaInicio;
+      if (f && f < minFecha) {
+        minFecha = f;
+      }
+    });
+
+    const isPast = Boolean(minFecha && minFecha < todayStr);
+    return {
+      fechaInicioOriginal: minFecha,
+      fechaExpirada: isPast
+    };
+  }, [cotizacion, itemsCotizacion, todayStr]);
+
+  const [nuevaFechaInicio, setNuevaFechaInicio] = useState<string>(todayStr);
+
+  // Análisis de Stock Dinámico e Ítems Subcontratados
   const analisisStock = useMemo(() => {
-    let tieneFaltante = false;
+    let tieneFaltanteEstático = false;
     let totalItems = itemsCotizacion.length;
 
     const itemsConStock = itemsCotizacion.map((it: any) => {
       const equipoId = it.equipo_id || it.equipoId || it.id;
+      const esSubcontratado = Boolean(it.es_subcontratado || it.esSubcontratado);
+      
       const equipoEnBodega = equipos.find(
         (e) => String(e.id) === String(equipoId) || e.codigo === it.codigo
       );
@@ -72,12 +103,13 @@ export function ConvertirCotizacionModal({
         ? Number(equipoEnBodega.stock_disponible ?? equipoEnBodega.stockDisponible ?? 0)
         : 0;
 
-      const disponibleSuficiente = stockDisponible >= cantidadRequerida;
+      // Si es subcontratado, no requiere stock propio de bodega
+      const disponibleSuficiente = esSubcontratado ? true : (stockDisponible >= cantidadRequerida);
       if (!disponibleSuficiente) {
-        tieneFaltante = true;
+        tieneFaltanteEstático = true;
       }
 
-      const faltante = Math.max(0, cantidadRequerida - stockDisponible);
+      const faltante = esSubcontratado ? 0 : Math.max(0, cantidadRequerida - stockDisponible);
 
       return {
         id: equipoId,
@@ -87,12 +119,13 @@ export function ConvertirCotizacionModal({
         stockDisponible,
         disponibleSuficiente,
         faltante,
+        esSubcontratado,
         tarifaDiaria: Number(it.tarifa_diaria || it.tarifaDiaria || it.precio_unitario || 0)
       };
     });
 
     return {
-      tieneFaltante,
+      tieneFaltanteEstático,
       totalItems,
       items: itemsConStock
     };
@@ -101,12 +134,14 @@ export function ConvertirCotizacionModal({
   if (!isOpen || !cotizacion) return null;
 
   const handleFormalizar = () => {
-    if (analisisStock.tieneFaltante) {
-      setErrorMsg('No es posible formalizar el contrato debido a existencias insuficientes en bodega.');
+    // Si la fecha original expiró, validar que la nueva fecha no sea en el pasado
+    if (fechaExpirada && (!nuevaFechaInicio || nuevaFechaInicio < todayStr)) {
+      setErrorMsg('Debe ratificar una fecha de inicio actual o futura antes de formalizar.');
       return;
     }
 
     setErrorMsg(null);
+    setEsErrorStock(false);
     setShowOverlay(true);
     setOverlayEtapa('BLOQUEANDO_INVENTARIO');
 
@@ -117,6 +152,7 @@ export function ConvertirCotizacionModal({
         const res = await convertirCotizacionAContratoAction({
           cotizacionId: cotizacion.id,
           detallesLogistica: detallesLogistica.trim(),
+          nuevaFechaInicio: fechaExpirada ? nuevaFechaInicio : undefined,
           idempotencyKey: `conv_modal_${cotizacion.id}_${Date.now()}`
         });
 
@@ -125,7 +161,10 @@ export function ConvertirCotizacionModal({
           setTimeout(() => {
             setShowOverlay(false);
             setErrorMsg(res.error || 'Error al formalizar el contrato de alquiler.');
-          }, 1200);
+            if (res.esErrorStock) {
+              setEsErrorStock(true);
+            }
+          }, 800);
           return;
         }
 
@@ -142,7 +181,7 @@ export function ConvertirCotizacionModal({
         setTimeout(() => {
           setShowOverlay(false);
           setErrorMsg(err.message || 'Error inesperado durante la transacción.');
-        }, 1200);
+        }, 800);
       }
     });
   };
@@ -165,42 +204,80 @@ export function ConvertirCotizacionModal({
               </div>
               <div>
                 <h2 id="modal-conversion-title" className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                  Conversión 1-Clic a Contrato
+                  Formalizar Contrato (1-Clic)
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Cotización {cotizacion.consecutivo || `#${cotizacion.id}`} • Cliente: {cotizacion.cliente_nombre || cotizacion.clientes?.nombre || 'Cliente General'}
+                  Cotización {cotizacion.consecutivo ? `#${cotizacion.consecutivo}` : `#${cotizacion.id}`} • Cliente: {cotizacion.cliente_nombre || cotizacion.clienteNombre || cotizacion.clientes?.nombre || 'Consumidor Final'}
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
               disabled={isPending}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Cuerpo del Modal */}
-          <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+          <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
             
             {/* Mensaje de Error si aplica */}
             {errorMsg && (
-              <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 text-rose-800 dark:text-rose-200 text-sm flex items-start gap-3">
+              <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 text-rose-800 dark:text-rose-200 text-sm flex items-start gap-3 animate-in fade-in duration-150">
                 <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                <div>
+                <div className="flex-1">
                   <p className="font-semibold">Imposible formalizar contrato</p>
                   <p className="text-xs mt-0.5">{errorMsg}</p>
+                  {esErrorStock && (
+                    <div className="mt-3 pt-2.5 border-t border-rose-200 dark:border-rose-800/40 flex items-center justify-between">
+                      <span className="text-xs text-rose-700 dark:text-rose-300 font-medium">
+                        ¿Desea cubrir las unidades faltantes con un aliado?
+                      </span>
+                      <Link
+                        href={`/subcontrataciones?cotizacionId=${cotizacion.id}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-colors shadow-2xs"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Subcontratar Equipo
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Verificación Poka-Yoke de Stock en Bodega */}
+            {/* Ratificación de Fecha si expiró en el pasado */}
+            {fechaExpirada && (
+              <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 space-y-2">
+                <div className="flex items-start gap-2.5">
+                  <Calendar className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed flex-1">
+                    <strong className="font-bold">Ratificación de Fecha de Despacho Requerida:</strong> La fecha programada original ({fechaInicioOriginal}) está en el pasado. Seleccione la fecha real de inicio para ratificar el contrato y recalcular la vigencia:
+                    <div className="mt-2 flex items-center gap-2">
+                      <input 
+                        type="date"
+                        min={todayStr}
+                        value={nuevaFechaInicio}
+                        onChange={(e) => setNuevaFechaInicio(e.target.value)}
+                        className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                      />
+                      <span className="text-[11px] text-amber-700 dark:text-amber-300">
+                        (Hoy: {todayStr})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Verificación de Disponibilidad y Equipos */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  Verificación de Disponibilidad en Bodega (Poka-Yoke)
+                  Equipos en Cotización y Stock
                 </h3>
                 <span className="text-xs text-slate-400">
                   {analisisStock.items.length} {analisisStock.items.length === 1 ? 'equipo' : 'equipos'}
@@ -217,9 +294,11 @@ export function ConvertirCotizacionModal({
                     <div 
                       key={it.id} 
                       className={`p-3.5 flex items-center justify-between text-sm ${
-                        it.disponibleSuficiente 
+                        it.esSubcontratado
+                          ? 'bg-purple-50/30 dark:bg-purple-950/20'
+                          : it.disponibleSuficiente 
                           ? 'bg-white dark:bg-slate-900' 
-                          : 'bg-rose-50/40 dark:bg-rose-950/20'
+                          : 'bg-amber-50/30 dark:bg-amber-950/10'
                       }`}
                     >
                       <div className="space-y-0.5">
@@ -230,6 +309,11 @@ export function ConvertirCotizacionModal({
                           <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                             {it.codigo}
                           </span>
+                          {it.esSubcontratado && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                              Subcontratado (Aliado)
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-slate-500">
                           Requerido: <strong className="font-mono text-slate-700 dark:text-slate-300">{it.cantidadRequerida}</strong> • Tarifa: <span className="font-mono">${it.tarifaDiaria.toLocaleString('es-CO')}/día</span>
@@ -237,22 +321,31 @@ export function ConvertirCotizacionModal({
                       </div>
 
                       <div className="text-right flex items-center gap-3">
-                        <div className="text-xs">
-                          <div className="text-slate-400">Bodega</div>
-                          <div className="font-mono font-bold text-slate-700 dark:text-slate-300">
-                            {it.stockDisponible} disp.
-                          </div>
-                        </div>
+                        {!it.esSubcontratado ? (
+                          <>
+                            <div className="text-xs">
+                              <div className="text-slate-400">Bodega Hoy</div>
+                              <div className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                                {it.stockDisponible} disp.
+                              </div>
+                            </div>
 
-                        {it.disponibleSuficiente ? (
-                          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            OK
-                          </div>
+                            {it.disponibleSuficiente ? (
+                              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Disponible
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-300" title="Validación dinámica se evaluará en el rango de fechas">
+                                <Sparkles className="w-3.5 h-3.5" />
+                                Validar por Fechas
+                              </div>
+                            )}
+                          </>
                         ) : (
-                          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                            <AlertTriangle className="w-3.5 h-3.5" />
-                            Faltan {it.faltante}
+                          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                            <Layers className="w-3.5 h-3.5" />
+                            Garantizado por Aliado
                           </div>
                         )}
                       </div>
@@ -261,31 +354,6 @@ export function ConvertirCotizacionModal({
                 )}
               </div>
             </div>
-
-            {/* Alerta si falta inventario con opción de Subcontratación (Decisión /grill-me) */}
-            {analisisStock.tieneFaltante && (
-              <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 space-y-3">
-                <div className="flex items-start gap-2.5">
-                  <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed">
-                    <strong>Alerta de Reserva Pesimista:</strong> Uno o más equipos cotizados no tienen existencias libres en bodega. Para proteger la integridad operativa, la conversión 1-clic se encuentra bloqueada.
-                  </div>
-                </div>
-                
-                <div className="pt-2 border-t border-amber-200/60 dark:border-amber-800/40 flex items-center justify-between">
-                  <span className="text-xs text-amber-800 dark:text-amber-300 font-medium">
-                    ¿Desea abastecerse con un proveedor aliado?
-                  </span>
-                  <Link
-                    href={`/subcontrataciones?cotizacionId=${cotizacion.id}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white transition-colors shadow-sm"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Subcontratar con Proveedor
-                  </Link>
-                </div>
-              </div>
-            )}
 
             {/* Campo Opcional de Logística */}
             <div className="space-y-1.5">
@@ -303,11 +371,11 @@ export function ConvertirCotizacionModal({
               />
             </div>
 
-            {/* Resumen Financiero Rápido */}
+            {/* Resumen Financiero */}
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between text-xs font-mono">
               <span className="text-slate-500">Valor Total Cotizado:</span>
               <span className="text-base font-bold text-slate-900 dark:text-slate-100 tabular-nums">
-                ${Number(cotizacion.total || cotizacion.monto_total || 0).toLocaleString('es-CO')} COP
+                ${Number(cotizacion.total || cotizacion.monto_total || cotizacion.subtotal || 0).toLocaleString('es-CO')} COP
               </span>
             </div>
           </div>
@@ -318,7 +386,7 @@ export function ConvertirCotizacionModal({
               type="button"
               onClick={onClose}
               disabled={isPending}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/50 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/50 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               Cancelar
             </button>
@@ -326,12 +394,8 @@ export function ConvertirCotizacionModal({
             <button
               type="button"
               onClick={handleFormalizar}
-              disabled={isPending || analisisStock.tieneFaltante}
-              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-md transition-all ${
-                analisisStock.tieneFaltante
-                  ? 'bg-slate-300 dark:bg-slate-800 cursor-not-allowed text-slate-400'
-                  : 'bg-emerald-600 hover:bg-emerald-700 active:scale-98 shadow-emerald-500/20'
-              }`}
+              disabled={isPending}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-98 shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
             >
               <span>Formalizar Contrato (1-Clic)</span>
               <ArrowRight className="w-4 h-4" />
