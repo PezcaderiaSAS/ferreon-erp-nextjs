@@ -129,10 +129,10 @@ export function AlquileresInteractiveIsland({
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [selectedAlquilerForDetalle, setSelectedAlquilerForDetalle] = useState<any | null>(null);
 
-  // Pestañas
-  const [activeTab, setActiveTab] = useState<AlquilerTabType>('contratos');
+  // Pestañas (ordenadas por el ciclo de vida natural: Cotización -> Contrato -> Finalizado)
+  const [activeTab, setActiveTab] = useState<AlquilerTabType>('cotizaciones');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [modoCreacionInicial, setModoCreacionInicial] = useState<'CONTRATO' | 'COTIZACION'>('CONTRATO');
+  const [modoCreacionInicial, setModoCreacionInicial] = useState<'CONTRATO' | 'COTIZACION'>('COTIZACION');
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
   // Guard de cambios sin guardar
@@ -832,25 +832,9 @@ export function AlquileresInteractiveIsland({
       <CicloVidaAlquilerBanner />
 
       {/* Pestañas Corporativas Superiores */}
+      {/* Pestañas Corporativas Superiores (Orden Lógico del Ciclo de Vida: 1. Cotizaciones -> 2. Contratos -> 3. Historial) */}
       <div className="bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row gap-1.5">
-        <button
-          type="button"
-          onClick={() => handleTabChange('contratos')}
-          className={`flex-1 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2.5 transition-all cursor-pointer ${
-            activeTab === 'contratos'
-              ? 'bg-white text-slate-900 shadow-xs border border-slate-200/90 font-black'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-          }`}
-        >
-          <HardHat className={`w-4 h-4 shrink-0 ${activeTab === 'contratos' ? 'text-emerald-600' : 'text-slate-400'}`} />
-          <span>Contratos en Obra</span>
-          <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono tabular-nums font-bold ${
-            activeTab === 'contratos' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-200 text-slate-600'
-          }`}>
-            {totalContratosActivos}
-          </span>
-        </button>
-
+        {/* 1. Cotizaciones Activas */}
         <button
           type="button"
           onClick={() => handleTabChange('cotizaciones')}
@@ -869,6 +853,26 @@ export function AlquileresInteractiveIsland({
           </span>
         </button>
 
+        {/* 2. Contratos en Obra */}
+        <button
+          type="button"
+          onClick={() => handleTabChange('contratos')}
+          className={`flex-1 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2.5 transition-all cursor-pointer ${
+            activeTab === 'contratos'
+              ? 'bg-white text-slate-900 shadow-xs border border-slate-200/90 font-black'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+          }`}
+        >
+          <HardHat className={`w-4 h-4 shrink-0 ${activeTab === 'contratos' ? 'text-emerald-600' : 'text-slate-400'}`} />
+          <span>Contratos en Obra</span>
+          <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono tabular-nums font-bold ${
+            activeTab === 'contratos' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-200 text-slate-600'
+          }`}>
+            {totalContratosActivos}
+          </span>
+        </button>
+
+        {/* 3. Historial y Finalizados */}
         <button
           type="button"
           onClick={() => handleTabChange('historial')}
@@ -960,17 +964,17 @@ export function AlquileresInteractiveIsland({
               </div>
 
               {/* TABLA DE COTIZACIONES */}
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <table className="w-full text-left border-collapse table-compact">
+              <div className="border border-slate-200 rounded-xl overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left border-collapse table-compact min-w-[680px] lg:min-w-full">
                   <thead className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 text-xs text-slate-700 font-bold shadow-2xs">
                     <tr>
-                      <th className="py-2.5 px-3">Consecutivo</th>
-                      <th className="py-2.5 px-3">Cliente / Obra</th>
-                      <th className="py-2.5 px-3">Fecha Emisión</th>
-                      <th className="py-2.5 px-3 text-right">Subtotal</th>
-                      <th className="py-2.5 px-3 text-right">Total Cotizado</th>
-                      <th className="py-2.5 px-3 text-center">Estado</th>
-                      <th className="py-2.5 px-3 text-right">Acciones de Emisión</th>
+                      <th className="py-2 px-2.5 w-20">Consecutivo</th>
+                      <th className="py-2 px-2.5">Cliente / Obra</th>
+                      <th className="py-2 px-2.5 w-28">Fecha Emisión</th>
+                      <th className="py-2 px-2.5 text-right hidden xl:table-cell w-28">Subtotal</th>
+                      <th className="py-2 px-2.5 text-right w-32">Total Cotizado</th>
+                      <th className="py-2 px-2.5 text-center w-28">Estado</th>
+                      <th className="py-2 px-2.5 text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white text-xs">
@@ -980,12 +984,12 @@ export function AlquileresInteractiveIsland({
 
                       return (
                         <tr key={cot.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-2.5 px-3 font-medium">
+                          <td className="py-2 px-2.5 font-medium">
                             <span className="font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
                               #{cot.consecutivo || cot.id}
                             </span>
                           </td>
-                          <td className="py-2.5 px-3">
+                          <td className="py-2 px-2.5">
                             <div className="font-bold text-slate-900 text-xs sm:text-sm">{cot.clienteNombre || cot.cliente_nombre}</div>
                             {cot.obraNombre && (
                               <div className="text-[11px] text-slate-500 font-medium">Obra: {cot.obraNombre}</div>
@@ -994,17 +998,17 @@ export function AlquileresInteractiveIsland({
                               {itemsCount} equipo(s) en cotización
                             </div>
                           </td>
-                          <td className="py-2.5 px-3 text-slate-600">
+                          <td className="py-2 px-2.5 text-slate-600 whitespace-nowrap">
                             {new Date(cot.fechaEmision || cot.fecha_emision || cot.created_at).toLocaleDateString('es-CO')}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-medium text-slate-700">
+                          <td className="py-2 px-2.5 text-right font-mono font-medium text-slate-700 hidden xl:table-cell">
                             {formatearMoneda(cot.subtotal || 0)}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900 text-xs sm:text-sm">
+                          <td className="py-2 px-2.5 text-right font-mono font-black text-slate-900 text-xs sm:text-sm whitespace-nowrap">
                             {formatearMoneda(cot.total || 0)}
                           </td>
-                          <td className="py-2.5 px-3 text-center">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                          <td className="py-2 px-2.5 text-center">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
                               isConvertida
                                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                                 : cot.estado === 'APROBADA'
@@ -1014,16 +1018,16 @@ export function AlquileresInteractiveIsland({
                               {isConvertida ? 'FORMALIZADA' : (cot.estado || 'PROPUESTA')}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-right">
+                          <td className="py-2 px-2.5 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => handleVerPDFCotizacion(cot)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                                className="inline-flex items-center gap-1 px-2 py-1.5 text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-xs font-bold shadow-2xs transition-colors cursor-pointer"
                                 title="Ver e Imprimir PDF de Cotización"
                               >
                                 <Printer className="w-3.5 h-3.5 text-blue-600" />
-                                <span>PDF</span>
+                                <span className="hidden sm:inline">PDF</span>
                               </button>
 
                               {!isConvertida ? (
@@ -1031,11 +1035,11 @@ export function AlquileresInteractiveIsland({
                                   <button
                                     type="button"
                                     onClick={() => handleEditarCotizacionEnForm(cot)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                                    className="inline-flex items-center gap-1 px-2 py-1.5 text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg text-xs font-bold shadow-2xs transition-colors cursor-pointer"
                                     title="Modificar días, tarifas o equipos"
                                   >
                                     <FileText className="w-3.5 h-3.5 text-slate-500" />
-                                    <span>Editar</span>
+                                    <span className="hidden sm:inline">Editar</span>
                                   </button>
 
                                   <button
@@ -1044,17 +1048,17 @@ export function AlquileresInteractiveIsland({
                                       setCotizacionParaConvertir(cot);
                                       setShowConvertirModal(true);
                                     }}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-black shadow-xs shadow-emerald-700/20 transition-all cursor-pointer active:scale-98"
+                                    className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-black shadow-xs shadow-emerald-700/20 transition-all cursor-pointer active:scale-98 whitespace-nowrap"
                                     title="Formalización 1-Clic con bloqueo de stock pesimista"
                                   >
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
-                                    <span>Formalizar Contrato (1-Clic)</span>
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
+                                    <span>Formalizar<span className="hidden 2xl:inline"> Contrato</span></span>
                                   </button>
                                 </>
                               ) : (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-300 px-2.5 py-1 rounded-lg">
-                                  <CheckCircle className="w-3.5 h-3.5" />
-                                  <span>Contrato ALQ Formalizado</span>
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-300 px-2 py-1 rounded-lg whitespace-nowrap">
+                                  <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                                  <span>Formalizado</span>
                                 </span>
                               )}
                             </div>
@@ -1089,7 +1093,8 @@ export function AlquileresInteractiveIsland({
             </div>
           ) : (
             /* TABLA DE CONTRATOS */
-            <table className="w-full text-left border-collapse table-compact">
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left border-collapse table-compact min-w-[700px] lg:min-w-full">
               <thead className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 text-xs text-slate-700 font-bold shadow-2xs">
                 <tr>
                   <th className="py-2.5 px-3 sm:px-3.5 text-xs font-bold text-slate-700">ID / Consecutivo</th>
@@ -1251,7 +1256,8 @@ export function AlquileresInteractiveIsland({
                 )}
               </tbody>
             </table>
-          )}
+          </div>
+        )}
         </div>
       </div>
 

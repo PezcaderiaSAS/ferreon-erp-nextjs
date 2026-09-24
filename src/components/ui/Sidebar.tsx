@@ -71,7 +71,7 @@ function SidebarNavLinks({
   });
 
   return (
-    <div className="flex flex-col gap-1 sm:gap-1.5 flex-grow overflow-y-auto custom-scrollbar">
+    <div className="flex flex-col gap-0.5 sm:gap-1 flex-grow overflow-y-auto no-scrollbar">
       {visibleLinks.map((link) => {
         const isActive = link.href === '/alquileres' 
           ? pathname.startsWith('/alquileres') 
@@ -90,20 +90,20 @@ function SidebarNavLinks({
             href={link.href}
             title={isSidebarCollapsed ? link.label : undefined}
             onClick={() => setMobileMenuOpen(false)}
-            className={`rounded-xl text-xs sm:text-sm font-semibold sm:font-bold flex items-center transition-all duration-200 active:scale-95 group relative ${
+            className={`rounded-xl text-xs sm:text-[13px] font-semibold sm:font-bold flex items-center transition-all duration-200 active:scale-95 group relative ${
               isSidebarCollapsed 
-                ? 'justify-center p-2.5 sm:p-3' 
-                : 'gap-3 px-3 py-2 sm:py-2.5'
+                ? 'justify-center p-2' 
+                : 'gap-2.5 px-2.5 py-1.5 sm:py-2'
             } ${
               isActive 
                 ? 'bg-brand-salmonLight text-brand-salmonDark shadow-2xs' 
                 : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
             }`}
           >
-            <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+            <Icon className={`w-4 h-4 sm:w-[18px] sm:h-[18px] shrink-0 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
             
             {!isSidebarCollapsed && (
-              <span className="truncate">{link.label}</span>
+              <span className="truncate whitespace-nowrap">{link.label}</span>
             )}
 
             {/* Tooltip flotante al estar colapsado */}
@@ -173,12 +173,12 @@ export function Sidebar() {
       {/* Sidebar Navigation */}
       <nav 
         id="tour-sidebar"
-        className={`bg-white text-slate-900 font-sans h-[100dvh] fixed left-0 top-0 border-r border-slate-200 shadow-sm flex flex-col gap-1.5 sm:gap-2 z-50 transition-all duration-300 ease-in-out ${
-          isMobileMenuOpen ? 'translate-x-0 w-64 p-4' : '-translate-x-full'
-        } md:translate-x-0 ${isSidebarCollapsed ? 'md:w-16 md:p-2' : 'md:w-64 md:p-3 lg:p-4'}`}
+        className={`bg-white text-slate-900 font-sans h-[100dvh] fixed left-0 top-0 border-r border-slate-200 shadow-sm flex flex-col gap-1 sm:gap-1.5 z-50 transition-all duration-300 ease-in-out ${
+          isMobileMenuOpen ? 'translate-x-0 w-64 p-3' : '-translate-x-full'
+        } md:translate-x-0 ${isSidebarCollapsed ? 'md:w-16 md:p-2' : 'md:w-56 lg:w-60 xl:w-64 md:p-2.5 lg:p-3'}`}
       >
         {/* Header con Logo / Isotipo */}
-        <div className={`mb-3 sm:mb-4 lg:mb-6 flex items-center justify-between relative ${isSidebarCollapsed ? 'px-1 py-1' : 'px-3 py-1.5 lg:px-4 lg:py-2 gap-3'}`}>
+        <div className={`mb-1.5 sm:mb-2 lg:mb-3 flex items-center justify-between relative ${isSidebarCollapsed ? 'px-1 py-1' : 'px-2.5 py-1 lg:px-3 lg:py-1.5 gap-2'}`}>
           {isSidebarCollapsed ? (
             <button
               onClick={toggleSidebarCollapse}
@@ -259,17 +259,17 @@ export function Sidebar() {
             <Link 
               href="/suscripcion"
               onClick={() => setMobileMenuOpen(false)}
-              className="block p-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-colors"
+              className="block p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-colors"
             >
-              <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-0.5">
                 <span className="truncate max-w-[120px]">{mounted && tenant?.nombreEmpresa ? tenant.nombreEmpresa : 'FerreOn SaaS'}</span>
                 {mounted && tenant?.subscriptionStatus === 'active' ? (
-                  <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px]">Pro</span>
+                  <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[9px]">Pro</span>
                 ) : (
-                  <span className="px-1.5 py-0.5 bg-sky-100 text-sky-700 rounded text-[10px]">Trial</span>
+                  <span className="px-1.5 py-0.5 bg-sky-100 text-sky-700 rounded text-[9px]">Trial</span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 flex items-center gap-1">
+              <p className="text-[10px] text-slate-500 flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
                 {tenant?.subscriptionStatus === 'active' 
                   ? 'Suscripción Activa' 
@@ -280,18 +280,18 @@ export function Sidebar() {
         </div>
 
         {/* User Info / Logout Section */}
-        <div className="pt-2 pb-1 border-t border-slate-100">
+        <div className="pt-1.5 pb-1 border-t border-slate-100">
           {isSidebarCollapsed ? (
             <div className="flex flex-col items-center gap-2">
               <div 
-                className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-bold text-xs shrink-0"
+                className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-bold text-xs shrink-0"
                 title={user?.email || 'Usuario'}
               >
                 {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
               </div>
               <button
                 onClick={handleLogout}
-                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                 title="Cerrar sesión"
                 aria-label="Cerrar sesión"
               >
@@ -299,51 +299,48 @@ export function Sidebar() {
               </button>
             </div>
           ) : (
-            <div className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition-colors">
-              <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold shrink-0">
+            <div className="flex items-center justify-between p-1.5 rounded-xl hover:bg-slate-50 transition-colors">
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs shrink-0">
                   {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <div className="flex flex-col overflow-hidden">
-                  <span className="text-sm font-semibold text-slate-800 truncate">
+                  <span className="text-xs font-semibold text-slate-800 truncate">
                     {user?.user_metadata?.nombre || user?.email?.split('@')[0] || 'Usuario'}
                   </span>
-                  <span className="text-xs text-slate-500 truncate capitalize">
+                  <span className="text-[10px] text-slate-500 truncate capitalize">
                     {user?.user_metadata?.rol || 'Administrador'}
                   </span>
                 </div>
               </div>
               <button
                 onClick={handleLogout}
-                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0 cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0 cursor-pointer"
                 title="Cerrar sesión"
               >
-                <LogOut className="w-5 h-5" />
+                <LogOut className="w-4 h-4" />
               </button>
             </div>
           )}
           
-          {/* Theme Switcher Rápido (Sólo para Admins cuando está expandido) */}
+          {/* Theme Switcher Rápido (Solo pantallas muy altas 2xl) */}
           {!isSidebarCollapsed && mounted && user && (user.user_metadata?.rol === 'admin' || user.user_metadata?.rol === 'superadmin' || !user.user_metadata?.rol) && (
-            <div className="mt-2 px-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+            <div className="mt-1 px-1 hidden 2xl:block">
+              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
                 <Palette className="w-3 h-3 text-slate-400" />
-                Tema UI (Admin)
+                Tema UI
               </label>
               <select
-                className="w-full text-xs p-1.5 rounded bg-slate-50 border border-slate-200 text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-brand-salmon cursor-pointer"
+                className="w-full text-[11px] p-1 rounded bg-slate-50 border border-slate-200 text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-brand-salmon cursor-pointer"
                 value={config.themeId || config.themeApp || 'salmon'}
                 onChange={(e) => actualizarConfig({ themeId: e.target.value as any, themeApp: e.target.value as any })}
               >
-                <option value="salmon">Salmón Pastel (Default)</option>
-                <option value="ocean">Azul Océano Corporativo</option>
+                <option value="salmon">Salmón Pastel</option>
+                <option value="ocean">Azul Océano</option>
                 <option value="teal">Esmeralda & Teal</option>
                 <option value="slate">Pizarra Industrial</option>
                 <option value="indigo">Índigo Elegante</option>
                 <option value="amber">Ámbar Maquinaria</option>
-                {config.themeId === 'custom' && (
-                  <option value="custom">Personalizado ({config.customBrandHex || 'HEX'})</option>
-                )}
               </select>
             </div>
           )}

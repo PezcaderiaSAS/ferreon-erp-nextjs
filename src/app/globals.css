@@ -433,6 +433,17 @@ body {
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: rgba(100, 116, 139, 0.7);
   }
+
+  /* Ocultar barra de scroll nativa (Windows) preservando desplazamiento táctil y de rueda */
+  .no-scrollbar {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
 }
 
 /* ========================================================================= */

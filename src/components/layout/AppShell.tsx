@@ -48,7 +48,7 @@ export function AppShell({ children }: AppShellProps) {
     <div data-theme={activeTheme} className="flex-1 flex w-full min-h-screen transition-colors duration-150">
       <Sidebar />
       <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${
-        isSidebarCollapsed ? 'md:ml-16' : 'md:ml-64'
+        isSidebarCollapsed ? 'md:ml-16' : 'md:ml-56 lg:ml-60 xl:ml-64'
       } w-full overflow-hidden`}>
         {tenant?.isAutorizado === false && (
           <div className="bg-amber-100 text-amber-800 text-sm font-semibold text-center px-4 py-2 flex items-center justify-center gap-2 border-b border-amber-200 z-50">
