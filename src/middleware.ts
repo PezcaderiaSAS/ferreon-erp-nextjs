@@ -130,27 +130,41 @@ export async function middleware(request: NextRequest) {
     console.warn('[Middleware] Supabase auth check warning:', error);
   }
 
-  // 7. Redirección condicional a login
+  // 7. Redirección condicional a login (Protección estricta perimetral)
   if (!user) {
-    const hasAuthCookie = request.cookies.getAll().some(
-      (c) => c.name.includes('sb-') && c.name.includes('-auth-token')
-    );
-    if (!hasAuthCookie) {
-      const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = '/auth/login';
-      loginUrl.searchParams.set('redirectTo', pathname);
-      const redirectResponse = NextResponse.redirect(loginUrl);
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = '/auth/login';
+    loginUrl.searchParams.set('redirectTo', pathname);
+    const redirectResponse = NextResponse.redirect(loginUrl);
+    applyBaseSecurityHeaders(redirectResponse.headers);
+    return redirectResponse;
+  }
+
+  // 8. Control de acceso por roles, Onboarding y Tenants
+  const userRole = user.user_metadata?.rol;
+  const isSuperOrUltra = userRole === 'ULTRAADMIN' || userRole === 'SUPERADMIN';
+  const hasEmpresa = Boolean(user.user_metadata?.empresa_id);
+
+  // Si está autenticado pero no tiene empresa vinculada y no es UltraAdmin:
+  // Redirigir obligatoriamente a /onboarding para capturar datos oficiales de su negocio
+  if (!isSuperOrUltra && !hasEmpresa) {
+    if (pathname !== '/onboarding' && !pathname.startsWith('/auth') && pathname !== '/suscripcion') {
+      const onboardingUrl = request.nextUrl.clone();
+      onboardingUrl.pathname = '/onboarding';
+      const redirectResponse = NextResponse.redirect(onboardingUrl);
       applyBaseSecurityHeaders(redirectResponse.headers);
       return redirectResponse;
     }
-    // Si tiene cookie pero hubo timeout de red, permitir que los Server Components resuelvan la sesión
-    applyBaseSecurityHeaders(response.headers);
-    response.headers.set('Content-Security-Policy', cspHeader);
-    return response;
+  } else {
+    // Si ya cuenta con empresa activa y visita /onboarding, redirigir al dashboard
+    if (pathname === '/onboarding') {
+      const dashboardUrl = request.nextUrl.clone();
+      dashboardUrl.pathname = '/dashboard';
+      const redirectResponse = NextResponse.redirect(dashboardUrl);
+      applyBaseSecurityHeaders(redirectResponse.headers);
+      return redirectResponse;
+    }
   }
-
-  // 8. Control de acceso por roles (RBAC & UltraAdmin)
-  const userRole = user.user_metadata?.rol;
 
   // Protección del módulo global UltraAdmin
   if (pathname.startsWith('/admin')) {

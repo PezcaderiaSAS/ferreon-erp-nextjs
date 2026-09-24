@@ -13,13 +13,25 @@ export function Header() {
 
   useEffect(() => {
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(Boolean(session?.user));
+      if (session?.user) {
+        const user = session.user;
+        const hasActiveTenant = Boolean(user.user_metadata?.empresa_id || user.user_metadata?.rol === 'ULTRAADMIN' || user.user_metadata?.rol === 'SUPERADMIN');
+        setIsAuthenticated(hasActiveTenant);
+      } else {
+        setIsAuthenticated(false);
+      }
     }).catch(() => {
       setIsAuthenticated(false);
     });
 
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(Boolean(session?.user));
+      if (session?.user) {
+        const user = session.user;
+        const hasActiveTenant = Boolean(user.user_metadata?.empresa_id || user.user_metadata?.rol === 'ULTRAADMIN' || user.user_metadata?.rol === 'SUPERADMIN');
+        setIsAuthenticated(hasActiveTenant);
+      } else {
+        setIsAuthenticated(false);
+      }
     });
 
     return () => {

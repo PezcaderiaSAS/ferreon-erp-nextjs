@@ -1,7 +1,32 @@
 import Link from 'next/link';
 import { Hammer, TrendingUp, FileText, AlertTriangle, PlusCircle, CornerDownLeft } from 'lucide-react';
 
-export default function DashboardPage() {
+import { redirect } from 'next/navigation';
+import { createServerSupabaseClient } from '@/infrastructure/persistence/supabase/server';
+
+export default async function DashboardPage() {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/auth/login?redirectTo=/dashboard');
+  }
+
+  const userRole = user.user_metadata?.rol;
+  const isSuperOrUltra = userRole === 'ULTRAADMIN' || userRole === 'SUPERADMIN';
+
+  // Verificar si tiene empresa activa vinculada
+  const { data: membership } = await supabase
+    .from('empresa_usuarios')
+    .select('empresa_id')
+    .eq('user_id', user.id)
+    .eq('es_empresa_activa', true)
+    .maybeSingle();
+
+  if (!isSuperOrUltra && !membership) {
+    redirect('/onboarding');
+  }
+
   return (
     <div className="flex flex-col gap-8">
       {/* Page Header */}
