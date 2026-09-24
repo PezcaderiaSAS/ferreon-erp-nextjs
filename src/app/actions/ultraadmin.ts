@@ -31,6 +31,7 @@ export interface EmpresaDirectorioItem {
   totalUsuarios: number;
   usuariosActivos: number;
   usuariosInactivos: number;
+  autorizado: boolean;
 }
 
 export interface EmpresaSelectorItem {
@@ -115,7 +116,7 @@ export async function obtenerDirectorioEmpresasAction(): Promise<{
     // Consultar todas las empresas registradas incluyendo licencias y módulos
     const { data: empresas, error: empError } = await supabaseAdmin
       .from('empresas')
-      .select('id, nombre, nit, slug, subscription_status, plan_id, trial_ends_at, subscription_ends_at, dias_gracia, modulos_activos, created_at')
+      .select('id, nombre, nit, slug, subscription_status, plan_id, trial_ends_at, subscription_ends_at, dias_gracia, modulos_activos, created_at, autorizado')
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
@@ -172,6 +173,7 @@ export async function obtenerDirectorioEmpresasAction(): Promise<{
         totalUsuarios: stats.total,
         usuariosActivos: stats.activos,
         usuariosInactivos: stats.inactivos,
+        autorizado: Boolean(e.autorizado),
       };
     });
 
@@ -698,6 +700,62 @@ export async function cambiarEstadoSuscripcionEmpresaAction(input: {
     modulo: 'TENANTS',
     accion: 'EDITAR_EMPRESA',
     descripcion: `UltraAdmin modificó el estado de suscripción de la empresa ID ${cleanInput.empresaId} a '${cleanInput.nuevoStatus}'`,
+    entidadId: cleanInput.empresaId,
+    detalles: cleanInput,
+    userId: authCheck.user?.id,
+    userEmail: authCheck.user?.email,
+  });
+
+  revalidatePath('/admin/empresas');
+  return { success: true };
+}
+
+const AprobarTenantSchema = z.object({
+  empresaId: z.string().min(1),
+  autorizado: z.boolean(),
+  idempotencyKey: z.string().uuid().optional()
+});
+
+/**
+ * 9. Aprueba/Desaprueba un Tenant, autorizando el uso real del sistema (quita la marca de agua y restricciones)
+ */
+export async function aprobarTenantAction(input: {
+  empresaId: string;
+  autorizado: boolean;
+  idempotencyKey?: string;
+}) {
+  const validation = validateActionInput(input, AprobarTenantSchema);
+  if (!validation.success) {
+    return { success: false, error: validation.error || 'Datos inválidos' };
+  }
+  const cleanInput = validation.data;
+
+  const authCheck = await verificarPermisoUltraAdmin();
+  if (!authCheck.autorizado) {
+    return { success: false, error: authCheck.error || 'No autorizado' };
+  }
+
+  const supabaseAdmin = createAdminSupabaseClient();
+
+  const { error } = await supabaseAdmin
+    .from('empresas')
+    .update({
+      autorizado: cleanInput.autorizado,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', cleanInput.empresaId);
+
+  if (error) {
+    return { success: false, error: `Error al actualizar autorización: ${error.message}` };
+  }
+
+  // Invalidación atómica en Upstash Redis
+  await invalidateTenantCache(cleanInput.empresaId, ['empresa']);
+
+  AuditLogger.logAsync({
+    modulo: 'TENANTS',
+    accion: 'EDITAR_EMPRESA',
+    descripcion: `UltraAdmin configuró autorización de la empresa ID ${cleanInput.empresaId} a '${cleanInput.autorizado}'`,
     entidadId: cleanInput.empresaId,
     detalles: cleanInput,
     userId: authCheck.user?.id,

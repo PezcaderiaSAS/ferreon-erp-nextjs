@@ -42,6 +42,8 @@
 - `caja/ArqueoCierreModal.tsx`: Calculadora de arqueo con desglose de billetes y monedas colombianas (COP) y cálculo de diferencias.
 - `admin/empresas/GestionModulosModal.tsx`: Switches Poka-Yoke para habilitar/deshabilitar los 9 módulos canónicos por empresa.
 - `admin/empresas/ExtenderLicenciaModal.tsx`: Extensión rápida de suscripciones con botones de 1-clic y auditoría.
+- `ultraadmin/TenantListTable.tsx`: Tabla unificada reactiva de empresas con filtros rápidos por pills (`Todos`, `Pendientes de Aprobación`, `Activas`, `Suspendidas`, `Expiradas`) y diseño Glassmorphism dark-slate.
+- `ultraadmin/TenantDetailDrawer.tsx`: Drawer lateral deslizante de alta reactividad con pestañas de Info/Aprobación oficial (quitar marca de agua), Licencia/Módulos con extensiones de cortesía y gestión de Usuarios IAM (suspensión/activación).
 - `ui/EquipoCombobox.tsx`: Buscador typeahead accesible (WAI-ARIA 1.2) con elevación dinámica `zIndex: 100`.
 
 ## Gestión de Estado (`src/infrastructure/state/`)
@@ -50,5 +52,7 @@
 - `bodegaStore.ts`: Inventario físico, stock disponible y ajustes Poka-Yoke.
 - `clienteStore.ts`: Directorio de clientes activos con deduplicación en memoria.
 - `empresaStore.ts`: Identidad corporativa, logo y temas de marca.
+- `ultraAdminStore.ts`: Estado global del panel UltraAdmin para filtrado, apertura del drawer y actualizaciones optimistas sin revalidaciones pesadas.
 - `toastStore.ts`: Notificaciones globales accesibles.
 - `ledgerStore.ts`: Asientos contables de partida doble y balances de cuentas.
+

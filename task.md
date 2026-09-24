@@ -29,3 +29,33 @@
 
 ## Tarea 5: Marca de Agua en PDFs [✅ COMPLETADA]
 - [x] Modificar el generador de PDFs (Liquidaciones/Cotizaciones) para inyectar una marca de agua *"DOCUMENTO DE PRUEBA - NO VÁLIDO"* si el Tenant tiene `autorizado = false`.
+
+---
+
+# Speckit Tasks: Panel de Gobernanza UltraAdmin (SaaS Tenant Management)
+
+## Tarea 6: Server Actions para Gobernanza (Backend) [✅ COMPLETADA]
+- [x] Implementar `aprobarTenantAction` en `src/app/actions/ultraadmin.ts` (Actualiza `autorizado = true`).
+- [x] Implementar `extenderLicenciaAction` (Actualiza `subscription_ends_at`).
+- [x] Implementar `suspenderUsuarioAction` en (Actualiza estado de `empresa_usuarios`).
+- [x] Asegurar que todas validen el rol `ULTRAADMIN` y usen bloqueos transaccionales e idempotencia.
+
+## Tarea 7: Estado Global (Zustand) [✅ COMPLETADA]
+- [x] Crear el archivo `src/infrastructure/state/ultraAdminStore.ts`.
+- [x] Definir la interfaz de estado (`empresas`, `filtroEstado`, `tenantSeleccionado`, `drawerAbierto`).
+- [x] Configurar las funciones de Optimistic UI y control de Loading/Mutating para prevenir Memory Leaks y doble clics.
+
+## Tarea 8: Componente de Lista y Filtros (UI/UX) [✅ COMPLETADA]
+- [x] Construir `<TenantListTable />` con Radix/Shadcn UI o Tailwind puro.
+- [x] Crear los "Pills" interactivos para filtrar (Pendientes, Activas, Suspendidas, Expiradas).
+- [x] Integrar el trigger para abrir el Drawer al hacer clic en una fila.
+
+## Tarea 9: Componente Drawer Lateral de Detalles (UI/UX) [✅ COMPLETADA]
+- [x] Construir `<TenantDetailDrawer />` (Cajón lateral deslizante).
+- [x] Crear Tab: **Info & Estado** (Switch para Autorizar, mostrar datos corporativos y contacto).
+- [x] Crear Tab: **Licencias** (Fecha de expiración y botón para extender).
+- [x] Crear Tab: **Usuarios (IAM)** (Listado de usuarios de la empresa y botón de suspensión).
+
+## Tarea 10: Integración Final en Ruta /admin/empresas [✅ COMPLETADA]
+- [x] Modificar `src/app/admin/empresas/page.tsx` para importar el Store y renderizar `<TenantListTable />` y `<TenantDetailDrawer />`.
+- [x] Conectar los Server Actions a los eventos UI utilizando llaves criptográficas (Idempotencia UUID v4).

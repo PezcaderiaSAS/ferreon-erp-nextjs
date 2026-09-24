@@ -8,8 +8,9 @@
 - **Hito 5 (`SPEC-2026-ARCH-RESTRUCT-005`):** ✅ **100% COMPLETADO Y CERTIFICADO** (Devoluciones & Modales On-The-Fly: RSC + Client Island + DevolucionesTransaccionalService + Split-Line + Shimmer Skeleton).
 - **Hito 6 (`SPEC-2026-ARCH-RESTRUCT-006`):** ✅ **100% COMPLETADO Y CERTIFICADO** (Facturación & Cartera CXC: RSC + Client Island + FacturacionTransaccionalService + Shimmer Skeleton + Modales Lazy).
 - **Hito 7 (`SPEC-2026-ARCH-RESTRUCT-007`):** ✅ **100% COMPLETADO Y CERTIFICADO** (Subcontrataciones & Tercerización: RSC + Client Island + SubcontratacionesTransaccionalService + SubcontratacionesSkeleton + Consolidación de 6 Modales Lazy + Proxies Retrocompatibles).
+- **Hito 8 (Gobernanza UltraAdmin & Onboarding SaaS):** ✅ **100% COMPLETADO Y CERTIFICADO** (Aprobación de Tenants, eliminación condicional de marcas de agua en PDFs, estado global Zustand `useUltraAdminStore`, `<TenantListTable />` glassmorphic, `<TenantDetailDrawer />` multi-tab con autorización, extensiones de cortesía y gestión de usuarios IAM).
 - **Track WMS Concurrente (`SPEC-2026-WMS-CONCURRENT-RENTALS-001`):** ✅ **100% COMPLETADO Y CERTIFICADO** (Tareas 01 a 08 culminadas y certificadas: Migración SQL, RPC concurrente pesimista, Prisma Client v7, Zod dual-layer, Server Action delgada, TAREA-06: Motor PDF con sanitización cronológica y aislamiento try-catch por fila, TAREA-07: Formulario reactivo LineasSegmentadasArray con continuación de tramos y ModalResolucionOverbooking asistido con soporte de Escape y ARIA, Suite Vitest).
-- **Estado de Pruebas:** 60 suites de pruebas / 334 tests pasando al 100%, 0 errores de TypeScript (`tsc --noEmit`).
+- **Estado de Pruebas:** 60 suites de pruebas / 334 tests pasando al 100%, 0 errores de TypeScript (`tsc --noEmit`), `npm run build` en verde (24/24 rutas).
 
 ---
 

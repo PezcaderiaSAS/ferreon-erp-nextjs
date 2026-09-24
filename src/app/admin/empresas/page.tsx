@@ -30,6 +30,9 @@ import {
 } from '@/app/actions/ultraadmin';
 import { GestionModulosModal } from './GestionModulosModal';
 import { ExtenderLicenciaModal } from './ExtenderLicenciaModal';
+import { useUltraAdminStore } from '@/infrastructure/state/ultraAdminStore';
+import { TenantListTable } from '@/components/ultraadmin/TenantListTable';
+import { TenantDetailDrawer } from '@/components/ultraadmin/TenantDetailDrawer';
 
 export default function UltraAdminEmpresasPage() {
   const [empresas, setEmpresas] = useState<EmpresaDirectorioItem[]>([]);
@@ -37,6 +40,10 @@ export default function UltraAdminEmpresasPage() {
   const [error, setError] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [filtroSuscripcion, setFiltroSuscripcion] = useState<string>('todos');
+  const [vistaActiva, setVistaActiva] = useState<'gobernanza' | 'directorio'>('gobernanza');
+
+  const setEmpresasStore = useUltraAdminStore((state) => state.setEmpresas);
+  const abrirTenantStore = useUltraAdminStore((state) => state.abrirTenant);
 
   // Estado para el modal/drawer de inspección de usuarios
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState<EmpresaDirectorioItem | null>(null);
@@ -67,6 +74,7 @@ export default function UltraAdminEmpresasPage() {
       const res = await obtenerDirectorioEmpresasAction();
       if (res.success && res.empresas) {
         setEmpresas(res.empresas);
+        setEmpresasStore(res.empresas);
       } else {
         setError(res.error || 'No se pudo cargar el directorio de empresas');
       }
@@ -273,8 +281,39 @@ export default function UltraAdminEmpresasPage() {
           </div>
         </div>
 
-        {/* Barra de Filtros y Búsqueda */}
-        <div className="p-4 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-xl flex flex-col md:flex-row gap-3 items-center justify-between">
+        {/* Pestañas de Vista UltraAdmin */}
+        <div className="flex items-center gap-2 p-1.5 bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-2xl w-fit">
+          <button
+            onClick={() => setVistaActiva('gobernanza')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              vistaActiva === 'gobernanza'
+                ? 'bg-gradient-to-r from-indigo-600 to-sky-500 text-white shadow-lg shadow-indigo-500/25'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4" />
+            Gobernanza & Aprobación de Tenants
+          </button>
+          <button
+            onClick={() => setVistaActiva('directorio')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              vistaActiva === 'directorio'
+                ? 'bg-gradient-to-r from-indigo-600 to-sky-500 text-white shadow-lg shadow-indigo-500/25'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            Directorio Completo & Auditoría
+          </button>
+        </div>
+
+        {/* CONTENIDO CONDICIONAL POR PESTAÑA */}
+        {vistaActiva === 'gobernanza' ? (
+          <TenantListTable />
+        ) : (
+          <>
+            {/* Barra de Filtros y Búsqueda */}
+            <div className="p-4 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-xl flex flex-col md:flex-row gap-3 items-center justify-between">
           <div className="relative w-full md:w-96">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
@@ -439,6 +478,15 @@ export default function UltraAdminEmpresasPage() {
                             </button>
 
                             <button
+                              onClick={() => abrirTenantStore(emp)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                              title="Abrir panel lateral de gobernanza y aprobación"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                              <span>Gobernar</span>
+                            </button>
+
+                            <button
                               onClick={() => handleSeleccionarEmpresa(emp)}
                               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                                 isSelected
@@ -562,6 +610,8 @@ export default function UltraAdminEmpresasPage() {
             )}
           </div>
         )}
+          </>
+        )}
 
         {/* Modales de Gobernanza UltraAdmin */}
         <GestionModulosModal
@@ -577,6 +627,9 @@ export default function UltraAdminEmpresasPage() {
           onClose={() => setEmpresaLicencia(null)}
           onLicenciaActualizada={handleLicenciaActualizada}
         />
+
+        {/* Drawer Reactivo de Gobernanza UltraAdmin */}
+        <TenantDetailDrawer />
 
       </div>
     </div>

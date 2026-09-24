@@ -12,7 +12,7 @@
 - `subcontrataciones.ts`: Maquinaria de aliados (`crearSubcontratacionAction`, `cambiarEstadoSubcontratacionAction`, `liquidarSubcontratacionAction`). Cómputo de costos a dos tiempos, retenciones DIAN y asientos en el Ledger (`6135` vs `2365`, `2368`, `2205`).
 - `equipos.ts`: Inventario y ajustes Poka-Yoke con RPCs `ajustar_stock_equipo` y `reducir_stock_seguro`.
 - `pagos.ts`: Recaudos y pagos mixtos multilínea (`registrarPagoAction`, `registrarPagoMixtoAction`). División entre Efectivo, Bancos, Billeteras y Saldo a Favor, actualizando saldo del cliente, caja y Ledger.
-- `ultraadmin.ts`: Gobernanza multi-tenant (`obtenerEmpresasParaSelectorAction`, `obtenerDirectorioEmpresasAction`, `toggleModuloEmpresaAction`, `extenderLicenciaEmpresaAction`, `cambiarEstadoUsuarioAction`). Protegido por `is_ultra_admin()` con invalidación atómica de sesiones en Upstash Redis (`session:user:{id}`) en $<1$s.
+- `ultraadmin.ts`: Gobernanza multi-tenant (`obtenerEmpresasParaSelectorAction`, `obtenerDirectorioEmpresasAction`, `toggleModuloEmpresaAction`, `extenderLicenciaEmpresaAction`, `cambiarEstadoUsuarioAction`, `aprobarTenantAction`). Protegido por `is_ultra_admin()` con invalidación atómica de sesiones en Upstash Redis (`session:user:{id}`) en $<1$s y autorización oficial de producción (eliminación de marca de agua en PDFs).
 
 ## Rutas API (`src/app/api/`)
 - `/api/auth/callback`: Intercambio de código de autenticación de Supabase Auth y redirección a `/dashboard`.

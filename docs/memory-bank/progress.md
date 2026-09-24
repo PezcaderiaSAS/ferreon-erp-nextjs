@@ -98,3 +98,13 @@
 - [x] Deconstrucción de `src/app/subcontrataciones/page.tsx` de monolito cliente (502 líneas) a React Server Component conciso (~40 líneas) con prefetch en servidor y streaming `<Suspense>`.
 - [x] Suite de pruebas unitarias dedicada en `tests/unit/subcontrataciones-transaccional.service.test.ts` (28/28 pruebas pasando al 100%).
 - [x] Verificación completa: `tsc --noEmit` (0 errores) y 334/334 tests pasando al 100% (**60 suites en verde**).
+
+### Hito 8: Gobernanza UltraAdmin & Onboarding SaaS Multi-Tenant
+- [x] Provisionamiento automático de datos dummy (14 días gratis) mediante trigger `on_auth_user_created_provision_tenant` y RPC `seed_dummy_tenant_data`.
+- [x] Marca de agua de prueba condicional en PDFs para inquilinos no autorizados (`autorizado = false`).
+- [x] Server Action `aprobarTenantAction` en `src/app/actions/ultraadmin.ts` con verificación de privilegios `ULTRAADMIN`, invalidación en Upstash Redis y auditoría inmutable.
+- [x] Creación de `useUltraAdminStore` en `src/infrastructure/state/ultraAdminStore.ts` con mutaciones optimistas para experiencia Zero-Latency.
+- [x] Creación del componente `<TenantListTable />` con filtrado por pills (`Todos`, `Pendientes de Aprobación`, `Activas`, `Suspendidas`, `Expiradas`) y diseño Glassmorphism dark-slate.
+- [x] Creación del componente `<TenantDetailDrawer />` con pestañas de Info/Aprobación oficial, Licencias/Módulos ERP y gestión de Usuarios IAM.
+- [x] Integración transversal en la ruta protegida `/admin/empresas` con conmutador de vistas (`Gobernanza & Aprobación` vs `Directorio Completo`).
+- [x] Verificación completa de compilación (`npm run build` en verde, 24/24 rutas estáticas y dinámicas optimizadas).
