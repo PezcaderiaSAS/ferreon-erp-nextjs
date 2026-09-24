@@ -15,6 +15,7 @@ export interface TenantSubscriptionInfo {
   isReadOnly: boolean;
   isLifetime: boolean;
   hasStripeCustomer: boolean;
+  isAutorizado: boolean;
 }
 
 /**
@@ -73,6 +74,7 @@ export async function getTenantSubscriptionAction(): Promise<{
         isReadOnly,
         isLifetime,
         hasStripeCustomer: Boolean(empresa.stripe_customer_id),
+        isAutorizado: Boolean(empresa.autorizado),
       },
     };
   } catch (error: any) {

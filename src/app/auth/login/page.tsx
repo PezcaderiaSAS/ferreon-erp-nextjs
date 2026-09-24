@@ -27,6 +27,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [empresaNombre, setEmpresaNombre] = useState('');
+  const [empresaNit, setEmpresaNit] = useState('');
+  const [empresaTelefono, setEmpresaTelefono] = useState('');
+  const [empresaCiudad, setEmpresaCiudad] = useState('Bucaramanga');
+  const [empresaTamano, setEmpresaTamano] = useState('1-10');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -67,6 +71,10 @@ export default function LoginPage() {
           options: {
             data: {
               empresa_nombre: empresaNombre || undefined,
+              empresa_nit: empresaNit || undefined,
+              empresa_telefono: empresaTelefono || undefined,
+              empresa_ciudad: empresaCiudad || undefined,
+              empresa_tamano: empresaTamano || undefined,
             },
             emailRedirectTo: `${window.location.origin}/api/auth/callback`,
           },
@@ -218,20 +226,49 @@ export default function LoginPage() {
           {/* Form */}
           <form onSubmit={handleEmailAuth} className="space-y-4">
             {isRegisterMode && (
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Nombre de tu Empresa o Negocio
-                </label>
-                <div className="relative">
-                  <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej: Andamios & Encofrados SAS"
-                    value={empresaNombre}
-                    onChange={(e) => setEmpresaNombre(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all placeholder:text-slate-400 font-medium"
-                  />
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Nombre de tu Empresa o Negocio
+                  </label>
+                  <div className="relative">
+                    <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej: Andamios & Encofrados SAS"
+                      value={empresaNombre}
+                      onChange={(e) => setEmpresaNombre(e.target.value)}
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all placeholder:text-slate-400 font-medium"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">NIT / RUT</label>
+                    <input type="text" required placeholder="Ej: 900.123.456" value={empresaNit} onChange={(e) => setEmpresaNit(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Teléfono</label>
+                    <input type="tel" required placeholder="Ej: 300 123 4567" value={empresaTelefono} onChange={(e) => setEmpresaTelefono(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Ciudad</label>
+                    <input type="text" required placeholder="Bucaramanga" value={empresaCiudad} onChange={(e) => setEmpresaCiudad(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Tamaño</label>
+                    <select value={empresaTamano} onChange={(e) => setEmpresaTamano(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium">
+                      <option value="1-10">1 - 10 empleados</option>
+                      <option value="11-50">11 - 50 empleados</option>
+                      <option value="51-200">51 - 200 empleados</option>
+                      <option value="200+">Más de 200 empleados</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             )}

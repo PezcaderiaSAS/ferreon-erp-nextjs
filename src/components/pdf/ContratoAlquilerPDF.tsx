@@ -289,6 +289,19 @@ const getStyles = (pageSize: 'LETTER' | 'A5', tokens: ThemeTokens) => {
       borderTopColor: colors.borderLight,
       paddingTop: 4,
     },
+    watermark: {
+      position: 'absolute',
+      top: '40%',
+      left: 0,
+      right: 0,
+      transform: 'rotate(-45deg)',
+      opacity: 0.15,
+      fontSize: isA5 ? 36 : 52,
+      fontWeight: 'bold',
+      color: '#ef4444',
+      textAlign: 'center',
+      zIndex: 0,
+    },
   });
 };
 
@@ -497,6 +510,12 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
     <Document>
       <Page size={pageSize === 'A5' ? 'A5' : 'LETTER'} style={styles.page}>
         
+        {config?.autorizado === false && (
+          <Text style={styles.watermark} fixed>
+            DOCUMENTO DE PRUEBA - NO VÁLIDO
+          </Text>
+        )}
+
         {/* CABECERA CORPORATIVA */}
         <View style={styles.header} fixed>
           <View style={styles.brandInfoRow}>

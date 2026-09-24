@@ -21,12 +21,14 @@
 - `proveedores` & `proveedor_cuentas_pagar`: Directorio maestro de proveedores y cuentas por pagar generadas por compras, con abonos trazables en `proveedor_abonos_cxp`.
 - `financial_accounts` & `journal_entries`: Plan contable y libro diario inmutable de partida doble ($\sum D + \sum C = 0$).
 
-## Procedimientos Almacenados (RPCs)
+## Procedimientos Almacenados (RPCs) y Triggers
 - `recibir_compra_y_actualizar_pmp_transaccional`: Recepción atómica en bodega con recálculo de Costo Promedio Ponderado ($\text{PMP}$) y actualización de Kardex.
 - `convertir_cotizacion_a_alquiler_transaccional`: Conversión 1-clic con bloqueo pesimista ordenado (`ORDER BY id ASC FOR UPDATE`) sobre la tabla `equipos`.
 - `procesar_devolucion_avanzada`: Devolución de maquinaria con Split-Line y deducción de averías de la garantía.
 - `crear_alquiler_transaccional`: Creación atómica de contrato con verificación previa de `idempotency_key` y bloqueo `FOR UPDATE`.
 - `reducir_stock_seguro` & `ajustar_stock_equipo`: Control de concurrencia y ajustes de bodega.
+- `seed_dummy_tenant_data`: Sembrado de datos demo transaccional (bodega, clientes, equipos, stock, caja, alquiler, y kardex) para cuentas Trial.
+- `handle_new_tenant_registration` (Trigger en `auth.users`): Aprovisionamiento On-The-Fly; intercepta registros desde UI, crea la empresa (`autorizado = false`), enlaza el usuario ADMIN e invoca el seeder dummy.
 
 ## RLS & Seguridad Multitenant
 - Supabase Auth Hook (`custom_access_token_hook`): Inyecta `empresa_id` en `auth.jwt() -> 'app_metadata' ->> 'empresa_id'` durante el Sign-In.
