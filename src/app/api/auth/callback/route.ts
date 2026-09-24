@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServerSupabaseClient, createAdminSupabaseClient } from '../../../../infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient } from '../../../../infrastructure/persistence/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +16,7 @@ export async function GET(request: Request) {
     if (!error && sessionData?.user) {
       const user = sessionData.user;
       
+      try {
         // Verificar si el usuario ya pertenece a una empresa/tenant
         const { data: membership } = await supabase
           .from('empresa_usuarios')
