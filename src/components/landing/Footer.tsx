@@ -37,12 +37,21 @@ export function Footer() {
               <ul className="space-y-2 text-sm">
                 {section.links.map((link) => (
                   <li key={link.label}>
-                    <a
-                      href={link.href}
-                      className="text-slate-400 hover:text-white transition-colors duration-150 focus:outline-none focus-visible:underline"
-                    >
-                      {link.label}
-                    </a>
+                    {link.href.startsWith('/') ? (
+                      <Link
+                        href={link.href}
+                        className="text-slate-400 hover:text-white transition-colors duration-150 focus:outline-none focus-visible:underline"
+                      >
+                        {link.label}
+                      </Link>
+                    ) : (
+                      <a
+                        href={link.href}
+                        className="text-slate-400 hover:text-white transition-colors duration-150 focus:outline-none focus-visible:underline"
+                      >
+                        {link.label}
+                      </a>
+                    )}
                   </li>
                 ))}
               </ul>

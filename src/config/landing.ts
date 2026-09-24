@@ -530,7 +530,7 @@ export const LANDING_CONFIG = {
   },
 
   footer: {
-    copyright: "© 2026 FerreOn ERP. Todos los derechos reservados.",
+    copyright: "© 2026 Alquileres System. Todos los derechos reservados.",
     sections: [
       {
         title: "Módulos Operativos",
@@ -553,10 +553,10 @@ export const LANDING_CONFIG = {
       {
         title: "Legal y Normativo",
         links: [
-          { label: "Términos de Servicio", href: "#" },
-          { label: "Política de Privacidad", href: "#" },
-          { label: "Cumplimiento DIAN / COP", href: "#" },
-          { label: "Seguridad RLS y Auditoría", href: "#" },
+          { label: "Términos de Servicio", href: "/terminos" },
+          { label: "Política de Privacidad (Habeas Data)", href: "/privacidad" },
+          { label: "Seguridad RLS y Cero Fuga IA", href: "/seguridad" },
+          { label: "Guía RNBD & SIC Colombia", href: "/privacidad" },
         ],
       },
     ],

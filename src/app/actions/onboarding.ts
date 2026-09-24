@@ -10,6 +10,9 @@ const OnboardingSchema = z.object({
   telefono: z.string().min(7, 'El teléfono debe tener al menos 7 dígitos').max(25),
   ciudad: z.string().min(2, 'La ciudad debe tener al menos 2 caracteres').max(50),
   tamanoEmpresa: z.enum(['1-10', '11-50', '50+']).default('1-10'),
+  aceptaTerminos: z.boolean().refine((val) => val === true, {
+    message: 'Debes aceptar los Términos de Servicio y la Política de Tratamiento de Datos Personales para continuar.',
+  }),
 });
 
 export type OnboardingFormData = z.infer<typeof OnboardingSchema>;
@@ -132,6 +135,30 @@ export async function completeTenantOnboardingAction(formData: OnboardingFormDat
       });
     } catch (metaErr) {
       console.warn('[Onboarding Action] Error actualizando user_metadata:', metaErr);
+    }
+
+    // 8. Registro de Responsabilidad Demostrada (Accountability) ante la SIC en audit_logs
+    try {
+      await adminSupabase.from('audit_logs').insert({
+        empresa_id: nuevaEmpresa.id,
+        usuario_id: user.id,
+        usuario_email: user.email || null,
+        usuario_nombre: user.user_metadata?.full_name || user.user_metadata?.name || null,
+        usuario_rol: 'ADMIN',
+        modulo: 'LEGAL',
+        accion: 'CONSENTIMIENTO_TERMINOS_Y_DATOS',
+        entidad_id: nuevaEmpresa.id,
+        descripcion: 'Aceptación explícita de Términos de Servicio SaaS, Política de Privacidad (Ley 1581) y Certificación de Determinismo Operativo',
+        detalles: {
+          version_terminos: '1.0.0',
+          version_privacidad: '1.0.0',
+          fecha_consentimiento: new Date().toISOString(),
+          politica_cero_ia_aceptada: true,
+          cumplimiento_sic_colombia: true,
+        },
+      });
+    } catch (auditErr) {
+      console.warn('[Onboarding Action] Advertencia al registrar audit_log de consentimiento:', auditErr);
     }
 
     revalidatePath('/', 'layout');

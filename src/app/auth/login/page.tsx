@@ -31,6 +31,7 @@ export default function LoginPage() {
   const [empresaTelefono, setEmpresaTelefono] = useState('');
   const [empresaCiudad, setEmpresaCiudad] = useState('Bucaramanga');
   const [empresaTamano, setEmpresaTamano] = useState('1-10');
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -64,6 +65,12 @@ export default function LoginPage() {
 
     try {
       if (isRegisterMode) {
+        if (!aceptaTerminos) {
+          setErrorMsg('Debes aceptar los Términos de Servicio y la Política de Tratamiento de Datos para crear tu cuenta.');
+          setIsLoading(false);
+          return;
+        }
+
         // Registro de usuario nuevo con auto-onboarding
         const { data, error } = await supabaseClient.auth.signUp({
           email,
@@ -75,6 +82,9 @@ export default function LoginPage() {
               empresa_telefono: empresaTelefono || undefined,
               empresa_ciudad: empresaCiudad || undefined,
               empresa_tamano: empresaTamano || undefined,
+              terminos_aceptados: true,
+              terminos_version: '1.0.0',
+              fecha_consentimiento: new Date().toISOString(),
             },
             emailRedirectTo: `${window.location.origin}/api/auth/callback`,
           },
@@ -127,10 +137,10 @@ export default function LoginPage() {
             </div>
             <div>
               <span className="text-lg font-black tracking-tight text-slate-900 block leading-tight font-display">
-                FerreOn<span className="text-orange-600">.</span>
+                Alquileres System<span className="text-orange-600">.</span>
               </span>
               <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
-                ERP Alquileres SaaS
+                Plataforma SaaS en la Nube
               </span>
             </div>
           </Link>
@@ -327,6 +337,34 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {isRegisterMode && (
+              <div className="flex items-start gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                <input
+                  type="checkbox"
+                  id="aceptaTerminosLogin"
+                  required
+                  checked={aceptaTerminos}
+                  onChange={(e) => setAceptaTerminos(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer shrink-0"
+                />
+                <label htmlFor="aceptaTerminosLogin" className="text-xs text-slate-600 leading-relaxed cursor-pointer select-none">
+                  Acepto los{' '}
+                  <Link href="/terminos" target="_blank" className="text-orange-600 font-semibold hover:underline">
+                    Términos de Servicio
+                  </Link>{' '}
+                  y la{' '}
+                  <Link href="/privacidad" target="_blank" className="text-orange-600 font-semibold hover:underline">
+                    Política de Tratamiento de Datos (Ley 1581)
+                  </Link>
+                  , reconociendo la{' '}
+                  <Link href="/seguridad" target="_blank" className="text-slate-800 font-semibold hover:underline">
+                    Garantía de Cero Fuga a IAs Externas
+                  </Link>
+                  .
+                </label>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isLoading}
@@ -357,8 +395,15 @@ export default function LoginPage() {
         </div>
 
         {/* Footer Legal */}
-        <div className="text-center text-xs text-slate-400 pt-4 relative z-10">
-          © 2026 FerreOn ERP SaaS. Todos los derechos reservados.
+        <div className="text-center text-xs text-slate-400 pt-4 relative z-10 space-y-1.5">
+          <div className="flex items-center justify-center gap-3">
+            <Link href="/terminos" className="hover:text-slate-600 underline">Términos</Link>
+            <span>•</span>
+            <Link href="/privacidad" className="hover:text-slate-600 underline">Privacidad</Link>
+            <span>•</span>
+            <Link href="/seguridad" className="hover:text-slate-600 underline">Seguridad</Link>
+          </div>
+          <div>© 2026 Alquileres System. Todos los derechos reservados.</div>
         </div>
       </div>
 
