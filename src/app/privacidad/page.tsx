@@ -114,7 +114,7 @@ export default function PrivacidadPage() {
                 <li><strong>Consultas:</strong> Serán atendidas en un término máximo de diez (10) días hábiles.</li>
                 <li><strong>Reclamos y Supresión:</strong> Serán tramitados en un término máximo de quince (15) días hábiles.</li>
               </ul>
-              <div className="pt-1">Para ejercer tus derechos, envía una comunicación formal a: <code className="text-orange-400">privacidad@alquileres-system.com</code> con el asunto "Ejercicio Derecho Habeas Data".</div>
+              <div className="pt-1">Para ejercer tus derechos, envía una comunicación formal a: <code className="text-orange-400">privacidad@alquileres-system.com</code> con el asunto &quot;Ejercicio Derecho Habeas Data&quot;.</div>
             </div>
           </div>
         </section>
