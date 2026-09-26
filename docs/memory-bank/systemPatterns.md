@@ -62,3 +62,16 @@ Este documento establece las convenciones de arquitectura, patrones de diseño y
 1. **Tokens Semánticos:** Todo estilo debe usar las variables semánticas de `DESIGN.md`. Prohibido el uso de colores hex hardcodeados.
 2. **Prevención de Doble Click (Poka-Yoke):** Todo botón de submit debe deshabilitar físicamente la interacción (`pointer-events-none disabled:opacity-50`) y mostrar un spinner SVG animado durante el estado `isLoading`.
 3. **Formatos Numéricos:** Los valores monetarios y cantidades de stock deben renderizarse con `font-mono tabular-nums text-right`.
+4. **Estándar Linear de Alta Densidad (Reverse-Engineered Linear Standard):**
+   - Tablas densas con filas de 30px (`h-7.5`), fuentes `text-xs` (12px) y micro-elementos e íconos estrictos de 14px (`w-3.5 h-3.5`).
+   - Cero sombras estáticas (`shadow-none`) y bordes tenues `border-zinc-800/80` (dark) / `border-zinc-200` (light).
+   - Minimalismo monocromático gobernado por opacidad (`text-white/90`, `text-white/60`, `text-white/40`) y acento único índigo (`bg-indigo-600`) para CTA activo.
+   - Navegación ágil por teclado (`Ctrl+K` Command Palette, flechas `↑`/`↓`, `J`/`K`, hotkeys `C`/`F`, foco `ring-1 ring-indigo-500/70`).
+   - Cuadrícula métrica inamovible con anchos explícitos (`w-28`, `w-44`, `w-64`) bajo `table-fixed`.
+5. **Las 5 Leyes Inmutables de CSS Moderno (Verdad Absoluta):**
+   - **Centrado:** Prohibido `absolute + transform: translate(-50%, -50%)`. Obligatorio `grid place-items-center` o `align-content: center`.
+   - **Contexto de Apilamiento:** Prohibido `z-index: 9999`. Obligatorio `isolation: isolate; z-index: 1` (`isolate z-10`) para crear nuevo stacking context sin guerras de escalada.
+   - **Espaciado:** Prohibido `.card { margin-bottom: 24px; } :last-child`. Obligatorio gobernanza desde el contenedor con `gap` (`flex flex-col gap-4` o `grid gap-6`).
+   - **Viewports Verticales:** Prohibido `height: 100%` en contenedores de aplicación sin ancestros con altura explícita. Obligatorio unidades de viewport dinámicas `min-height: 100dvh` (`min-h-[100dvh]`).
+   - **Especificidad:** Prohibido resolver conflictos con `!important`. Obligatorio arquitectura en capas `@layer base, components, utilities;`.
+

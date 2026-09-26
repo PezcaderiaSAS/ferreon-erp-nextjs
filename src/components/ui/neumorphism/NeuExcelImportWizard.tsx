@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 export interface NeuExcelImportWizardProps {
   onImportSuccess?: (data: any[]) => void;
@@ -14,41 +14,57 @@ export function NeuExcelImportWizard({ onImportSuccess }: NeuExcelImportWizardPr
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsProcessing(true);
     setError(null);
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        
-        // Convierte el excel a un arreglo de objetos JSON
-        const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
-        
-        if (data.length > 0) {
-          setColumns(Object.keys(data[0] as object));
-          setFileData(data);
-        } else {
-          setError('El archivo Excel está vacío.');
-        }
-      } catch (err) {
-        setError('Error al leer el archivo Excel. Asegúrate de que sea un archivo .xlsx válido.');
-      } finally {
-        setIsProcessing(false);
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
+
+      const worksheet = workbook.worksheets[0];
+      if (!worksheet) {
+        setError('El archivo Excel no contiene hojas de cálculo válidas.');
+        return;
       }
-    };
-    reader.onerror = () => {
-      setError('No se pudo leer el archivo.');
+
+      const rows: any[] = [];
+      let headers: string[] = [];
+
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) {
+          headers = (row.values as any[])
+            .slice(1)
+            .map((val) => String(val ?? '').trim());
+        } else {
+          const rowData: Record<string, any> = {};
+          const rowValues = (row.values as any[]).slice(1);
+          headers.forEach((header, index) => {
+            if (header) {
+              const cellVal = rowValues[index];
+              rowData[header] = cellVal && typeof cellVal === 'object' && 'text' in cellVal ? cellVal.text : (cellVal ?? '');
+            }
+          });
+          rows.push(rowData);
+        }
+      });
+
+      if (rows.length > 0 && headers.length > 0) {
+        setColumns(headers);
+        setFileData(rows);
+      } else {
+        setError('El archivo Excel está vacío o no contiene filas con datos.');
+      }
+    } catch (err) {
+      console.error('[NeuExcelImportWizard] Error al procesar archivo con ExcelJS:', err);
+      setError('Error al leer el archivo Excel. Asegúrate de que sea un archivo .xlsx válido.');
+    } finally {
       setIsProcessing(false);
-    };
-    reader.readAsBinaryString(file);
+    }
   };
 
   const handleConfirm = () => {

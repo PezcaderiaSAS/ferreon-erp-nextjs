@@ -17,7 +17,8 @@
     "prisma:generate": "prisma generate",
     "prisma:format": "prisma format",
     "supabase:gen-types": "supabase gen types typescript --local > src/infrastructure/persistence/supabase/database.types.ts",
-    "doctor": "npx react-doctor@latest"
+    "doctor": "npx react-doctor@latest",
+    "audit:licenses": "node scripts/audit-licenses.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -29,6 +30,7 @@
     "@upstash/redis": "^1.34.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "exceljs": "^4.4.0",
     "lucide-react": "^0.428.0",
     "next": "^14.2.5",
     "react": "^18.3.1",
@@ -37,7 +39,6 @@
     "recharts": "^3.10.1",
     "stripe": "^16.8.0",
     "tailwind-merge": "^2.5.2",
-    "xlsx": "^0.18.5",
     "zod": "^3.23.8",
     "zustand": "^5.0.15"
   },

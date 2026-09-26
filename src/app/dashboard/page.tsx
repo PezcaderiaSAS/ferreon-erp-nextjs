@@ -3,6 +3,7 @@ import { Hammer, TrendingUp, FileText, AlertTriangle, PlusCircle, CornerDownLeft
 
 import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/infrastructure/persistence/supabase/server';
+import { TermsReacceptanceModal } from '@/components/legal/TermsReacceptanceModal';
 
 export default async function DashboardPage() {
   const supabase = await createServerSupabaseClient();
@@ -27,8 +28,19 @@ export default async function DashboardPage() {
     redirect('/onboarding');
   }
 
+  const terminosVersion = user.user_metadata?.terminos_version;
+  const requiereAceptacionTerminos = !terminosVersion || terminosVersion !== '1.0.0';
+  const empresaIdActiva = membership?.empresa_id || 'ac8719ea-f16a-4538-b308-40d9511a14cb';
+
   return (
     <div className="flex flex-col gap-8">
+      {/* Modal Intersticial Bloqueante de Consentimiento Legal para Usuarios Existentes */}
+      {requiereAceptacionTerminos && (
+        <TermsReacceptanceModal
+          isOpen={true}
+          empresaId={empresaIdActiva}
+        />
+      )}
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-semibold text-slate-900 mb-1">Dashboard</h1>

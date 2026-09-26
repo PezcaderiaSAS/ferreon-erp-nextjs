@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { completeTenantOnboardingAction, type OnboardingFormData } from '@/app/actions/onboarding';
 import { supabaseClient } from '@/infrastructure/persistence/supabase/client';
+import { ConsentCheckbox } from '@/components/legal/ConsentCheckbox';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -275,19 +276,12 @@ export default function OnboardingPage() {
             </div>
 
             {/* Checkbox Obligatorio de Consentimiento Legal */}
-            <div className="flex items-start gap-3 p-3.5 bg-slate-950/60 border border-slate-800 rounded-xl">
-              <input
-                type="checkbox"
-                id="aceptaTerminos"
-                required
-                checked={formData.aceptaTerminos}
-                onChange={(e) => setFormData({ ...formData, aceptaTerminos: e.target.checked })}
-                className="mt-1 w-4 h-4 text-orange-500 rounded border-slate-700 bg-slate-900 focus:ring-orange-500 focus:ring-offset-slate-950 cursor-pointer"
-              />
-              <label htmlFor="aceptaTerminos" className="text-xs text-slate-300 leading-relaxed cursor-pointer select-none">
-                He leído y acepto los <a href="/terminos" target="_blank" rel="noopener noreferrer" className="text-orange-400 font-medium underline hover:text-orange-300">Términos y Condiciones de Servicio</a> y la <a href="/privacidad" target="_blank" rel="noopener noreferrer" className="text-orange-400 font-medium underline hover:text-orange-300">Política de Tratamiento de Datos (Habeas Data Ley 1581)</a>, reconociendo la <a href="/seguridad" target="_blank" rel="noopener noreferrer" className="text-cyan-400 font-medium underline hover:text-cyan-300">Garantía de Cero Fuga a IAs Externas</a>.
-              </label>
-            </div>
+            <ConsentCheckbox
+              id="aceptaTerminos"
+              checked={formData.aceptaTerminos}
+              onChange={(checked) => setFormData({ ...formData, aceptaTerminos: checked })}
+              disabled={isLoading}
+            />
 
             {/* Botón de Envío */}
             <button

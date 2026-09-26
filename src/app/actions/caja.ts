@@ -32,12 +32,14 @@ export async function verificarConexionSupabaseAction(): Promise<SupabaseHealthR
   try {
     return await verificarConexionSupabase();
   } catch (err: any) {
+    const errorId = `ERR-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    console.error(`[verificarConexionSupabaseAction Error][${errorId}]:`, err);
     return {
       ok: false,
       latenciaMs: 0,
       url: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
       timestamp: new Date().toISOString(),
-      error: err.message || 'Error inesperado al validar conexión con Supabase.'
+      error: `Error al validar conexión con la infraestructura de base de datos. (Ref: ${errorId})`
     };
   }
 }
@@ -99,10 +101,11 @@ export async function obtenerSesionActivaAction() {
 
     return await CajaTransaccionalService.obtenerSesionActiva(admin, user.id, empresaId);
   } catch (err: any) {
-    console.error('[obtenerSesionActivaAction Error]:', err);
+    const errorId = `ERR-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    console.error(`[obtenerSesionActivaAction Error][${errorId}]:`, err);
     return {
       success: false,
-      error: err.message || 'Error al obtener sesión activa.',
+      error: `Error al obtener la sesión de caja activa. (Ref: ${errorId})`,
       sesion: null,
       resumen: null,
       movimientos: [],

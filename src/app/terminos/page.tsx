@@ -102,6 +102,53 @@ export default function TerminosPage() {
           </p>
         </section>
 
+        {/* Cláusula 6 */}
+        <section className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-400" />
+            <span>6. Herramienta de Asistencia, Deslinde por Cálculos y Supervisión Humana (Human-in-the-Loop)</span>
+          </h2>
+          <div className="space-y-3 text-slate-300 leading-relaxed text-xs sm:text-sm">
+            <p>
+              <strong>6.1. Naturaleza Asistencial:</strong> El Cliente reconoce y acepta de manera informada y expresa que <strong>Alquileres System</strong> opera exclusivamente como una plataforma de software de asistencia tecnológica para el cálculo, cotización, emisión de contratos y liquidación de maquinaria, andamios y equipos de construcción.
+            </p>
+            <p>
+              <strong>6.2. Deber de Verificación Humana (Human-in-the-Loop):</strong> El software no sustituye el criterio técnico, contable ni operativo del Cliente. Es deber ineludible y exclusivo del personal del Cliente verificar y convalidar:
+            </p>
+            <ul className="list-disc pl-5 space-y-1.5 text-slate-400">
+              <li>Las tarifas diarias pactadas, recargos por mora y fletes de entrega/recogida.</li>
+              <li>Las fechas efectivas de despacho y devolución de maquinaria en obra.</li>
+              <li>Los cobros adicionales resultantes de liquidaciones por averías físicas, roturas o piezas faltantes.</li>
+              <li>La exactitud matemática y tributaria de los contratos PDF antes de su firma y entrega al arrendatario.</li>
+            </ul>
+            <p>
+              <strong>6.3. Exclusión Absoluta por Daños Consecuenciales y Lucro Cesante:</strong> En ningún caso Alquileres System responderá por parálisis de obra, penalidades contractuales con contratistas, discrepancias aritméticas de coma flotante o pérdidas financieras derivadas del uso o imposibilidad de uso del software. La plataforma se suministra <em>&quot;TAL CUAL&quot;</em> y <em>&quot;SEGÚN DISPONIBILIDAD&quot;</em>.
+            </p>
+            <p>
+              <strong>6.4. Límite Indemnizatorio Máximo:</strong> Cualquier eventual responsabilidad económica acumulada quedará contractualmente topada al valor neto pagado por el Cliente en los últimos tres (3) meses de suscripción efectiva, o la suma de USD $100 (la que sea menor).
+            </p>
+          </div>
+        </section>
+
+        {/* Cláusula 7 */}
+        <section className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-cyan-400" />
+            <span>7. Transparencia en Inteligencia Artificial y Protección contra Sesgos Tecnológicos</span>
+          </h2>
+          <div className="space-y-3 text-slate-300 leading-relaxed text-xs sm:text-sm">
+            <p>
+              <strong>7.1. Declaración de Automatización y Modelos de Lenguaje:</strong> Alquileres System puede incorporar algoritmos heurísticos y modelos de procesamiento de lenguaje natural (IA) para optimizar la categorización de inventario, asistencia en soporte y sugerencias de contratos.
+            </p>
+            <p>
+              <strong>7.2. Ausencia de Decisiones Automatizadas Vinculantes:</strong> Ninguna sugerencia generada por componentes de inteligencia artificial tiene carácter vinculante sin la revisión y ratificación explícita de un operador humano. La empresa queda indemne ante demandas derivadas de sesgos tecnológicos imprevistos en modelos fundacionales.
+            </p>
+            <p>
+              <strong>7.3. Confinamiento de Datos (Cero Reentrenamiento):</strong> Alquileres System certifica que los datos operativos, financieros y de clientes de cada tenant se mantienen bajo estricto aislamiento lógico (RLS) y <strong>NUNCA</strong> son utilizados para entrenar modelos de IA públicos ni compartidos con terceros sin consentimiento.
+            </p>
+          </div>
+        </section>
+
       </main>
     </div>
   );

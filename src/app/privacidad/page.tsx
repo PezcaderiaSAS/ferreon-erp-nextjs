@@ -123,17 +123,24 @@ export default function PrivacidadPage() {
         <section className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-4">
           <h2 className="text-xl font-bold text-white flex items-center gap-2.5">
             <Lock className="w-5 h-5 text-orange-400" />
-            <span>4. Seguridad Técnica y Aislamiento Lógico</span>
+            <span>4. Seguridad Técnica, Aislamiento Lógico (RLS) y Cookies Técnicas</span>
           </h2>
-          <div className="text-sm text-slate-300 space-y-2 leading-relaxed">
+          <div className="text-sm text-slate-300 space-y-4 leading-relaxed">
             <p>
-              Implementamos el principio de <strong>Seguridad por Diseño y por Defecto</strong> exigido por la SIC:
+              Implementamos el principio de <strong>Seguridad por Diseño y por Defecto</strong> exigido por la Superintendencia de Industria y Comercio (SIC) y estándares internacionales:
             </p>
-            <ul className="list-disc pl-5 space-y-1 text-slate-400">
-              <li><strong>Row Level Security (RLS):</strong> Cada base de datos aísla estrictamente la información de cada empresa impidiendo lecturas cruzadas accidentales.</li>
-              <li><strong>Cifrado en Tránsito y Reposo:</strong> Canales cifrados con TLS 1.3 y almacenamiento en bases de datos con cifrado AES-256 bits.</li>
-              <li><strong>Trazabilidad Inmutable:</strong> Registro en logs de auditoría de todas las acciones sensibles y consentimientos contractuales.</li>
+            <ul className="list-disc pl-5 space-y-2 text-slate-400">
+              <li><strong>Row Level Security (RLS) en Supabase:</strong> Cada consulta SQL exige la validación del identificador único de la empresa (<code>empresa_id</code>) incrustado en el token criptográfico JWT. El motor PostgreSQL bloquea a nivel de kernel cualquier intento de lectura o mutación cruzada entre empresas.</li>
+              <li><strong>Cifrado Integral:</strong> Toda la transmisión de datos ocurre bajo TLS 1.3 con certificados HSTS forzados, y los datos en reposo se encriptan con el estándar AES-256 bits.</li>
+              <li><strong>Auditoría Inmutable (Accountability):</strong> Toda acción sensible y otorgamiento de consentimiento contractual queda grabado de forma inmutable en <code>audit_logs</code> con sello de tiempo UTC y dirección IP.</li>
             </ul>
+
+            <div className="pt-2 border-t border-slate-800/80">
+              <h3 className="font-semibold text-white text-base mb-2">Política de Cookies Estrictamente Necesarias</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Alquileres System aplica el principio de minimización de datos. La plataforma <strong>únicamente utiliza cookies técnicas y de sesión esenciales</strong> provistas por el motor de autenticación (Supabase Auth: <code>sb-access-token</code>, <code>sb-refresh-token</code>) con flags <code>HttpOnly</code>, <code>Secure</code> y <code>SameSite=Lax</code> para autenticar turnos de trabajo y prevenir ataques CSRF. <strong>NO</strong> utilizamos cookies de seguimiento publicitario, píxeles de redes sociales ni rastreadores conductuales de terceros en el entorno del ERP.
+              </p>
+            </div>
           </div>
         </section>
 

@@ -170,10 +170,11 @@ export async function completeTenantOnboardingAction(formData: OnboardingFormDat
       redirectUrl: '/dashboard',
     };
   } catch (err: any) {
-    console.error('[Onboarding Action Exception]:', err);
+    const errorId = `ERR-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    console.error(`[Onboarding Action Exception][${errorId}]:`, err);
     return {
       success: false,
-      error: err.message || 'Error inesperado durante el registro de la empresa.',
+      error: `Error al procesar el registro de la empresa. Por favor intenta nuevamente o contacta a soporte (Ref: ${errorId}).`,
     };
   }
 }

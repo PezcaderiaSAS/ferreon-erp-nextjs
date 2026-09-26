@@ -9,8 +9,11 @@
 - **Hito 6 (`SPEC-2026-ARCH-RESTRUCT-006`):** ✅ **100% COMPLETADO Y CERTIFICADO** (Facturación & Cartera CXC: RSC + Client Island + FacturacionTransaccionalService + Shimmer Skeleton + Modales Lazy).
 - **Hito 7 (`SPEC-2026-ARCH-RESTRUCT-007`):** ✅ **100% COMPLETADO Y CERTIFICADO** (Subcontrataciones & Tercerización: RSC + Client Island + SubcontratacionesTransaccionalService + SubcontratacionesSkeleton + Consolidación de 6 Modales Lazy + Proxies Retrocompatibles).
 - **Hito 8 (Gobernanza UltraAdmin & Onboarding SaaS):** ✅ **100% COMPLETADO Y CERTIFICADO** (Aprobación de Tenants, eliminación condicional de marcas de agua en PDFs, estado global Zustand `useUltraAdminStore`, `<TenantListTable />` glassmorphic, `<TenantDetailDrawer />` multi-tab con autorización, extensiones de cortesía y gestión de usuarios IAM).
+- **Hito 9 (UI/UX Linear High-Density & Verdad Absoluta CSS Moderno):** ✅ **100% COMPLETADO Y CERTIFICADO** (`SPEC-2026-UIUX-LINEAR-MODERN-CSS-001`: Inclusión en `DESIGN.md` y `systemPatterns.md` de las 5 decisiones de ingeniería inversa de Linear + 5 leyes inmutables de CSS moderno. Componentes `<LinearDataTable<T>>` y `<ContratosAlquilerTable />` en `src/components/ui/linear-table/` y `src/components/alquileres/`).
+- **Hito 10 (Blindaje Legal, Licencias e Inmunidad AppSec - SPEC-2026-LEGAL-APPSEC-BLINDAJE-001):** ✅ **100% COMPLETADO Y CERTIFICADO** (Cláusulas 6 y 7 en `/terminos` con deslinde por cálculos algorítmicos, As Is, Liability Cap de 3 meses y Human-in-the-Loop; Aislamiento RLS y Cookies Técnicas en `/privacidad`; Componente `ConsentCheckbox` con soporte ARIA; `TermsReacceptanceModal` bloqueante en `/dashboard` con persistencia inmutable en `audit_logs`; Script `audit:licenses` anti-copyleft; Migración de `xlsx` a `exceljs` 100% MIT; Validación Zod fail-fast de entorno `src/config/env.ts`; Envoltorio `safeServerAction` y `promptSanitizer` anti-prompt injection).
 - **Track WMS Concurrente (`SPEC-2026-WMS-CONCURRENT-RENTALS-001`):** ✅ **100% COMPLETADO Y CERTIFICADO** (Tareas 01 a 08 culminadas y certificadas: Migración SQL, RPC concurrente pesimista, Prisma Client v7, Zod dual-layer, Server Action delgada, TAREA-06: Motor PDF con sanitización cronológica y aislamiento try-catch por fila, TAREA-07: Formulario reactivo LineasSegmentadasArray con continuación de tramos y ModalResolucionOverbooking asistido con soporte de Escape y ARIA, Suite Vitest).
-- **Estado de Pruebas:** 60 suites de pruebas / 334 tests pasando al 100%, 0 errores de TypeScript (`tsc --noEmit`), `npm run build` en verde (24/24 rutas).
+
+- **Estado de Pruebas:** 60 suites de pruebas / 334 tests pasando al 100%, 0 errores de TypeScript (`tsc --noEmit`), auditoría de 758 paquetes sin violaciones copyleft (`npm run audit:licenses`).
 
 ---
 
@@ -69,6 +72,17 @@
    - **Client Island:** Creación de `SubcontratacionesInteractiveIsland.tsx` con carga perezosa (`next/dynamic` + `ModalSkeleton`) para los 6 modales pesados, reduciendo drásticamente el First Load JS.
    - **Skeleton Shimmer:** Creación de `SubcontratacionesSkeleton.tsx` para eliminar saltos acumulativos de layout (CLS = 0).
    - **Suite Vitest:** 28 pruebas unitarias en `tests/unit/subcontrataciones-transaccional.service.test.ts` pasando al 100% (total global de 334 tests en 60 suites).
+
+9. **Hito 9: UI/UX Linear High-Density & Verdad Absoluta CSS Moderno (`SPEC-2026-UIUX-LINEAR-MODERN-CSS-001`):**
+   - **Consolidación Canónica:** Incorporación en `DESIGN.md` y `systemPatterns.md` de las 5 decisiones de ingeniería inversa de Linear (Densidad quirúrgica de 30px, bordes sutiles sin sombras estáticas, minimalismo monocromático con opacidad, navegación por teclado con `Ctrl+K` y cuadrícula métrica rígida).
+   - **Leyes Inmutables de CSS Moderno:** Mandato absoluto para desterrar patrones obsoletos: `grid place-items-center` / `align-content: center` (en vez de `absolute + transform`), `isolation: isolate` (en vez de `z-index: 9999`), `gap` en contenedor (en vez de `margin-bottom` + `:last-child`), `min-height: 100dvh` (en vez de `height: 100%`) y cascada por `@layer` (en vez de `!important`).
+   - **Estándar Universal en `globals.css`:** Enforce de `min-height: 100dvh` en `body` y declaración de primitivas utilitarias (`.place-center`, `.content-center-modern`, `.stack-isolate`, `.min-h-dvh`, `.linear-row`, `.linear-card`, `.linear-dot`) dentro de `@layer utilities`.
+   - **Componente Reutilizable Universal:** Implementación de `<LinearDataTable<T>>` en `src/components/ui/linear-table/` e implementación de referencia `<ContratosAlquilerTable />` en `src/components/alquileres/ContratosAlquilerTable.tsx`.
+   - **Refactorización Activa en Pantallas de Producción:**
+     - `AlquileresInteractiveIsland.tsx`: Tablas de cotizaciones y contratos convertidas a filas compactas de 30px (`h-7.5`), `table-fixed`, dot status badges sutiles, micro-acciones y aislamiento de apilamiento (`isolate`).
+     - `SubcontratacionesInteractiveIsland.tsx`: Refactorización de cabecera, KPIs con densidad quirúrgica y cero sombras, barra de pestañas compactas y tabla de órdenes con dot badges y `tabular-nums font-mono`.
+     - `TenantListTable.tsx`: Pestañas compactas de gobernanza SaaS, tabla de 30px por fila con `shadow-none` y badges circulares de estado de suscripción.
+     - `DevolucionesInteractiveIsland.tsx`: Pestañas compactas, buscador ergonómico con shortcut `/`, y tablas de contratos pendientes e histórico de actas con filas de 30px y centrado moderno en estados vacíos.
 
 ---
 

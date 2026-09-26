@@ -13,6 +13,7 @@ import { obtenerSubcontratacionesAction, cambiarEstadoSubcontratacionAction } fr
 import { obtenerProveedoresAction } from '@/app/actions/proveedores';
 import { ModalSkeleton } from '@/components/ui/ModalSkeleton';
 import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 import { formatearMonedaCOP } from '@/core/utils/numero-a-letras';
 import {
   enriquecerSubcontrataciones,
@@ -56,16 +57,16 @@ const CrearProveedorModal = dynamic(
 );
 
 // ---------------------------------------------------------------------------
-// Mapa de variantes de color para badges de estado
+// Mapa de dot indicator para badges sutiles (Linear Color Budget)
 // ---------------------------------------------------------------------------
 
-const VARIANT_CLASSES: Record<SubcontratacionEnriquecida['estadoVariant'], string> = {
-  blue:    'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200',
-  amber:   'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200',
-  purple:  'bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200',
-  emerald: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-300',
-  rose:    'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200',
-  slate:   'bg-slate-100 text-slate-700 border-slate-200',
+const ESTADO_DOT_COLOR: Record<SubcontratacionEnriquecida['estadoVariant'], string> = {
+  blue:    'bg-blue-500',
+  amber:   'bg-amber-500',
+  purple:  'bg-indigo-500',
+  emerald: 'bg-emerald-500',
+  rose:    'bg-rose-500',
+  slate:   'bg-zinc-400',
 };
 
 // ---------------------------------------------------------------------------
@@ -184,235 +185,257 @@ export function SubcontratacionesInteractiveIsland({
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6 animate-fadeIn">
+    <div className="p-3 sm:p-4 max-w-7xl mx-auto flex flex-col gap-3.5 isolate stack-isolate animate-fadeIn">
 
-      {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 rounded-2xl border border-amber-500/20 shadow-xs">
-            <Handshake className="w-7 h-7" />
+      {/* ── Header Quirúrgico Linear ───────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-zinc-200 dark:border-zinc-800/80">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded border border-zinc-200 dark:border-zinc-700">
+            <Handshake className="w-5 h-5 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-              Subcontratación y Re-Alquiler
+            <h1 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-2">
+              <span>Subcontratación y Re-Alquiler</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.2 text-zinc-500 bg-zinc-100 dark:bg-zinc-800 rounded border border-zinc-200 dark:border-zinc-700 font-normal">
+                Alquileres System
+              </span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500">
-              Gestión de maquinaria rentada a aliados, control de márgenes en tiempo real y retorno
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Gestión de maquinaria de aliados, control de márgenes en tiempo real y retorno
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
+        <div className="flex items-center gap-1.5">
+          <button
             type="button"
-            variant="secondary"
             onClick={() => setShowCrearProveedorModal(true)}
-            className="flex items-center gap-1.5 text-xs bg-white dark:bg-slate-800 shadow-xs"
+            className="h-7.5 px-2.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-sm border border-zinc-200 dark:border-zinc-700 flex items-center gap-1.5 transition-colors"
           >
-            <UserPlus className="w-4 h-4 text-amber-600" />
+            <UserPlus className="w-3.5 h-3.5 text-zinc-500" />
             <span>Nuevo Aliado</span>
-          </Button>
-          <Button
+            <kbd className="hidden sm:inline-block text-[10px] font-mono px-1 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-500">A</kbd>
+          </button>
+          <button
             type="button"
-            variant="primary"
             onClick={() => setShowCrearModal(true)}
-            className="bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-2 text-xs sm:text-sm font-bold shadow-sm"
+            className="h-7.5 px-3 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-sm flex items-center gap-1.5 transition-colors shadow-none"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>Nueva Subcontratación</span>
-          </Button>
+            <kbd className="hidden sm:inline-block text-[10px] font-mono px-1 rounded bg-indigo-700 text-indigo-200">N</kbd>
+          </button>
         </div>
       </div>
 
-      {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── KPI Cards: Densidad Quirúrgica & Cero Sombras ───────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         {/* Órdenes Activas */}
-        <div className="p-4 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs">
+        <div className="p-3 bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-md shadow-none flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Órdenes Activas</span>
-            <div className="p-1.5 bg-blue-500/10 text-blue-600 rounded-lg"><Clock className="w-4 h-4" /></div>
+            <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Órdenes Activas</span>
+            <Clock className="w-3.5 h-3.5 text-blue-500" />
           </div>
-          <p className="text-2xl font-black text-slate-900 dark:text-white mt-2">{kpis.totalActivas}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">En obra con clientes ({kpis.totalSolicitadas} solicitadas)</p>
+          <p className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1">{kpis.totalActivas}</p>
+          <p className="text-[10px] text-zinc-400 mt-0.5">En obra ({kpis.totalSolicitadas} solicitadas)</p>
         </div>
 
         {/* Costo Proveedores Activo */}
-        <div className="p-4 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs">
+        <div className="p-3 bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-md shadow-none flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Costo Aliados Activo</span>
-            <div className="p-1.5 bg-amber-500/10 text-amber-600 rounded-lg"><TrendingUp className="w-4 h-4" /></div>
+            <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Costo Aliados Activo</span>
+            <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
           </div>
-          <p className="text-2xl font-black text-slate-900 dark:text-white font-mono mt-2">
+          <p className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1">
             {formatearMonedaCOP(kpis.costoTotalActivo)}
           </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Compromiso financiero a aliados</p>
+          <p className="text-[10px] text-zinc-400 mt-0.5">Compromiso financiero a aliados</p>
         </div>
 
         {/* Margen Bruto Proyectado */}
-        <div className="p-4 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs">
+        <div className="p-3 bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-md shadow-none flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Margen Bruto Proyectado</span>
-            <div className="p-1.5 bg-emerald-500/10 text-emerald-600 rounded-lg"><ShieldCheck className="w-4 h-4" /></div>
+            <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Margen Proyectado</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
           </div>
-          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-2">
+          <p className="text-xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400 font-mono mt-1">
             {formatearMonedaCOP(kpis.margenTotalActivo)}
           </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Rentabilidad promedio del {kpis.margenPct}%</p>
+          <p className="text-[10px] text-zinc-400 mt-0.5">Rentabilidad promedio {kpis.margenPct}%</p>
         </div>
 
         {/* Alertas en Bodega */}
-        <div className="p-4 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs">
+        <div className="p-3 bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-md shadow-none flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Alertas En Bodega</span>
-            <div className={`p-1.5 rounded-lg ${kpis.totalEnBodega > 0 ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30' : 'bg-slate-100 text-slate-400'}`}>
-              <AlertCircle className="w-4 h-4" />
-            </div>
+            <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">En Bodega (Retorno)</span>
+            <AlertCircle className={cn("w-3.5 h-3.5", kpis.totalEnBodega > 0 ? "text-rose-500" : "text-zinc-400")} />
           </div>
-          <p className={`text-2xl font-black mt-2 ${kpis.totalEnBodega > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'}`}>
+          <p className={cn("text-xl font-semibold tracking-tight font-mono mt-1", kpis.totalEnBodega > 0 ? "text-rose-600 dark:text-rose-400" : "text-zinc-900 dark:text-zinc-100")}>
             {kpis.totalEnBodega}
           </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            {kpis.totalEnBodega > 0 ? 'Máquinas pendientes de retorno a aliados' : `${kpis.totalLiquidadas} órdenes liquidadas`}
+          <p className="text-[10px] text-zinc-400 mt-0.5">
+            {kpis.totalEnBodega > 0 ? 'Pendientes retorno a aliado' : `${kpis.totalLiquidadas} liquidadas`}
           </p>
         </div>
       </div>
 
-      {/* ── Barra de filtros ──────────────────────────────────────────────── */}
-      <div className="p-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      {/* ── Barra de Filtros Compacta Linear ─────────────────────────────────── */}
+      <div className="p-1.5 bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-md shadow-none flex flex-col md:flex-row items-center justify-between gap-2">
+        <div className="relative w-full md:w-72">
+          <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar por orden, aliado o NIT..."
-            className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+            className="w-full h-7.5 pl-8 pr-7 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-sm text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
+          <kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1 py-0.2 text-zinc-400 bg-zinc-200/60 dark:bg-zinc-800 rounded pointer-events-none">
+            /
+          </kbd>
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setFiltroEstado(tab.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                filtroEstado === tab.id
-                  ? 'bg-amber-600 text-white shadow-xs'
-                  : tab.alert
-                    ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 hover:bg-amber-200'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              <span>{tab.label}</span>
-              <span className={`px-1.5 rounded-full text-[10px] ${
-                filtroEstado === tab.id ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-              }`}>
-                {tab.count}
-              </span>
-            </button>
-          ))}
+        <div className="flex items-center gap-1 overflow-x-auto w-full md:w-auto">
+          {TABS.map((tab) => {
+            const isActive = filtroEstado === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setFiltroEstado(tab.id)}
+                className={cn(
+                  "h-7 px-2.5 rounded-sm text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5",
+                  isActive
+                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-none"
+                    : tab.alert
+                      ? "text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20"
+                      : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/80"
+                )}
+              >
+                <span>{tab.label}</span>
+                <span className={cn(
+                  "px-1 rounded text-[10px] font-mono tabular-nums",
+                  isActive
+                    ? "bg-zinc-700 text-zinc-100 dark:bg-zinc-300 dark:text-zinc-900"
+                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
+                )}>
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* ── Tabla ─────────────────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+      {/* ── Tabla de Densidad Quirúrgica (~30px por fila) ───────────────────── */}
+      <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-md shadow-none overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 uppercase tracking-wider text-[10px]">
-              <tr>
-                <th className="py-3 px-4 font-bold">Orden / ID</th>
-                <th className="py-3 px-4 font-bold">Proveedor Aliado</th>
-                <th className="py-3 px-4 font-bold">Fechas Pactadas</th>
-                <th className="py-3 px-4 font-bold text-right">Costo Aliado</th>
-                <th className="py-3 px-4 font-bold text-right">Cobro Cliente</th>
-                <th className="py-3 px-4 font-bold text-right">Margen</th>
-                <th className="py-3 px-4 font-bold text-center">Estado</th>
-                <th className="py-3 px-4 font-bold text-right">Acciones</th>
+          <table className="w-full text-left border-collapse table-fixed text-xs">
+            <colgroup>
+              <col className="w-28" />
+              <col className="w-48" />
+              <col className="w-40" />
+              <col className="w-28" />
+              <col className="w-28" />
+              <col className="w-32" />
+              <col className="w-32" />
+              <col className="w-32" />
+            </colgroup>
+            <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-[10px] font-semibold">
+              <tr className="h-7.5">
+                <th className="px-2.5 py-1">Orden / ID</th>
+                <th className="px-2.5 py-1">Proveedor Aliado</th>
+                <th className="px-2.5 py-1">Fechas Pactadas</th>
+                <th className="px-2.5 py-1 text-right">Costo Aliado</th>
+                <th className="px-2.5 py-1 text-right">Cobro Cliente</th>
+                <th className="px-2.5 py-1 text-right">Margen</th>
+                <th className="px-2.5 py-1 text-center">Estado</th>
+                <th className="px-2.5 py-1 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
               {filtradasEnriquecidas.map((sub) => (
-                <tr key={sub.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                <tr key={sub.id} className="h-7.5 hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition-colors">
                   {/* Consecutivo + badge vencida */}
-                  <td className="py-3 px-4 font-mono font-bold text-slate-900 dark:text-white">
-                    <div className="flex items-center gap-1.5">
+                  <td className="px-2.5 py-1 font-mono font-medium text-zinc-900 dark:text-zinc-100">
+                    <div className="flex items-center gap-1.5 truncate">
                       <span>{sub.consecutivo}</span>
                       {sub.isVencida && (
-                        <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 rounded text-[10px] font-sans font-bold flex items-center gap-0.5">
-                          <AlertTriangle className="w-3 h-3" /> Vencida
+                        <span className="px-1 py-0.2 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded text-[9px] font-medium flex items-center gap-0.5 border border-rose-500/20">
+                          <AlertTriangle className="w-2.5 h-2.5" /> Vencida
                         </span>
                       )}
                     </div>
                   </td>
 
                   {/* Proveedor */}
-                  <td className="py-3 px-4">
-                    <div className="font-bold text-slate-800 dark:text-slate-200">{sub.proveedorNombre}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">NIT: {sub.proveedorNit || 'N/A'}</div>
+                  <td className="px-2.5 py-1 truncate">
+                    <div className="font-medium text-zinc-800 dark:text-zinc-200 truncate">{sub.proveedorNombre}</div>
+                    <div className="text-[10px] text-zinc-400 font-mono">NIT: {sub.proveedorNit || 'N/A'}</div>
                   </td>
 
                   {/* Fechas */}
-                  <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
-                    <div className="text-[11px]">
-                      {sub.fechaEntregaEstimada} al {sub.fechaDevolucionEstimada}
-                    </div>
+                  <td className="px-2.5 py-1 text-zinc-500 dark:text-zinc-400 truncate">
+                    <span className="text-[11px] font-mono">
+                      {sub.fechaEntregaEstimada} → {sub.fechaDevolucionEstimada}
+                    </span>
                   </td>
 
                   {/* Costo */}
-                  <td className="py-3 px-4 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                  <td className="px-2.5 py-1 text-right font-mono tabular-nums text-zinc-700 dark:text-zinc-300">
                     {formatearMonedaCOP(sub.costoTotalEstimado)}
                   </td>
 
                   {/* Ingreso */}
-                  <td className="py-3 px-4 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                  <td className="px-2.5 py-1 text-right font-mono tabular-nums text-zinc-700 dark:text-zinc-300">
                     {formatearMonedaCOP(sub.ingresoTotalEstimado)}
                   </td>
 
                   {/* Margen */}
-                  <td className="py-3 px-4 text-right font-mono">
-                    <div className={`font-bold ${sub.margenBrutoEstimado >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                  <td className="px-2.5 py-1 text-right font-mono tabular-nums">
+                    <span className={cn("font-medium", sub.margenBrutoEstimado >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                       {formatearMonedaCOP(sub.margenBrutoEstimado)}
-                    </div>
-                    <div className="text-[10px] text-slate-400">{sub.margenPct.toFixed(0)}% margen</div>
+                    </span>
+                    <span className="text-[10px] text-zinc-400 ml-1">({sub.margenPct.toFixed(0)}%)</span>
                   </td>
 
-                  {/* Estado badge */}
-                  <td className="py-3 px-4 text-center">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${VARIANT_CLASSES[sub.estadoVariant]}`}>
-                      {sub.estado === 'RECIBIDA_EN_BODEGA' ? '⚠️ ' : ''}{sub.estadoLabel}
+                  {/* Estado badge (Linear Color Budget dot) */}
+                  <td className="px-2.5 py-1 text-center">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[11px] font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700/60">
+                      <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", ESTADO_DOT_COLOR[sub.estadoVariant])} />
+                      <span className="truncate">{sub.estado === 'RECIBIDA_EN_BODEGA' ? '⚠️ ' : ''}{sub.estadoLabel}</span>
                     </span>
                   </td>
 
                   {/* Acciones */}
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
+                  <td className="px-2.5 py-1 text-right">
+                    <div className="flex items-center justify-end gap-1">
                       <button
                         type="button"
                         onClick={() => setSubParaDetalle(sub)}
-                        className="p-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 transition-colors"
+                        className="h-6 w-6 p-0 grid place-items-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-sm border border-zinc-200 dark:border-zinc-700 transition-colors"
                         title="Ver Detalle Completo"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye className="w-3.5 h-3.5" />
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setSubParaPDF(sub)}
-                        className="p-1.5 text-amber-600 bg-amber-50 dark:bg-amber-950/40 rounded-lg hover:bg-amber-100 transition-colors"
+                        className="h-6 w-6 p-0 grid place-items-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-sm border border-zinc-200 dark:border-zinc-700 transition-colors"
                         title="Imprimir Orden en PDF"
                       >
-                        <Printer className="w-4 h-4" />
+                        <Printer className="w-3.5 h-3.5" />
                       </button>
 
                       {(sub.estado === 'ACTIVA' || sub.estado === 'RECIBIDA_EN_BODEGA') && (
                         <button
                           type="button"
                           onClick={() => setSubParaDevolucion(sub)}
-                          className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs"
+                          className="h-6 px-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-sm text-[11px] font-medium flex items-center gap-1 transition-colors"
                           title="Registrar Retorno al Proveedor Aliado"
                         >
-                          <RotateCcw className="w-3.5 h-3.5" />
+                          <RotateCcw className="w-3 h-3" />
                           <span>Retornar</span>
                         </button>
                       )}
@@ -421,16 +444,16 @@ export function SubcontratacionesInteractiveIsland({
                         <button
                           type="button"
                           onClick={() => setSubParaLiquidar(sub)}
-                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs"
+                          className="h-6 px-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm text-[11px] font-medium flex items-center gap-1 transition-colors"
                           title="Liquidar Retenciones y Asentar en Ledger"
                         >
-                          <Calculator className="w-3.5 h-3.5" />
+                          <Calculator className="w-3 h-3" />
                           <span>Liquidar</span>
                         </button>
                       )}
 
                       {sub.estado === 'LIQUIDADA' && (
-                        <span className="p-1 text-emerald-600" title="Orden Asentada en Ledger Contable">
+                        <span className="p-0.5 text-emerald-600" title="Orden Asentada en Ledger Contable">
                           <CheckCircle2 className="w-4 h-4" />
                         </span>
                       )}
@@ -441,14 +464,16 @@ export function SubcontratacionesInteractiveIsland({
 
               {filtradasEnriquecidas.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
-                    <Handshake className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700 mb-2" />
-                    <p className="font-semibold text-slate-600 dark:text-slate-300">
-                      No se encontraron órdenes de subcontratación.
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Registra una orden para tercerizar maquinaria de aliados comerciales.
-                    </p>
+                  <td colSpan={8} className="py-12 text-center text-zinc-400">
+                    <div className="grid place-items-center gap-2">
+                      <Handshake className="w-8 h-8 text-zinc-300 dark:text-zinc-700" />
+                      <p className="font-medium text-zinc-700 dark:text-zinc-300">
+                        No se encontraron órdenes de subcontratación.
+                      </p>
+                      <p className="text-xs text-zinc-400">
+                        Registra una orden para tercerizar maquinaria de aliados comerciales.
+                      </p>
+                    </div>
                   </td>
                 </tr>
               )}

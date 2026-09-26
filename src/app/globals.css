@@ -305,10 +305,52 @@ button, a, input, select, textarea {
 body {
   color: rgb(var(--foreground));
   background: rgb(var(--background));
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 @layer utilities {
+  /* ========================================================================= */
+  /* LAS 5 LEYES INMUTABLES DE CSS MODERNO & LINEAR ENGINEERING SYSTEM         */
+  /* ========================================================================= */
+
+  /* Ley 1: Centrado moderno con Grid/Align-Content (adiós position: absolute) */
+  .place-center {
+    display: grid;
+    place-items: center;
+  }
+  .content-center-modern {
+    align-content: center;
+  }
+
+  /* Ley 2: Stacking context aislado (elimina guerras de z-index: 999999) */
+  .stack-isolate {
+    isolation: isolate;
+  }
+
+  /* Ley 4: Altura dinámica de viewport contra saltos de barra de dirección móvil */
+  .min-h-dvh {
+    min-height: 100dvh;
+  }
+
+  /* Linear Standard - Decisión 1: Densidad quirúrgica de fila (30px) */
+  .linear-row {
+    height: 1.875rem; /* 30px */
+  }
+
+  /* Linear Standard - Decisión 2: Cero sombras estáticas, borde 1px */
+  .linear-card {
+    box-shadow: none;
+    border-radius: 0.375rem;
+  }
+
+  /* Linear Standard - Decisión 3: Badge sutil con dot indicator */
+  .linear-dot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: 9999px;
+    flex-shrink: 0;
+  }
+
   /* Scrollbar Utilities */
   .no-scrollbar::-webkit-scrollbar {
     display: none;

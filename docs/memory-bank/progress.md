@@ -11,7 +11,11 @@
 | **Devoluciones & Split-Line** | 🟢 Operativo | 🟢 Modernizado (Hito 5) | Deconstruido a RSC + Suspense + Client Island. `DevolucionesTransaccionalService`, Split-Line y modales On-The-Fly diferidos. |
 | **Facturación & Cartera CXC** | 🟢 Operativo | 🟢 Modernizado (Hito 6) | Deconstruido a RSC + Suspense + Client Island. `FacturacionTransaccionalService`, modales lazy y cálculo financiero puro. |
 | **Subcontrataciones** | 🟢 Operativo | 🟢 Modernizado (Hito 7) | Deconstruido a RSC + Suspense + Client Island. `SubcontratacionesTransaccionalService`, consolidación de 6 modales lazy y proxies transparentes. |
+| **Gobernanza UltraAdmin** | 🟢 Operativo | 🟢 Modernizado (Hito 8) | Aprobación de Tenants, eliminación condicional de marcas de agua en PDFs y gestión IAM. |
+| **UI/UX Linear & CSS Moderno** | 🟢 Certificado | 🟢 Canónico (Hito 9) | `DESIGN.md` y `systemPatterns.md` actualizados. `<LinearDataTable<T>>` y `<ContratosAlquilerTable />` implementados. |
+| **Blindaje Legal & AppSec** | 🟢 Certificado | 🟢 Canónico (Hito 10) | Términos blindados (As Is, Liability Cap, Human-in-the-Loop), RLS + Cookies, Modal bloqueante, anti-copyleft (`exceljs`), env Zod fail-fast y `safeServerAction`. |
 | **Landing Page SaaS** | 🟢 Operativo | 🟢 Excelente | 9 secciones dinámicas, multi-moneda (COP/USD) y responsive design. |
+
 
 ---
 
@@ -108,3 +112,10 @@
 - [x] Creación del componente `<TenantDetailDrawer />` con pestañas de Info/Aprobación oficial, Licencias/Módulos ERP y gestión de Usuarios IAM.
 - [x] Integración transversal en la ruta protegida `/admin/empresas` con conmutador de vistas (`Gobernanza & Aprobación` vs `Directorio Completo`).
 - [x] Verificación completa de compilación (`npm run build` en verde, 24/24 rutas estáticas y dinámicas optimizadas).
+
+### Hito 9: UI/UX Linear High-Density & Verdad Absoluta CSS Moderno (`SPEC-2026-UIUX-LINEAR-MODERN-CSS-001`)
+- [x] Consolidación en `DESIGN.md` de las 5 decisiones de ingeniería inversa de Linear (Densidad Quirúrgica 30px, Bordes sutiles `shadow-none`, Minimalismo monocromático por opacidad, Navegación por teclado con `Ctrl+K` y cuadrícula métrica rígida).
+- [x] Incorporación como Verdad Absoluta en `DESIGN.md` y `systemPatterns.md` de las 5 Leyes Inmutables de CSS Moderno (place-items/align-content centrado, stacking isolation con `isolation: isolate`, gobernanza de espaciado por contenedor con `gap`, viewports dinámicos `min-height: 100dvh` y cascada formal `@layer`).
+- [x] Creación de `<LinearDataTable<T>>` en `src/components/ui/linear-table/LinearDataTable.tsx` con motor de teclado (`↑`/`↓`, `J`/`K`, `Enter`, `X`/`Espacio`, `C`, `F`, `Escape`), Command Palette contextual flotante y barra de acciones en lote.
+- [x] Creación de implementación de referencia `<ContratosAlquilerTable />` en `src/components/alquileres/ContratosAlquilerTable.tsx` aplicando las 5 leyes y directrices sobre contratos de maquinaria WMS en Alquileres System.
+

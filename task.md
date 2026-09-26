@@ -90,4 +90,38 @@
 - [x] Crear test en `tests/unit/formalizar-cotizacion-polimorfica.test.ts` validando la formalización exitosa de ID numérico y UUID.
 - [x] Validar prevención de overbooking por curva de fechas y resolución asistida.
 
+---
 
+# Speckit Tasks: Blindaje Legal, Licencias y Ciberseguridad (SPEC-2026-LEGAL-APPSEC-BLINDAJE-001)
+
+## Tarea 16: Infraestructura Legal — Cláusulas en /terminos y /privacidad [✅ COMPLETADA]
+- [x] Actualizar `src/app/terminos/page.tsx` agregando la Cláusula 6 (Límites de responsabilidad, As Is, Liability Cap de 3 meses, supervisión humana obligatoria) y Cláusula 7 (Transparencia en uso de IA, mitigación de sesgos, confidencialidad de datos).
+- [x] Actualizar `src/app/privacidad/page.tsx` detallando la separación Responsable vs Encargado (Multi-Tenant), aislamiento lógico RLS en Supabase y política de cookies de sesión estrictamente necesarias.
+
+## Tarea 17: UI de Consentimiento Expreso y Modal Intersticial para Existentes [✅ COMPLETADA]
+- [x] Crear `src/components/legal/ConsentCheckbox.tsx` con soporte ARIA, feedback de error y enlace a términos.
+- [x] Crear `src/components/legal/TermsReacceptanceModal.tsx` para interceptar usuarios en Dashboard si no tienen aceptada la versión `1.0.0`.
+- [x] Crear Server Action `registrarAceptacionTerminosAction()` con registro inmutable en `audit_logs` y conectarlo a Dashboard y Onboarding.
+
+## Tarea 18: Auditoría de Dependencias y Script Anti-Copyleft (Node.js) [✅ COMPLETADA]
+- [x] Crear el script `scripts/audit-licenses.mjs` con whitelist permisiva (MIT, Apache, BSD, ISC) y fallo ante licencias Copyleft (GPL, AGPL, SSPL).
+- [x] Actualizar `package.json` para agregar `"audit:licenses": "node scripts/audit-licenses.mjs"`.
+
+## Tarea 19: Migración de 'xlsx' a 'exceljs' (Erradicación de Riesgo IP/CVE) [✅ COMPLETADA]
+- [x] Instalar `exceljs` en `package.json`.
+- [x] Refactorizar `src/components/ui/neumorphism/NeuExcelImportWizard.tsx` para usar `exceljs`.
+- [x] Desinstalar la dependencia legada `xlsx`.
+
+## Tarea 20: Higiene de Secretos y Validación Fail-Fast de Entorno [✅ COMPLETADA]
+- [x] Crear `src/config/env.ts` con validación Zod en tiempo de ejecución para `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `CRON_SECRET` y variables públicas.
+- [x] Comprobar que ninguna clave privada esté expuesta en `NEXT_PUBLIC_*`.
+
+## Tarea 21: Wrapper de Server Actions 'safeServerAction' y Anti-Injection [✅ COMPLETADA]
+- [x] Crear `src/infrastructure/security/safeServerAction.ts` con Correlation ID, log privado y respuestas opacas sin filtración de schemas ni stack traces.
+- [x] Crear `src/core/security/promptSanitizer.ts` para encapsular entradas no confiables con tags XML ante procesamiento por agentes.
+- [x] Aplicar sanitización de errores y Correlation IDs en Server Actions clave en `src/app/actions/caja.ts` y `src/app/actions/onboarding.ts`.
+
+## Tarea 22: Verificación Integral de Seguridad y Pruebas Unitarias [✅ COMPLETADA]
+- [x] Ejecutar `npm run audit:licenses` y verificar 0 infracciones (758 paquetes auditados, 0 violaciones copyleft).
+- [x] Ejecutar `npm run typecheck` (`tsc --noEmit`) asegurando 0 errores de TypeScript.
+- [x] Ejecutar `npm run test` (`vitest run`) validando que las 60 suites sigan pasando al 100% (334/334 tests en verde).
