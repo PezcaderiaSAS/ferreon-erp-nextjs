@@ -4,8 +4,7 @@ import { createServerSupabaseClient, createAdminSupabaseClient } from '@/infrast
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { z } from 'zod';
-
-export const CURRENT_TERMS_VERSION = '1.0.0';
+import { CURRENT_TERMS_VERSION } from '@/core/constants/legal';
 
 const AceptarTerminosSchema = z.object({
   empresaId: z.string().uuid('ID de empresa inválido'),

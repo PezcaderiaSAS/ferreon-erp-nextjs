@@ -62,7 +62,7 @@ describe('Componente: TenantListTable', () => {
     expect(screen.getByText('Maquinaria Antioquia SAS')).toBeInTheDocument();
 
     expect(screen.getByRole('button', { name: /todos/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /pendientes de aprobación/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /pendientes/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /activas/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /suspendidas/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /expiradas/i })).toBeInTheDocument();
@@ -72,7 +72,7 @@ describe('Componente: TenantListTable', () => {
     const user = userEvent.setup();
     render(<TenantListTable />);
 
-    const pillPendientes = screen.getByRole('button', { name: /pendientes de aprobación/i });
+    const pillPendientes = screen.getByRole('button', { name: /pendientes/i });
     await user.click(pillPendientes);
 
     // Solo debe verse la empresa no autorizada
@@ -85,7 +85,7 @@ describe('Componente: TenantListTable', () => {
     const user = userEvent.setup();
     render(<TenantListTable />);
 
-    const pillActivas = screen.getByRole('button', { name: /^activas$/i });
+    const pillActivas = screen.getByRole('button', { name: /activas/i });
     await user.click(pillActivas);
 
     expect(screen.queryByText('Andamios & Equipos Bogotá SAS')).toBeNull();

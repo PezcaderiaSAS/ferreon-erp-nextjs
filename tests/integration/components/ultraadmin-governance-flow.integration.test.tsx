@@ -63,7 +63,7 @@ describe('Integración de Componentes: Gobernanza SaaS UltraAdmin', () => {
 
     // 1. Verificar estado inicial: Empresa en modo prueba (No autorizada)
     expect(screen.getByText('Ferretería y Andamios El Constructor SAS')).toBeInTheDocument();
-    expect(screen.getByText(/Pendiente Autorización/i)).toBeInTheDocument();
+    expect(screen.getByText(/Pendiente \(Trial\)/i)).toBeInTheDocument();
 
     // 2. Abrir el drawer de gobernanza haciendo clic en Gestionar
     const botonGestionar = screen.getByRole('button', { name: /gestionar/i });
