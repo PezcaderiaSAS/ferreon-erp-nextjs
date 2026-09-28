@@ -47,6 +47,20 @@ export interface ConvertirCotizacionInput {
   nuevaFechaInicio?: string;
 }
 
+export interface ConvertirCotizacionResultado {
+  success: boolean;
+  esErrorStock?: boolean;
+  esErrorFechaPasada?: boolean;
+  codigoError?: string;
+  error?: string;
+  data?: {
+    alquilerId?: any;
+    consecutivo?: any;
+    cotizacionConsecutivo?: any;
+    idempotent?: boolean;
+  };
+}
+
 const CotizacionItemZodSchema = z.object({
   equipoId: z.union([z.string(), z.number()]),
   nombre: z.string().optional().nullable(),
@@ -384,7 +398,7 @@ export async function actualizarEstadoCotizacionAction(id: string, nuevoEstado: 
  * 1. Registros en tabla 'alquileres' con ID entero/BIGINT (formalización in-situ con stock dinámico).
  * 2. Registros en tabla 'cotizaciones' con ID UUID (conversión con bloqueo pesimista y stock dinámico).
  */
-export async function convertirCotizacionAContratoAction(input: ConvertirCotizacionInput) {
+export async function convertirCotizacionAContratoAction(input: ConvertirCotizacionInput): Promise<ConvertirCotizacionResultado> {
   try {
     if (!input.cotizacionId) {
       return { success: false, error: 'El ID de la cotización es obligatorio para la conversión.' };
@@ -438,15 +452,6 @@ export async function convertirCotizacionAContratoAction(input: ConvertirCotizac
           esErrorStock: true,
           codigoError: 'ERR_OVERBOOKING_CONCURRENTE',
           error: `[POKA-YOKE INVENTARIO] ${errMsg.replace('ERR_OVERBOOKING_CONCURRENTE:', '').replace('STOCK_INSUFICIENTE:', '').trim()}. Puede derivar las unidades faltantes a Subcontratación con Proveedor Aliado o ajustar el pedido.`
-        };
-      }
-
-      if (errMsg.includes('ERR_FECHA_INICIO_PASADA')) {
-        return {
-          success: false,
-          esErrorFechaPasada: true,
-          codigoError: 'ERR_FECHA_INICIO_PASADA',
-          error: errMsg.replace('ERR_FECHA_INICIO_PASADA:', '').trim()
         };
       }
 

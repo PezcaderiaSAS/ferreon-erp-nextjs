@@ -147,12 +147,9 @@ describe('Componente: ConvertirCotizacionModal', () => {
       />
     );
 
-    // Debe mostrar el banner de ratificación de fecha
-    expect(screen.getByText(/Ratificación de Fecha de Despacho Requerida/i)).toBeInTheDocument();
-    expect(screen.getByText(/está en el pasado/i)).toBeInTheDocument();
-
-    const dateInput = screen.getByDisplayValue(new Date().toISOString().split('T')[0]);
-    expect(dateInput).toBeInTheDocument();
+    // Debe mostrar el indicador de registro retrospectivo
+    expect(screen.getByText(/Registro Diferido\/Retroactivo/i)).toBeInTheDocument();
+    expect(screen.getByText(/Reprogramar Fecha de Inicio/i)).toBeInTheDocument();
   });
 
   it('ejecuta formalización exitosa e invoca onSuccess y onClose tras completar la transacción', async () => {

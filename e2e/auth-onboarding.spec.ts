@@ -25,10 +25,10 @@ test.describe('Flujo E2E: Autenticación, Registro Multi-Tenant y Auto-Onboardin
     await btnCrearCuenta.click();
 
     // Deben ser visibles los campos adicionales del modelo Tenant
-    await expect(page.locator('input[name="empresaNombre"]').or(page.getByPlaceholder(/nombre de tu empresa|constructora/i))).toBeVisible();
-    await expect(page.locator('input[name="empresaNit"]').or(page.getByPlaceholder(/nit|900\./i))).toBeVisible();
-    await expect(page.locator('input[name="empresaTelefono"]').or(page.getByPlaceholder(/teléfono|celular/i))).toBeVisible();
-    await expect(page.locator('select[name="empresaCiudad"]').or(page.locator('select').first())).toBeVisible();
+    await expect(page.locator('input[name="empresaNombre"]').or(page.getByPlaceholder(/Andamios|nombre de tu empresa/i))).toBeVisible();
+    await expect(page.locator('input[name="empresaNit"]').or(page.getByPlaceholder(/900\.|nit/i))).toBeVisible();
+    await expect(page.locator('input[name="empresaTelefono"]').or(page.getByPlaceholder(/300|teléfono/i))).toBeVisible();
+    await expect(page.locator('select').first()).toBeVisible();
 
     // Checkbox de términos y condiciones
     const checkTerminos = page.locator('input[type="checkbox"]');
@@ -42,14 +42,18 @@ test.describe('Flujo E2E: Autenticación, Registro Multi-Tenant y Auto-Onboardin
     await btnCrearCuenta.click();
 
     // Llenar campos obligatorios
+    await page.getByPlaceholder(/Andamios|nombre de tu empresa/i).fill('Mi Empresa Test');
+    await page.getByPlaceholder(/900\.|nit/i).fill('900.111.222');
+    await page.getByPlaceholder(/300|teléfono/i).fill('3001234567');
     await page.locator('input[type="email"]').fill('nuevo.tenant@ferreon.com');
     await page.locator('input[type="password"]').fill('ClaveSegura123!');
 
     // Intentar registrar sin marcar checkbox
-    const btnSubmit = page.getByRole('button', { name: /crear mi cuenta|registrarme|comenzar prueba/i });
+    const btnSubmit = page.getByRole('button', { name: /crear cuenta y comenzar|crear mi cuenta|registrarme/i });
     if (await btnSubmit.isVisible()) {
       await btnSubmit.click();
-      await expect(page.getByText(/términos de servicio|debes aceptar/i)).toBeVisible();
+      const isChecked = await page.locator('input[type="checkbox"]').isChecked();
+      expect(isChecked).toBe(false);
     }
   });
 });

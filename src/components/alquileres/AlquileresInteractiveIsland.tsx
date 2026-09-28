@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   Plus, Search, MoreVertical, FileSpreadsheet, FileText,
   Printer, CheckCircle, HardHat, History,
-  CheckCircle2, DollarSign, HelpCircle, ArrowLeftRight
+  CheckCircle2, DollarSign, HelpCircle, ArrowLeftRight, Loader2
 } from "lucide-react";
 import dynamic from 'next/dynamic';
 
@@ -530,6 +530,53 @@ export function AlquileresInteractiveIsland({
     setDocumentoParaPDF(payload);
   };
 
+  const handleFormalizarDirecto = async (cot: any) => {
+    if (!cot?.id) return;
+    const cotId = cot.id;
+    if (convertiendoCotizacionId) return;
+
+    setConvertiendoCotizacionId(String(cotId));
+    try {
+      const res = await convertirCotizacionAContratoAction({
+        cotizacionId: cotId,
+        idempotencyKey: `conv_1clic_${cotId}_${Date.now()}`
+      });
+
+      if (!res.success) {
+        if (res.esErrorStock) {
+          setCotizacionParaConvertir(cot);
+          setShowConvertirModal(true);
+          useToastStore.getState().showWarningToast(
+            res.error || 'Stock insuficiente para formalización automática. Abriendo asistente de resolución...',
+            'Inventario Insuficiente'
+          );
+        } else {
+          useToastStore.getState().showErrorToast(
+            res.error || 'Error al formalizar la cotización como contrato.',
+            'Error al Formalizar'
+          );
+        }
+        return;
+      }
+
+      await fetchAllData();
+      const consecutivo = res.data?.consecutivo || res.data?.alquilerId || cot.consecutivo || '';
+      useToastStore.getState().showSuccessToast(
+        `¡Cotización formalizada con éxito! Contrato ALQ-${consecutivo} activo en obra.`,
+        'Formalización 1-Clic Exitosa'
+      );
+      handleTabChange('contratos');
+    } catch (err: any) {
+      console.error('Error al formalizar cotización en 1-clic:', err);
+      useToastStore.getState().showErrorToast(
+        err.message || 'Ocurrió un error inesperado al formalizar el contrato.',
+        'Error Inesperado'
+      );
+    } finally {
+      setConvertiendoCotizacionId(null);
+    }
+  };
+
   const handleAprobarCotizacion = async (alquilerId: string, ajustes: any) => {
     try {
       const res = await aprobarCotizacionAction({ 
@@ -1044,15 +1091,22 @@ export function AlquileresInteractiveIsland({
 
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      setCotizacionParaConvertir(cot);
-                                      setShowConvertirModal(true);
-                                    }}
-                                    className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-black shadow-xs shadow-emerald-700/20 transition-all cursor-pointer active:scale-98 whitespace-nowrap"
-                                    title="Formalización 1-Clic con bloqueo de stock pesimista"
+                                    disabled={convertiendoCotizacionId !== null}
+                                    onClick={() => handleFormalizarDirecto(cot)}
+                                    className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-black shadow-xs shadow-emerald-700/20 transition-all cursor-pointer active:scale-98 whitespace-nowrap disabled:opacity-50 disabled:pointer-events-none"
+                                    title="Formalización Directa 1-Clic a Contrato de Alquiler"
                                   >
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
-                                    <span>Formalizar<span className="hidden 2xl:inline"> Contrato</span></span>
+                                    {convertiendoCotizacionId === String(cot.id) ? (
+                                      <>
+                                        <Loader2 className="w-3.5 h-3.5 text-emerald-200 animate-spin shrink-0" />
+                                        <span>Formalizando...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
+                                        <span>Formalizar<span className="hidden 2xl:inline"> Contrato</span></span>
+                                      </>
+                                    )}
                                   </button>
                                 </>
                               ) : (

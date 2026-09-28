@@ -109,13 +109,17 @@ describe('Formalización Polimórfica de Cotización a Contrato 1-Clic', () => {
     expect(result.error).toContain('Andamio Certificado');
   });
 
-  it('debe capturar ERR_FECHA_INICIO_PASADA y propagar esErrorFechaPasada: true', async () => {
-    rpcMock = vi.fn().mockImplementation(async () => {
+  it('debe permitir formalizar con fecha en el pasado sin arrojar error (soporte retrospectivo diferido)', async () => {
+    rpcMock = vi.fn().mockImplementation(async (proc: string, params: any) => {
+      expect(params.p_payload.nueva_fecha_inicio).toBeNull();
       return {
-        data: null,
-        error: {
-          message: 'ERR_FECHA_INICIO_PASADA: La fecha de inicio (2026-09-10) de este alquiler está en el pasado. Ratifique la nueva fecha real de despacho.',
+        data: {
+          success: true,
+          alquiler_id: 17,
+          consecutivo: 105,
+          estado: 'ACTIVO',
         },
+        error: null,
       };
     });
 
@@ -123,12 +127,12 @@ describe('Formalización Polimórfica de Cotización a Contrato 1-Clic', () => {
       cotizacionId: '17',
     });
 
-    expect(result.success).toBe(false);
-    expect(result.esErrorFechaPasada).toBe(true);
-    expect(result.codigoError).toBe('ERR_FECHA_INICIO_PASADA');
+    expect(result.success).toBe(true);
+    expect(result.data?.consecutivo).toBe(105);
+    expect(result.data?.alquilerId).toBe(17);
   });
 
-  it('debe enviar nuevaFechaInicio si se ratifica una fecha vencida', async () => {
+  it('debe permitir enviar nuevaFechaInicio si el usuario la reprograma voluntariamente', async () => {
     rpcMock = vi.fn().mockImplementation(async (proc: string, params: any) => {
       expect(params.p_payload.nueva_fecha_inicio).toBe('2026-09-25');
       return {

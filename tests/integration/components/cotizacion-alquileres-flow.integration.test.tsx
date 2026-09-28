@@ -149,8 +149,12 @@ describe('Integración de Componentes: Flujo de Formalización de Cotizaciones a
       />
     );
 
-    // Detecta expiración y solicita ratificación
-    expect(screen.getByText(/Ratificación de Fecha de Despacho Requerida/i)).toBeInTheDocument();
+    // Detecta fecha de inicio en el pasado e indica soporte retrospectivo
+    expect(screen.getByText(/Registro Diferido\/Retroactivo/i)).toBeInTheDocument();
+
+    // Permite reprogramar fecha voluntariamente si se desea
+    const btnReprogramar = screen.getByRole('button', { name: /reprogramar fecha de inicio/i });
+    await user.click(btnReprogramar);
 
     const dateInput = screen.getByDisplayValue(new Date().toISOString().split('T')[0]);
     // Cambiar la fecha de inicio

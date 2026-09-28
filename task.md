@@ -125,3 +125,36 @@
 - [x] Ejecutar `npm run audit:licenses` y verificar 0 infracciones (758 paquetes auditados, 0 violaciones copyleft).
 - [x] Ejecutar `npm run typecheck` (`tsc --noEmit`) asegurando 0 errores de TypeScript.
 - [x] Ejecutar `npm run test` (`vitest run`) validando que las 60 suites sigan pasando al 100% (334/334 tests en verde).
+
+---
+
+# Speckit Tasks: Formalización Directa 1-Clic sin Bloqueo de Fechas (SPEC-2026-COTIZACION-1CLIC-SIN-BLOQUEO-FECHAS-001)
+
+## Tarea 23: Migración SQL - Eliminar Excepción de Fecha Pasada en RPC Transaccional [✅ COMPLETADA]
+- [x] Crear archivo de migración `supabase/migrations/20260928_eliminar_bloqueo_fechas_cotizaciones.sql`.
+- [x] Retirar la validación `RAISE EXCEPTION 'ERR_FECHA_INICIO_PASADA...'` en la función `formalizar_alquiler_cotizacion_transaccional`.
+- [x] Preservar las fechas cotizadas originales si no se envía `nueva_fecha_inicio` y mantener el cálculo dinámico de curva de stock.
+- [x] Aplicar la migración a la base de datos Supabase vía MCP. (✅ *Ejecutada con éxito con apply_migration en proyecto eqruvswlpsttuyuglwts*).
+
+## Tarea 24: Limpieza en Server Actions y Wizard de Alquileres [✅ COMPLETADA]
+- [x] En `src/app/actions/cotizaciones.ts`, ajustar el manejo de errores para no rechazar fechas pasadas y tipar explícitamente `ConvertirCotizacionResultado`.
+- [x] En `src/components/forms/alquiler/useAlquilerForm.ts`, remover el bloqueo `if (esFechaInicioEnPasado)` al formalizar o guardar contrato en `validateCurrentStep` y `validatePayload`.
+- [x] En `src/components/forms/alquiler/StepClienteGarantias.tsx`, humanizar el banner convirtiéndolo en indicador informativo de registro diferido/retroactivo.
+
+## Tarea 25: Formalización Directa 1-Clic en 'AlquileresInteractiveIsland.tsx' [✅ COMPLETADA]
+- [x] Crear manejador `handleFormalizarDirecto(cot)` en `AlquileresInteractiveIsland.tsx`.
+- [x] Implementar estado `convertiendoCotizacionId` con spinner de carga `Loader2` y deshabilitación física de doble clic en el botón de la fila.
+- [x] Conectar Server Action con idempotencia `conv_1clic_${cot.id}_${Date.now()}`.
+- [x] Emitir notificación toast de éxito y actualizar reactivamente el estado en la tabla (`handleTabChange('contratos')`).
+- [x] Si la respuesta indica error de stock (`res.esErrorStock`), abrir el modal asistido para gestión de faltante.
+
+## Tarea 26: Desactivación de Bloqueo de Fechas en 'ConvertirCotizacionModal.tsx' [✅ COMPLETADA]
+- [x] Retirar la validación restrictiva `if (fechaExpirada && ...)` en `handleFormalizar`.
+- [x] Eliminar el banner de advertencia forzada *"Ratificación de Fecha de Despacho Requerida"*, reemplazándolo por un selector opcional no intrusivo que preserva por defecto las fechas originales.
+
+## Tarea 27: Pruebas Unitarias y Validación de Calidad [✅ COMPLETADA]
+- [x] Actualizar `tests/unit/formalizar-cotizacion-polimorfica.test.ts` para verificar formalización con fecha pasada sin arrojar error.
+- [x] Actualizar `tests/components/ConvertirCotizacionModal.test.tsx` y `tests/integration/components/cotizacion-alquileres-flow.integration.test.tsx` para reflejar el soporte diferido y selector opcional de reprogramación.
+- [x] Ejecutar `npm run test` y verificar 100% de suites en verde (65/65 suites pasadas, 354/354 tests en verde).
+- [x] Ejecutar `npm run typecheck` asegurando cero errores de compilación de TypeScript.
+

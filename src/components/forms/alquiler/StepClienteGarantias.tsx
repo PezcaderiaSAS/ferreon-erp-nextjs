@@ -11,7 +11,8 @@ import {
   KeyRound, 
   RefreshCw, 
   CreditCard,
-  FileText
+  FileText,
+  Info
 } from 'lucide-react';
 import { Modal } from '../../ui/Modal';
 import { Button } from '../../ui/Button';
@@ -517,15 +518,15 @@ export const StepClienteGarantias: React.FC<StepClienteGarantiasProps> = ({
             <span className="text-[10.5px] text-teal-700">Calcula automáticamente el estimado de días para la cotización</span>
           </div>
 
-          {/* ALERTA DE CONSISTENCIA TEMPORAL: FECHA EN PASADO */}
+          {/* INDICADOR INFORMATIVO DE REGISTRO RETROACTIVO */}
           {tipoDocumento === 'CONTRATO' && esFechaInicioEnPasado && (
-            <div className="sm:col-span-2 p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between gap-3 text-xs text-amber-950 animate-fadeIn">
+            <div className="sm:col-span-2 p-3 bg-blue-50/80 border border-blue-200 rounded-xl flex items-center justify-between gap-3 text-xs text-blue-950 animate-fadeIn">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <Info className="w-4 h-4 text-blue-600 shrink-0" />
                 <div>
-                  <span className="font-bold">Fecha Cotizada Vencida:</span>
-                  <span className="ml-1 text-amber-900">
-                    La fecha de arranque cotizada ({fechaInicioContrato}) está en el pasado. Los despachos en muelle deben registrar fecha actual o futura.
+                  <span className="font-bold text-blue-900">Registro Diferido / Retroactivo:</span>
+                  <span className="ml-1 text-blue-800">
+                    La fecha de inicio ({fechaInicioContrato}) está en el pasado. El contrato se formalizará respetando estas fechas.
                   </span>
                 </div>
               </div>
@@ -534,10 +535,11 @@ export const StepClienteGarantias: React.FC<StepClienteGarantiasProps> = ({
                   type="button"
                   variant="secondary"
                   onClick={ratificarFechaInicioAHoy}
-                  className="bg-amber-600 text-white hover:bg-amber-700 border-amber-700 text-xs shrink-0 flex items-center gap-1 py-1 px-2.5"
+                  className="bg-white text-blue-700 hover:bg-blue-100 border border-blue-300 text-xs shrink-0 flex items-center gap-1 py-1 px-2.5 shadow-2xs font-bold"
+                  title="Cambiar fecha de inicio al día de hoy si lo requiere"
                 >
                   <RefreshCw className="w-3 h-3" />
-                  <span>Ratificar a Hoy</span>
+                  <span>Ajustar a Hoy</span>
                 </Button>
               )}
             </div>

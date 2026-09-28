@@ -84,6 +84,7 @@ export function ConvertirCotizacionModal({
   }, [cotizacion, itemsCotizacion, todayStr]);
 
   const [nuevaFechaInicio, setNuevaFechaInicio] = useState<string>(todayStr);
+  const [cambiarFechaInicioManual, setCambiarFechaInicioManual] = useState<boolean>(false);
 
   // Análisis de Stock Dinámico e Ítems Subcontratados
   const analisisStock = useMemo(() => {
@@ -134,12 +135,6 @@ export function ConvertirCotizacionModal({
   if (!isOpen || !cotizacion) return null;
 
   const handleFormalizar = () => {
-    // Si la fecha original expiró, validar que la nueva fecha no sea en el pasado
-    if (fechaExpirada && (!nuevaFechaInicio || nuevaFechaInicio < todayStr)) {
-      setErrorMsg('Debe ratificar una fecha de inicio actual o futura antes de formalizar.');
-      return;
-    }
-
     setErrorMsg(null);
     setEsErrorStock(false);
     setShowOverlay(true);
@@ -152,7 +147,7 @@ export function ConvertirCotizacionModal({
         const res = await convertirCotizacionAContratoAction({
           cotizacionId: cotizacion.id,
           detallesLogistica: detallesLogistica.trim(),
-          nuevaFechaInicio: fechaExpirada ? nuevaFechaInicio : undefined,
+          nuevaFechaInicio: cambiarFechaInicioManual ? nuevaFechaInicio : undefined,
           idempotencyKey: `conv_modal_${cotizacion.id}_${Date.now()}`
         });
 
@@ -248,29 +243,44 @@ export function ConvertirCotizacionModal({
               </div>
             )}
 
-            {/* Ratificación de Fecha si expiró en el pasado */}
-            {fechaExpirada && (
-              <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 space-y-2">
-                <div className="flex items-start gap-2.5">
-                  <Calendar className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed flex-1">
-                    <strong className="font-bold">Ratificación de Fecha de Despacho Requerida:</strong> La fecha programada original ({fechaInicioOriginal}) está en el pasado. Seleccione la fecha real de inicio para ratificar el contrato y recalcular la vigencia:
-                    <div className="mt-2 flex items-center gap-2">
-                      <input 
-                        type="date"
-                        min={todayStr}
-                        value={nuevaFechaInicio}
-                        onChange={(e) => setNuevaFechaInicio(e.target.value)}
-                        className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                      />
-                      <span className="text-[11px] text-amber-700 dark:text-amber-300">
-                        (Hoy: {todayStr})
-                      </span>
-                    </div>
-                  </div>
+            {/* Opciones de Fecha (Preserva original por defecto) */}
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
+                  <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
+                  <span>
+                    Fecha de Inicio: <strong className="text-slate-900 dark:text-white">{fechaInicioOriginal}</strong>
+                    {fechaExpirada && <span className="ml-1 text-[11px] text-blue-600 font-medium">(Registro Diferido/Retroactivo)</span>}
+                  </span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setCambiarFechaInicioManual(!cambiarFechaInicioManual)}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold"
+                >
+                  {cambiarFechaInicioManual ? 'Mantener Fecha Original' : 'Reprogramar Fecha de Inicio'}
+                </button>
               </div>
-            )}
+
+              {cambiarFechaInicioManual && (
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2">
+                  <label className="text-xs text-slate-600 dark:text-slate-400">Nueva Fecha:</label>
+                  <input 
+                    type="date"
+                    value={nuevaFechaInicio}
+                    onChange={(e) => setNuevaFechaInicio(e.target.value)}
+                    className="px-3 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setNuevaFechaInicio(todayStr)}
+                    className="text-[11px] text-slate-500 hover:text-slate-700 underline"
+                  >
+                    Usar Hoy ({todayStr})
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Verificación de Disponibilidad y Equipos */}
             <div>

@@ -742,16 +742,6 @@ export function useAlquilerForm({
         return false;
       }
 
-      // Regla de Consistencia Temporal (Poka-Yoke): Solo aplica a formalización de contratos
-      if (tipoDocumento === 'CONTRATO' && esFechaInicioEnPasado) {
-        setFormErrors(prev => ({
-          ...prev,
-          fechaInicioContrato: `La fecha cotizada (${fechaInicioContrato}) ya venció. Debe ratificar la fecha real de despacho en muelle.`
-        }));
-        setErrorMsg(`Inconsistencia temporal: La fecha de inicio (${fechaInicioContrato}) no puede estar en el pasado para un contrato formal. Por favor haga clic en "Ratificar a Fecha de Hoy" o modifíquela manualmente.`);
-        return false;
-      }
-
       // Regla de Control de Cartera: Bloqueo estricto para formalizar contratos
       if (tipoDocumento === 'CONTRATO' && estadoCarteraCliente.bloqueado && !desbloqueoSupervisorAprobado) {
         setErrorMsg(`Bloqueo de Cartera: ${estadoCarteraCliente.motivoBloqueo} Para formalizar este contrato se requiere autorización de supervisor.`);
@@ -1016,12 +1006,6 @@ export function useAlquilerForm({
       if (estadoCarteraCliente.bloqueado && !desbloqueoSupervisorAprobado) {
         setErrorMsg(`Bloqueo de Cartera: ${estadoCarteraCliente.motivoBloqueo} Requiere anulación supervisada con PIN para emitir el contrato.`);
         setMostrarModalDesbloqueo(true);
-        return false;
-      }
-
-      if (esFechaInicioEnPasado) {
-        setErrorMsg(`Inconsistencia temporal: La fecha de inicio del contrato (${fechaInicioContrato}) está en el pasado. Debe ratificar la fecha real de despacho en muelle antes de formalizar.`);
-        setCurrentStep(1);
         return false;
       }
 
