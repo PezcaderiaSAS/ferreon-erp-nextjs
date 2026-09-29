@@ -113,9 +113,9 @@
 - [x] Integración transversal en la ruta protegida `/admin/empresas` con conmutador de vistas (`Gobernanza & Aprobación` vs `Directorio Completo`).
 - [x] Verificación completa de compilación (`npm run build` en verde, 24/24 rutas estáticas y dinámicas optimizadas).
 
-### Hito 9: UI/UX Linear High-Density & Verdad Absoluta CSS Moderno (`SPEC-2026-UIUX-LINEAR-MODERN-CSS-001`)
-- [x] Consolidación en `DESIGN.md` de las 5 decisiones de ingeniería inversa de Linear (Densidad Quirúrgica 30px, Bordes sutiles `shadow-none`, Minimalismo monocromático por opacidad, Navegación por teclado con `Ctrl+K` y cuadrícula métrica rígida).
-- [x] Incorporación como Verdad Absoluta en `DESIGN.md` y `systemPatterns.md` de las 5 Leyes Inmutables de CSS Moderno (place-items/align-content centrado, stacking isolation con `isolation: isolate`, gobernanza de espaciado por contenedor con `gap`, viewports dinámicos `min-height: 100dvh` y cascada formal `@layer`).
-- [x] Creación de `<LinearDataTable<T>>` en `src/components/ui/linear-table/LinearDataTable.tsx` con motor de teclado (`↑`/`↓`, `J`/`K`, `Enter`, `X`/`Espacio`, `C`, `F`, `Escape`), Command Palette contextual flotante y barra de acciones en lote.
-- [x] Creación de implementación de referencia `<ContratosAlquilerTable />` en `src/components/alquileres/ContratosAlquilerTable.tsx` aplicando las 5 leyes y directrices sobre contratos de maquinaria WMS en Alquileres System.
+### Hito 10: Blindaje Legal Revolutia & Verificación Multicapa de Subcontrataciones
+- [x] Blindaje de 6 vectores legales críticos: COPPA-001 (edad mínima 18+), GDPR-002 (fuentes locales sin CDN), CIPA-003 (guardia contra keystroke loggers), CAN-SPAM-004 (dirección postal física y 1-clic unsubscribe), ARL-005 (divulgación adyacente y cancelación 1-clic), DMCA-006 (política y formulario de notice & takedown).
+- [x] Corrección de directivas CSS de Tailwind a sintaxis estándar RFC `@import` eliminando advertencias de linter y compatibilidad de formatters en `.vscode/settings.json`.
+- [x] Creación de suite de integración unificada en `tests/integration/components/subcontrataciones-flow.integration.test.tsx` cubriendo el ciclo de vida completo: Creación de orden -> Detección de margen negativo -> Devolución formal a proveedor aliado -> Liquidación contable con retenciones DIAN (ReteFuente 2.5%, ReteICA 0.966%) -> Aislamiento de stock WMS.
+- [x] Verificación de suite completa de subcontrataciones (6 suites, 59/59 tests pasando al 100%).
 
