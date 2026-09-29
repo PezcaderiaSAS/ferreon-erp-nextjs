@@ -18,6 +18,8 @@ export interface SubcontratacionItemInput {
 }
 
 export interface CrearSubcontratacionInput {
+  consecutivo?: string;
+  idempotency_key?: string;
   proveedorId: string;
   proveedorNombre: string;
   proveedorNit: string;
@@ -30,6 +32,8 @@ export interface CrearSubcontratacionInput {
   items: SubcontratacionItemInput[];
 }
 
+import { generarConsecutivoSubcontratacion } from '@/core/utils/subcontrataciones-consecutivos';
+
 const SubcontratacionItemZodSchema = z.object({
   equipoId: z.union([z.string(), z.number()]).optional().nullable(),
   descripcionItem: z.string().min(2, 'La descripción del ítem es requerida'),
@@ -41,6 +45,8 @@ const SubcontratacionItemZodSchema = z.object({
 }).passthrough();
 
 const CrearSubcontratacionZodSchema = z.object({
+  consecutivo: z.string().optional().nullable(),
+  idempotency_key: z.string().optional().nullable(),
   proveedorId: z.string().min(1, 'Debe seleccionar un proveedor aliado'),
   proveedorNombre: z.string().min(2, 'El nombre del proveedor es requerido'),
   proveedorNit: z.string().min(3, 'El NIT del proveedor es requerido'),
@@ -90,8 +96,8 @@ export async function crearSubcontratacionAction(input: CrearSubcontratacionInpu
     };
   });
 
-  // Generar consecutivo amigable (SUB-XXXX)
-  const consecutivo = `SUB-${Date.now().toString().slice(-4)}`;
+  // Generar consecutivo amigable y colisión-resistente (SUB-YYYYMMDD-XXXX)
+  const consecutivo = cleanInput.consecutivo?.trim() || generarConsecutivoSubcontratacion();
 
   // 2. Insertar cabecera de subcontratación
   const { data: nuevaSub, error: errSub } = await supabase
@@ -115,6 +121,12 @@ export async function crearSubcontratacionAction(input: CrearSubcontratacionInpu
     .single();
 
   if (errSub || !nuevaSub) {
+    if (errSub?.code === '23505') {
+      return { 
+        success: false, 
+        error: `Error de restricción única: Ya existe una orden con consecutivo "${consecutivo}" o una petición duplicada concurrente.` 
+      };
+    }
     console.error('Error insertando subcontratación:', errSub);
     return { success: false, error: `Error al registrar subcontratación: ${errSub?.message || 'Error desconocido'}` };
   }

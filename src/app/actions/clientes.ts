@@ -37,12 +37,19 @@ const EditarClienteZodSchema = z.object({
   estado: z.string().optional().nullable(),
 }).passthrough();
 
+import { sanitizarNitCedula } from '@/core/utils/clientes-sanitizacion';
+
 export async function crearClienteAction(input: CrearClienteInput) {
   const validation = validateActionInput(input, CrearClienteZodSchema);
   if (!validation.success) {
     return { success: false, error: validation.error || 'Datos de cliente inválidos' };
   }
   const cleanInput = validation.data;
+  const nitNormalizado = sanitizarNitCedula(cleanInput.nit_cedula);
+
+  if (nitNormalizado.length < 3) {
+    return { success: false, error: 'El NIT o Cédula sanitizado debe contener al menos 3 caracteres alfanuméricos.' };
+  }
 
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -52,7 +59,7 @@ export async function crearClienteAction(input: CrearClienteInput) {
     .from('clientes')
     .insert([{
       empresa_id: empresaId,
-      nit_cedula: cleanInput.nit_cedula.trim().toUpperCase(),
+      nit_cedula: nitNormalizado,
       nombre: cleanInput.nombre.trim(),
       telefono: cleanInput.telefono?.trim() || '',
       email: cleanInput.email ? cleanInput.email.trim().toLowerCase() : '',
@@ -125,7 +132,11 @@ export async function editarClienteAction(input: EditarClienteInput) {
   };
 
   if (cleanInput.nit_cedula) {
-    updatePayload.nit_cedula = cleanInput.nit_cedula.trim().toUpperCase();
+    const nitNormalizado = sanitizarNitCedula(cleanInput.nit_cedula);
+    if (nitNormalizado.length < 3) {
+      return { success: false, error: 'El NIT o Cédula sanitizado debe contener al menos 3 caracteres alfanuméricos.' };
+    }
+    updatePayload.nit_cedula = nitNormalizado;
   }
 
   if (cleanInput.estado) {

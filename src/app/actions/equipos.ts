@@ -76,6 +76,29 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
     return { success: false, error: `Error al guardar equipo en BD: ${error.message}` };
   }
 
+  // Asentar automáticamente el movimiento ENTRADA_INICIAL en Kardex si tiene stock inicial
+  if (cleanInput.stockInicial > 0 && data?.id) {
+    try {
+      const adminClient = createAdminSupabaseClient();
+      await adminClient.from('kardex_inventario').insert([{
+        equipo_id: data.id,
+        empresa_id: empresaId || null,
+        tenant_id: empresaId || null,
+        tipo_movimiento: 'ENTRADA_INICIAL',
+        cantidad_delta: cleanInput.stockInicial,
+        stock_resultante: cleanInput.stockInicial,
+        costo_unitario: cleanInput.valorReposicion || 0,
+        costo_total: (cleanInput.valorReposicion || 0) * cleanInput.stockInicial,
+        costo_promedio_resultante: cleanInput.valorReposicion || 0,
+        motivo: 'Inventario inicial al dar de alta el equipo en catálogo',
+        referencia_documento: `SKU-${cleanInput.sku}`,
+        usuario_id: user?.id || userIdentifier,
+      }]);
+    } catch (kardexErr) {
+      console.warn('[crearEquipoAction] Advertencia al asentar entrada inicial en Kardex:', kardexErr);
+    }
+  }
+
   // Invalida caché multi-tenant y legacy
   await invalidateTenantCache(user?.id, ['equipos']);
 
