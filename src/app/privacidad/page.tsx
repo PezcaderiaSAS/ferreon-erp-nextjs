@@ -141,6 +141,15 @@ export default function PrivacidadPage() {
                 Alquileres System aplica el principio de minimización de datos. La plataforma <strong>únicamente utiliza cookies técnicas y de sesión esenciales</strong> provistas por el motor de autenticación (Supabase Auth: <code>sb-access-token</code>, <code>sb-refresh-token</code>) con flags <code>HttpOnly</code>, <code>Secure</code> y <code>SameSite=Lax</code> para autenticar turnos de trabajo y prevenir ataques CSRF. <strong>NO</strong> utilizamos cookies de seguimiento publicitario, píxeles de redes sociales ni rastreadores conductuales de terceros en el entorno del ERP.
               </p>
             </div>
+
+            <div className="pt-2 border-t border-slate-800/80">
+              <h3 className="font-semibold text-white text-base mb-2 flex items-center gap-2">
+                <span>Protección contra Escucha y Captura de Pulsaciones (CIPA / Cal. Penal Code § 631)</span>
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Alquileres System tiene implementado un blindaje técnico estricto de privacidad por defecto (<strong>Privacy-by-Default</strong>). <strong>Queda categóricamente prohibida la captura no consentida de pulsaciones de teclado (&quot;keystrokes&quot;)</strong>. Todos los campos de texto, contraseñas, documentos de identidad y cifras financieras incorporan directivas de enmascaramiento universal (<code>data-rr-ignore</code>, <code>data-private</code>, <code>data-cipa-masked</code>) que neutralizan la lectura por parte de herramientas de analítica o reproducción de sesión (Session Replay). Ninguna herramienta de grabación o analítica de comportamiento operará sin el consentimiento explícito y verificable del usuario.
+              </p>
+            </div>
           </div>
         </section>
 

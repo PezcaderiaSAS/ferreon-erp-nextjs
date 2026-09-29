@@ -16,7 +16,9 @@ import {
   ReceiptText, 
   Zap,
   Layers,
-  Activity
+  Activity,
+  Calendar,
+  AlertTriangle
 } from 'lucide-react';
 import Link from 'next/link';
 import { FuturisticBackground } from '@/components/ui/FuturisticBackground';
@@ -31,6 +33,8 @@ export default function LoginPage() {
   const [empresaTelefono, setEmpresaTelefono] = useState('');
   const [empresaCiudad, setEmpresaCiudad] = useState('Bucaramanga');
   const [empresaTamano, setEmpresaTamano] = useState('1-10');
+  const [fechaNacimiento, setFechaNacimiento] = useState('');
+  const [edadInvalida, setEdadInvalida] = useState(false);
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -71,7 +75,28 @@ export default function LoginPage() {
           return;
         }
 
-        // Registro de usuario nuevo con auto-onboarding
+        if (!fechaNacimiento) {
+          setErrorMsg('La fecha de nacimiento es obligatoria para verificar la mayoría de edad (Cumplimiento COPPA/B2B).');
+          setIsLoading(false);
+          return;
+        }
+
+        // Validación estricta COPPA / Mayoría de edad
+        const fechaNac = new Date(fechaNacimiento);
+        const hoy = new Date();
+        let edad = hoy.getFullYear() - fechaNac.getFullYear();
+        const m = hoy.getMonth() - fechaNac.getMonth();
+        if (m < 0 || (m === 0 && hoy.getDate() < fechaNac.getDate())) {
+          edad--;
+        }
+
+        if (edad < 18) {
+          setErrorMsg('Acceso bloqueado: Debes ser mayor de 18 años para registrar una cuenta empresarial. Prohibido el registro de menores de edad (Cumplimiento COPPA).');
+          setIsLoading(false);
+          return;
+        }
+
+        // Registro de usuario nuevo con auto-onboarding y verificación COPPA
         const { data, error } = await supabaseClient.auth.signUp({
           email,
           password,
@@ -82,6 +107,9 @@ export default function LoginPage() {
               empresa_telefono: empresaTelefono || undefined,
               empresa_ciudad: empresaCiudad || undefined,
               empresa_tamano: empresaTamano || undefined,
+              fecha_nacimiento: fechaNacimiento,
+              edad_verificada: true,
+              coppa_compliant: true,
               terminos_aceptados: true,
               terminos_version: '1.0.0',
               fecha_consentimiento: new Date().toISOString(),
@@ -279,6 +307,56 @@ export default function LoginPage() {
                       <option value="200+">Más de 200 empleados</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Verificación de Edad y Protección Infantil (COPPA - EE. UU. / Mercantil) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Fecha de Nacimiento del Representante *
+                    </label>
+                    <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                      Mayoría de Edad (18+)
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
+                    <input
+                      type="date"
+                      required
+                      value={fechaNacimiento}
+                      max={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFechaNacimiento(val);
+                        if (val) {
+                          const d = new Date(val);
+                          const hoy = new Date();
+                          let edad = hoy.getFullYear() - d.getFullYear();
+                          const m = hoy.getMonth() - d.getMonth();
+                          if (m < 0 || (m === 0 && hoy.getDate() < d.getDate())) edad--;
+                          if (edad < 18) {
+                            setEdadInvalida(true);
+                            setErrorMsg('Debes ser mayor de 18 años para registrarte (Cumplimiento COPPA/B2B).');
+                          } else {
+                            setEdadInvalida(false);
+                            setErrorMsg(null);
+                          }
+                        } else {
+                          setEdadInvalida(false);
+                        }
+                      }}
+                      className={`w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 transition-all font-medium ${
+                        edadInvalida ? 'border-rose-400 focus:ring-rose-500/20 text-rose-600' : 'border-slate-300 focus:ring-orange-500/20 focus:border-orange-500'
+                      }`}
+                    />
+                  </div>
+                  {edadInvalida && (
+                    <p className="text-[11px] text-rose-600 mt-1 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 shrink-0" />
+                      Prohibido el registro a menores de 18 años (Ley COPPA / Mercantil).
+                    </p>
+                  )}
                 </div>
               </div>
             )}

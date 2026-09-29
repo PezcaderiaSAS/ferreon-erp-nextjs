@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* GDPR-002 COMPLIANCE: Eliminado @import externo de fonts.googleapis.com para prevenir fuga de IP sin consentimiento */
+/* Las fuentes Inter y JetBrains Mono son servidas localmente mediante next/font/google con self-hosting */
 
 @tailwind base;
 @tailwind components;

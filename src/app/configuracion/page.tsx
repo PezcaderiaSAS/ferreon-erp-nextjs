@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from 'react';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useEmpresaStore, applyThemeToDOM } from '../../infrastructure/state/empresaStore';
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';
@@ -355,6 +356,12 @@ export default function ConfiguracionPage() {
                   </button>
                 )}
               </div>
+              <p className="text-[11px] text-slate-500 max-w-sm leading-normal">
+                Sube únicamente archivos y marcas de las cuales tengas titularidad legítima. El contenido reportado por terceros será retirado conforme a nuestra{' '}
+                <Link href="/dmca" target="_blank" className="text-orange-600 underline font-semibold hover:text-orange-700">
+                  Política de Retiro DMCA (17 U.S.C. § 512)
+                </Link>.
+              </p>
             </div>
           </div>
 

@@ -10,6 +10,21 @@ const OnboardingSchema = z.object({
   telefono: z.string().min(7, 'El teléfono debe tener al menos 7 dígitos').max(25),
   ciudad: z.string().min(2, 'La ciudad debe tener al menos 2 caracteres').max(50),
   tamanoEmpresa: z.enum(['1-10', '11-50', '50+']).default('1-10'),
+  fechaNacimiento: z.string({
+    required_error: 'La fecha de nacimiento es requerida para verificación de mayoría de edad.',
+  }).regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (AAAA-MM-DD)').refine((fechaStr) => {
+    const fecha = new Date(fechaStr);
+    if (isNaN(fecha.getTime())) return false;
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - fecha.getFullYear();
+    const m = hoy.getMonth() - fecha.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < fecha.getDate())) {
+      edad--;
+    }
+    return edad >= 18;
+  }, {
+    message: 'Debes ser mayor de 18 años para registrar una cuenta empresarial (Cumplimiento COPPA / Capacidad Legal Mercantil).',
+  }),
   aceptaTerminos: z.boolean().refine((val) => val === true, {
     message: 'Debes aceptar los Términos de Servicio y la Política de Tratamiento de Datos Personales para continuar.',
   }),
@@ -43,7 +58,7 @@ export async function completeTenantOnboardingAction(formData: OnboardingFormDat
       };
     }
 
-    const { nombreEmpresa, nit, telefono, ciudad, tamanoEmpresa } = validation.data;
+    const { nombreEmpresa, nit, telefono, ciudad, tamanoEmpresa, fechaNacimiento } = validation.data;
 
     // 2. Verificar si el usuario ya tiene una empresa vinculada
     const { data: existingMembership } = await supabase
@@ -131,13 +146,16 @@ export async function completeTenantOnboardingAction(formData: OnboardingFormDat
           empresa_id: nuevaEmpresa.id,
           empresa_nombre: nombreEmpresa,
           rol: 'ADMIN',
+          fecha_nacimiento: fechaNacimiento,
+          edad_verificada: true,
+          coppa_compliant: true,
         },
       });
     } catch (metaErr) {
       console.warn('[Onboarding Action] Error actualizando user_metadata:', metaErr);
     }
 
-    // 8. Registro de Responsabilidad Demostrada (Accountability) ante la SIC en audit_logs
+    // 8. Registro de Responsabilidad Demostrada (Accountability) ante la SIC y COPPA en audit_logs
     try {
       await adminSupabase.from('audit_logs').insert({
         empresa_id: nuevaEmpresa.id,
@@ -148,11 +166,14 @@ export async function completeTenantOnboardingAction(formData: OnboardingFormDat
         modulo: 'LEGAL',
         accion: 'CONSENTIMIENTO_TERMINOS_Y_DATOS',
         entidad_id: nuevaEmpresa.id,
-        descripcion: 'Aceptación explícita de Términos de Servicio SaaS, Política de Privacidad (Ley 1581) y Certificación de Determinismo Operativo',
+        descripcion: 'Aceptación explícita de Términos de Servicio SaaS, Política de Privacidad (Ley 1581) y Verificación de Mayoría de Edad (COPPA)',
         detalles: {
           version_terminos: '1.0.0',
           version_privacidad: '1.0.0',
           fecha_consentimiento: new Date().toISOString(),
+          fecha_nacimiento: fechaNacimiento,
+          edad_verificada_mayor_18: true,
+          coppa_compliant: true,
           politica_cero_ia_aceptada: true,
           cumplimiento_sic_colombia: true,
         },
