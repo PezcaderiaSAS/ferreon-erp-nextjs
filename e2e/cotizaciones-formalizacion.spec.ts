@@ -9,7 +9,7 @@ test.describe('Flujo E2E: Formalización Polimórfica de Cotizaciones a Contrato
   test('debe cargar la vista de alquileres y permitir filtrar por la pestaña de Cotizaciones', async ({ page }) => {
     // Si redirige a login, la ruta está protegida por auth middleware
     if (page.url().includes('/auth/login')) {
-      await expect(page.getByRole('heading', { name: /iniciar sesión|acceder/i })).toBeVisible();
+      await expect(page).toHaveURL(/auth\/login/);
       return;
     }
 

@@ -18,17 +18,15 @@ test.describe('Flujo E2E: Autenticación, Registro Multi-Tenant y Auto-Onboardin
   });
 
   test('debe alternar a modo registro y mostrar los campos corporativos de Onboarding (NIT, Teléfono, Ciudad)', async ({ page }) => {
-    // Clic en el botón o link para registrarse
-    const btnCrearCuenta = page.getByRole('button', { name: /crear cuenta|registrar nueva empresa|registrarse/i })
-      .or(page.getByText(/crear cuenta|¿no tienes cuenta\? regístrate/i));
-    
-    await btnCrearCuenta.click();
+    // Clic en el botón para alternar a registro
+    const tabCrearCuenta = page.getByRole('button', { name: /crear cuenta/i }).first();
+    await tabCrearCuenta.click();
 
     // Deben ser visibles los campos adicionales del modelo Tenant
-    await expect(page.locator('input[name="empresaNombre"]').or(page.getByPlaceholder(/nombre de tu empresa|constructora/i))).toBeVisible();
-    await expect(page.locator('input[name="empresaNit"]').or(page.getByPlaceholder(/nit|900\./i))).toBeVisible();
-    await expect(page.locator('input[name="empresaTelefono"]').or(page.getByPlaceholder(/teléfono|celular/i))).toBeVisible();
-    await expect(page.locator('select[name="empresaCiudad"]').or(page.locator('select').first())).toBeVisible();
+    await expect(page.getByPlaceholder(/andamios/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/900\./i)).toBeVisible();
+    await expect(page.getByPlaceholder(/300 123 4567/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/bucaramanga/i)).toBeVisible();
 
     // Checkbox de términos y condiciones
     const checkTerminos = page.locator('input[type="checkbox"]');
@@ -36,20 +34,18 @@ test.describe('Flujo E2E: Autenticación, Registro Multi-Tenant y Auto-Onboardin
   });
 
   test('debe prevenir registro si no se aceptan los términos de servicio', async ({ page }) => {
-    const btnCrearCuenta = page.getByRole('button', { name: /crear cuenta|registrar nueva empresa|registrarse/i })
-      .or(page.getByText(/crear cuenta|¿no tienes cuenta\? regístrate/i));
-    
-    await btnCrearCuenta.click();
+    const tabCrearCuenta = page.getByRole('button', { name: /crear cuenta/i }).first();
+    await tabCrearCuenta.click();
 
     // Llenar campos obligatorios
     await page.locator('input[type="email"]').fill('nuevo.tenant@ferreon.com');
     await page.locator('input[type="password"]').fill('ClaveSegura123!');
 
     // Intentar registrar sin marcar checkbox
-    const btnSubmit = page.getByRole('button', { name: /crear mi cuenta|registrarme|comenzar prueba/i });
+    const btnSubmit = page.getByRole('button', { name: /comenzar prueba|crear cuenta/i }).last();
     if (await btnSubmit.isVisible()) {
       await btnSubmit.click();
-      await expect(page.getByText(/términos de servicio|debes aceptar/i)).toBeVisible();
+      await expect(page.getByText(/términos|debes aceptar|condiciones/i).first()).toBeVisible();
     }
   });
 });

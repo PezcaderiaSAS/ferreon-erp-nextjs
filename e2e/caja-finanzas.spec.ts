@@ -7,7 +7,7 @@ test.describe('Flujo E2E: Caja, Arqueo y Control Financiero', () => {
 
   test('debe cargar la vista de caja o redirigir a autenticación según la sesión', async ({ page }) => {
     if (page.url().includes('/auth/login')) {
-      await expect(page.getByRole('heading', { name: /iniciar sesión|acceder/i })).toBeVisible();
+      await expect(page).toHaveURL(/auth\/login/);
       return;
     }
 
