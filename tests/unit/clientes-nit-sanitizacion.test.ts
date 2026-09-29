@@ -117,20 +117,27 @@ describe('Sanitización e Integridad de NIT / Cédula (Alquileres System)', () =
 
     it('debe capturar violación única 23505 al editar cliente con NIT ya perteneciente a otro', async () => {
       const { createServerSupabaseClient } = await import('../../src/infrastructure/persistence/supabase/server');
+      const mockEq = vi.fn();
+      mockEq.mockReturnValue({
+        eq: mockEq,
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: null,
+            error: {
+              code: '23505',
+              message: 'duplicate key value violates unique constraint',
+            },
+          }),
+        }),
+      });
+
       const mockSupabase = {
+        auth: {
+          getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'usr-edit-1', email: 'admin@ferreon.com' } } }),
+        },
         from: vi.fn().mockReturnValue({
           update: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              select: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue({
-                  data: null,
-                  error: {
-                    code: '23505',
-                    message: 'duplicate key value violates unique constraint',
-                  },
-                }),
-              }),
-            }),
+            eq: mockEq,
           }),
         }),
       };

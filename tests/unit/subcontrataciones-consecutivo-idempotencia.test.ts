@@ -5,6 +5,7 @@ import { generarConsecutivoSubcontratacion } from '../../src/core/utils/subcontr
 // Mocks de infraestructura Supabase y Auditoría
 vi.mock('../../src/infrastructure/persistence/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(),
+  resolveEmpresaId: vi.fn().mockResolvedValue('empresa-test-uuid'),
 }));
 
 vi.mock('next/cache', () => ({

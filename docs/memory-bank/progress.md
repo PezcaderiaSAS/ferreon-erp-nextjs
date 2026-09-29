@@ -113,9 +113,9 @@
 - [x] Integración transversal en la ruta protegida `/admin/empresas` con conmutador de vistas (`Gobernanza & Aprobación` vs `Directorio Completo`).
 - [x] Verificación completa de compilación (`npm run build` en verde, 24/24 rutas estáticas y dinámicas optimizadas).
 
-### Hito 10: Blindaje Legal Revolutia & Verificación Multicapa de Subcontrataciones
-- [x] Blindaje de 6 vectores legales críticos: COPPA-001 (edad mínima 18+), GDPR-002 (fuentes locales sin CDN), CIPA-003 (guardia contra keystroke loggers), CAN-SPAM-004 (dirección postal física y 1-clic unsubscribe), ARL-005 (divulgación adyacente y cancelación 1-clic), DMCA-006 (política y formulario de notice & takedown).
-- [x] Corrección de directivas CSS de Tailwind a sintaxis estándar RFC `@import` eliminando advertencias de linter y compatibilidad de formatters en `.vscode/settings.json`.
-- [x] Creación de suite de integración unificada en `tests/integration/components/subcontrataciones-flow.integration.test.tsx` cubriendo el ciclo de vida completo: Creación de orden -> Detección de margen negativo -> Devolución formal a proveedor aliado -> Liquidación contable con retenciones DIAN (ReteFuente 2.5%, ReteICA 0.966%) -> Aislamiento de stock WMS.
-- [x] Verificación de suite completa de subcontrataciones (6 suites, 59/59 tests pasando al 100%).
+### Hito 12: Auditoría Transversal & Blindaje AppSec de Server Actions
+- [x] Remediación de 5 vectores de auditoría: CAJA-001 (índice único condicional en Supabase para evitar doble sesión abierta), KARDEX-002 (asiento automático inicial en Kardex al dar de alta equipos con stock), CLI-003 (utilidad pura `sanitizarNitCedula` y control de duplicidad 23505), SUB-004 (consecutivos cronológicos colisión-resistentes `SUB-YYYYMMDD-XXXX`, soporte de idempotencia y compensación), UI-005 (bloqueo físico de reentrancia en modales).
+- [x] Blindaje AppSec de Server Actions: Guardias tempranas de autenticación `if (!user)` y aislamiento estricto por `empresa_id` en `src/app/actions/clientes.ts`, `src/app/actions/equipos.ts` y `src/app/actions/subcontrataciones.ts`.
+- [x] Suite dedicada de pruebas de seguridad en `tests/unit/server-actions-auth-guard.test.ts` (9/9 pruebas pasando al 100%).
+- [x] Verificación completa: `tsc --noEmit` (0 errores), 392/392 tests pasando al 100% (**72 suites en verde**) y `npx next build` (32/32 rutas optimizadas).
 

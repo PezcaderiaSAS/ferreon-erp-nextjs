@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerSupabaseClient } from '../../infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient, resolveEmpresaId } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { validateActionInput } from '@/lib/security/validation';
@@ -77,7 +77,11 @@ export async function crearSubcontratacionAction(input: CrearSubcontratacionInpu
 
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const userIdentifier = user?.email || user?.id || 'SISTEMA_OPERADOR';
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para registrar subcontrataciones.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
+  const userIdentifier = user.email || user.id;
 
   // 1. Calcular costo total estimado
   let costoTotalEstimado = 0;
@@ -103,6 +107,7 @@ export async function crearSubcontratacionAction(input: CrearSubcontratacionInpu
   const { data: nuevaSub, error: errSub } = await supabase
     .from('subcontrataciones')
     .insert({
+      empresa_id: empresaId,
       consecutivo,
       alquiler_id: cleanInput.alquilerId ? (typeof cleanInput.alquilerId === 'string' ? parseInt(cleanInput.alquilerId, 10) || null : cleanInput.alquilerId) : null,
       proveedor_id: cleanInput.proveedorId,
@@ -134,7 +139,8 @@ export async function crearSubcontratacionAction(input: CrearSubcontratacionInpu
   // 3. Insertar detalles
   const detallesConId = itemsProcesados.map(d => ({
     ...d,
-    subcontratacion_id: nuevaSub.id
+    subcontratacion_id: nuevaSub.id,
+    empresa_id: empresaId,
   }));
 
   const { error: errDetalles } = await supabase
@@ -160,10 +166,11 @@ export async function crearSubcontratacionAction(input: CrearSubcontratacionInpu
       proveedorNombre: cleanInput.proveedorNombre,
       alquilerId: cleanInput.alquilerId,
       itemsCount: cleanInput.items.length,
-      costoTotalEstimado
+      costoTotalEstimado,
+      empresaId,
     },
-    userId: user?.id,
-    userEmail: user?.email
+    userId: user.id,
+    userEmail: user.email
   });
 
   revalidatePath('/subcontrataciones');
@@ -176,9 +183,16 @@ export async function crearSubcontratacionAction(input: CrearSubcontratacionInpu
 export async function obtenerSubcontratacionesAction() {
   try {
     const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: 'No autorizado. Sesión no válida.', data: [] };
+    }
+    const empresaId = await resolveEmpresaId(user.id);
+
     const { data, error } = await supabase
       .from('subcontrataciones')
       .select('*, subcontrataciones_detalles(*)')
+      .eq('empresa_id', empresaId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -200,6 +214,12 @@ export async function cambiarEstadoSubcontratacionAction(input: { subcontratacio
   }
 
   const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para cambiar estado de subcontratación.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
+
   const updatePayload: any = {
     estado: validation.data.nuevoEstado,
     updated_at: new Date().toISOString()
@@ -215,6 +235,7 @@ export async function cambiarEstadoSubcontratacionAction(input: { subcontratacio
     .from('subcontrataciones')
     .update(updatePayload)
     .eq('id', validation.data.subcontratacionId)
+    .eq('empresa_id', empresaId)
     .select()
     .single();
 
@@ -249,6 +270,11 @@ export async function registrarRetornoAProveedorAction(input: {
   }
 
   const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para registrar el retorno al proveedor.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
   const fechaRetorno = validation.data.fechaRetornoReal || new Date().toISOString();
 
   const { data, error } = await supabase
@@ -262,6 +288,7 @@ export async function registrarRetornoAProveedorAction(input: {
       updated_at: new Date().toISOString(),
     })
     .eq('id', validation.data.subcontratacionId)
+    .eq('empresa_id', empresaId)
     .select()
     .single();
 
@@ -278,7 +305,10 @@ export async function registrarRetornoAProveedorAction(input: {
       consecutivo: data.consecutivo,
       proveedor: data.proveedor_nombre,
       fechaRetorno,
+      empresaId,
     },
+    userId: user.id,
+    userEmail: user.email,
   });
 
   revalidatePath('/subcontrataciones');
@@ -312,9 +342,14 @@ export async function liquidarSubcontratacionAction(input: {
   }
 
   const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para liquidar subcontrataciones.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
   const { subcontratacionId, aplicaRetenciones, tasaReteFuente, tasaReteICA } = validation.data;
 
-  // 1. Obtener la orden de subcontratación con sus detalles
+  // 1. Obtener la orden de subcontratación con sus detalles verificando pertenencia al tenant
   const { data: subcontratacion, error: subErr } = await supabase
     .from('subcontrataciones')
     .select(`
@@ -322,10 +357,11 @@ export async function liquidarSubcontratacionAction(input: {
       subcontrataciones_detalles (*)
     `)
     .eq('id', subcontratacionId)
+    .eq('empresa_id', empresaId)
     .single();
 
   if (subErr || !subcontratacion) {
-    return { success: false, error: subErr?.message || 'Orden de subcontratación no encontrada' };
+    return { success: false, error: subErr?.message || 'Orden de subcontratación no encontrada o no pertenece al tenant' };
   }
 
   const fechaRetorno = subcontratacion.fecha_devolucion_real || new Date().toISOString();
@@ -364,7 +400,7 @@ export async function liquidarSubcontratacionAction(input: {
     const { data: txData } = await supabase
       .from('transactions')
       .insert({
-        empresa_id: subcontratacion.empresa_id,
+        empresa_id: subcontratacion.empresa_id || empresaId,
         concepto: liquidacion.asientoContable.concepto,
         tipo: 'EGRESO_OPERATIVO',
         total: liquidacion.costoTotalProveedor,
@@ -379,7 +415,7 @@ export async function liquidarSubcontratacionAction(input: {
       // Insertar líneas contables en journal_entries
       const lineasJournal = liquidacion.asientoContable.lineas.map(l => ({
         transaction_id: txData.id,
-        empresa_id: subcontratacion.empresa_id,
+        empresa_id: subcontratacion.empresa_id || empresaId,
         account_code: l.cuentaCodigo,
         debit: l.naturaleza === 'DEBITO' ? l.monto : 0,
         credit: l.naturaleza === 'CREDITO' ? l.monto : 0,
@@ -405,6 +441,7 @@ export async function liquidarSubcontratacionAction(input: {
       updated_at: new Date().toISOString(),
     })
     .eq('id', subcontratacionId)
+    .eq('empresa_id', empresaId)
     .select()
     .single();
 
@@ -425,7 +462,10 @@ export async function liquidarSubcontratacionAction(input: {
       margenBruto: liquidacion.margenBruto,
       porcentajeMargen: liquidacion.porcentajeMargen,
       transaccionId,
+      empresaId,
     },
+    userId: user.id,
+    userEmail: user.email,
   });
 
   revalidatePath('/subcontrataciones');

@@ -53,7 +53,10 @@ export async function crearClienteAction(input: CrearClienteInput) {
 
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const empresaId = await resolveEmpresaId(user?.id);
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para registrar clientes.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
 
   const { data, error } = await supabase
     .from('clientes')
@@ -78,7 +81,7 @@ export async function crearClienteAction(input: CrearClienteInput) {
   }
 
   // Invalida caché multi-tenant y legacy
-  await invalidateTenantCache(user?.id, ['clientes']);
+  await invalidateTenantCache(user.id, ['clientes']);
 
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({
@@ -93,6 +96,8 @@ export async function crearClienteAction(input: CrearClienteInput) {
       email: cleanInput.email,
       empresaId,
     },
+    userId: user.id,
+    userEmail: user.email,
   });
 
   revalidatePath('/clientes');
@@ -117,6 +122,12 @@ export async function editarClienteAction(input: EditarClienteInput) {
   const cleanInput = validation.data;
 
   const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para editar clientes.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
+
   const targetId = (typeof cleanInput.id === 'string' && !isNaN(Number(cleanInput.id))) ? Number(cleanInput.id) : cleanInput.id;
 
   if (targetId === undefined || targetId === null || (typeof targetId === 'number' && isNaN(targetId))) {
@@ -147,6 +158,7 @@ export async function editarClienteAction(input: EditarClienteInput) {
     .from('clientes')
     .update(updatePayload)
     .eq('id', targetId)
+    .eq('empresa_id', empresaId)
     .select()
     .single();
 
@@ -159,7 +171,7 @@ export async function editarClienteAction(input: EditarClienteInput) {
   }
 
   // Invalida caché multi-tenant y legacy
-  await invalidateTenantCache(null, ['clientes'], targetId);
+  await invalidateTenantCache(user.id, ['clientes'], targetId);
 
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({
@@ -172,7 +184,10 @@ export async function editarClienteAction(input: EditarClienteInput) {
       nombre: cleanInput.nombre,
       nit_cedula: cleanInput.nit_cedula,
       estado: cleanInput.estado,
+      empresaId,
     },
+    userId: user.id,
+    userEmail: user.email,
   });
 
   revalidatePath('/clientes');

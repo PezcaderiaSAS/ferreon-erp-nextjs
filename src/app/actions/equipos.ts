@@ -47,8 +47,11 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
 
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const userIdentifier = user?.email || user?.id || 'SISTEMA_OPERADOR';
-  const empresaId = await resolveEmpresaId(user?.id);
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para crear equipos.' };
+  }
+  const userIdentifier = user.email || user.id;
+  const empresaId = await resolveEmpresaId(user.id);
 
   const { data, error } = await supabase
     .from('equipos')
@@ -92,7 +95,7 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
         costo_promedio_resultante: cleanInput.valorReposicion || 0,
         motivo: 'Inventario inicial al dar de alta el equipo en catálogo',
         referencia_documento: `SKU-${cleanInput.sku}`,
-        usuario_id: user?.id || userIdentifier,
+        usuario_id: user.id || userIdentifier,
       }]);
     } catch (kardexErr) {
       console.warn('[crearEquipoAction] Advertencia al asentar entrada inicial en Kardex:', kardexErr);
@@ -100,7 +103,7 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
   }
 
   // Invalida caché multi-tenant y legacy
-  await invalidateTenantCache(user?.id, ['equipos']);
+  await invalidateTenantCache(user.id, ['equipos']);
 
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({
@@ -114,9 +117,10 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
       categoria: cleanInput.categoria,
       tarifaDiaria: cleanInput.tarifaDiaria,
       stockInicial: cleanInput.stockInicial,
+      empresaId,
     },
-    userId: user?.id,
-    userEmail: user?.email,
+    userId: user.id,
+    userEmail: user.email,
   });
 
   revalidatePath('/bodega');
@@ -141,6 +145,12 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
   const cleanInput = validation.data;
 
   const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para editar equipos.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
+
   const numericId = typeof cleanInput.id === 'string' ? parseInt(cleanInput.id, 10) : cleanInput.id;
 
   const dbEstado = cleanInput.estado === 'Inactivo' ? 'Inactivo' : 'Activo';
@@ -156,6 +166,7 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
       updated_at: new Date().toISOString()
     })
     .eq('id', numericId)
+    .eq('empresa_id', empresaId)
     .select()
     .single();
 
@@ -165,7 +176,7 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
   }
 
   // Invalida caché multi-tenant y legacy
-  await invalidateTenantCache(null, ['equipos'], numericId);
+  await invalidateTenantCache(user.id, ['equipos'], numericId);
 
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({
@@ -178,7 +189,10 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
       categoria: cleanInput.categoria,
       tarifaDiaria: cleanInput.tarifaDiaria,
       estado: dbEstado,
+      empresaId,
     },
+    userId: user.id,
+    userEmail: user.email,
   });
 
   revalidatePath('/bodega');
@@ -193,12 +207,18 @@ export async function ajustarStockEquipoAction(equipoId: string | number, delta:
     return { success: false, error: 'El motivo del ajuste es obligatorio para auditoría y trazabilidad en Kardex.' };
   }
 
+  const supabaseAuth = await createServerSupabaseClient();
+  const { data: { user } } = await supabaseAuth.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para realizar ajustes de stock.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
+
   const supabaseAdmin = createAdminSupabaseClient();
   const numericEquipoId = typeof equipoId === 'string' ? parseInt(equipoId, 10) : equipoId;
 
   // 1. Validar Idempotencia Fuerte si existe la llave
   if (idempotencyKey) {
-
     const { error: idempError } = await supabaseAdmin
       .from('idempotency_logs')
       .insert([{
@@ -229,24 +249,17 @@ export async function ajustarStockEquipoAction(equipoId: string | number, delta:
 
   // 3. POKA-YOKE: Grabar en el Kardex (Trazabilidad Inmutable)
   try {
-    const supabaseAuth = await createServerSupabaseClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
-    
-    // Tipo de movimiento ya viene explícito desde el frontend
-    let tipo_mov = tipoMovimiento;
-
-    // Para saber el stock resultante real que quedó (la RPC lo devolvió en `data` o consultamos)
     const { data: eqAct } = await supabaseAdmin.from('equipos').select('stock_disponible, empresa_id').eq('id', numericEquipoId).single();
 
     await supabaseAdmin.from('kardex_inventario').insert([{
       equipo_id: numericEquipoId,
-      empresa_id: eqAct?.empresa_id || null,
-      tenant_id: eqAct?.empresa_id || null,
-      tipo_movimiento: tipo_mov,
+      empresa_id: eqAct?.empresa_id || empresaId || null,
+      tenant_id: eqAct?.empresa_id || empresaId || null,
+      tipo_movimiento: tipoMovimiento,
       cantidad_delta: delta,
       stock_resultante: eqAct?.stock_disponible || 0,
       motivo: motivo,
-      usuario_id: user?.id || eqAct?.empresa_id || null
+      usuario_id: user.id || empresaId || null
     }]);
   } catch (kardexErr) {
     console.error('Error insertando en Kardex (pero el stock fue ajustado):', kardexErr);
@@ -271,7 +284,10 @@ export async function obtenerEquiposAction() {
   try {
     const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const empresaId = await resolveEmpresaId(user?.id);
+    if (!user) {
+      return { success: false, data: [], error: 'No autorizado. Sesión no válida.' };
+    }
+    const empresaId = await resolveEmpresaId(user.id);
 
     const result = await BodegaTransaccionalService.obtenerEquipos(supabase, empresaId);
     return result;
@@ -290,17 +306,20 @@ export async function liberarMantenimientoAction(
   motivo?: string
 ) {
   try {
-    const supabaseAdmin = createAdminSupabaseClient();
     const supabaseUser = await createServerSupabaseClient();
     const { data: { user } } = await supabaseUser.auth.getUser();
-    const empresaId = await resolveEmpresaId(user?.id);
+    if (!user) {
+      return { success: false, error: 'No autorizado. Debe iniciar sesión para liberar mantenimiento.' };
+    }
+    const empresaId = await resolveEmpresaId(user.id);
+    const supabaseAdmin = createAdminSupabaseClient();
 
     const result = await BodegaTransaccionalService.liberarMantenimiento(supabaseAdmin, {
       equipoId,
       cantidad,
       motivo,
-      userId: user?.id,
-      userEmail: user?.email,
+      userId: user.id,
+      userEmail: user.email,
       empresaId
     });
 
@@ -309,16 +328,16 @@ export async function liberarMantenimientoAction(
     }
 
     // Invalida caché y registra auditoría
-    await invalidateTenantCache(user?.id, ['equipos'], equipoId);
+    await invalidateTenantCache(user.id, ['equipos'], equipoId);
 
     AuditLogger.logAsync({
       modulo: 'BODEGA',
       accion: 'LIBERAR_MANTENIMIENTO',
       descripcion: `Liberadas ${cantidad} unidades de equipo ${equipoId} hacia disponibles. Motivo: ${motivo || 'Revisión técnica finalizada'}`,
       entidadId: equipoId,
-      detalles: { equipoId, cantidad, motivo },
-      userId: user?.id,
-      userEmail: user?.email
+      detalles: { equipoId, cantidad, motivo, empresaId },
+      userId: user.id,
+      userEmail: user.email
     });
 
     revalidatePath('/bodega');
