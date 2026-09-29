@@ -155,21 +155,23 @@ export function useAlquilerForm({
   const [estadoDocumento, setEstadoDocumento] = useState<'COTIZACION' | 'ACTIVO'>(initialData?.estado || 'ACTIVO');
 
   const [items, setItems] = useState<ItemRow[]>(() => {
-    if (initialData?.detalles && initialData.detalles.length > 0) {
-      return initialData.detalles.map((d: any, idx: number) => {
+    const sourceDetalles = initialData?.alquiler_detalles || initialData?.detalles || initialData?.items || initialData?.cotizaciones_detalles;
+    if (sourceDetalles && sourceDetalles.length > 0) {
+      return sourceDetalles.map((d: any, idx: number) => {
         const start = d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (d.fechaInicio ? new Date(d.fechaInicio).toISOString().split('T')[0] : todayStr);
-        const end = d.fecha_fin_estimada ? new Date(d.fecha_fin_estimada).toISOString().split('T')[0] : (d.fechaFinEstimada ? new Date(d.fechaFinEstimada).toISOString().split('T')[0] : todayStr);
+        const end = d.fecha_fin ? new Date(d.fecha_fin).toISOString().split('T')[0] : (d.fecha_fin_estimada ? new Date(d.fecha_fin_estimada).toISOString().split('T')[0] : (d.fechaFinEstimada ? new Date(d.fechaFinEstimada).toISOString().split('T')[0] : (d.fechaFin ? new Date(d.fechaFin).toISOString().split('T')[0] : todayStr)));
         const sDate = new Date(`${start}T00:00:00Z`);
         const eDate = new Date(`${end}T00:00:00Z`);
         const dias = Math.max(1, Math.ceil((eDate.getTime() - sDate.getTime()) / (1000 * 60 * 60 * 24)));
-        const precioDiario = d.valor_unitario || d.tarifaDiaria || d.precioDiario || d.valorUnitario || 0;
-        const cant = d.cantidad || 1;
-        const subtotal = d.subtotal_linea || d.subtotalLinea || (precioDiario * cant * dias);
+        const precioDiario = Number(d.tarifa_aplicada ?? d.tarifaDiaria ?? d.precioDiario ?? d.valor_unitario ?? d.valorUnitario ?? 0);
+        const cant = Number(d.cantidad) || 1;
+        const subtotal = Number(d.subtotal_linea ?? d.subtotalLinea ?? d.subtotal ?? (precioDiario * cant * dias));
+        const equipoIdStr = String(d.equipo_id || d.equipoId || d.itemId || d.item_id || '');
 
         return {
-          id: `init_${idx}_${Date.now()}`,
+          id: d.id ? `init_${d.id}` : `init_${idx}_${Date.now()}`,
           lineaNumero: d.linea_numero || d.lineaNumero || idx + 1,
-          itemId: String(d.equipo_id || d.itemId || ''),
+          itemId: equipoIdStr,
           cantidad: cant,
           precioDiario,
           fechaInicio: start,
@@ -181,7 +183,7 @@ export function useAlquilerForm({
           esSubcontratado: Boolean(d.es_subcontratado || d.esSubcontratado),
           proveedorAliadoNombre: d.proveedor_aliado_nombre || d.proveedorAliadoNombre || '',
           proveedorAliadoNit: d.proveedor_aliado_nit || d.proveedorAliadoNit || '',
-          costoSubcontrato: Number(d.costo_subcontrato || d.costoSubcontrato || 0),
+          costoSubcontrato: Number(d.costo_subcontrato || d.costoSubcontrato || d.costo_subcontratacion_diario || 0),
           fechaRecepcionMuelleTercero: d.fecha_recepcion_muelle_tercero || d.fechaRecepcionMuelleTercero || '',
         };
       });
@@ -1102,6 +1104,37 @@ export function useAlquilerForm({
       }
 
       if (initialData) {
+        const itemsParaEditar = items.map((it, idx) => {
+          const start = it.fechaInicio || todayStr;
+          const end = it.fechaFinEstimada || todayStr;
+          const sDate = new Date(`${start}T00:00:00Z`);
+          const eDate = new Date(`${end}T00:00:00Z`);
+          const dias = it.dias || Math.max(1, Math.ceil((eDate.getTime() - sDate.getTime()) / (1000 * 60 * 60 * 24)));
+          const tarifa = Number(it.precioDiario) || 0;
+          const cant = Number(it.cantidad) || 1;
+          const sub = it.subtotalPersonalizado && it.subtotal !== undefined
+            ? it.subtotal
+            : Math.round(tarifa * cant * dias);
+
+          return {
+            lineaNumero: it.lineaNumero || idx + 1,
+            itemId: it.itemId,
+            equipoId: it.itemId,
+            nombreItem: equiposActivos.find(e => String(e.id) === String(it.itemId))?.nombre || (it as any).nombreItem || '',
+            cantidad: cant,
+            tarifaAplicada: tarifa,
+            tarifaPersonalizada: Boolean(it.tarifaPersonalizada),
+            fechaInicio: start,
+            fechaFinEstimada: end,
+            diasContratados: dias,
+            subtotalLinea: sub,
+            subtotalPersonalizado: Boolean(it.subtotalPersonalizado),
+            esSubcontratado: Boolean(it.esSubcontratado),
+            proveedorSubcontratadoId: (it as any).proveedorSubcontratadoId || null,
+            costoDiarioProveedor: Number(it.costoSubcontrato) || 0,
+          };
+        });
+
         const result = await editarAlquilerAction({
           alquilerId: initialData.id,
           clienteId: validation.data.clienteId,
@@ -1114,17 +1147,20 @@ export function useAlquilerForm({
           observaciones: validation.data.observaciones,
           detallesLogistica: validation.data.detallesLogistica,
           estado: modo === 'COTIZACION' ? 'COTIZACION' : 'ACTIVO',
-          items: alquilerUi.detalles,
+          items: itemsParaEditar,
         });
 
         if (!result.success) {
           throw new Error(result.error);
         }
 
+        store.updateAlquiler(alquilerUi as any);
         store.sanitizeStore();
         setSavedAlquilerData(alquilerUi);
         setIsSuccess(true);
-        if (onSuccess) onSuccess(alquilerUi);
+        if (onSuccess) {
+          onSuccess(alquilerUi);
+        }
         return true;
       } else {
         const result = await crearAlquilerSegmentadoAction({

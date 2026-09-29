@@ -45,7 +45,7 @@ describe('Integración Multicapa: Flujo Integral de Subcontrataciones & Re-Renti
         } as any,
       ],
       isLoading: false,
-    });
+    } as any);
 
     // 2. Inicializar AlquilerStore
     useAlquilerStore.setState({
@@ -82,7 +82,7 @@ describe('Integración Multicapa: Flujo Integral de Subcontrataciones & Re-Renti
       filtros: { busqueda: '', estado: 'TODAS', soloVencidas: false },
       isLoading: false,
       error: null,
-    });
+    } as any);
   });
 
   // =========================================================================
@@ -198,6 +198,7 @@ describe('Integración Multicapa: Flujo Integral de Subcontrataciones & Re-Renti
         estado: 'ACTIVA',
         costoTotalEstimado: 350000,
         ingresoTotalEstimado: 595000,
+        margenBrutoEstimado: 245000,
         depositoGarantia: 100000,
         fechaEntregaEstimada: '2026-09-20',
         fechaDevolucionEstimada: '2026-09-27',
@@ -265,6 +266,7 @@ describe('Integración Multicapa: Flujo Integral de Subcontrataciones & Re-Renti
         estado: 'DEVUELTA',
         costoTotalEstimado: 1000000,
         ingresoTotalEstimado: 1600000,
+        margenBrutoEstimado: 600000,
         depositoGarantia: 0,
         fecha_recepcion_real: '2026-09-01T08:00:00Z',
         fecha_devolucion_real: '2026-09-11T08:00:00Z', // 10 días

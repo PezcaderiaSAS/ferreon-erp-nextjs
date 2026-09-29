@@ -71,6 +71,7 @@ describe('Blindaje AppSec: Guardias de Autenticación en Server Actions (Alquile
         categoria: 'Andamios',
         tarifaDiaria: 10000,
         stockInicial: 5,
+        valorReposicion: 500000,
       });
 
       expect(res.success).toBe(false);

@@ -36,6 +36,10 @@ export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }
   }, [form]);
 
   if (form.isSuccess && form.savedAlquilerData) {
+    if (form.isEditMode) {
+      // En modo edición, el ciclo finaliza de inmediato cerrando el modal
+      return null;
+    }
     return (
       <AlquilerSuccessView
         isEditMode={form.isEditMode}

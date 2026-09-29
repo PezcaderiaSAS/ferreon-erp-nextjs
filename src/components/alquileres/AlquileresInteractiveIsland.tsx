@@ -637,6 +637,47 @@ export function AlquileresInteractiveIsland({
   };
 
   const openAction = (contrato: AlquilerUI, action: string) => {
+    const rawDetalles = (contrato as any).alquiler_detalles || contrato.detalles || (contrato as any).items || [];
+    const detallesNormalizados = rawDetalles.map((d: any, idx: number) => {
+      const equipoId = String(d.equipo_id || d.equipoId || d.itemId || d.item_id || '');
+      const nombreItem = d.equipos?.nombre || d.nombreItem || d.nombre || 'Equipo';
+      const start = d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (d.fechaInicio || '');
+      const end = d.fecha_fin ? new Date(d.fecha_fin).toISOString().split('T')[0] : (d.fecha_fin_estimada ? new Date(d.fecha_fin_estimada).toISOString().split('T')[0] : (d.fechaFinEstimada || d.fechaFin || ''));
+      const tarifa = Number(d.tarifa_aplicada ?? d.tarifaDiaria ?? d.precioDiario ?? d.valor_unitario ?? 0);
+      const cant = Number(d.cantidad ?? 1);
+      const subtotal = Number(d.subtotal_linea ?? d.subtotalLinea ?? d.subtotal ?? (tarifa * cant));
+      return {
+        ...d,
+        id: d.id || `det_${idx}_${Date.now()}`,
+        itemId: equipoId,
+        equipoId: equipoId,
+        equipo_id: equipoId,
+        nombre: nombreItem,
+        nombreItem: nombreItem,
+        cantidad: cant,
+        precioDiario: tarifa,
+        tarifaDiaria: tarifa,
+        tarifaAplicada: tarifa,
+        tarifa_aplicada: tarifa,
+        fechaInicio: start,
+        fecha_inicio: start,
+        fechaFin: end,
+        fecha_fin: end,
+        fechaFinEstimada: end,
+        dias: d.dias_contratados || d.dias || 1,
+        diasContratados: d.dias_contratados || d.dias || 1,
+        subtotal: subtotal,
+        subtotalLinea: subtotal,
+        subtotal_linea: subtotal,
+        esSubcontratado: Boolean(d.es_subcontratado ?? d.esSubcontratado),
+        costoSubcontrato: Number(d.costo_subcontrato || d.costoSubcontrato || d.costo_subcontratacion_diario || 0),
+        proveedorAliadoNombre: d.proveedor_aliado_nombre || d.proveedorAliadoNombre || '',
+        proveedorAliadoNit: d.proveedor_aliado_nit || d.proveedorAliadoNit || '',
+        devuelto: Boolean(d.devuelto),
+        cantidadDevuelta: Number(d.cantidad_devuelta ?? d.cantidadDevuelta ?? 0),
+      };
+    });
+
     const adapter = {
       ...contrato,
       cliente_id: contrato.cliente_id || (contrato as any).clienteId,
@@ -654,11 +695,9 @@ export function AlquileresInteractiveIsland({
       garantia_tipo: contrato.garantia_tipo || contrato.garantiaTipo || 'Efectivo',
       garantiaTipo: contrato.garantiaTipo || contrato.garantia_tipo || 'Efectivo',
       total: contrato.total, 
-      items: contrato.detalles?.map((d: any) => ({
-        ...d,
-        equipoId: d.itemId,
-        nombre: d.nombreItem || "Item"
-      })) || []
+      items: detallesNormalizados,
+      detalles: detallesNormalizados,
+      alquiler_detalles: detallesNormalizados,
     };
     
     setContratoActivo(adapter);
@@ -666,7 +705,7 @@ export function AlquileresInteractiveIsland({
 
     switch(action) {
       case 'EDITAR': {
-        const tieneDev = Boolean(contrato.detalles?.some((d: any) => d.devuelto || (d.cantidadDevuelta && d.cantidadDevuelta > 0)));
+        const tieneDev = Boolean(detallesNormalizados.some((d: any) => d.devuelto || (d.cantidadDevuelta && d.cantidadDevuelta > 0)));
         if (contrato.estado === 'FINALIZADO' || contrato.estado === 'CANCELADO' || tieneDev) {
           alert("Este contrato no puede ser editado porque se encuentra finalizado, cancelado o cuenta con devoluciones registradas.");
           return;
@@ -1276,13 +1315,21 @@ export function AlquileresInteractiveIsland({
           key={contratoActivo ? `edit_${contratoActivo.id}` : `create_${modoCreacionInicial}`}
           initialData={contratoActivo || (modoCreacionInicial === 'COTIZACION' ? { tipoDocumento: 'COTIZACION', tipo: 'COTIZACION', estado: 'COTIZACION' } : null)}
           onSuccess={(alquiler?: any) => { 
+            const eraEdicion = Boolean(contratoActivo);
             setIsFormDirty(false);
             setIsModalOpen(false);
+            setContratoActivo(null);
+
+            if (alquiler) {
+              // Optimistic UI: actualización instantánea en el store local (latencia = 0ms)
+              useAlquilerStore.getState().updateAlquiler(alquiler);
+            }
+
+            // Revalidación en segundo plano sin congelar la UI
             fetchAllData(); 
-            if (alquiler && !contratoActivo) {
+
+            if (alquiler && !eraEdicion) {
               setTicketReciente(alquiler);
-            } else {
-              setContratoActivo(null); 
             }
           }} 
           onCancel={() => attemptAction(() => { setIsModalOpen(false); setContratoActivo(null); setIsFormDirty(false); })} 
