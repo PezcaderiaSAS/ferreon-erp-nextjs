@@ -1,9 +1,9 @@
 /* GDPR-002 COMPLIANCE: Eliminado @import externo de fonts.googleapis.com para prevenir fuga de IP sin consentimiento */
 /* Las fuentes Inter y JetBrains Mono son servidas localmente mediante next/font/google con self-hosting */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 /* ========================================================================= */
 /* BASE MULTI-DISPOSITIVO UNIVERSAL (iOS, Android, Windows, macOS, Tablets)  */
