@@ -777,7 +777,7 @@ export function AlquileresInteractiveIsland({
       const totalPagar = Number(contrato.total || contrato.totalEstimado || (subtotalGeneral - depositoAplicado) || 0);
 
       const payload: any = {
-        tipo: contrato.estado === 'COTIZACION' ? 'COTIZACION' : (contrato.estado === 'FINALIZADO' ? 'CUENTA_COBRO' : 'CONTRATO'),
+        tipo: contrato.estado === 'COTIZACION' ? 'COTIZACION' : 'CUENTA_COBRO',
         consecutivo: contrato.consecutivo || parseInt(String(contrato.id || "").replace(/\D/g, '') || "0") || Date.now() % 10000,
         fechaEmision: new Date().toISOString(),
         fechaInicioGeneral: new Date(contrato.createdAt || contrato.created_at || Date.now()).toISOString(),

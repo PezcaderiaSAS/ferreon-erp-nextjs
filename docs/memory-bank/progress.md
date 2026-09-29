@@ -127,4 +127,14 @@
 - [x] Verificación de ejecución: **16/16 tests pasando al 100% en verde** en Chromium.
 - [x] Código sincronizado y certificado en `origin main` (commit `4f4aef9a`).
 
+### Hito 15: Adaptación Legal de PDF a Cuenta de Cobro (`SPEC-2026-LEGAL-CUENTA-COBRO-001`)
+- [x] Alineación interactiva `/grill-me` sobre directrices de titulación global, cláusulas del Estatuto Tributario y formato del consecutivo.
+- [x] Especificación técnica y plan arquitectónico Speckit (`spec_cuenta_de_cobro.md`).
+- [x] Actualización de `EnterprisePDFService` en `src/core/services/pdf-factura-generator.service.ts`: titulación oficial "CUENTA DE COBRO", prefijo "CC-", leyenda fija del Art. 616-1 y Art. 437 Par. 3 del E.T., y pie de página de cobro.
+- [x] Actualización de `ContratoAlquilerPDF.tsx` en `src/components/pdf/`: sanitización de consecutivo a `CC-#00XXX`, título "CUENTA DE COBRO", valor en letras a cobrar, cláusula tributaria colombiana y firmas legales de acreedor/deudor.
+- [x] Actualización de `VisorDocumentoPDFModal.tsx` con título badge `Cuenta de Cobro #${documento.consecutivo}`.
+- [x] Actualización de `AlquileresInteractiveIsland.tsx` garantizando emisión bajo tipo `CUENTA_COBRO`.
+- [x] Ampliación de tests en `tests/unit/contrato-pdf-cliente-real.test.ts` verificando título, consecutivo CC, leyenda legal colombiana y regeneración retrocompatible (100% en verde).
+- [x] Verificación global: `tsc --noEmit` con 0 errores y 13/13 tests de motores PDF aprobados.
+
 

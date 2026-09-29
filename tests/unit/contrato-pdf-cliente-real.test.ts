@@ -101,4 +101,55 @@ describe('Verificación de Carga y Confirmación de Datos Reales de Clientes en 
     expect(htmlGenerado).not.toContain('undefined');
     expect(htmlGenerado).not.toContain('null');
   });
+
+  it('debe generar y regenerar el documento con el título CUENTA DE COBRO, prefijo CC y leyenda legal Art. 616-1 del E.T.', () => {
+    const payloadContrato: DocumentoPDFPayload = {
+      tipo: 'CONTRATO',
+      consecutivo: '1052',
+      fechaEmision: '2026-09-10T10:00:00.000Z',
+      clienteNombre: 'CONSTRUCTORA BOLÍVAR S.A.',
+      clienteNit: '900.555.444-3',
+      items: [
+        {
+          cantidad: 2,
+          nombre: 'MEZCLADORA DE CONCRETO 2 BULTOS',
+          codigo: 'MEZ-002',
+          fechaInicio: '2026-09-10',
+          fechaFin: '2026-09-15',
+          dias: 5,
+          tarifaDiaria: 45000,
+          subtotal: 450000
+        }
+      ],
+      subtotalEquipos: 450000,
+      fleteEntrega: 30000,
+      fleteRecogida: 30000,
+      subtotalGeneral: 510000,
+      depositoAplicado: 100000,
+      totalPagar: 410000,
+      empresa: {
+        ...DEFAULT_EMPRESA_CONFIG,
+        razonSocial: 'ALQUILERES SYSTEM SAS',
+        nit: '900.854.123-9'
+      }
+    };
+
+    const htmlGenerado = EnterprisePDFService.generarHTMLDocumento(payloadContrato);
+
+    // 1. Título oficial "CUENTA DE COBRO"
+    expect(htmlGenerado).toContain('CUENTA DE COBRO');
+    expect(htmlGenerado).not.toContain('CONTRATO DE ALQUILER');
+
+    // 2. Consecutivo con prefijo CC
+    expect(htmlGenerado).toContain('CC-01052');
+
+    // 3. Leyenda legal fija colombiana Art. 616-1 y Art. 437 Par. 3 E.T.
+    expect(htmlGenerado).toContain('Cuenta de Cobro expedida en los términos del Art. 616-1 y Art. 437 Par. 3 del Estatuto Tributario colombiano.');
+
+    // 4. Caja de valor a cobrar en letras
+    expect(htmlGenerado).toContain('VALOR A COBRAR EN LETRAS:');
+
+    // 5. Pie de página institucional
+    expect(htmlGenerado).toContain('Cuenta de Cobro oficial expedida por ALQUILERES SYSTEM SAS');
+  });
 });

@@ -504,7 +504,8 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
   const montoParaLetras = saldoPendiente > 0 ? saldoPendiente : (totalGeneral > 0 ? totalGeneral : subtotalEquipos);
   const montoEnLetras = numeroALetras(montoParaLetras);
 
-  const consecutivoFormatted = data.consecutivo ? `#${String(data.consecutivo).padStart(5, '0')}` : 'BORRADOR';
+  const rawConsecutivo = String(data.consecutivo || '').replace(/^(CC|ALQ|COT|FAC)-?#?/i, '');
+  const consecutivoFormatted = rawConsecutivo ? `CC-#${rawConsecutivo.padStart(5, '0')}` : 'BORRADOR';
 
   return (
     <Document>
@@ -535,7 +536,7 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
             </View>
           </View>
           <View style={styles.metaBox}>
-            <Text style={styles.metaText}>CONTRATO DE ALQUILER</Text>
+            <Text style={styles.metaText}>CUENTA DE COBRO</Text>
             <Text style={styles.consecutivoHighlight}>{consecutivoFormatted}</Text>
             <Text style={styles.metaText}>Fecha: <Text style={styles.metaBold}>{fechaFormat}</Text></Text>
             <Text style={styles.metaText}>Estado: <Text style={styles.metaBold}>{data.estado || 'ACTIVO'}</Text></Text>
@@ -633,10 +634,13 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
         <View style={styles.totalsWrapper} wrap={false}>
           {/* Caja en Letras y Cuentas */}
           <View style={styles.wordsBox}>
-            <Text style={[styles.metaText, { color: '#475569' }]}>VALOR TOTAL ESTIMADO EN LETRAS:</Text>
+            <Text style={[styles.metaText, { color: '#475569' }]}>VALOR TOTAL A COBRAR EN LETRAS:</Text>
             <Text style={styles.wordsText}>{montoEnLetras}</Text>
-            <Text style={[styles.metaText, { marginTop: 6, fontSize: pageSize === 'A5' ? 6 : 7 }]}>
+            <Text style={[styles.metaText, { marginTop: 5, fontSize: pageSize === 'A5' ? 6 : 7 }]}>
               {config?.cuentaBancariaInfo || 'Pagos: Bancolombia Cta Ahorros No. 123-456789-01 (Alquileres System NIT 900.854.123-9)'}
+            </Text>
+            <Text style={[styles.metaText, { marginTop: 4, fontSize: pageSize === 'A5' ? 5.2 : 6.2, fontStyle: 'italic', color: '#334155' }]}>
+              Cuenta de Cobro expedida en los términos del Art. 616-1 y Art. 437 Par. 3 del Estatuto Tributario colombiano. Para efectos tributarios y contables del contratante y contratista.
             </Text>
           </View>
 
@@ -675,18 +679,20 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
         {/* FIRMAS LEGALES */}
         <View style={styles.signatures} wrap={false}>
           <View style={styles.sigBox}>
-            <Text style={styles.sigLabel}>Firma Cliente / Receptor</Text>
-            <Text style={styles.sigSub}>C.C. / NIT: {data.clienteNit || data.nit_cedula || data.nit || '____________________'}</Text>
+            <Text style={styles.sigLabel}>Acepto y Recibí a Satisfacción</Text>
+            <Text style={styles.sigSub}>Cliente / Deudor: {clienteNombre}</Text>
+            <Text style={styles.sigSub}>C.C. / NIT: {clienteNit}</Text>
           </View>
           <View style={styles.sigBox}>
-            <Text style={styles.sigLabel}>{config?.razonSocial || 'Alquileres System'}</Text>
+            <Text style={styles.sigLabel}>Acreedor / Emisor</Text>
+            <Text style={styles.sigSub}>{config?.razonSocial || 'Alquileres System'}</Text>
             <Text style={styles.sigSub}>Firma Autorizada y Sello</Text>
           </View>
         </View>
 
         {/* PIE DE PÁGINA */}
         <Text style={styles.footer} fixed>
-          Documento oficial de control de alquiler expedido por {config?.razonSocial || 'Alquileres System'}. Horario de corte diario: 5:00 PM. 
+          Cuenta de Cobro oficial expedida por {config?.razonSocial || 'Alquileres System'}. Horario de corte diario: 5:00 PM. 
           Generado el {new Date().toLocaleString('es-CO')}.
         </Text>
       </Page>

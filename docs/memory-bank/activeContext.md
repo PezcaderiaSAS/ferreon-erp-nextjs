@@ -14,8 +14,9 @@
 - **Hito 11 (Blindaje Legal Revolutia & Verificación Multicapa de Subcontrataciones):** ✅ **100% COMPLETADO Y CERTIFICADO** (Blindaje 6 vectores: COPPA-001, GDPR-002, CIPA-003, CAN-SPAM-004, ARL-005, DMCA-006; migración `@import` Tailwind CSS RFC estándar; Suite de integración unificada `tests/integration/components/subcontrataciones-flow.integration.test.tsx` cubriendo el ciclo de vida completo: Creación -> Margen Negativo -> Devolución -> Liquidación Ledger con retenciones DIAN -> Preservación de stock WMS).
 - **Hito 13 (Certificación End-to-End con Playwright):** ✅ **100% COMPLETADO Y CERTIFICADO** (16/16 pruebas en verde en Chromium: alquileres, login corporativo con onboarding tenant, caja, clientes CRUD, cotizaciones y subcontrataciones).
 - **Hito 14 (Despliegue y Salud en Producción Vercel & Supabase Cloud):** ✅ **100% COMPLETADO Y CERTIFICADO** (Despliegue en producción `Ready` en Vercel, índice parcial `idx_sesion_activa_usuario_unica` activo en PostgreSQL 17 `us-west-2`, conectividad edge-functions a Supabase Auth verificada con HTTP 200).
+- **Hito 15 (Adaptación Legal de PDF a Cuenta de Cobro - SPEC-2026-LEGAL-CUENTA-COBRO-001):** ✅ **100% COMPLETADO Y CERTIFICADO** (Adaptación normativa colombiana bajo Art. 616-1 y Art. 437 Par. 3 del E.T. en `ContratoAlquilerPDF.tsx`, `EnterprisePDFService`, `AlquileresInteractiveIsland.tsx` y `VisorDocumentoPDFModal.tsx` con prefijo unificado `CC-#00XXX`, leyenda legal obligatoria y regeneración retrocompatible de contratos existentes).
 
-- **Estado de Pruebas:** 72 suites de pruebas / 392 tests unitarios e integración pasando al 100%, 16/16 tests Playwright E2E aprobados, 0 errores de TypeScript (`tsc --noEmit`), compilación de producción Next.js 32/32 rutas en verde (`npx next build`).
+- **Estado de Pruebas:** 72 suites de pruebas / 393 tests unitarios e integración pasando al 100%, 16/16 tests Playwright E2E aprobados, 0 errores de TypeScript (`tsc --noEmit`), compilación de producción Next.js 32/32 rutas en verde (`npx next build`).
 
 ---
 

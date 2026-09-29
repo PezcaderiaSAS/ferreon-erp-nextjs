@@ -164,8 +164,6 @@ export class EnterprisePDFService {
         ? "COTIZACIÓN COMERCIAL DE OBRA"
         : payload.tipo === "FACTURA"
         ? "FACTURA COMERCIAL DE VENTA"
-        : payload.tipo === "CONTRATO"
-        ? "CONTRATO DE ALQUILER"
         : "CUENTA DE COBRO";
 
     const badgePrefijo =
@@ -173,8 +171,6 @@ export class EnterprisePDFService {
         ? "COT"
         : payload.tipo === "FACTURA"
         ? "FAC"
-        : payload.tipo === "CONTRATO"
-        ? "ALQ"
         : "CC";
 
     const themeTokens = resolveCompanyTheme(emp);
@@ -183,7 +179,10 @@ export class EnterprisePDFService {
     const badgeBg = themeTokens.badgeBg;
     const badgeText = themeTokens.badgeText;
     
-    const consecutivoDisplay = payload.consecutivo ? `#${String(payload.consecutivo).padStart(5, "0")}` : "BORRADOR";
+    const rawConsecutivo = String(payload.consecutivo || "").replace(/^(CC|ALQ|COT|FAC)-?#?/i, "");
+    const consecutivoDisplay = rawConsecutivo 
+      ? `${badgePrefijo}-${rawConsecutivo.padStart(5, "0")}` 
+      : (payload.consecutivo ? `${badgePrefijo}-${payload.consecutivo}` : "BORRADOR");
 
 
     return `
@@ -549,12 +548,15 @@ export class EnterprisePDFService {
     <div class="totals-area">
       <div class="conditions-box">
         <div class="letras-box">
-          VALOR ESTIMADO EN LETRAS:<br/>
+          VALOR A COBRAR EN LETRAS:<br/>
           <span>${totalEnLetras}</span>
         </div>
         <div class="bank-box">
           <strong>Cuentas para Abonos y Pagos:</strong><br/>
           ${emp.cuentaBancariaInfo}
+        </div>
+        <div style="margin-top: 8px; font-size: 7.2pt; font-style: italic; color: #475569; line-height: 1.3;">
+          Cuenta de Cobro expedida en los términos del Art. 616-1 y Art. 437 Par. 3 del Estatuto Tributario colombiano. Para efectos tributarios y contables del contratante y contratista.
         </div>
       </div>
 
@@ -610,7 +612,7 @@ export class EnterprisePDFService {
     </div>
 
     <div class="footer">
-      Documento oficial de control de alquiler expedido por ${emp.razonSocial}. Horario de corte: ${emp.notasFacturaPDF}
+      Cuenta de Cobro oficial expedida por ${emp.razonSocial}. Horario de corte: ${emp.notasFacturaPDF}
     </div>
   </div>
 </body>
