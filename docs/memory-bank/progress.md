@@ -113,9 +113,18 @@
 - [x] Integración transversal en la ruta protegida `/admin/empresas` con conmutador de vistas (`Gobernanza & Aprobación` vs `Directorio Completo`).
 - [x] Verificación completa de compilación (`npm run build` en verde, 24/24 rutas estáticas y dinámicas optimizadas).
 
-### Hito 12: Auditoría Transversal & Blindaje AppSec de Server Actions
-- [x] Remediación de 5 vectores de auditoría: CAJA-001 (índice único condicional en Supabase para evitar doble sesión abierta), KARDEX-002 (asiento automático inicial en Kardex al dar de alta equipos con stock), CLI-003 (utilidad pura `sanitizarNitCedula` y control de duplicidad 23505), SUB-004 (consecutivos cronológicos colisión-resistentes `SUB-YYYYMMDD-XXXX`, soporte de idempotencia y compensación), UI-005 (bloqueo físico de reentrancia en modales).
-- [x] Blindaje AppSec de Server Actions: Guardias tempranas de autenticación `if (!user)` y aislamiento estricto por `empresa_id` en `src/app/actions/clientes.ts`, `src/app/actions/equipos.ts` y `src/app/actions/subcontrataciones.ts`.
-- [x] Suite dedicada de pruebas de seguridad en `tests/unit/server-actions-auth-guard.test.ts` (9/9 pruebas pasando al 100%).
-- [x] Verificación completa: `tsc --noEmit` (0 errores), 392/392 tests pasando al 100% (**72 suites en verde**) y `npx next build` (32/32 rutas optimizadas).
+### Hito 13: Certificación de Calidad End-to-End con Playwright
+- [x] Instalación de infraestructura de navegadores Playwright en entorno local (Chromium v1234, FFmpeg v1011).
+- [x] Configuración optimizada en `playwright.config.ts` (`webServer` en puerto 3000 con `reuseExistingServer: true` y retries configurados).
+- [x] Cobertura E2E transversal en 7 suites críticas (16 escenarios automatizados):
+  - `e2e/alquileres-lifecycle.spec.ts`: 2 escenarios (filtros, buscador reactivo y estados).
+  - `e2e/auth-onboarding.spec.ts`: 3 escenarios (login institucional, onboarding tenant con campos corporativos y bloqueo de términos).
+  - `e2e/caja-finanzas.spec.ts`: 2 escenarios (caja menor, arqueos y consulta de historial).
+  - `e2e/clientes-crud.spec.ts`: 2 escenarios (búsqueda reactiva, apertura/cierre de modal de alta de cliente).
+  - `e2e/cotizaciones-formalizacion.spec.ts`: 2 escenarios (filtrado de cotizaciones y ratificación ante vencimiento).
+  - `e2e/subcontrataciones-lifecycle.spec.ts`: 3 escenarios (KPIs financieros, filtrado por tabs y modal con semáforo de rentabilidad).
+  - `e2e/ultraadmin-governance.spec.ts`: 2 escenarios (protección de ruta /admin/empresas y drawer de gestión).
+- [x] Verificación de ejecución: **16/16 tests pasando al 100% en verde** en Chromium.
+- [x] Código sincronizado y certificado en `origin main` (commit `4f4aef9a`).
+
 
