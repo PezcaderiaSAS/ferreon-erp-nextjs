@@ -1,6 +1,20 @@
 {
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[javascript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "vscode.css-language-features"
+  },
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
@@ -14,5 +28,6 @@
   "livePreview.portNumber": 3001,
   "livePreview.defaultPreviewPath": "/",
   "gitlens.codeLens.enabled": true,
-  "gitlens.hovers.currentLine.enabled": true
+  "gitlens.hovers.currentLine.enabled": true,
+  "css.lint.unknownAtRules": "ignore"
 }

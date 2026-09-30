@@ -76,7 +76,7 @@ export function VisorDocumentoPDFModal({
       ? `Cotización #${documento.consecutivo}`
       : documento.tipo === 'FACTURA'
       ? `Factura #${documento.consecutivo}`
-      : `Contrato #${documento.consecutivo}`;
+      : `Cuenta de Cobro #${documento.consecutivo}`;
 
   return (
     <div

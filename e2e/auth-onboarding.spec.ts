@@ -18,17 +18,15 @@ test.describe('Flujo E2E: Autenticación, Registro Multi-Tenant y Auto-Onboardin
   });
 
   test('debe alternar a modo registro y mostrar los campos corporativos de Onboarding (NIT, Teléfono, Ciudad)', async ({ page }) => {
-    // Clic en el botón o link para registrarse
-    const btnCrearCuenta = page.getByRole('button', { name: /crear cuenta|registrar nueva empresa|registrarse/i })
-      .or(page.getByText(/crear cuenta|¿no tienes cuenta\? regístrate/i));
-    
-    await btnCrearCuenta.click();
+    // Clic en el botón para alternar a registro
+    const tabCrearCuenta = page.getByRole('button', { name: /crear cuenta/i }).first();
+    await tabCrearCuenta.click();
 
     // Deben ser visibles los campos adicionales del modelo Tenant
-    await expect(page.locator('input[name="empresaNombre"]').or(page.getByPlaceholder(/Andamios|nombre de tu empresa/i))).toBeVisible();
-    await expect(page.locator('input[name="empresaNit"]').or(page.getByPlaceholder(/900\.|nit/i))).toBeVisible();
+    await expect(page.locator('input[name="empresaNombre"]').or(page.getByPlaceholder(/Andamios/i))).toBeVisible();
+    await expect(page.locator('input[name="empresaNit"]').or(page.getByPlaceholder(/900\./i))).toBeVisible();
     await expect(page.locator('input[name="empresaTelefono"]').or(page.getByPlaceholder(/300|teléfono/i))).toBeVisible();
-    await expect(page.locator('select').first()).toBeVisible();
+    await expect(page.locator('input[name="empresaCiudad"]').or(page.getByPlaceholder(/bucaramanga/i))).toBeVisible();
 
     // Checkbox de términos y condiciones
     const checkTerminos = page.locator('input[type="checkbox"]');
@@ -36,10 +34,8 @@ test.describe('Flujo E2E: Autenticación, Registro Multi-Tenant y Auto-Onboardin
   });
 
   test('debe prevenir registro si no se aceptan los términos de servicio', async ({ page }) => {
-    const btnCrearCuenta = page.getByRole('button', { name: /crear cuenta|registrar nueva empresa|registrarse/i })
-      .or(page.getByText(/crear cuenta|¿no tienes cuenta\? regístrate/i));
-    
-    await btnCrearCuenta.click();
+    const tabCrearCuenta = page.getByRole('button', { name: /crear cuenta/i }).first();
+    await tabCrearCuenta.click();
 
     // Llenar campos obligatorios
     await page.getByPlaceholder(/Andamios|nombre de tu empresa/i).fill('Mi Empresa Test');
@@ -49,7 +45,7 @@ test.describe('Flujo E2E: Autenticación, Registro Multi-Tenant y Auto-Onboardin
     await page.locator('input[type="password"]').fill('ClaveSegura123!');
 
     // Intentar registrar sin marcar checkbox
-    const btnSubmit = page.getByRole('button', { name: /crear cuenta y comenzar|crear mi cuenta|registrarme/i });
+    const btnSubmit = page.getByRole('button', { name: /crear cuenta y comenzar|crear mi cuenta|registrarme|comenzar prueba/i }).first();
     if (await btnSubmit.isVisible()) {
       await btnSubmit.click();
       const isChecked = await page.locator('input[type="checkbox"]').isChecked();

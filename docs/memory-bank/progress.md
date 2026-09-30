@@ -113,9 +113,28 @@
 - [x] Integración transversal en la ruta protegida `/admin/empresas` con conmutador de vistas (`Gobernanza & Aprobación` vs `Directorio Completo`).
 - [x] Verificación completa de compilación (`npm run build` en verde, 24/24 rutas estáticas y dinámicas optimizadas).
 
-### Hito 9: UI/UX Linear High-Density & Verdad Absoluta CSS Moderno (`SPEC-2026-UIUX-LINEAR-MODERN-CSS-001`)
-- [x] Consolidación en `DESIGN.md` de las 5 decisiones de ingeniería inversa de Linear (Densidad Quirúrgica 30px, Bordes sutiles `shadow-none`, Minimalismo monocromático por opacidad, Navegación por teclado con `Ctrl+K` y cuadrícula métrica rígida).
-- [x] Incorporación como Verdad Absoluta en `DESIGN.md` y `systemPatterns.md` de las 5 Leyes Inmutables de CSS Moderno (place-items/align-content centrado, stacking isolation con `isolation: isolate`, gobernanza de espaciado por contenedor con `gap`, viewports dinámicos `min-height: 100dvh` y cascada formal `@layer`).
-- [x] Creación de `<LinearDataTable<T>>` en `src/components/ui/linear-table/LinearDataTable.tsx` con motor de teclado (`↑`/`↓`, `J`/`K`, `Enter`, `X`/`Espacio`, `C`, `F`, `Escape`), Command Palette contextual flotante y barra de acciones en lote.
-- [x] Creación de implementación de referencia `<ContratosAlquilerTable />` en `src/components/alquileres/ContratosAlquilerTable.tsx` aplicando las 5 leyes y directrices sobre contratos de maquinaria WMS en Alquileres System.
+### Hito 13: Certificación de Calidad End-to-End con Playwright
+- [x] Instalación de infraestructura de navegadores Playwright en entorno local (Chromium v1234, FFmpeg v1011).
+- [x] Configuración optimizada en `playwright.config.ts` (`webServer` en puerto 3000 con `reuseExistingServer: true` y retries configurados).
+- [x] Cobertura E2E transversal en 7 suites críticas (16 escenarios automatizados):
+  - `e2e/alquileres-lifecycle.spec.ts`: 2 escenarios (filtros, buscador reactivo y estados).
+  - `e2e/auth-onboarding.spec.ts`: 3 escenarios (login institucional, onboarding tenant con campos corporativos y bloqueo de términos).
+  - `e2e/caja-finanzas.spec.ts`: 2 escenarios (caja menor, arqueos y consulta de historial).
+  - `e2e/clientes-crud.spec.ts`: 2 escenarios (búsqueda reactiva, apertura/cierre de modal de alta de cliente).
+  - `e2e/cotizaciones-formalizacion.spec.ts`: 2 escenarios (filtrado de cotizaciones y ratificación ante vencimiento).
+  - `e2e/subcontrataciones-lifecycle.spec.ts`: 3 escenarios (KPIs financieros, filtrado por tabs y modal con semáforo de rentabilidad).
+  - `e2e/ultraadmin-governance.spec.ts`: 2 escenarios (protección de ruta /admin/empresas y drawer de gestión).
+- [x] Verificación de ejecución: **16/16 tests pasando al 100% en verde** en Chromium.
+- [x] Código sincronizado y certificado en `origin main` (commit `4f4aef9a`).
+
+### Hito 15: Adaptación Legal de PDF a Cuenta de Cobro (`SPEC-2026-LEGAL-CUENTA-COBRO-001`)
+- [x] Alineación interactiva `/grill-me` sobre directrices de titulación global, cláusulas del Estatuto Tributario y formato del consecutivo.
+- [x] Especificación técnica y plan arquitectónico Speckit (`spec_cuenta_de_cobro.md`).
+- [x] Actualización de `EnterprisePDFService` en `src/core/services/pdf-factura-generator.service.ts`: titulación oficial "CUENTA DE COBRO", prefijo "CC-", leyenda fija del Art. 616-1 y Art. 437 Par. 3 del E.T., y pie de página de cobro.
+- [x] Actualización de `ContratoAlquilerPDF.tsx` en `src/components/pdf/`: sanitización de consecutivo a `CC-#00XXX`, título "CUENTA DE COBRO", valor en letras a cobrar, cláusula tributaria colombiana y firmas legales de acreedor/deudor.
+- [x] Actualización de `VisorDocumentoPDFModal.tsx` con título badge `Cuenta de Cobro #${documento.consecutivo}`.
+- [x] Actualización de `AlquileresInteractiveIsland.tsx` garantizando emisión bajo tipo `CUENTA_COBRO`.
+- [x] Ampliación de tests en `tests/unit/contrato-pdf-cliente-real.test.ts` verificando título, consecutivo CC, leyenda legal colombiana y regeneración retrocompatible (100% en verde).
+- [x] Verificación global: `tsc --noEmit` con 0 errores y 13/13 tests de motores PDF aprobados.
+
 

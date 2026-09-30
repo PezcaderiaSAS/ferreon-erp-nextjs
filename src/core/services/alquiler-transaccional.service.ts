@@ -93,32 +93,34 @@ export class AlquilerTransaccionalService {
   ): LiquidacionAlquilerResultado {
     let subtotalEquipos = 0;
 
-    const itemsLiquidados: ItemLiquidado[] = items.map((item) => {
-      const start = new Date(item.fechaInicio);
-      const end = new Date(item.fechaFinEstimada);
+    const itemsLiquidados: ItemLiquidado[] = items.map((item: any) => {
+      const startStr = item.fechaInicio || item.fecha_inicio || new Date().toISOString().split('T')[0];
+      const endStr = item.fechaFinEstimada || item.fechaFin || item.fecha_fin || item.fecha_fin_estimada || startStr;
+      const start = new Date(startStr);
+      const end = new Date(endStr);
       const diffMs = end.getTime() - start.getTime();
       const dias = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
       const cant = Math.max(1, Number(item.cantidad || 1));
-      const tarifa = Math.max(0, Number(item.tarifaAplicada || 0));
+      const tarifa = Math.max(0, Number(item.tarifaAplicada ?? item.tarifaDiaria ?? item.precioDiario ?? item.tarifa_aplicada ?? 0));
       const subtotalLinea = Math.round(tarifa * cant * dias);
 
       subtotalEquipos += subtotalLinea;
 
-      const rawId = String(item.itemId || '').replace(/\D/g, '');
-      const equipoId = parseInt(rawId, 10) || Number(item.itemId) || 0;
+      const rawId = String(item.itemId || item.equipoId || item.equipo_id || '').replace(/\D/g, '');
+      const equipoId = parseInt(rawId, 10) || Number(item.itemId) || Number(item.equipoId) || Number(item.equipo_id) || 0;
 
       return {
         equipoId,
-        nombreItem: item.nombreItem || '',
+        nombreItem: item.nombreItem || item.nombre || '',
         cantidad: cant,
         tarifaAplicada: tarifa,
         diasContratados: dias,
         subtotalLinea,
-        fechaInicio: item.fechaInicio,
-        fechaFin: item.fechaFinEstimada,
-        esSubcontratado: Boolean(item.esSubcontratado),
-        proveedorSubcontratadoId: item.proveedorSubcontratadoId || null,
-        costoDiarioProveedor: Math.max(0, Number(item.costoDiarioProveedor || 0)),
+        fechaInicio: startStr,
+        fechaFin: endStr,
+        esSubcontratado: Boolean(item.esSubcontratado || item.es_subcontratado),
+        proveedorSubcontratadoId: item.proveedorSubcontratadoId || item.proveedor_id || null,
+        costoDiarioProveedor: Math.max(0, Number(item.costoDiarioProveedor || item.costoSubcontrato || item.costo_subcontratacion_diario || 0)),
       };
     });
 

@@ -37,22 +37,32 @@ const EditarClienteZodSchema = z.object({
   estado: z.string().optional().nullable(),
 }).passthrough();
 
+import { sanitizarNitCedula } from '@/core/utils/clientes-sanitizacion';
+
 export async function crearClienteAction(input: CrearClienteInput) {
   const validation = validateActionInput(input, CrearClienteZodSchema);
   if (!validation.success) {
     return { success: false, error: validation.error || 'Datos de cliente inválidos' };
   }
   const cleanInput = validation.data;
+  const nitNormalizado = sanitizarNitCedula(cleanInput.nit_cedula);
+
+  if (nitNormalizado.length < 3) {
+    return { success: false, error: 'El NIT o Cédula sanitizado debe contener al menos 3 caracteres alfanuméricos.' };
+  }
 
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const empresaId = await resolveEmpresaId(user?.id);
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para registrar clientes.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
 
   const { data, error } = await supabase
     .from('clientes')
     .insert([{
       empresa_id: empresaId,
-      nit_cedula: cleanInput.nit_cedula.trim().toUpperCase(),
+      nit_cedula: nitNormalizado,
       nombre: cleanInput.nombre.trim(),
       telefono: cleanInput.telefono?.trim() || '',
       email: cleanInput.email ? cleanInput.email.trim().toLowerCase() : '',
@@ -71,7 +81,7 @@ export async function crearClienteAction(input: CrearClienteInput) {
   }
 
   // Invalida caché multi-tenant y legacy
-  await invalidateTenantCache(user?.id, ['clientes']);
+  await invalidateTenantCache(user.id, ['clientes']);
 
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({
@@ -86,6 +96,8 @@ export async function crearClienteAction(input: CrearClienteInput) {
       email: cleanInput.email,
       empresaId,
     },
+    userId: user.id,
+    userEmail: user.email,
   });
 
   revalidatePath('/clientes');
@@ -110,6 +122,12 @@ export async function editarClienteAction(input: EditarClienteInput) {
   const cleanInput = validation.data;
 
   const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para editar clientes.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
+
   const targetId = (typeof cleanInput.id === 'string' && !isNaN(Number(cleanInput.id))) ? Number(cleanInput.id) : cleanInput.id;
 
   if (targetId === undefined || targetId === null || (typeof targetId === 'number' && isNaN(targetId))) {
@@ -125,7 +143,11 @@ export async function editarClienteAction(input: EditarClienteInput) {
   };
 
   if (cleanInput.nit_cedula) {
-    updatePayload.nit_cedula = cleanInput.nit_cedula.trim().toUpperCase();
+    const nitNormalizado = sanitizarNitCedula(cleanInput.nit_cedula);
+    if (nitNormalizado.length < 3) {
+      return { success: false, error: 'El NIT o Cédula sanitizado debe contener al menos 3 caracteres alfanuméricos.' };
+    }
+    updatePayload.nit_cedula = nitNormalizado;
   }
 
   if (cleanInput.estado) {
@@ -136,6 +158,7 @@ export async function editarClienteAction(input: EditarClienteInput) {
     .from('clientes')
     .update(updatePayload)
     .eq('id', targetId)
+    .eq('empresa_id', empresaId)
     .select()
     .single();
 
@@ -148,7 +171,7 @@ export async function editarClienteAction(input: EditarClienteInput) {
   }
 
   // Invalida caché multi-tenant y legacy
-  await invalidateTenantCache(null, ['clientes'], targetId);
+  await invalidateTenantCache(user.id, ['clientes'], targetId);
 
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({
@@ -161,7 +184,10 @@ export async function editarClienteAction(input: EditarClienteInput) {
       nombre: cleanInput.nombre,
       nit_cedula: cleanInput.nit_cedula,
       estado: cleanInput.estado,
+      empresaId,
     },
+    userId: user.id,
+    userEmail: user.email,
   });
 
   revalidatePath('/clientes');

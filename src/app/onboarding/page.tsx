@@ -14,6 +14,8 @@ import {
   Users, 
   FileText,
   AlertCircle,
+  AlertTriangle,
+  Calendar,
   Loader2
 } from 'lucide-react';
 import { completeTenantOnboardingAction, type OnboardingFormData } from '@/app/actions/onboarding';
@@ -33,11 +35,13 @@ export default function OnboardingPage() {
     telefono: '',
     ciudad: 'Bucaramanga',
     tamanoEmpresa: '1-10',
+    fechaNacimiento: '',
     aceptaTerminos: false,
   });
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [edadInvalida, setEdadInvalida] = useState<boolean>(false);
 
   useEffect(() => {
     async function checkAuth() {
@@ -70,8 +74,45 @@ export default function OnboardingPage() {
     checkAuth();
   }, [router]);
 
+  const calcularEdad = (fechaStr: string) => {
+    const fecha = new Date(fechaStr);
+    if (isNaN(fecha.getTime())) return 0;
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - fecha.getFullYear();
+    const m = hoy.getMonth() - fecha.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < fecha.getDate())) {
+      edad--;
+    }
+    return edad;
+  };
+
+  const handleFechaNacimientoChange = (val: string) => {
+    setFormData((prev) => ({ ...prev, fechaNacimiento: val }));
+    if (val) {
+      const edad = calcularEdad(val);
+      if (edad < 18) {
+        setEdadInvalida(true);
+        setErrorMsg('Debes ser mayor de 18 años para registrar una empresa en Alquileres System (Cumplimiento COPPA y capacidad legal mercantil).');
+      } else {
+        setEdadInvalida(false);
+        setErrorMsg(null);
+      }
+    } else {
+      setEdadInvalida(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.fechaNacimiento) {
+      setErrorMsg('La fecha de nacimiento es obligatoria para la verificación legal de edad.');
+      return;
+    }
+    if (calcularEdad(formData.fechaNacimiento) < 18) {
+      setErrorMsg('Acceso denegado: Debes ser mayor de 18 años para registrar una cuenta en la plataforma.');
+      return;
+    }
+
     setIsLoading(true);
     setErrorMsg(null);
 
@@ -248,6 +289,47 @@ export default function OnboardingPage() {
                     </select>
                   </div>
                 </div>
+              </div>
+
+              {/* Verificación de Edad Obligatoria (Cumplimiento COPPA - EE. UU. / Capacidad Mercantil) */}
+              <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="fechaNacimiento" className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                    Fecha de Nacimiento del Representante *
+                  </label>
+                  <span className="text-[11px] font-medium text-amber-400/90 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Mayoría de Edad (18+)
+                  </span>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="fechaNacimiento"
+                    type="date"
+                    required
+                    value={formData.fechaNacimiento}
+                    onChange={(e) => handleFechaNacimientoChange(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-950/60 border rounded-xl text-white text-sm focus:outline-none focus:ring-2 transition-all ${
+                      edadInvalida 
+                        ? 'border-rose-500/80 focus:ring-rose-500 text-rose-300' 
+                        : 'border-slate-700/80 focus:ring-orange-500 focus:border-transparent'
+                    }`}
+                  />
+                </div>
+                {edadInvalida ? (
+                  <p className="text-xs text-rose-400 flex items-center gap-1.5 pt-1">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Acceso denegado: Debes ser mayor de 18 años para operar en el ERP. Menores de 13 años estrictamente prohibidos (Ley COPPA).</span>
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-400">
+                    Requerido por la legislación mercantil y normativa de protección a menores (COPPA). No se admiten registros de menores de edad.
+                  </p>
+                )}
               </div>
 
             </div>

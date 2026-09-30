@@ -1,13 +1,24 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 import { AppShell } from "../components/layout/AppShell";
 import { RealtimeProvider } from "../components/providers/RealtimeProvider";
 import { GlobalTourWrapper } from "../components/ui/GlobalTourWrapper";
 import { ToastNotification } from "../components/ui/ToastNotification";
+import { CipaPrivacyGuard } from "../components/legal/CipaPrivacyGuard";
 
-const inter = Inter({ subsets: ["latin"], display: "swap" });
+const inter = Inter({ 
+  subsets: ["latin"], 
+  display: "swap",
+  variable: "--font-inter",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-mono",
+});
 
 export const metadata: Metadata = {
   title: "Alquileres System — Plataforma Integral de Gestión de Alquileres y Maquinaria",
@@ -20,15 +31,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={inter.className} suppressHydrationWarning>
+    <html lang="es" className={`${inter.variable} ${jetbrainsMono.variable} ${inter.className}`} suppressHydrationWarning>
       <body className="antialiased font-sans bg-slate-50 text-slate-900 min-h-screen flex" suppressHydrationWarning>
-        <RealtimeProvider>
-          <AppShell>
-            {children}
-          </AppShell>
-          <GlobalTourWrapper />
-          <ToastNotification />
-        </RealtimeProvider>
+        <CipaPrivacyGuard>
+          <RealtimeProvider>
+            <AppShell>
+              {children}
+            </AppShell>
+            <GlobalTourWrapper />
+            <ToastNotification />
+          </RealtimeProvider>
+        </CipaPrivacyGuard>
       </body>
     </html>
   );

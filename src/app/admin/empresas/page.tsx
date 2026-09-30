@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { 
   Building2, 
   Users, 
@@ -221,6 +222,47 @@ export default function UltraAdminEmpresasPage() {
               <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />
               Sincronizar
             </button>
+          </div>
+        </div>
+
+        {/* Banner de Cumplimiento Legal y Registro DMCA Safe Harbor ($6 USD) */}
+        <div className="p-4 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl shrink-0 mt-0.5">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  Blindaje DMCA Safe Harbor (17 U.S.C. § 512)
+                </span>
+                <span className="px-2 py-0.5 text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full">
+                  Acción Legal Requerida
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed max-w-3xl">
+                Para amparar a Alquileres System ante demandas de hasta $150,000 USD por imágenes con copyright que suban los inquilinos, es obligatorio mantener registrado el Agente de Copyright por $6 USD en el portal oficial de la Oficina de Derechos de Autor de EE. UU. (DMCA Designated Agent Directory).
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+            <Link
+              href="/dmca"
+              target="_blank"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors flex items-center gap-1.5"
+            >
+              <span>Ver Política /dmca</span>
+              <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+            </Link>
+            <a
+              href="https://dmca.copyright.gov/osp/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 transition-all flex items-center gap-1.5 shadow-md shadow-amber-500/20"
+            >
+              <span>Registrar Agente ($6 USD)</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
           </div>
         </div>
 

@@ -167,6 +167,12 @@ export class CajaTransaccionalService {
       .single();
 
     if (insertError || !nuevaSesion?.id) {
+      if (insertError?.code === '23505') {
+        return {
+          success: false,
+          error: 'Poka-Yoke: Ya tienes una sesión de caja ABIERTA actualmente (Restricción de Concurrencia). Debes realizar el cierre antes de iniciar una nueva.',
+        };
+      }
       console.error('[CajaTransaccionalService] Error al insertar sesión:', insertError);
       return {
         success: false,
