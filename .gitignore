@@ -40,3 +40,6 @@ yarn-error.log*
 .vercel
 .env*
 .reports/
+
+.vercel
+.env*

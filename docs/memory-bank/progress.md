@@ -137,4 +137,16 @@
 - [x] Ampliación de tests en `tests/unit/contrato-pdf-cliente-real.test.ts` verificando título, consecutivo CC, leyenda legal colombiana y regeneración retrocompatible (100% en verde).
 - [x] Verificación global: `tsc --noEmit` con 0 errores y 13/13 tests de motores PDF aprobados.
 
+### Hito 16: Auditoría de Producción, Tokens W3C, Marca Canónica y Figma en Vivo (`SPEC-2026-FIGMA-DEVTOOLS-001`)
+- [x] Auditoría integral de las 8 rutas de producción en Vercel con Chrome DevTools MCP.
+- [x] Homologación de marca canónica obligatoria "Alquileres System SaaS" en Sidebar, TopNav y metadata.
+- [x] Corrección de CSP para carga de avatares Dicebear en `/configuracion` y timeout de middleware elevado a 2500ms.
+- [x] Favicon dinámico en `icon.tsx` y atributos a11y (`id`, `name`, `htmlFor`, `aria-label`) en formularios.
+- [x] Catálogo W3C Design Tokens JSON (`figma_design_tokens.json`) con modos duales (*Salmón Pastel* y *Cyber Cyan*).
+- [x] Blueprint de Componentes para Figma (`figma_components_blueprint.md`).
+- [x] Plugin nativo de Figma (`figma-tokens-sync/` con `manifest.json` y `code.js`) para inyección automática de Variables en 1 clic.
+- [x] Cliente oficial de API de Figma (`scripts/figma-api-client.mjs`) e integración en `mcp_config.json`.
+- [x] Conexión y auditoría en vivo del archivo oficial de Figma `Alquileres System` de Pezcaderia SAS (`xQ7iOmkYpLy6F1H9QnYv5F`): 1,306 componentes, 14 secciones y 88 colores con 100% de concordancia tipográfica y cromática.
+- [x] Generación de reporte de auditoría en vivo `figma_live_audit_report.md`.
+
 

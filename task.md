@@ -139,3 +139,25 @@
 ## Tarea 25: Blueprint de Anatomía y Estados de Componentes para Figma [✅ COMPLETADA]
 - [x] Generar `figma_components_blueprint.md` con la jerarquía de frames, desglose de las 8 pantallas y matriz de estados interactivos y Poka-Yoke.
 
+## Tarea 26: Toolkit de Sincronización y Plugin Local de Figma [✅ COMPLETADA]
+- [x] Crear plugin local en `figma-tokens-sync/` con `manifest.json` y `code.js` para generar Variables nativas y modos conmutables en 1 clic en Figma.
+- [x] Crear guía de integración paso a paso `figma-tokens-sync/README.md` (Plugin local, Tokens Studio GitHub Sync y auditoría REST).
+
+## Tarea 27: Conexión en Vivo y Auditoría de Archivo Figma [✅ COMPLETADA]
+- [x] Cliente oficial Figma API (`scripts/figma-api-client.mjs`) configurado con token PAT de Pezcaderia SAS y sanitizado en `.env.local`.
+- [x] Conexión y auditoría en tiempo real del archivo `Alquileres System` (`xQ7iOmkYpLy6F1H9QnYv5F`): 14 secciones, 1,306 componentes, 88 colores y 52 estilos tipográficos certificados.
+- [x] Generación de reporte formal `figma_live_audit_report.md`.
+
+---
+
+# Tareas Pendientes Enmarcadas (Roadmap Próxima Sesión)
+
+## Tarea 28: Inyección de Colección de Variables en Figma (Acción en Figma Desktop)
+- [ ] Ejecutar en Figma Desktop el plugin local `figma-tokens-sync` (`Plugins > Development > Import plugin from manifest...`) para vincular la colección `Alquileres System — Design Tokens` y modos duales a los 1,306 componentes del lienzo.
+
+## Tarea 29: Cobertura Visual de Vistas Faltantes en Figma
+- [ ] Importar con `html.to.design` las vistas de `/bodega` y `/subcontrataciones` para alcanzar el 100% de las 8 pantallas de Alquileres System en el lienzo.
+
+## Tarea 30: Automatización CI/CD de Paridad de Tokens
+- [ ] Configurar GitHub Action que valide que cualquier cambio en `figma_design_tokens.json` o en tokens CSS mantenga paridad matemática estricta con el Design System de Figma.
+
