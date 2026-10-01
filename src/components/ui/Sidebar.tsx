@@ -262,7 +262,7 @@ export function Sidebar() {
               className="block p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-colors"
             >
               <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-0.5">
-                <span className="truncate max-w-[120px]">{mounted && tenant?.nombreEmpresa ? tenant.nombreEmpresa : 'FerreOn SaaS'}</span>
+                <span className="truncate max-w-[120px]">{mounted && tenant?.nombreEmpresa ? tenant.nombreEmpresa : 'Alquileres System SaaS'}</span>
                 {mounted && tenant?.subscriptionStatus === 'active' ? (
                   <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[9px]">Pro</span>
                 ) : (

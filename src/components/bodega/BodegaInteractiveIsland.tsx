@@ -284,6 +284,8 @@ export function BodegaInteractiveIsland({ initialEquipos }: BodegaInteractiveIsl
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
+            id="bodega-search-input"
+            name="bodega_search"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

@@ -64,8 +64,11 @@ export function TopNav() {
         <div className="flex items-center w-full focus-within:ring-2 focus-within:ring-brand-salmon rounded-lg overflow-hidden bg-slate-50 border border-slate-200">
           <Search className="w-5 h-5 ml-3 text-slate-500 flex-shrink-0" />
           <input 
+            id="global-search-input"
+            name="global_search"
+            aria-label="Buscar en la plataforma"
             className="w-full py-2 px-3 border-none focus:ring-0 text-slate-900 text-sm bg-transparent outline-none" 
-            placeholder="Search..." 
+            placeholder="Buscar contratos, equipos o clientes..." 
             type="text"
           />
         </div>
@@ -117,7 +120,7 @@ export function TopNav() {
               <div className="px-3 py-1">
                 <div className="flex items-center gap-3 px-2 py-2 text-xs text-slate-600">
                   <Building className="w-4 h-4 text-slate-400" />
-                  <span className="truncate font-medium">{tenant?.nombreEmpresa || 'FerreOn SaaS'}</span>
+                  <span className="truncate font-medium">{tenant?.nombreEmpresa || 'Alquileres System SaaS'}</span>
                 </div>
                 <div className="flex items-center gap-3 px-2 py-2 text-xs text-slate-600">
                   <User className="w-4 h-4 text-slate-400" />

@@ -1,0 +1,149 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/v2023-04-18/",
+  "name": "Alquileres System Design Tokens",
+  "version": "1.0.0",
+  "description": "Tokens canónicos exportables a Figma / Tokens Studio para Alquileres System ERP & WMS",
+  "global": {
+    "fontFamilies": {
+      "interface": {
+        "$type": "fontFamily",
+        "$value": "Inter, system-ui, -apple-system, sans-serif",
+        "$description": "Tipografía oficial para controles, títulos, botones y formularios"
+      },
+      "numeric": {
+        "$type": "fontFamily",
+        "$value": "JetBrains Mono, monospace",
+        "$description": "Tipografía tabular obligatoria para cifras financieras ($ COP), SKU y pesajes"
+      }
+    },
+    "fontSizes": {
+      "xs": { "$type": "dimension", "$value": "12px" },
+      "sm": { "$type": "dimension", "$value": "14px" },
+      "base": { "$type": "dimension", "$value": "16px" },
+      "lg": { "$type": "dimension", "$value": "18px" },
+      "xl": { "$type": "dimension", "$value": "20px" },
+      "2xl": { "$type": "dimension", "$value": "24px" },
+      "3xl": { "$type": "dimension", "$value": "30px" }
+    },
+    "fontWeights": {
+      "regular": { "$type": "fontWeight", "$value": 400 },
+      "medium": { "$type": "fontWeight", "$value": 500 },
+      "semibold": { "$type": "fontWeight", "$value": 600 },
+      "bold": { "$type": "fontWeight", "$value": 700 }
+    },
+    "spacing": {
+      "1": { "$type": "dimension", "$value": "4px" },
+      "2": { "$type": "dimension", "$value": "8px" },
+      "3": { "$type": "dimension", "$value": "12px" },
+      "4": { "$type": "dimension", "$value": "16px" },
+      "5": { "$type": "dimension", "$value": "20px" },
+      "6": { "$type": "dimension", "$value": "24px" },
+      "8": { "$type": "dimension", "$value": "32px" },
+      "10": { "$type": "dimension", "$value": "40px" },
+      "12": { "$type": "dimension", "$value": "48px" }
+    },
+    "borderRadius": {
+      "sm": { "$type": "dimension", "$value": "6px" },
+      "md": { "$type": "dimension", "$value": "8px" },
+      "lg": { "$type": "dimension", "$value": "10px" },
+      "xl": { "$type": "dimension", "$value": "12px" },
+      "2xl": { "$type": "dimension", "$value": "16px" },
+      "full": { "$type": "dimension", "$value": "9999px" }
+    },
+    "shadows": {
+      "sm": {
+        "$type": "shadow",
+        "$value": {
+          "color": "rgba(0, 0, 0, 0.05)",
+          "offsetX": "0px",
+          "offsetY": "1px",
+          "blur": "2px",
+          "spread": "0px"
+        }
+      },
+      "md": {
+        "$type": "shadow",
+        "$value": {
+          "color": "rgba(0, 0, 0, 0.07)",
+          "offsetX": "0px",
+          "offsetY": "4px",
+          "blur": "6px",
+          "spread": "-1px"
+        }
+      },
+      "card": {
+        "$type": "shadow",
+        "$value": {
+          "color": "rgba(15, 23, 42, 0.04)",
+          "offsetX": "0px",
+          "offsetY": "4px",
+          "blur": "12px",
+          "spread": "0px"
+        }
+      },
+      "modal": {
+        "$type": "shadow",
+        "$value": {
+          "color": "rgba(0, 0, 0, 0.15)",
+          "offsetX": "0px",
+          "offsetY": "20px",
+          "blur": "25px",
+          "spread": "-5px"
+        }
+      }
+    },
+    "feedback": {
+      "success": { "$type": "color", "$value": "#16a34a" },
+      "warning": { "$type": "color", "$value": "#f59e0b" },
+      "danger": { "$type": "color", "$value": "#ef4444" },
+      "info": { "$type": "color", "$value": "#0ea5e9" }
+    },
+    "neutrals": {
+      "slate50": { "$type": "color", "$value": "#f8fafc" },
+      "slate100": { "$type": "color", "$value": "#f1f5f9" },
+      "slate200": { "$type": "color", "$value": "#e2e8f0" },
+      "slate300": { "$type": "color", "$value": "#cbd5e1" },
+      "slate400": { "$type": "color", "$value": "#94a3b8" },
+      "slate500": { "$type": "color", "$value": "#64748b" },
+      "slate600": { "$type": "color", "$value": "#475569" },
+      "slate700": { "$type": "color", "$value": "#334155" },
+      "slate800": { "$type": "color", "$value": "#1e293b" },
+      "slate900": { "$type": "color", "$value": "#0f172a" },
+      "white": { "$type": "color", "$value": "#ffffff" }
+    }
+  },
+  "theme-salmon-pastel": {
+    "name": "Rosa Salmonado Pastel (Default / Alquileres System)",
+    "colors": {
+      "brandBase": { "$type": "color", "$value": "#FF8A65" },
+      "primary50": { "$type": "color", "$value": "#FFF3F0" },
+      "primary100": { "$type": "color", "$value": "#FFE4DC" },
+      "primary500": { "$type": "color", "$value": "#FF8A65" },
+      "primary600": { "$type": "color", "$value": "#F4683E" },
+      "primary700": { "$type": "color", "$value": "#D94C24" },
+      "bgCanvas": { "$type": "color", "$value": "#F8FAFC" },
+      "bgSurface": { "$type": "color", "$value": "#FFFFFF" },
+      "bgElevated": { "$type": "color", "$value": "#FFFFFF" },
+      "borderDefault": { "$type": "color", "$value": "#E2E8F0" },
+      "textPrimary": { "$type": "color", "$value": "#0F172A" },
+      "textSecondary": { "$type": "color", "$value": "#64748B" }
+    }
+  },
+  "theme-cyber-cyan": {
+    "name": "Cyber Cyan & Steel Blue (Industrial / Fríos Pezca)",
+    "colors": {
+      "brandBase": { "$type": "color", "$value": "#0EA5E9" },
+      "primary50": { "$type": "color", "$value": "#F0F9FF" },
+      "primary100": { "$type": "color", "$value": "#E0F2FE" },
+      "primary500": { "$type": "color", "$value": "#0EA5E9" },
+      "primary600": { "$type": "color", "$value": "#0284C7" },
+      "primary700": { "$type": "color", "$value": "#0369A1" },
+      "bgCanvas": { "$type": "color", "$value": "#F8FAFC" },
+      "bgSurface": { "$type": "color", "$value": "#FFFFFF" },
+      "bgElevated": { "$type": "color", "$value": "#FFFFFF" },
+      "borderDefault": { "$type": "color", "$value": "#E2E8F0" },
+      "textPrimary": { "$type": "color", "$value": "#0F172A" },
+      "textSecondary": { "$type": "color", "$value": "#64748B" }
+    }
+  }
+}

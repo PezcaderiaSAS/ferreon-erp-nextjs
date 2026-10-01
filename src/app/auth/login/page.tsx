@@ -140,7 +140,20 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       console.error('Auth error:', err);
-      setErrorMsg(err.message || 'Error al autenticar. Verifica tus credenciales.');
+      const rawMessage = err?.message || '';
+      let spanishError = 'Error al autenticar. Verifica tus credenciales.';
+      if (rawMessage.includes('Invalid login credentials')) {
+        spanishError = 'Correo electrónico o contraseña incorrectos. Por favor verifica tus credenciales.';
+      } else if (rawMessage.includes('Email not confirmed')) {
+        spanishError = 'Tu correo electrónico aún no ha sido confirmado. Por favor revisa tu bandeja de entrada.';
+      } else if (rawMessage.includes('User already registered')) {
+        spanishError = 'Ya existe una cuenta registrada con este correo electrónico.';
+      } else if (rawMessage.includes('Password should be at least')) {
+        spanishError = 'La contraseña debe tener al menos 6 caracteres.';
+      } else if (rawMessage) {
+        spanishError = rawMessage;
+      }
+      setErrorMsg(spanishError);
     } finally {
       setIsLoading(false);
     }
@@ -266,12 +279,14 @@ export default function LoginPage() {
             {isRegisterMode && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  <label htmlFor="empresaNombre" className="block text-xs font-bold text-slate-700 mb-1.5 cursor-pointer">
                     Nombre de tu Empresa o Negocio
                   </label>
                   <div className="relative">
                     <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                     <input
+                      id="empresaNombre"
+                      name="empresaNombre"
                       type="text"
                       required
                       placeholder="Ej: Andamios & Encofrados SAS"
@@ -284,23 +299,23 @@ export default function LoginPage() {
                 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">NIT / RUT</label>
-                    <input type="text" required placeholder="Ej: 900.123.456" value={empresaNit} onChange={(e) => setEmpresaNit(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium" />
+                    <label htmlFor="empresaNit" className="block text-xs font-bold text-slate-700 mb-1.5 cursor-pointer">NIT / RUT</label>
+                    <input id="empresaNit" name="empresaNit" type="text" required placeholder="Ej: 900.123.456" value={empresaNit} onChange={(e) => setEmpresaNit(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Teléfono</label>
-                    <input type="tel" required placeholder="Ej: 300 123 4567" value={empresaTelefono} onChange={(e) => setEmpresaTelefono(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium" />
+                    <label htmlFor="empresaTelefono" className="block text-xs font-bold text-slate-700 mb-1.5 cursor-pointer">Teléfono</label>
+                    <input id="empresaTelefono" name="empresaTelefono" type="tel" required placeholder="Ej: 300 123 4567" value={empresaTelefono} onChange={(e) => setEmpresaTelefono(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Ciudad</label>
-                    <input type="text" required placeholder="Bucaramanga" value={empresaCiudad} onChange={(e) => setEmpresaCiudad(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium" />
+                    <label htmlFor="empresaCiudad" className="block text-xs font-bold text-slate-700 mb-1.5 cursor-pointer">Ciudad</label>
+                    <input id="empresaCiudad" name="empresaCiudad" type="text" required placeholder="Bucaramanga" value={empresaCiudad} onChange={(e) => setEmpresaCiudad(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Tamaño</label>
-                    <select value={empresaTamano} onChange={(e) => setEmpresaTamano(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium">
+                    <label htmlFor="empresaTamano" className="block text-xs font-bold text-slate-700 mb-1.5 cursor-pointer">Tamaño</label>
+                    <select id="empresaTamano" name="empresaTamano" value={empresaTamano} onChange={(e) => setEmpresaTamano(e.target.value)} className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium">
                       <option value="1-10">1 - 10 empleados</option>
                       <option value="11-50">11 - 50 empleados</option>
                       <option value="51-200">51 - 200 empleados</option>
@@ -312,7 +327,7 @@ export default function LoginPage() {
                 {/* Verificación de Edad y Protección Infantil (COPPA - EE. UU. / Mercantil) */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
+                    <label htmlFor="fechaNacimiento" className="block text-xs font-bold text-slate-700 cursor-pointer">
                       Fecha de Nacimiento del Representante *
                     </label>
                     <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
@@ -322,6 +337,8 @@ export default function LoginPage() {
                   <div className="relative">
                     <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                     <input
+                      id="fechaNacimiento"
+                      name="fechaNacimiento"
                       type="date"
                       required
                       value={fechaNacimiento}
@@ -362,14 +379,17 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label htmlFor="email" className="block text-xs font-bold text-slate-700 mb-1.5 cursor-pointer">
                 Correo Electrónico
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                 <input
+                  id="email"
+                  name="email"
                   type="email"
                   required
+                  autoComplete="email"
                   placeholder="gerencia@tuempresa.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -380,7 +400,7 @@ export default function LoginPage() {
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-700">
+                <label htmlFor="password" className="block text-xs font-bold text-slate-700 cursor-pointer">
                   Contraseña
                 </label>
                 {!isRegisterMode && (
@@ -396,9 +416,12 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                 <input
+                  id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   required
                   minLength={6}
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

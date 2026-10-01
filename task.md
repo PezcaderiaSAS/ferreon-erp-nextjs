@@ -125,3 +125,17 @@
 - [x] Ejecutar `npm run audit:licenses` y verificar 0 infracciones (758 paquetes auditados, 0 violaciones copyleft).
 - [x] Ejecutar `npm run typecheck` (`tsc --noEmit`) asegurando 0 errores de TypeScript.
 - [x] Ejecutar `npm run test` (`vitest run`) validando que las 60 suites sigan pasando al 100% (334/334 tests en verde).
+
+---
+
+# Speckit Tasks: Tokens W3C y Blueprint de Componentes para Figma & DevTools (SPEC-2026-FIGMA-DEVTOOLS-001)
+
+## Tarea 23: Especificación Formal de Requerimientos y PRD [✅ COMPLETADA]
+- [x] Elaborar PRD de especificación (`speckit_figma_devtools_prd.md`) alineando objetivos, alcance de las 8 vistas y flujo transaccional crítico.
+
+## Tarea 24: Catálogo de Tokens W3C Design Tokens JSON [✅ COMPLETADA]
+- [x] Generar `figma_design_tokens.json` con tokens primitivos, escala tipográfica `Inter` / `JetBrains Mono` y modos conmutables (`salmon-pastel` y `cyber-cyan`).
+
+## Tarea 25: Blueprint de Anatomía y Estados de Componentes para Figma [✅ COMPLETADA]
+- [x] Generar `figma_components_blueprint.md` con la jerarquía de frames, desglose de las 8 pantallas y matriz de estados interactivos y Poka-Yoke.
+
