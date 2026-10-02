@@ -75,3 +75,19 @@ Este documento establece las convenciones de arquitectura, patrones de diseño y
    - **Viewports Verticales:** Prohibido `height: 100%` en contenedores de aplicación sin ancestros con altura explícita. Obligatorio unidades de viewport dinámicas `min-height: 100dvh` (`min-h-[100dvh]`).
    - **Especificidad:** Prohibido resolver conflictos con `!important`. Obligatorio arquitectura en capas `@layer base, components, utilities;`.
 
+---
+
+## 5. Paridad Bidireccional de Diseño (Design Tokens & Figma Sync)
+
+### 5.1 Especificación W3C Design Tokens Community Group (DTCG)
+- Los tokens de diseño en `figma_design_tokens.json` y `DESIGN.md` representan el contrato de verdad entre el código frontend (Tailwind/CSS) y Figma.
+- Cada token se categoriza semánticamente en Color (`$type: color`), Espaciado (`$type: dimension`) y Radio de Borde (`$type: dimension`).
+
+### 5.2 Arquitectura del Plugin Sync Studio v2.0 (`figma-tokens-sync/`)
+- **Plugin Nativo Local sin Dependencias SaaS:** Elimina costos recurrentes o restricciones de Tokens Studio Pro operando 100% en el sandbox local de Figma Desktop.
+- **Comunicación Iframe ⇄ Sandbox:** La interfaz visual (`ui.html`) se comunica bidireccionalmente con el motor de Figma (`code.js`) vía `parent.postMessage` y `figma.ui.onmessage`.
+- **Compatibilidad Arquitectónica con Figma Free:** Ante la restricción de 1 solo modo por colección (`Limited to 1 modes only`), se adoptó el patrón de colecciones hermanas:
+  - `Alquileres System — Design Tokens` (Tema Canónico / Salmón Pastel).
+  - `Alquileres System — Cyber Cyan (Dark)` (Tema Alternativo / Cyber Cyan).
+- **Enlace Nativo de Capas (`setBoundVariable`):** Vinculación formal de capas a las Variables mediante `setBoundVariableForPaint`, asegurando que modificar un token en el sistema propague reactivamente los cambios sobre las 14 vistas del lienzo.
+
