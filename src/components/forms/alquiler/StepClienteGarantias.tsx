@@ -223,9 +223,11 @@ export const StepClienteGarantias: React.FC<StepClienteGarantiasProps> = ({
           <div className="flex flex-col gap-1.5 relative">
             <div className="flex justify-between items-center">
               <label className="text-xs font-bold text-slate-700">
-                {isEditMode ? "Cliente Vinculado (Solo Lectura)" : "Cliente / Razón Social *"}
+                {isEditMode && Boolean(displayClienteNombre || selectedCliente) && tipoDocumento !== 'COTIZACION' 
+                  ? "Cliente Vinculado (Solo Lectura)" 
+                  : "Cliente / Razón Social *"}
               </label>
-              {!isEditMode && (
+              {!(isEditMode && Boolean(displayClienteNombre || selectedCliente) && tipoDocumento !== 'COTIZACION') && (
                 <button 
                   type="button" 
                   onClick={() => setIsCreandoCliente(true)} 
@@ -237,7 +239,7 @@ export const StepClienteGarantias: React.FC<StepClienteGarantiasProps> = ({
               )}
             </div>
 
-            {isEditMode ? (
+            {isEditMode && Boolean(displayClienteNombre || selectedCliente) && tipoDocumento !== 'COTIZACION' ? (
               <div className="p-3 bg-slate-50/80 border border-slate-200/90 rounded-xl flex items-center justify-between shadow-xs">
                 <div className="flex items-center space-x-3 overflow-hidden">
                   <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0">
@@ -249,7 +251,7 @@ export const StepClienteGarantias: React.FC<StepClienteGarantiasProps> = ({
                         {displayClienteNombre || 'Cliente vinculado'}
                       </span>
                       <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.2 rounded font-medium shrink-0">
-                        Bloqueado
+                        Vinculado a Contrato
                       </span>
                     </div>
                     <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">

@@ -152,7 +152,9 @@ export function useAlquilerForm({
   const [garantiaTipo, setGarantiaTipo] = useState<string>(initialData?.garantia_tipo || initialData?.garantiaTipo || 'Efectivo');
   const [observaciones, setObservaciones] = useState<string>(initialData?.observaciones || initialData?.observacionesGenerales || '');
   const [detallesLogistica, setDetallesLogistica] = useState<string>(initialData?.detalles_logistica || initialData?.detallesLogistica || '');
-  const [estadoDocumento, setEstadoDocumento] = useState<'COTIZACION' | 'ACTIVO'>(initialData?.estado || 'ACTIVO');
+  const [estadoDocumento, setEstadoDocumento] = useState<'COTIZACION' | 'ACTIVO'>(
+    initialData?.estado || (modoInicial === 'COTIZACION' ? 'COTIZACION' : 'ACTIVO')
+  );
 
   const [items, setItems] = useState<ItemRow[]>(() => {
     const sourceDetalles = initialData?.alquiler_detalles || initialData?.detalles || initialData?.items || initialData?.cotizaciones_detalles;
@@ -518,7 +520,7 @@ export function useAlquilerForm({
     return clientes.find(c => String(c.id) === String(clienteId));
   }, [clientes, clienteId]);
 
-  const isEditMode = Boolean(initialData);
+  const isEditMode = Boolean(initialData && (initialData.id !== undefined || initialData._id !== undefined));
 
   const displayClienteNombre = selectedCliente?.nombre || initialData?.clienteNombre || initialData?.cliente?.nombre || '';
   const displayClienteNit = selectedCliente?.nit_cedula || selectedCliente?.nit || initialData?.clienteNit || initialData?.clienteDocumento || initialData?.cliente?.nit || '';
@@ -1097,13 +1099,13 @@ export function useAlquilerForm({
         }
       }
 
-      if (initialData) {
+      if (isEditMode && initialData?.id) {
         store.updateAlquiler(alquilerUi as any);
       } else {
         store.addAlquiler(alquilerUi as any);
       }
 
-      if (initialData) {
+      if (isEditMode && initialData?.id) {
         const itemsParaEditar = items.map((it, idx) => {
           const start = it.fechaInicio || todayStr;
           const end = it.fechaFinEstimada || todayStr;

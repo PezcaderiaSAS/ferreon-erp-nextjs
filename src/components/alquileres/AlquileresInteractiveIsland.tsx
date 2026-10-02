@@ -1316,7 +1316,8 @@ export function AlquileresInteractiveIsland({
       >
         <AlquilerForm 
           key={contratoActivo ? `edit_${contratoActivo.id}` : `create_${modoCreacionInicial}`}
-          initialData={contratoActivo || (modoCreacionInicial === 'COTIZACION' ? { tipoDocumento: 'COTIZACION', tipo: 'COTIZACION', estado: 'COTIZACION' } : null)}
+          initialData={contratoActivo}
+          modoInicial={modoCreacionInicial}
           onSuccess={(alquiler?: any) => { 
             const eraEdicion = Boolean(contratoActivo);
             setIsFormDirty(false);

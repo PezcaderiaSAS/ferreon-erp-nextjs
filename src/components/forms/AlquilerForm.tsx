@@ -15,8 +15,22 @@ import { AlquilerSuccessView } from './alquiler/AlquilerSuccessView';
 import { AlquilerBlockingOverlay } from './alquiler/AlquilerBlockingOverlay';
 import { AlquilerFormProps } from './alquiler/types';
 
-export function AlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange }: AlquilerFormProps) {
-  const form = useAlquilerForm({ initialData, onSuccess, onCancel, onDirtyChange });
+export function AlquilerForm({ 
+  initialData, 
+  modoInicial, 
+  cotizacionOrigenId, 
+  onSuccess, 
+  onCancel, 
+  onDirtyChange 
+}: AlquilerFormProps) {
+  const form = useAlquilerForm({ 
+    initialData, 
+    modoInicial, 
+    cotizacionOrigenId, 
+    onSuccess, 
+    onCancel, 
+    onDirtyChange 
+  });
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
