@@ -20,23 +20,34 @@ if (!envToken) {
 
 const FIGMA_TOKEN = envToken;
 
-export async function fetchFigma(endpoint, options = {}) {
+export async function fetchFigma(endpoint, options = {}, retries = 3) {
   const url = endpoint.startsWith('http') ? endpoint : `https://api.figma.com/v1${endpoint}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'X-Figma-Token': FIGMA_TOKEN,
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
+  
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        'X-Figma-Token': FIGMA_TOKEN,
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      }
+    });
+
+    if (res.status === 429 && attempt < retries) {
+      const retryAfter = parseInt(res.headers.get('retry-after') || '15', 10);
+      const waitTime = Math.max(retryAfter, 15) * 1000;
+      console.log(`⏳ Rate limit 429 en Figma API. Esperando ${waitTime / 1000}s antes de reintentar (intento ${attempt + 1}/${retries})...`);
+      await new Promise(r => setTimeout(r, waitTime));
+      continue;
     }
-  });
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Figma API Error [${res.status} ${res.statusText}]: ${errorText}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Figma API Error [${res.status} ${res.statusText}]: ${errorText}`);
+    }
+
+    return await res.json();
   }
-
-  return await res.json();
 }
 
 export async function getFileInfo(fileKey) {

@@ -144,9 +144,11 @@
 - [x] Favicon dinámico en `icon.tsx` y atributos a11y (`id`, `name`, `htmlFor`, `aria-label`) en formularios.
 - [x] Catálogo W3C Design Tokens JSON (`figma_design_tokens.json`) con modos duales (*Salmón Pastel* y *Cyber Cyan*).
 - [x] Blueprint de Componentes para Figma (`figma_components_blueprint.md`).
-- [x] Plugin nativo de Figma (`figma-tokens-sync/` con `manifest.json` y `code.js`) para inyección automática de Variables en 1 clic.
-- [x] Cliente oficial de API de Figma (`scripts/figma-api-client.mjs`) e integración en `mcp_config.json`.
-- [x] Conexión y auditoría en vivo del archivo oficial de Figma `Alquileres System` de Pezcaderia SAS (`xQ7iOmkYpLy6F1H9QnYv5F`): 1,306 componentes, 14 secciones y 88 colores con 100% de concordancia tipográfica y cromática.
-- [x] Generación de reporte de auditoría en vivo `figma_live_audit_report.md`.
+- [x] Plugin nativo interactivo y bidireccional Sync Studio v2.0 (`figma-tokens-sync/` con `manifest.json`, `code.js`, `ui.html` y `inject-tokens-console.js`) para sincronización código ⇄ Figma sin dependencias SaaS.
+- [x] Cobertura visual del 100% de las 14 pantallas canónicas importadas y auditadas en Figma (`xQ7iOmkYpLy6F1H9QnYv5F`).
+- [x] Inyección de 33 variables oficiales con soporte dual adaptado a Figma Free (*Salmon Pastel* y *Cyber Cyan*), 9 espaciados y 6 radios.
+- [x] Vinculación nativa certificada de **6,389 capas y nodos vectoriales** a las Variables de diseño de Alquileres System.
+- [x] Purgado de frames duplicados y huérfanos.
+- [x] Reportes generados: `figma_live_audit_report.md` y `figma_verification_complete_report.md`.
 
 

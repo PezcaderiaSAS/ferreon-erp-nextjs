@@ -152,11 +152,17 @@
 
 # Tareas Pendientes Enmarcadas (Roadmap Próxima Sesión)
 
-## Tarea 28: Inyección de Colección de Variables en Figma (Acción en Figma Desktop)
-- [ ] Ejecutar en Figma Desktop el plugin local `figma-tokens-sync` (`Plugins > Development > Import plugin from manifest...`) para vincular la colección `Alquileres System — Design Tokens` y modos duales a los 1,306 componentes del lienzo.
+## Tarea 28: Inyección de Colección de Variables en Figma (Sync Studio v2.0) [✅ COMPLETADA]
+- [x] Ejecutar el plugin `figma-tokens-sync` en Figma para inyectar las 33 variables oficiales de `Alquileres System — Design Tokens` con soporte dual adaptado a Figma Free (Salmon Pastel y Cyber Cyan), 9 espaciados y 6 radios.
 
-## Tarea 29: Cobertura Visual de Vistas Faltantes en Figma
-- [ ] Importar con `html.to.design` las vistas de `/bodega` y `/subcontrataciones` para alcanzar el 100% de las 8 pantallas de Alquileres System en el lienzo.
+## Tarea 29: Cobertura Visual de Vistas en Figma (html.to.design / Builder.io) [✅ 14 de 14 COMPLETADAS - 100%]
+- [x] Importar `/auth/login` (`https://alquileres-erp-nextjs-ruby.vercel.app/auth/login`) — ✅ *Completada*.
+- [x] Importar `/dashboard` (`https://alquileres-erp-nextjs-ruby.vercel.app/dashboard`) — ✅ *Completada (Sections 24 y 25)*.
+- [x] Importar `/alquileres` (`https://alquileres-erp-nextjs-ruby.vercel.app/alquileres`) — ✅ *Completada (Sections 26 y 27)*.
+- [x] Importar `/bodega` (`https://alquileres-erp-nextjs-ruby.vercel.app/bodega`) — ✅ *Completada (Sections 28 y 29 - 248 componentes)*.
+- [x] Importar `/compras` (`https://alquileres-erp-nextjs-ruby.vercel.app/compras`) — ✅ *Completada (Sections 30 y 31)*.
+- [x] Importar `/subcontrataciones` (`https://alquileres-erp-nextjs-ruby.vercel.app/subcontrataciones`) — ✅ *Completada (Sections 32 y 33)*.
+- [x] Importar `/devoluciones` (`https://alquileres-erp-nextjs-ruby.vercel.app/devoluciones`) — ✅ *Completada (Confirmada en vivo en el lienzo)*.
 
 ## Tarea 30: Automatización CI/CD de Paridad de Tokens
 - [ ] Configurar GitHub Action que valide que cualquier cambio en `figma_design_tokens.json` o en tokens CSS mantenga paridad matemática estricta con el Design System de Figma.

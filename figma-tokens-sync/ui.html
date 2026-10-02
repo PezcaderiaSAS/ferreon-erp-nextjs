@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Alquileres System — Tokens & Variables Sync</title>
+  <style>
+    :root {
+      --primary: #ff7a59;
+      --primary-hover: #e66847;
+      --primary-light: #fff0ec;
+      --primary-muted: rgba(255, 122, 89, 0.12);
+      --cyber: #00f0ff;
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --border-hover: #cbd5e1;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      --font-mono: "JetBrains Mono", Consolas, Menlo, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.4;
+      user-select: none;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #ff7a59, #ff9073);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 14px;
+      box-shadow: 0 2px 6px rgba(255, 122, 89, 0.3);
+    }
+
+    .brand-name {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text-main);
+      letter-spacing: -0.2px;
+    }
+
+    .brand-badge {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      background: #edeef2;
+      padding: 3px;
+      border-radius: var(--radius-md);
+      gap: 2px;
+      margin-bottom: 14px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 7px 4px;
+      text-align: center;
+      background: transparent;
+      border: none;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-radius: calc(var(--radius-md) - 2px);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      background: var(--bg-card);
+      color: var(--primary);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Tab Content */
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    }
+
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      line-height: 1.35;
+    }
+
+    /* Token Stats Grid */
+    .token-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .token-stat {
+      background: var(--bg-page);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-num {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text-main);
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    /* Action Buttons */
+    .btn {
+      width: 100%;
+      padding: 9px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 2px 4px rgba(255, 122, 89, 0.25);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: var(--bg-page);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: #f1f5f9;
+      border-color: var(--border-hover);
+    }
+
+    .btn-danger {
+      background: #fee2e2;
+      color: var(--danger);
+      border: 1px solid #fecaca;
+    }
+
+    .btn-danger:hover {
+      background: #fecaca;
+    }
+
+    .btn + .btn {
+      margin-top: 8px;
+    }
+
+    /* JSON Preview Box */
+    .json-box {
+      width: 100%;
+      height: 160px;
+      background: #0f172a;
+      color: #94a3b8;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid #1e293b;
+      resize: none;
+      white-space: pre;
+      overflow: auto;
+      margin-bottom: 10px;
+      outline: none;
+    }
+
+    /* Screen Checklist */
+    .checklist {
+      list-style: none;
+      max-height: 220px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 11px;
+    }
+
+    .check-item:last-child {
+      border-bottom: none;
+    }
+
+    .check-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .check-tag.ok {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .check-tag.missing {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    /* Status Bar */
+    .statusbar {
+      margin-top: 14px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #f1f5f9;
+      color: var(--text-muted);
+    }
+
+    .statusbar.success {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .statusbar.warning {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    .statusbar.error {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="brand-title">
+      <div class="brand-logo">A</div>
+      <div>
+        <div class="brand-name">Alquileres System</div>
+      </div>
+    </div>
+    <span class="brand-badge">Sync Studio v2.0</span>
+  </div>
+
+  <!-- Tabs Navigation -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('tab-import')">📥 Importar</button>
+    <button class="tab-btn" onclick="switchTab('tab-export')">📤 Exportar</button>
+    <button class="tab-btn" onclick="switchTab('tab-bind')">🎨 Vincular</button>
+    <button class="tab-btn" onclick="switchTab('tab-audit')">🧹 Limpieza</button>
+  </div>
+
+  <!-- TAB 1: IMPORTAR (Código ➔ Figma) -->
+  <div id="tab-import" class="tab-content active">
+    <div class="card">
+      <div class="card-title">Sincronización a Figma</div>
+      <div class="card-desc">
+        Crea o actualiza la colección nativa <strong>Alquileres System — Design Tokens</strong> con modos duales conmutables.
+      </div>
+
+      <div class="token-grid">
+        <div class="token-stat">
+          <span class="stat-num">18</span>
+          <span class="stat-label">Colores Duales</span>
+        </div>
+        <div class="token-stat">
+          <span class="stat-num">2</span>
+          <span class="stat-label">Modos (Light/Dark)</span>
+        </div>
+        <div class="token-stat">
+          <span class="stat-num">9</span>
+          <span class="stat-label">Espaciados (4-48px)</span>
+        </div>
+        <div class="token-stat">
+          <span class="stat-num">6</span>
+          <span class="stat-label">Radios (6-9999px)</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="triggerImport()">
+        ⚡ Inyectar Variables Oficiales en Figma
+      </button>
+    </div>
+  </div>
+
+  <!-- TAB 2: EXPORTAR (Figma ➔ Código JSON) -->
+  <div id="tab-export" class="tab-content">
+    <div class="card">
+      <div class="card-title">Extracción Bidireccional a Código</div>
+      <div class="card-desc">
+        Lee todas las variables y estilos creados en este archivo y genera el JSON estandarizado W3C para sincronizar con Next.js.
+      </div>
+
+      <textarea id="export-json-view" class="json-box" readonly placeholder="Presiona 'Extraer Variables' para generar el JSON..."></textarea>
+
+      <button class="btn btn-primary" onclick="triggerExport()">
+        🔍 Extraer Variables Locales de Figma
+      </button>
+      <button class="btn btn-secondary" onclick="copyExportedJson()">
+        📋 Copiar JSON al Portapapeles
+      </button>
+    </div>
+  </div>
+
+  <!-- TAB 3: VINCULAR (Colores RAW ➔ Variables) -->
+  <div id="tab-bind" class="tab-content">
+    <div class="card">
+      <div class="card-title">Vincular Variables a las Pantallas</div>
+      <div class="card-desc">
+        Recorre las 14 pantallas del lienzo y sustituye los colores fijos (HEX raw como #ff8a65 o #f8fafc) por las Variables semánticas recién creadas.
+      </div>
+
+      <button class="btn btn-primary" onclick="triggerBind()">
+        🔗 Vincular Variables al Lienzo Completo
+      </button>
+    </div>
+  </div>
+
+  <!-- TAB 4: AUDITORÍA & LIMPIEZA -->
+  <div id="tab-audit" class="tab-content">
+    <div class="card">
+      <div class="card-title">Auditoría de Pantallas (14 Canónicas)</div>
+      <div class="card-desc">
+        Monitorea en tiempo real la presencia de los 14 módulos de Alquileres System y purga frames huérfanos.
+      </div>
+
+      <ul id="screen-checklist" class="checklist">
+        <li class="check-item"><span>Cargando auditoría...</span></li>
+      </ul>
+
+      <div style="margin-top: 12px;">
+        <button class="btn btn-danger" onclick="triggerClean()">
+          🧹 Limpiar Duplicados y Frames Huérfanos
+        </button>
+        <button class="btn btn-secondary" onclick="triggerAudit()">
+          🔄 Re-escanear Cobertura
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Status Bar -->
+  <div id="statusbar" class="statusbar">
+    <span>💡 Listo para sincronizar tokens de Alquileres System.</span>
+  </div>
+
+  <script>
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      const targetBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+      if (targetBtn) targetBtn.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+
+      if (tabId === 'tab-audit') {
+        triggerAudit();
+      }
+    }
+
+    function setStatus(text, type = 'info') {
+      const sb = document.getElementById('statusbar');
+      sb.className = 'statusbar ' + (type === 'success' ? 'success' : type === 'warning' ? 'warning' : type === 'error' ? 'error' : '');
+      sb.innerHTML = `<span>${text}</span>`;
+    }
+
+    // Acciones enviadas al controlador code.js
+    function triggerImport() {
+      setStatus('⏳ Sincronizando variables con Figma...', 'info');
+      parent.postMessage({ pluginMessage: { type: 'import-tokens' } }, '*');
+    }
+
+    function triggerExport() {
+      setStatus('⏳ Extrayendo variables locales desde Figma...', 'info');
+      parent.postMessage({ pluginMessage: { type: 'export-tokens' } }, '*');
+    }
+
+    function triggerBind() {
+      setStatus('⏳ Mapeando variables a las capas del lienzo...', 'info');
+      parent.postMessage({ pluginMessage: { type: 'bind-variables' } }, '*');
+    }
+
+    function triggerClean() {
+      setStatus('⏳ Purgando duplicados y frames huérfanos...', 'info');
+      parent.postMessage({ pluginMessage: { type: 'clean-duplicates' } }, '*');
+    }
+
+    function triggerAudit() {
+      parent.postMessage({ pluginMessage: { type: 'audit-screens' } }, '*');
+    }
+
+    function copyExportedJson() {
+      const box = document.getElementById('export-json-view');
+      if (!box.value) {
+        setStatus('⚠️ Primero presiona "Extraer Variables".', 'warning');
+        return;
+      }
+      box.select();
+      document.execCommand('copy');
+      setStatus('📋 ¡JSON copiado exitosamente al portapapeles!', 'success');
+    }
+
+    // Escucha de respuestas desde code.js
+    window.onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+
+      if (msg.type === 'import-success') {
+        const text = msg.isFreePlan 
+          ? `✅ ¡Éxito! ${msg.count} variables creadas (Colecciones duales adaptadas a Figma Free).`
+          : `✅ ¡Éxito! ${msg.count} variables creadas con modos duales.`;
+        setStatus(text, 'success');
+      }
+
+      if (msg.type === 'export-success') {
+        document.getElementById('export-json-view').value = JSON.stringify(msg.data, null, 2);
+        setStatus(`✅ Se extrajeron ${msg.count} variables en formato W3C.`, 'success');
+      }
+
+      if (msg.type === 'bind-success') {
+        setStatus(`🎨 ${msg.count} nodos vinculados a variables nativas.`, 'success');
+      }
+
+      if (msg.type === 'clean-success') {
+        setStatus(`🧹 Se eliminaron ${msg.count} elementos duplicados/huérfanos.`, 'success');
+        triggerAudit();
+      }
+
+      if (msg.type === 'audit-result') {
+        const list = document.getElementById('screen-checklist');
+        list.innerHTML = '';
+        msg.report.forEach(item => {
+          const li = document.createElement('li');
+          li.className = 'check-item';
+          li.innerHTML = `
+            <span><strong>${item.name}</strong> <span style="color:#94a3b8">(${item.path})</span></span>
+            <span class="check-tag ${item.present ? 'ok' : 'missing'}">${item.present ? 'PRESENTE' : 'FALTA'}</span>
+          `;
+          list.appendChild(li);
+        });
+
+        if (msg.missingCount === 0) {
+          setStatus(`🎉 Cobertura: 14/14 pantallas completas (100%).`, 'success');
+        } else {
+          setStatus(`⚠️ Cobertura: ${14 - msg.missingCount}/14 pantallas presentes.`, 'warning');
+        }
+      }
+
+      if (msg.type === 'error') {
+        setStatus(`❌ Error: ${msg.message}`, 'error');
+      }
+    };
+
+    // Auto-auditar al cargar
+    setTimeout(triggerAudit, 300);
+  </script>
+</body>
+</html>

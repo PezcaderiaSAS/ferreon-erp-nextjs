@@ -5,3 +5,5 @@ scratch/
 supabase/
 *.mjs
 test-*.mjs
+figma-tokens-sync/
+html.to.design/
