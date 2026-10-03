@@ -10,7 +10,9 @@ import {
   Coins,
   Wrench,
   Calendar,
-  ExternalLink
+  ExternalLink,
+  FileText,
+  Receipt
 } from 'lucide-react';
 import { type EventoCalendario, type TipoEventoCalendario } from '@/core/types/dashboard';
 import { formatearMonedaCOP } from '@/core/services/dashboard-transaccional.service';
@@ -61,8 +63,13 @@ export function ActividadDrawer({
       case 'DEVOLUCION':
         return <CornerDownLeft className="w-4 h-4 text-red-600 dark:text-red-400" />;
       case 'COBRANZA_VENCIMIENTO':
-      case 'PAGO_RECIBIDO':
         return <Coins className="w-4 h-4 text-amber-600 dark:text-amber-400" />;
+      case 'PAGO_RECIBIDO':
+        return <Coins className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />;
+      case 'COTIZACION':
+        return <FileText className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
+      case 'FACTURA_COBRO':
+        return <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />;
       case 'MANTENIMIENTO':
         return <Wrench className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
       default:
@@ -88,6 +95,24 @@ export function ActividadDrawer({
         return (
           <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/40">
             Cobranza
+          </span>
+        );
+      case 'PAGO_RECIBIDO':
+        return (
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40">
+            Pago Recibido
+          </span>
+        );
+      case 'COTIZACION':
+        return (
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/40">
+            Cotización
+          </span>
+        );
+      case 'FACTURA_COBRO':
+        return (
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40">
+            Cuenta de Cobro
           </span>
         );
       case 'MANTENIMIENTO':

@@ -168,18 +168,20 @@ describe('Dashboard Tareas Manuales - Server Actions y Persistencia Supabase', (
             })
           };
         }
-        // Fallback genérico para alquileres, equipos, devoluciones
+        // Fallback genérico para alquileres, equipos, devoluciones, cotizaciones, facturas y pagos
+        const createChainableQuery = () => {
+          const queryObj: any = {};
+          const resolveData = () => Promise.resolve({ data: [], error: null });
+          queryObj.then = (resolve: any, reject: any) => resolveData().then(resolve, reject);
+          queryObj.eq = vi.fn().mockReturnValue(queryObj);
+          queryObj.is = vi.fn().mockReturnValue(queryObj);
+          queryObj.order = vi.fn().mockReturnValue(queryObj);
+          queryObj.limit = vi.fn().mockReturnValue(queryObj);
+          return queryObj;
+        };
+
         return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              is: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue({ data: [], error: null })
-              }),
-              order: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue({ data: [], error: null })
-              })
-            })
-          })
+          select: vi.fn().mockReturnValue(createChainableQuery())
         };
       });
 

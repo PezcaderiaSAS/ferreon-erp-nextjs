@@ -7,7 +7,9 @@ export type TipoEventoCalendario =
   | 'DEVOLUCION'
   | 'COBRANZA_VENCIMIENTO'
   | 'PAGO_RECIBIDO'
-  | 'MANTENIMIENTO';
+  | 'MANTENIMIENTO'
+  | 'COTIZACION'
+  | 'FACTURA_COBRO';
 
 export type UrgenciaEvento = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA';
 
@@ -83,4 +85,6 @@ export interface FiltrosCalendario {
   devoluciones: boolean;
   cobranzas: boolean;
   mantenimientos: boolean;
+  cotizaciones?: boolean;
+  cobros?: boolean;
 }

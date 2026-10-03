@@ -189,4 +189,66 @@ describe('DashboardTransaccionalService - Dominio y Calendario Operativo (Alquil
       expect(payload.mesActivo).toBe('2026-10');
     });
   });
+
+  describe('6. Integración de Cotizaciones y Cobros en el Calendario', () => {
+    it('debe generar eventos para cotizaciones comerciales y facturas de cobro', () => {
+      const mockCotizaciones = [
+        {
+          id: 'cot-1',
+          consecutivo: 'COT-2026-001',
+          cliente_nombre: 'P&P CONSTRUCCIONES',
+          fecha_emision: '2026-10-06',
+          fecha_vencimiento: '2026-10-20',
+          total: 1250000,
+          estado: 'ENVIADA',
+          obra_nombre: 'Torre Navarra'
+        }
+      ];
+
+      const mockFacturas = [
+        {
+          id: 'fac-1',
+          numero_consecutivo: 1001,
+          tipo_documento: 'CUENTA_COBRO',
+          total_pagar: 280000,
+          estado_pago: 'EMITIDA',
+          fecha: '2026-10-15',
+          cliente_nombre: 'ARTLINE SAS'
+        }
+      ];
+
+      const mockPagos = [
+        {
+          id: 'pag-1',
+          monto: 50000,
+          metodo_pago: 'TRANSFERENCIA',
+          fecha: '2026-10-03',
+          cliente_nombre: 'ANGELA AZUCENA'
+        }
+      ];
+
+      const eventos = generarEventosCalendario(
+        [],
+        [],
+        fechaHoy,
+        mockCotizaciones,
+        mockFacturas,
+        mockPagos
+      );
+
+      const evtCot = eventos.find((e) => e.tipo === 'COTIZACION' && e.fecha === '2026-10-06');
+      expect(evtCot).toBeDefined();
+      expect(evtCot?.titulo).toContain('COT-2026-001');
+      expect(evtCot?.monto).toBe(1250000);
+
+      const evtFac = eventos.find((e) => e.tipo === 'FACTURA_COBRO');
+      expect(evtFac).toBeDefined();
+      expect(evtFac?.titulo).toContain('Cuenta de Cobro #1001');
+      expect(evtFac?.monto).toBe(280000);
+
+      const evtPago = eventos.find((e) => e.tipo === 'PAGO_RECIBIDO');
+      expect(evtPago).toBeDefined();
+      expect(evtPago?.monto).toBe(50000);
+    });
+  });
 });

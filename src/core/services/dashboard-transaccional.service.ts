@@ -46,11 +46,46 @@ export interface RawDevolucionDashboard {
   estado: string;
 }
 
+export interface RawCotizacionDashboard {
+  id: string;
+  consecutivo: string;
+  cliente_nombre: string;
+  fecha_emision: string; // YYYY-MM-DD
+  fecha_vencimiento?: string; // YYYY-MM-DD
+  total: number;
+  subtotal?: number;
+  estado: string;
+  obra_nombre?: string;
+}
+
+export interface RawFacturaDashboard {
+  id: string;
+  numero_consecutivo: number;
+  tipo_documento: string; // CUENTA_COBRO, FACTURA
+  total_pagar: number;
+  estado_pago: string; // EMITIDA, PAGADA, ANULADA
+  fecha: string; // YYYY-MM-DD
+  cliente_nombre?: string;
+  alquiler_id?: string;
+}
+
+export interface RawPagoDashboard {
+  id: string;
+  monto: number;
+  metodo_pago: string;
+  fecha: string; // YYYY-MM-DD
+  cliente_nombre?: string;
+  alquiler_id?: string;
+}
+
 export interface ProcesarDashboardParams {
   alquileres: RawAlquilerDashboard[];
   equipos: RawEquipoDashboard[];
   devoluciones?: RawDevolucionDashboard[];
   tareasManuales?: TareaOperativa[];
+  cotizaciones?: RawCotizacionDashboard[];
+  facturas?: RawFacturaDashboard[];
+  pagos?: RawPagoDashboard[];
   fechaHoy?: string; // Formato YYYY-MM-DD (por defecto hoy)
 }
 
@@ -82,7 +117,8 @@ export function formatearMonedaCOP(valor: number): string {
 export function calcularKPIsDashboard(
   alquileres: RawAlquilerDashboard[],
   equipos: RawEquipoDashboard[],
-  fechaHoy: string = obtenerFechaHoyLocal()
+  fechaHoy: string = obtenerFechaHoyLocal(),
+  cotizaciones: RawCotizacionDashboard[] = []
 ): DashboardKPIs {
   // 1. Equipos y Utilización de Flota
   const equiposTotal = equipos.reduce((acc, eq) => acc + (eq.stock_total || 0), 0);
@@ -127,6 +163,13 @@ export function calcularKPIsDashboard(
     }
   }
 
+  // Sumar cotizaciones pendientes directas de la tabla cotizaciones
+  for (const c of cotizaciones) {
+    if (c.estado === 'BORRADOR' || c.estado === 'ENVIADA') {
+      cotizacionesPendientes++;
+    }
+  }
+
   return {
     equiposEnObra,
     equiposTotal,
@@ -146,13 +189,16 @@ export function calcularKPIsDashboard(
 export function generarEventosCalendario(
   alquileres: RawAlquilerDashboard[],
   equipos: RawEquipoDashboard[],
-  fechaHoy: string = obtenerFechaHoyLocal()
+  fechaHoy: string = obtenerFechaHoyLocal(),
+  cotizaciones: RawCotizacionDashboard[] = [],
+  facturas: RawFacturaDashboard[] = [],
+  pagos: RawPagoDashboard[] = []
 ): EventoCalendario[] {
   const eventos: EventoCalendario[] = [];
 
   // Recorrer alquileres para eventos de Despacho, Devolución y Cobranza
   for (const a of alquileres) {
-    const contratoCodigo = a.numero_contrato || `#ALQ-${a.id.slice(0, 5)}`;
+    const contratoCodigo = a.numero_contrato || (a.consecutivo ? `CC-#${String(a.consecutivo).padStart(4, '0')}` : `#ALQ-${a.id.slice(0, 5)}`);
     const cliente = a.cliente_nombre || 'Cliente Particular';
     const primerEquipo = a.detalles?.[0]?.equipo_nombre || 'Maquinaria';
 
@@ -215,6 +261,84 @@ export function generarEventosCalendario(
           enlaceModulo: `/facturacion?alquilerId=${a.id}`
         });
       }
+    }
+  }
+
+  // Recorrer cotizaciones comerciales
+  for (const c of cotizaciones) {
+    if (c.fecha_emision) {
+      const esAprobada = c.estado === 'APROBADA';
+      eventos.push({
+        id: `evt-cot-${c.id}`,
+        tipo: 'COTIZACION',
+        titulo: `Cotización ${c.consecutivo} — ${c.cliente_nombre}`,
+        descripcion: `${c.obra_nombre ? `Obra: ${c.obra_nombre}. ` : ''}Estado: ${c.estado}. Total: ${formatearMonedaCOP(c.total)}`,
+        fecha: c.fecha_emision,
+        fechaFin: c.fecha_vencimiento,
+        monto: c.total,
+        estado: c.estado,
+        referenciaId: c.id,
+        clienteNombre: c.cliente_nombre,
+        urgencia: esAprobada ? 'ALTA' : 'MEDIA',
+        enlaceModulo: `/cotizaciones`
+      });
+    }
+
+    // Si tiene fecha de vencimiento y no está aprobada ni rechazada, marcar seguimiento
+    if (c.fecha_vencimiento && c.estado === 'ENVIADA') {
+      eventos.push({
+        id: `evt-cot-venc-${c.id}`,
+        tipo: 'COTIZACION',
+        titulo: `Vencimiento Cotización ${c.consecutivo}`,
+        descripcion: `Plazo límite para ${c.cliente_nombre}. Monto: ${formatearMonedaCOP(c.total)}`,
+        fecha: c.fecha_vencimiento,
+        monto: c.total,
+        estado: 'VENCIMIENTO_OFERTA',
+        referenciaId: c.id,
+        clienteNombre: c.cliente_nombre,
+        urgencia: c.fecha_vencimiento <= fechaHoy ? 'CRITICA' : 'MEDIA',
+        enlaceModulo: `/cotizaciones`
+      });
+    }
+  }
+
+  // Recorrer facturas y cuentas de cobro emitidas
+  for (const f of facturas) {
+    if (f.fecha) {
+      const esCuentaCobro = f.tipo_documento === 'CUENTA_COBRO';
+      const docLabel = esCuentaCobro ? 'Cuenta de Cobro' : 'Factura';
+      eventos.push({
+        id: `evt-fac-${f.id}`,
+        tipo: 'FACTURA_COBRO',
+        titulo: `${docLabel} #${f.numero_consecutivo} — ${f.cliente_nombre || 'Cliente'}`,
+        descripcion: `${docLabel} ${f.estado_pago === 'PAGADA' ? 'Pagada' : 'Emitida'}. Monto: ${formatearMonedaCOP(f.total_pagar)}`,
+        fecha: f.fecha,
+        monto: f.total_pagar,
+        estado: f.estado_pago,
+        referenciaId: f.id,
+        clienteNombre: f.cliente_nombre,
+        urgencia: f.estado_pago === 'EMITIDA' ? 'ALTA' : 'BAJA',
+        enlaceModulo: `/facturacion`
+      });
+    }
+  }
+
+  // Recorrer pagos registrados
+  for (const p of pagos) {
+    if (p.fecha) {
+      eventos.push({
+        id: `evt-pago-${p.id}`,
+        tipo: 'PAGO_RECIBIDO',
+        titulo: `Cobro Recibido — ${formatearMonedaCOP(p.monto)} (${p.metodo_pago})`,
+        descripcion: `Recaudo de ${p.cliente_nombre || 'Cliente'}`,
+        fecha: p.fecha,
+        monto: p.monto,
+        estado: 'PAGADO',
+        referenciaId: p.id,
+        clienteNombre: p.cliente_nombre,
+        urgencia: 'BAJA',
+        enlaceModulo: `/caja`
+      });
     }
   }
 
@@ -401,9 +525,12 @@ export function procesarDashboardCompleto(params: ProcesarDashboardParams): Dash
   const alquileres = params.alquileres || [];
   const equipos = params.equipos || [];
   const tareasManuales = params.tareasManuales || [];
+  const cotizaciones = params.cotizaciones || [];
+  const facturas = params.facturas || [];
+  const pagos = params.pagos || [];
 
-  const kpis = calcularKPIsDashboard(alquileres, equipos, fechaHoy);
-  const eventos = generarEventosCalendario(alquileres, equipos, fechaHoy);
+  const kpis = calcularKPIsDashboard(alquileres, equipos, fechaHoy, cotizaciones);
+  const eventos = generarEventosCalendario(alquileres, equipos, fechaHoy, cotizaciones, facturas, pagos);
   const tareasSistema = generarTareasSistema(alquileres, fechaHoy);
   const alertas = generarAlertasFeed(alquileres, equipos, fechaHoy);
 

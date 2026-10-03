@@ -6,7 +6,10 @@ import {
   procesarDashboardCompleto,
   type RawAlquilerDashboard,
   type RawEquipoDashboard,
-  type RawDevolucionDashboard
+  type RawDevolucionDashboard,
+  type RawCotizacionDashboard,
+  type RawFacturaDashboard,
+  type RawPagoDashboard
 } from '@/core/services/dashboard-transaccional.service';
 import { type DashboardPayload, type TareaOperativa, type UrgenciaTarea } from '@/core/types/dashboard';
 
@@ -36,22 +39,23 @@ export async function obtenerDashboardDataAction(empresaIdParam?: string): Promi
 
     const empresaId = empresaIdParam || (await resolveEmpresaId(user.id));
 
-    // Ejecutar consultas en paralelo en Supabase (Alquileres, Equipos, Devoluciones y Tareas Manuales)
-    const [alquileresRes, equiposRes, devolucionesRes, tareasRes] = await Promise.all([
+    // Ejecutar consultas en paralelo en Supabase (Alquileres, Equipos, Devoluciones, Tareas, Cotizaciones, Facturas y Pagos)
+    const [alquileresRes, equiposRes, devolucionesRes, tareasRes, cotizacionesRes, facturasRes, pagosRes] = await Promise.all([
       supabase
         .from('alquileres')
         .select(`
           id,
-          numero_contrato,
           consecutivo,
           estado,
-          fecha_inicio,
-          fecha_fin,
           total,
           saldo_pendiente,
+          total_pagado,
+          created_at,
           clientes ( id, nombre, nit_cedula ),
           alquiler_detalles (
             cantidad,
+            fecha_inicio,
+            fecha_fin,
             equipos ( id, nombre, codigo )
           )
         `)
@@ -70,7 +74,7 @@ export async function obtenerDashboardDataAction(empresaIdParam?: string): Promi
         .select('id, alquiler_id, fecha_devolucion, estado')
         .eq('empresa_id', empresaId)
         .order('created_at', { ascending: false })
-        .limit(20),
+        .limit(30),
 
       supabase
         .from('dashboard_tareas')
@@ -79,32 +83,68 @@ export async function obtenerDashboardDataAction(empresaIdParam?: string): Promi
         .is('deleted_at', null)
         .order('completada', { ascending: true })
         .order('created_at', { ascending: false })
-        .limit(30)
+        .limit(30),
+
+      supabase
+        .from('cotizaciones')
+        .select('id, consecutivo, cliente_nombre, fecha_emision, fecha_vencimiento, obra_nombre, total, subtotal, estado')
+        .eq('empresa_id', empresaId)
+        .order('created_at', { ascending: false })
+        .limit(50),
+
+      supabase
+        .from('facturas')
+        .select('id, numero_consecutivo, tipo_documento, alquiler_id, total_pagar, estado_pago, created_at, clientes ( nombre )')
+        .eq('empresa_id', empresaId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(50),
+
+      supabase
+        .from('pagos')
+        .select('id, alquiler_id, monto, metodo_pago, referencia, fecha, clientes ( nombre )')
+        .eq('empresa_id', empresaId)
+        .is('deleted_at', null)
+        .order('fecha', { ascending: false })
+        .limit(50)
     ]);
 
-    // Mapear alquileres
+    // Mapear alquileres extrayendo fechas efectivas de los detalles
     const rawAlquileres: RawAlquilerDashboard[] = (alquileresRes.data || []).map((a: any) => {
       const clienteObj = Array.isArray(a.clientes) ? a.clientes[0] : a.clientes;
       const clienteNombre = clienteObj?.nombre || 'Cliente';
 
+      let minFechaInicio = '';
+      let maxFechaFin = '';
+
       const detalles = (a.alquiler_detalles || []).map((d: any) => {
         const eqObj = Array.isArray(d.equipos) ? d.equipos[0] : d.equipos;
+        const fIni = d.fecha_inicio ? String(d.fecha_inicio).slice(0, 10) : '';
+        const fFin = d.fecha_fin ? String(d.fecha_fin).slice(0, 10) : '';
+
+        if (fIni && (!minFechaInicio || fIni < minFechaInicio)) minFechaInicio = fIni;
+        if (fFin && (!maxFechaFin || fFin > maxFechaFin)) maxFechaFin = fFin;
+
         return {
           equipo_nombre: eqObj?.nombre || 'Equipo',
           cantidad: d.cantidad || 1
         };
       });
 
+      const fechaInicio = minFechaInicio || (a.created_at ? String(a.created_at).slice(0, 10) : '');
+      const fechaFin = maxFechaFin || fechaInicio;
+
       return {
         id: String(a.id),
-        numero_contrato: a.numero_contrato || (a.consecutivo ? `CC-#${String(a.consecutivo).padStart(4, '0')}` : undefined),
+        numero_contrato: a.consecutivo ? `CC-#${String(a.consecutivo).padStart(4, '0')}` : `#ALQ-${a.id}`,
         consecutivo: a.consecutivo,
         estado: a.estado || 'ACTIVO',
-        fecha_inicio: a.fecha_inicio ? a.fecha_inicio.slice(0, 10) : '',
-        fecha_fin: a.fecha_fin ? a.fecha_fin.slice(0, 10) : '',
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
         cliente_nombre: clienteNombre,
         total: Number(a.total) || 0,
         saldo_pendiente: Number(a.saldo_pendiente) || 0,
+        total_pagado: Number(a.total_pagado) || 0,
         detalles
       };
     });
@@ -138,12 +178,56 @@ export async function obtenerDashboardDataAction(empresaIdParam?: string): Promi
       subtexto: t.subtexto || 'Tarea personalizada'
     }));
 
+    // Mapear cotizaciones comerciales
+    const rawCotizaciones: RawCotizacionDashboard[] = (cotizacionesRes.data || []).map((c: any) => ({
+      id: String(c.id),
+      consecutivo: String(c.consecutivo || ''),
+      cliente_nombre: c.cliente_nombre || 'Cliente Particular',
+      fecha_emision: c.fecha_emision ? String(c.fecha_emision).slice(0, 10) : '',
+      fecha_vencimiento: c.fecha_vencimiento ? String(c.fecha_vencimiento).slice(0, 10) : undefined,
+      total: Number(c.total) || 0,
+      subtotal: Number(c.subtotal) || 0,
+      estado: c.estado || 'ENVIADA',
+      obra_nombre: c.obra_nombre || undefined
+    }));
+
+    // Mapear facturas y cuentas de cobro
+    const rawFacturas: RawFacturaDashboard[] = (facturasRes.data || []).map((f: any) => {
+      const clienteObj = Array.isArray(f.clientes) ? f.clientes[0] : f.clientes;
+      return {
+        id: String(f.id),
+        numero_consecutivo: Number(f.numero_consecutivo) || 0,
+        tipo_documento: f.tipo_documento || 'CUENTA_COBRO',
+        total_pagar: Number(f.total_pagar) || 0,
+        estado_pago: f.estado_pago || 'EMITIDA',
+        fecha: f.created_at ? String(f.created_at).slice(0, 10) : '',
+        cliente_nombre: clienteObj?.nombre || undefined,
+        alquiler_id: f.alquiler_id ? String(f.alquiler_id) : undefined
+      };
+    });
+
+    // Mapear pagos
+    const rawPagos: RawPagoDashboard[] = (pagosRes.data || []).map((p: any) => {
+      const clienteObj = Array.isArray(p.clientes) ? p.clientes[0] : p.clientes;
+      return {
+        id: String(p.id),
+        monto: Number(p.monto) || 0,
+        metodo_pago: p.metodo_pago || 'TRANSFERENCIA',
+        fecha: p.fecha ? String(p.fecha).slice(0, 10) : '',
+        cliente_nombre: clienteObj?.nombre || undefined,
+        alquiler_id: p.alquiler_id ? String(p.alquiler_id) : undefined
+      };
+    });
+
     // Procesar mediante el servicio de dominio puro
     const payload = procesarDashboardCompleto({
       alquileres: rawAlquileres,
       equipos: rawEquipos,
       devoluciones: rawDevoluciones,
-      tareasManuales
+      tareasManuales,
+      cotizaciones: rawCotizaciones,
+      facturas: rawFacturas,
+      pagos: rawPagos
     });
 
     return { success: true, data: payload };

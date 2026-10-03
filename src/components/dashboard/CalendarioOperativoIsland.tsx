@@ -10,7 +10,9 @@ import {
   Coins,
   Wrench,
   Clock,
-  ExternalLink
+  ExternalLink,
+  FileText,
+  Receipt
 } from 'lucide-react';
 import {
   type EventoCalendario,
@@ -50,7 +52,9 @@ export function CalendarioOperativoIsland({
     alquileres: true,
     devoluciones: true,
     cobranzas: true,
-    mantenimientos: true
+    mantenimientos: true,
+    cotizaciones: true,
+    cobros: true
   });
 
   const toggleFiltro = (key: keyof FiltrosCalendario) => {
@@ -101,6 +105,8 @@ export function CalendarioOperativoIsland({
       if (e.tipo === 'DEVOLUCION' && !filtros.devoluciones) return false;
       if (e.tipo === 'COBRANZA_VENCIMIENTO' && !filtros.cobranzas) return false;
       if (e.tipo === 'MANTENIMIENTO' && !filtros.mantenimientos) return false;
+      if (e.tipo === 'COTIZACION' && filtros.cotizaciones === false) return false;
+      if ((e.tipo === 'FACTURA_COBRO' || e.tipo === 'PAGO_RECIBIDO') && filtros.cobros === false) return false;
       return true;
     });
   }, [eventos, filtros]);
@@ -161,6 +167,15 @@ export function CalendarioOperativoIsland({
     } else if (evt.tipo === 'MANTENIMIENTO') {
       bg = 'bg-orange-50 dark:bg-orange-950/40 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-800/40';
       icon = <Wrench className="w-2.5 h-2.5 text-orange-600 dark:text-orange-400 shrink-0" />;
+    } else if (evt.tipo === 'COTIZACION') {
+      bg = 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/40';
+      icon = <FileText className="w-2.5 h-2.5 text-purple-600 dark:text-purple-400 shrink-0" />;
+    } else if (evt.tipo === 'FACTURA_COBRO') {
+      bg = 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40';
+      icon = <Receipt className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" />;
+    } else if (evt.tipo === 'PAGO_RECIBIDO') {
+      bg = 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40';
+      icon = <Coins className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" />;
     }
 
     return (
@@ -278,6 +293,30 @@ export function CalendarioOperativoIsland({
         >
           <span className="w-1.5 h-1.5 rounded-full bg-orange-600 dark:bg-orange-400" />
           Taller / Mantenimiento
+        </button>
+
+        <button
+          onClick={() => toggleFiltro('cotizaciones')}
+          className={`px-3 py-1 rounded-full border text-[11px] font-semibold flex items-center gap-1.5 transition-all ${
+            filtros.cotizaciones
+              ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/40 ring-1 ring-purple-100 dark:ring-purple-900/30'
+              : 'bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
+          }`}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-600 dark:bg-purple-400" />
+          Cotizaciones
+        </button>
+
+        <button
+          onClick={() => toggleFiltro('cobros')}
+          className={`px-3 py-1 rounded-full border text-[11px] font-semibold flex items-center gap-1.5 transition-all ${
+            filtros.cobros
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40 ring-1 ring-emerald-100 dark:ring-emerald-900/30'
+              : 'bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
+          }`}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
+          Cobros / Facturación
         </button>
       </div>
 
