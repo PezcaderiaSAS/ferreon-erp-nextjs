@@ -2,16 +2,18 @@
 
 ## Estado actual
 - Plataforma: Alquileres System (Next.js 14 en Vercel + Supabase Postgres RLS).
-- Dashboard & Calendario Operativo Multi-Flujo implementado: 4 KPIs en vivo (Flota, Contratos, Devoluciones, Cartera COP), layout 65/35, Calendario interactivo (Mes/Semana/Agenda), Drawer contextual con '+ Nuevo Alquiler', Tareas híbridas (sistema + manuales) y Feed de alertas.
-- Pruebas automatizadas: 403/403 tests pasando (100%), 0 errores de TypeScript y compilación de producción exitosa (32/32 rutas).
+- Catálogo UI Premium Completo (16 Patrones Certificados): Integrada la biblioteca de componentes `@/components/ui/premium` con soporte Dark Mode, Kanban avanzado (Sprint 38, rotación 2deg, físicas de arrastre), Linear Engineering System (5 pilares), Weekly Calendar con cero solapamientos, Mobile Table 360px shell, Water Ripple GPU canvas a 60 FPS, Toast con gradientes 135deg, Goal Tracker SVG radial y Success Screen (*done ≠ dead end*).
+- Showcase interactivo desplegado en `/design-system` con pestaña dedicada "Catálogo Premium".
+- Pruebas y validaciones: 411/411 tests pasando (100%), 0 errores de TypeScript y compilación de producción exitosa.
 
 ## Decisiones (y por qué)
-- **Centro de Mando Asimétrico 65/35**: Prioriza la superficie del calendario operativo en la columna principal mientras consolida tareas urgentes y recordatorios en el lateral derecho.
-- **Drawer con '+ Nuevo Alquiler con fecha inicial'**: Agiliza la conversión operativa directa precargando `?fechaInicio=YYYY-MM-DD` en el wizard de alquileres al interactuar con cualquier día.
+- **Biblioteca `@/components/ui/premium` aislada**: Provee componentes de grado enterprise listos para producción sin acoplamiento a librerías externas pesadas.
+- **Principio UX 'done ≠ dead end'**: Toda pantalla de finalización ofrece inmediatamente el siguiente paso de valor operativo (Next Step) para maximizar la retención.
+- **Microinteracciones con aceleración GPU**: Uso de `transform`, `opacity` y keyframes optimizados para 60 FPS sin memory leaks ni re-renders innecesarios.
 
 ## Aprendizajes y errores a evitar
-- Jamás usar librerías externas de calendario pesadas que introduzcan dependencias obsoletas; un componente nativo React optimizado garantiza 60 fps y un First Load de apenas 109 kB.
-- No mutar objetos de tareas ni usar índices mágicos en cálculos monetarios; operar siempre en enteros COP.
+- Evitar nombres de íconos no canónicos entre versiones de `lucide-react` (usar `UploadCloud` en vez de `CloudArrowUp`, y `Layers` en vez de `LayoutKanban`).
+- Diseñar siempre con adaptabilidad móvil 360px shell comprobable antes de aprobar componentes de tablas densas.
 
 ## Próximos pasos
-- Siguiente hito funcional: Automatización CI/CD de Paridad de Tokens o portal de autoservicio de clientes.
+- Siguiente hito funcional: Integración de componentes UI Premium en flujos de facturación, contratos y reportes analíticos del ERP.

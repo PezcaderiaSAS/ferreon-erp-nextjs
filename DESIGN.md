@@ -143,3 +143,34 @@ El sistema está optimizado para garantizar paridad operativa idéntica en:
 3. **Formularios Modulares (Patrón Stepper / Wizard):**
    - Validación reactiva por pasos con esquemas Zod.
    - Guardado seguro en memoria local o estado persistente para evitar pérdida de datos durante caídas de conexión.
+
+---
+
+## 7. Catálogo de Componentes UI Premium & Microinteracciones (16 Patrones Certificados)
+
+Para módulos de alta fidelidad visual y tableros interactivos (Alquileres System Studio), se consolida la biblioteca en `@/components/ui/premium`:
+
+1. **Gestión y Flujo de Proyectos:**
+   - `PremiumAdvancedKanban`: Tablero técnico Dark Mode (`#0d1117`, `#161b22`), sprint identifier (`Tempo / Sprint 38`), límites WIP estrictos, físicas de arrastre con rotación 2deg (`rotate(2deg) scale(1.02)`) y marcadores numéricos de decisión de arquitectura.
+   - `PremiumLinearSystem`: Sistema basado en los 5 pilares de ingeniería inversa de Linear (alta densidad de información, bordes sutiles `#30363d`, acento único `#00e699`, navegación optimizada para teclado y alineación tabular estricta).
+   - `PremiumWeeklyCalendarSystem`: Rejilla de programación con cero solapamientos (Zero-Overlaps Grid), selector de vistas (Día, Semana, Mes), día actual destacado con indicador ping y codificación de categorías (Work `#0d9488`, Personal `#d97706`, Team `#6d28d9`).
+   - `PremiumUpcomingMeetings`: Card de 2 columnas con panel lateral en gradiente índigo/púrpura, selector horizontal de días en píldora y grupo de avatares superpuestos.
+   - `PremiumKanbanBoard`: Tablero de 4 columnas con etiquetas de prioridad, avatares, comentarios y adjuntos.
+
+2. **Tablas y Datos Financieros:**
+   - `PremiumResponsiveMobileTable`: Adaptación mobile-first en shell móvil de 360px con avatares, badges de estado (`Paid`, `Open`, `Overdue`) y valores financieros alineados a la derecha con comparativa en vivo frente a tablas anchas de escritorio.
+   - `PremiumTable`: Tabla enterprise para administración de usuarios con toolbar, buscador en tiempo real, filtros, estados visuales, avatares con iniciales y microinteracciones de hover.
+   - `PremiumDashboardPreview`: Panel analítico Dark Mode con acentos de color planos (Flat accents), barra de herramientas, banner de bienvenida, métricas y gráfico interactivo con toggles 7d/30d/90d.
+
+3. **Acciones, Confirmación y Feedback:**
+   - `PremiumSuccessDoneScreen`: Implementación del principio UX *done ≠ dead end* (no dejar pantallas de confirmación como callejones sin salida; ofrecer siempre una llamada de acción inmediata 'Next Step'), con distintivo de neón fosforescente (`#00e699`).
+   - `PremiumToast` & `PremiumToastShowcase`: Avisos flotantes con gradientes a 135deg (Verde para Success, Azul para Info, Naranja para Warning, Rojo para Error), formas decorativas superpuestas y animación con rebote `cubic-bezier(0.34, 1.56, 0.64, 1)`.
+   - `PremiumGoalTracker`: Card de objetivos con cabecera vibrante púrpura/azul/cian, progreso circular radial SVG animado y desglose de estadísticas.
+   - `PremiumProfileUpload`: Carga de foto de perfil con avatar circular, badge de cámara flotante con microinteracción hover y zona de dropzone.
+
+4. **Navegación y Microinteracciones de Fluidos:**
+   - `PremiumWaterRipple`: Canvas interactivo de fluido oceánico (`#0f172a` a `#0284c7`) que proyecta ondas expansivas dinámicas en las coordenadas exactas del clic a 60 FPS aceleradas por hardware GPU.
+   - `PremiumStickyHeader`: Barra de navegación fija con desenfoque de fondo glassmorphism (`backdrop-filter: blur(12px)`), listener de scroll dinámico, enlaces en píldora activa y botón CTA con gradiente.
+   - `PremiumHamburgerMenu`: Menú desplegable móvil con botón estilizado en contenedor índigo `#6366f1` y panel con elevación suave.
+   - `PremiumAccordion`: Acordeón de tarjetas independientes elevadas con icon badge atenuado y alternancia (+ / -).
+

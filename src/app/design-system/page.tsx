@@ -36,6 +36,7 @@ import { PresetCard } from '@/components/design-system/PresetCard';
 import { PresetInput } from '@/components/design-system/PresetInput';
 import { PresetBadge } from '@/components/design-system/PresetBadge';
 import { PresetMetricWidget } from '@/components/design-system/PresetMetricWidget';
+import { PremiumShowcase } from '@/components/design-system/PremiumShowcase';
 
 /**
  * Tokens CSS mapeados por arquetipo para inspección y copia directa.
@@ -107,7 +108,7 @@ const PRESET_CSS_TOKENS_MAP: Record<ThemePresetId, { label: string; var: string;
  */
 export default function DesignSystemPlaygroundPage() {
   // Estados de vista y navegación
-  const [viewMode, setViewMode] = useState<'matrix' | 'single'>('matrix');
+  const [viewMode, setViewMode] = useState<'matrix' | 'single' | 'premium'>('matrix');
   const [activePreset, setActivePreset] = useState<ThemePresetId>('ferreon-glass');
   const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
@@ -180,7 +181,7 @@ export default function DesignSystemPlaygroundPage() {
 
           {/* Lado Derecho: Conmutador de Modo de Vista & Acciones de Tokens */}
           <div className="flex items-center gap-2.5 w-full md:w-auto justify-end">
-            {/* Toggle de Modo: Matriz 6x vs Enfoque Individual */}
+            {/* Toggle de Modo: Matriz 6x vs Enfoque Individual vs Catálogo Premium */}
             <div className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-800">
               <button
                 type="button"
@@ -207,6 +208,19 @@ export default function DesignSystemPlaygroundPage() {
               >
                 <Eye className="h-3.5 w-3.5" />
                 <span>Enfoque</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('premium')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all',
+                  viewMode === 'premium'
+                    ? 'bg-[#00e699] text-slate-950 font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                )}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Catálogo Premium</span>
               </button>
             </div>
 
@@ -324,10 +338,15 @@ export default function DesignSystemPlaygroundPage() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          3. Contenido Principal: Modo Matriz 6x vs Enfoque Individual
+          3. Contenido Principal: Modo Matriz 6x vs Enfoque Individual vs Catálogo Premium
       ───────────────────────────────────────────────────────────── */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-        {viewMode === 'matrix' ? (
+        {viewMode === 'premium' ? (
+          /* =========================================================
+             VISTA 3: CATÁLOGO DE COMPONENTES UI PREMIUM (16 PATRONES)
+             ========================================================= */
+          <PremiumShowcase />
+        ) : viewMode === 'matrix' ? (
           /* =========================================================
              VISTA 1: MATRIZ DE COMPARACIÓN 6X LADO A LADO
              ========================================================= */

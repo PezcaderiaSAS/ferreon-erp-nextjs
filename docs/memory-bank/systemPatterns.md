@@ -91,3 +91,34 @@ Este documento establece las convenciones de arquitectura, patrones de diseño y
   - `Alquileres System — Cyber Cyan (Dark)` (Tema Alternativo / Cyber Cyan).
 - **Enlace Nativo de Capas (`setBoundVariable`):** Vinculación formal de capas a las Variables mediante `setBoundVariableForPaint`, asegurando que modificar un token en el sistema propague reactivamente los cambios sobre las 14 vistas del lienzo.
 
+---
+
+## 6. Arquitectura de Componentes UI Premium & Microinteracciones (16 Patrones)
+
+Para experiencias de usuario enriquecidas, tableros de gestión técnica y flujos de completado, el sistema dispone de la biblioteca modular `@/components/ui/premium`:
+
+1. **Gestión Técnica de Proyectos y Tareas:**
+   - `PremiumAdvancedKanban`: Soporte de Sprint 38, rotación física al arrastrar (`rotate(2deg) scale(1.02)`), marcadores de decisión en neón esmeralda (`#00e699`) y límites WIP visuales (`4/4`).
+   - `PremiumLinearSystem`: Adhesión estricta a los 5 pilares de Linear (alta densidad, bordes `#30363d`, acento único `#00e699`, atajos de teclado y alineación monospace).
+   - `PremiumWeeklyCalendarSystem`: Rejilla semanal con cero colapso de eventos (Zero-Overlaps Grid), discriminación categórica por color (Work `#0d9488`, Personal `#d97706`, Team `#6d28d9`) y leyenda de 40 eventos.
+   - `PremiumUpcomingMeetings`: Panel de 2 columnas con sidebar gradiente oscuro, selector horizontal en píldoras y avatares superpuestos.
+   - `PremiumKanbanBoard`: Tablero de 4 columnas con etiquetas de prioridad, avatares, comentarios y adjuntos.
+
+2. **Tablas Adaptativas y Datos Financieros:**
+   - `PremiumResponsiveMobileTable`: Shell móvil de 360px (`border-radius: 32px`) que transforma filas en tarjetas fluidas con métricas financieras destacadas y comparativa de escritorio.
+   - `PremiumTable`: Tabla enterprise con toolbar integrada, buscador en tiempo real, filtros, estados visuales y avatares con iniciales.
+   - `PremiumDashboardPreview`: Panel analítico Dark Mode con flat accents, banner de bienvenida, métricas y gráfico SVG con toggles 7d/30d/90d.
+
+3. **Acciones, Confirmación y Anti Dead-End UX:**
+   - `PremiumSuccessDoneScreen`: Principio *done ≠ dead end*, resplandor neón fosforescente (`#00e699`), caja de destinatario y llamada a la acción secundaria (*Next Step*).
+   - `PremiumToast` & `PremiumToastShowcase`: Avisos flotantes con gradientes a 135deg según jerarquía cromática y animación de entrada con rebote `cubic-bezier`.
+   - `PremiumGoalTracker`: Card de objetivos con cabecera en gradiente vibrante, progreso circular radial SVG y caja de deadline.
+   - `PremiumProfileUpload`: Carga de avatar circular con badge flotante de cámara, zona dropzone y botones con gradientes.
+
+4. **Navegación y Microinteracciones:**
+   - `PremiumWaterRipple`: Canvas interactivo de fluido con gradiente oceánico profundo y ondas expansivas en coordenadas de clic a 60 FPS con aceleración GPU.
+   - `PremiumStickyHeader`: Barra fija con desenfoque de fondo glassmorphic de 12px, listener de scroll dinámico y botón CTA con gradiente.
+   - `PremiumHamburgerMenu`: Menú desplegable responsive con botón animado en contenedor índigo `#6366f1` y dropdown elevado.
+   - `PremiumAccordion`: Acordeón de tarjetas elevadas independientes con icon badges atenuados y alternancia (+ / -).
+
+
