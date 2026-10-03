@@ -83,7 +83,6 @@ export function CalendarioOperativoIsland({
   };
 
   // Formato YYYY-MM
-  const mesActualStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
   const hoyStr = useMemo(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -100,26 +99,26 @@ export function CalendarioOperativoIsland({
     return eventos.filter((e) => {
       if (e.tipo === 'ALQUILER_DESPACHO' && !filtros.alquileres) return false;
       if (e.tipo === 'DEVOLUCION' && !filtros.devoluciones) return false;
-      if ((e.tipo === 'COBRANZA_VENCIMIENTO' || e.tipo === 'PAGO_RECIBIDO') && !filtros.cobranzas) return false;
+      if (e.tipo === 'COBRANZA_VENCIMIENTO' && !filtros.cobranzas) return false;
       if (e.tipo === 'MANTENIMIENTO' && !filtros.mantenimientos) return false;
       return true;
     });
   }, [eventos, filtros]);
 
-  // Matriz del mes (cuadrícula de días)
+  // Construcción de la matriz de días para el mes visible
   const matrizDiasMes = useMemo(() => {
-    const primerDia = new Date(currentYear, currentMonth, 1);
-    const ultimoDia = new Date(currentYear, currentMonth + 1, 0);
+    const primerDiaMes = new Date(currentYear, currentMonth, 1);
+    const ultimoDiaMes = new Date(currentYear, currentMonth + 1, 0);
 
-    // En JS 0 = Domingo, 1 = Lunes... Queremos Lunes como primer día (0)
-    let offsetInicio = primerDia.getDay() - 1;
-    if (offsetInicio === -1) offsetInicio = 6;
+    // Ajuste a Lunes = 0, Domingo = 6
+    let diaSemanaInicio = primerDiaMes.getDay() - 1;
+    if (diaSemanaInicio === -1) diaSemanaInicio = 6;
 
-    const totalDias = ultimoDia.getDate();
-    const dias = [];
+    const totalDias = ultimoDiaMes.getDate();
+    const dias: { dia: number | null; fecha: string }[] = [];
 
     // Días vacíos previos
-    for (let i = 0; i < offsetInicio; i++) {
+    for (let i = 0; i < diaSemanaInicio; i++) {
       dias.push({ dia: null, fecha: '' });
     }
 
@@ -145,27 +144,29 @@ export function CalendarioOperativoIsland({
 
   // Renderizador de píldora compacta de evento en celda de calendario
   const renderEventChip = (evt: EventoCalendario) => {
-    let bg = 'bg-slate-100 text-slate-700 border-slate-200';
+    let bg = 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
     let icon = <CalendarIcon className="w-2.5 h-2.5 shrink-0" />;
 
     if (evt.tipo === 'ALQUILER_DESPACHO') {
-      bg = 'bg-blue-50 text-blue-800 border-blue-200';
-      icon = <Truck className="w-2.5 h-2.5 text-blue-600 shrink-0" />;
+      bg = 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800/40';
+      icon = <Truck className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400 shrink-0" />;
     } else if (evt.tipo === 'DEVOLUCION') {
-      bg = evt.urgencia === 'CRITICA' ? 'bg-red-100 text-red-800 border-red-300 font-bold' : 'bg-red-50 text-red-700 border-red-200';
-      icon = <CornerDownLeft className="w-2.5 h-2.5 text-red-600 shrink-0" />;
+      bg = evt.urgencia === 'CRITICA'
+        ? 'bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-200 border-red-300 dark:border-red-800 font-bold'
+        : 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/40';
+      icon = <CornerDownLeft className="w-2.5 h-2.5 text-red-600 dark:text-red-400 shrink-0" />;
     } else if (evt.tipo === 'COBRANZA_VENCIMIENTO') {
-      bg = 'bg-amber-50 text-amber-800 border-amber-200';
-      icon = <Coins className="w-2.5 h-2.5 text-amber-600 shrink-0" />;
+      bg = 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/40';
+      icon = <Coins className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 shrink-0" />;
     } else if (evt.tipo === 'MANTENIMIENTO') {
-      bg = 'bg-orange-50 text-orange-800 border-orange-200';
-      icon = <Wrench className="w-2.5 h-2.5 text-orange-600 shrink-0" />;
+      bg = 'bg-orange-50 dark:bg-orange-950/40 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-800/40';
+      icon = <Wrench className="w-2.5 h-2.5 text-orange-600 dark:text-orange-400 shrink-0" />;
     }
 
     return (
       <div
         key={evt.id}
-        className={`px-1.5 py-0.5 rounded text-[10px] border flex items-center gap-1 truncate ${bg} transition-transform hover:scale-[1.02]`}
+        className={`px-1.5 py-0.5 rounded-md text-[10px] border flex items-center gap-1 truncate ${bg} transition-transform hover:scale-[1.02]`}
         title={`${evt.titulo} (${evt.clienteNombre || ''})`}
       >
         {icon}
@@ -175,49 +176,49 @@ export function CalendarioOperativoIsland({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-card p-5 flex flex-col gap-4 w-full">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-card p-5 flex flex-col gap-4 w-full transition-all hover:border-slate-300 dark:hover:border-slate-700">
       {/* 1. Barra de Control del Calendario */}
-      <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-100 pb-4">
+      <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
         {/* Mes y Controles de Navegación */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50/50 p-0.5">
+          <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 p-0.5">
             <button
               onClick={handlePrev}
-              className="p-1 rounded-md text-slate-600 hover:text-slate-900 hover:bg-white transition-colors"
+              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-slate-800 transition-colors"
               aria-label="Mes anterior"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={handleHoy}
-              className="px-2.5 py-1 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-white rounded-md transition-colors"
+              className="px-3 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-colors"
             >
               Hoy
             </button>
             <button
               onClick={handleNext}
-              className="p-1 rounded-md text-slate-600 hover:text-slate-900 hover:bg-white transition-colors"
+              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-slate-800 transition-colors"
               aria-label="Mes siguiente"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          <h2 className="text-base font-bold text-slate-900 capitalize ml-1 tracking-tight">
+          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 capitalize ml-1 tracking-tight">
             {nombreMesLegible}
           </h2>
         </div>
 
         {/* Selector de Vista (Mes / Semana / Agenda) */}
-        <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/60">
+        <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
           {(['MES', 'SEMANA', 'AGENDA'] as VistaCalendario[]).map((v) => (
             <button
               key={v}
               onClick={() => setVista(v)}
-              className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+              className={`px-3.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                 vista === v
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               {v === 'MES' ? 'Mes' : v === 'SEMANA' ? 'Semana' : 'Agenda'}
@@ -228,52 +229,54 @@ export function CalendarioOperativoIsland({
 
       {/* 2. Píldoras de Filtro por Tipo de Flujo */}
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-slate-400 font-medium text-[11px] mr-1">Filtrar:</span>
+        <span className="text-slate-400 dark:text-slate-500 font-mono text-[11px] mr-1">
+          FILTRAR:
+        </span>
         <button
           onClick={() => toggleFiltro('alquileres')}
-          className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold flex items-center gap-1.5 transition-all ${
+          className={`px-3 py-1 rounded-full border text-[11px] font-semibold flex items-center gap-1.5 transition-all ${
             filtros.alquileres
-              ? 'bg-blue-50 text-blue-700 border-blue-200 ring-1 ring-blue-100'
-              : 'bg-slate-50 text-slate-400 border-slate-200'
+              ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/40 ring-1 ring-blue-100 dark:ring-blue-900/30'
+              : 'bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
           }`}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
           Alquileres / Despachos
         </button>
 
         <button
           onClick={() => toggleFiltro('devoluciones')}
-          className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold flex items-center gap-1.5 transition-all ${
+          className={`px-3 py-1 rounded-full border text-[11px] font-semibold flex items-center gap-1.5 transition-all ${
             filtros.devoluciones
-              ? 'bg-red-50 text-red-700 border-red-200 ring-1 ring-red-100'
-              : 'bg-slate-50 text-slate-400 border-slate-200'
+              ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/40 ring-1 ring-red-100 dark:ring-red-900/30'
+              : 'bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
           }`}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+          <span className="w-1.5 h-1.5 rounded-full bg-red-600 dark:bg-red-400" />
           Devoluciones / Retornos
         </button>
 
         <button
           onClick={() => toggleFiltro('cobranzas')}
-          className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold flex items-center gap-1.5 transition-all ${
+          className={`px-3 py-1 rounded-full border text-[11px] font-semibold flex items-center gap-1.5 transition-all ${
             filtros.cobranzas
-              ? 'bg-amber-50 text-amber-700 border-amber-200 ring-1 ring-amber-100'
-              : 'bg-slate-50 text-slate-400 border-slate-200'
+              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/40 ring-1 ring-amber-100 dark:ring-amber-900/30'
+              : 'bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
           }`}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-amber-400" />
           Vencimiento Cobros
         </button>
 
         <button
           onClick={() => toggleFiltro('mantenimientos')}
-          className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold flex items-center gap-1.5 transition-all ${
+          className={`px-3 py-1 rounded-full border text-[11px] font-semibold flex items-center gap-1.5 transition-all ${
             filtros.mantenimientos
-              ? 'bg-orange-50 text-orange-700 border-orange-200 ring-1 ring-orange-100'
-              : 'bg-slate-50 text-slate-400 border-slate-200'
+              ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800/40 ring-1 ring-orange-100 dark:ring-orange-900/30'
+              : 'bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
           }`}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-orange-600" />
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-600 dark:bg-orange-400" />
           Taller / Mantenimiento
         </button>
       </div>
@@ -284,17 +287,17 @@ export function CalendarioOperativoIsland({
       {vista === 'MES' && (
         <div className="w-full overflow-x-auto">
           {/* Cabecera Días de Semana */}
-          <div className="grid grid-cols-7 gap-1 text-center font-semibold text-xs text-slate-400 py-1.5 border-b border-slate-100">
+          <div className="grid grid-cols-7 gap-1 text-center font-semibold text-xs text-slate-400 dark:text-slate-500 py-1.5 border-b border-slate-100 dark:border-slate-800">
             {DIAS_SEMANA.map((d) => (
               <div key={d} className="py-0.5">{d}</div>
             ))}
           </div>
 
-          {/* Celdas del Mes */}
+          {/* Celdas del Mes con Radios Anidados Armónicos */}
           <div className="grid grid-cols-7 gap-1.5 pt-2 min-w-[550px]">
             {matrizDiasMes.map((item, idx) => {
               if (!item.dia) {
-                return <div key={`empty-${idx}`} className="h-24 rounded-lg bg-slate-50/30" />;
+                return <div key={`empty-${idx}`} className="h-24 rounded-xl bg-slate-50/40 dark:bg-slate-800/20" />;
               }
 
               const esHoy = item.fecha === hoyStr;
@@ -306,19 +309,19 @@ export function CalendarioOperativoIsland({
                 <div
                   key={item.fecha}
                   onClick={() => onSelectDay(item.fecha)}
-                  className={`h-24 p-1.5 rounded-lg border flex flex-col justify-between transition-all cursor-pointer group ${
+                  className={`h-24 p-2 rounded-xl border flex flex-col justify-between transition-all cursor-pointer group ${
                     esHoy
-                      ? 'border-brand-salmon ring-1 ring-brand-salmon/40 bg-orange-50/20'
-                      : 'border-slate-150 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                      ? 'border-brand-salmon ring-1 ring-brand-salmon/40 bg-orange-50/20 dark:bg-orange-950/20'
+                      : 'border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-900/80 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/60 dark:hover:bg-slate-800/50'
                   }`}
                 >
-                  {/* Número de Día y Dot Indicador */}
+                  {/* Número de Día y Dot Indicador con Tabular Nums */}
                   <div className="flex justify-between items-center">
                     <span
-                      className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${
+                      className={`text-xs font-bold font-mono tabular-nums w-5 h-5 flex items-center justify-center rounded-full ${
                         esHoy
                           ? 'bg-brand-salmon text-white'
-                          : 'text-slate-700 group-hover:text-slate-900'
+                          : 'text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white'
                       }`}
                     >
                       {item.dia}
@@ -333,7 +336,7 @@ export function CalendarioOperativoIsland({
                   <div className="flex flex-col gap-1 overflow-hidden my-0.5">
                     {eventosDelDia.slice(0, maxChips).map(renderEventChip)}
                     {tieneMas && (
-                      <span className="text-[9px] font-semibold text-slate-500 pl-0.5">
+                      <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 pl-0.5 font-mono tabular-nums">
                         +{eventosDelDia.length - maxChips} más
                       </span>
                     )}
@@ -361,18 +364,20 @@ export function CalendarioOperativoIsland({
                   onClick={() => onSelectDay(item.fecha)}
                   className={`border rounded-xl p-3 flex flex-col gap-2 min-h-[300px] cursor-pointer transition-all ${
                     esHoy
-                      ? 'border-brand-salmon ring-1 ring-brand-salmon/40 bg-orange-50/15'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
+                      ? 'border-brand-salmon ring-1 ring-brand-salmon/40 bg-orange-50/15 dark:bg-orange-950/20'
+                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
                   }`}
                 >
-                  <div className="flex justify-between items-center border-b border-slate-100 pb-1.5">
-                    <span className="text-xs font-bold text-slate-700">Día {item.dia}</span>
+                  <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                    <span className="text-xs font-bold font-mono tabular-nums text-slate-700 dark:text-slate-300">
+                      Día {item.dia}
+                    </span>
                     {esHoy && <span className="text-[10px] font-bold text-brand-salmon">HOY</span>}
                   </div>
 
                   <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto">
                     {eventosDelDia.length === 0 ? (
-                      <span className="text-[11px] text-slate-400 mt-2">Sin actividad</span>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">Sin actividad</span>
                     ) : (
                       eventosDelDia.map(renderEventChip)
                     )}
@@ -387,7 +392,7 @@ export function CalendarioOperativoIsland({
       {vista === 'AGENDA' && (
         <div className="flex flex-col gap-3 max-h-[460px] overflow-y-auto pt-1 pr-1">
           {eventosFiltrados.length === 0 ? (
-            <div className="text-center py-10 text-slate-400 text-xs">
+            <div className="text-center py-10 text-slate-400 dark:text-slate-500 text-xs">
               No hay actividades para los filtros seleccionados en este período.
             </div>
           ) : (
@@ -395,21 +400,21 @@ export function CalendarioOperativoIsland({
               <div
                 key={evt.id}
                 onClick={() => onSelectDay(evt.fecha)}
-                className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300 flex justify-between items-center cursor-pointer transition-all gap-3"
+                className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 flex justify-between items-center cursor-pointer transition-all gap-3"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex flex-col items-center justify-center w-12 h-12 bg-white rounded-lg border border-slate-200 text-center shrink-0">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                  <div className="flex flex-col items-center justify-center w-12 h-12 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-center shrink-0">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase font-mono">
                       {evt.fecha.split('-')[1]}
                     </span>
-                    <span className="text-base font-extrabold text-slate-900 leading-none">
+                    <span className="text-base font-extrabold text-slate-900 dark:text-slate-100 font-mono tabular-nums leading-none">
                       {evt.fecha.split('-')[2]}
                     </span>
                   </div>
 
                   <div>
-                    <h3 className="text-xs font-bold text-slate-900">{evt.titulo}</h3>
-                    <p className="text-[11px] text-slate-500">
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">{evt.titulo}</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
                       {evt.clienteNombre ? `Cliente: ${evt.clienteNombre} • ` : ''}
                       {evt.descripcion}
                     </p>
@@ -418,7 +423,7 @@ export function CalendarioOperativoIsland({
 
                 <div className="flex items-center gap-3 shrink-0">
                   {evt.monto && (
-                    <span className="font-mono text-xs font-semibold text-slate-800 tabular-nums">
+                    <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">
                       {formatearMonedaCOP(evt.monto)}
                     </span>
                   )}
