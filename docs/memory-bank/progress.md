@@ -164,6 +164,7 @@
 - [x] `ActividadDrawer.tsx` accesible (Escape, click outside) con botón prioritario '+ Crear Nuevo Alquiler para esta fecha inicial' y acciones contextuales.
 - [x] `ResumenTareasCard.tsx` híbrido (tareas del sistema + manuales rápidas) y `RecordatorioEventosFeed.tsx` clasificado por severidad.
 - [x] Deconstrucción de `src/app/dashboard/page.tsx` de HTML hardcodeado a Server Component conciso con streaming `<Suspense>` y First Load JS de 109 kB.
+- [x] Persistencia de Tareas Manuales en Supabase: Tabla `dashboard_tareas` con RLS, Server Actions `crearTareaManualAction`, `toggleTareaCompletadaAction`, `eliminarTareaManualAction` (soft-delete), actualización optimista en UI y suite de pruebas `dashboard-tareas-actions.test.ts` (419 tests en verde en 77 suites).
 - [x] Verificación completa: `tsc --noEmit` (0 errores) y `npm run build` exitoso (32/32 rutas compiladas en verde).
 
 

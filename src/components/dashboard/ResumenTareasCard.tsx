@@ -8,32 +8,39 @@ import {
   Plus,
   ExternalLink,
   ListTodo,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
-import { type TareaOperativa } from '@/core/types/dashboard';
+import { type TareaOperativa, type UrgenciaTarea } from '@/core/types/dashboard';
 
 interface ResumenTareasCardProps {
   tareas: TareaOperativa[];
   onToggleTarea: (tareaId: string) => void;
-  onCrearTareaManual: (titulo: string) => void;
+  onCrearTareaManual: (titulo: string, urgencia?: UrgenciaTarea, fechaLimite?: string) => void;
+  onEliminarTarea?: (tareaId: string) => void;
 }
 
 export function ResumenTareasCard({
   tareas,
   onToggleTarea,
-  onCrearTareaManual
+  onCrearTareaManual,
+  onEliminarTarea
 }: ResumenTareasCardProps) {
   const [nuevoTitulo, setNuevoTitulo] = useState('');
+  const [urgenteSeleccionado, setUrgenteSeleccionado] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nuevoTitulo.trim()) return;
-    onCrearTareaManual(nuevoTitulo.trim());
+    onCrearTareaManual(
+      nuevoTitulo.trim(),
+      urgenteSeleccionado ? 'URGENTE' : 'NORMAL'
+    );
     setNuevoTitulo('');
+    setUrgenteSeleccionado(false);
   };
 
   const tareasPendientes = tareas.filter((t) => !t.completada);
-  const tareasCompletadas = tareas.filter((t) => t.completada);
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-card p-5 flex flex-col gap-4">
@@ -59,11 +66,12 @@ export function ResumenTareasCard({
         ) : (
           tareas.map((tarea) => {
             const esUrgente = tarea.urgencia === 'URGENTE' && !tarea.completada;
+            const esManual = tarea.tipo === 'MANUAL';
 
             return (
               <div
                 key={tarea.id}
-                className={`p-2.5 rounded-lg border flex items-start gap-2.5 transition-all text-xs ${
+                className={`group p-2.5 rounded-lg border flex items-start gap-2.5 transition-all text-xs ${
                   tarea.completada
                     ? 'bg-slate-50/50 border-slate-100 opacity-60'
                     : esUrgente
@@ -105,9 +113,13 @@ export function ResumenTareasCard({
                       </span>
                     )}
 
-                    {tarea.tipo === 'SISTEMA' && (
-                      <span className="px-1 py-0.2 rounded text-[9px] font-semibold bg-slate-100 text-slate-500">
+                    {tarea.tipo === 'SISTEMA' ? (
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-slate-100 text-slate-500">
                         Sistema
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-indigo-50 text-indigo-600">
+                        Manual
                       </span>
                     )}
                   </div>
@@ -119,39 +131,73 @@ export function ResumenTareasCard({
                   )}
                 </div>
 
-                {/* Enlace al módulo si aplica */}
-                {tarea.enlaceModulo && !tarea.completada && (
-                  <Link
-                    href={tarea.enlaceModulo}
-                    className="text-slate-400 hover:text-brand-salmon p-1 rounded hover:bg-slate-100 transition-colors shrink-0"
-                    title="Ir al módulo"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </Link>
-                )}
+                {/* Acciones laterales */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* Enlace al módulo si aplica */}
+                  {tarea.enlaceModulo && !tarea.completada && (
+                    <Link
+                      href={tarea.enlaceModulo}
+                      className="text-slate-400 hover:text-brand-salmon p-1 rounded hover:bg-slate-100 transition-colors"
+                      title="Ir al módulo"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </Link>
+                  )}
+
+                  {/* Botón eliminar para tareas manuales */}
+                  {esManual && onEliminarTarea && (
+                    <button
+                      type="button"
+                      onClick={() => onEliminarTarea(tarea.id)}
+                      className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 p-1 rounded hover:bg-red-50 transition-all"
+                      title="Eliminar tarea manual"
+                      aria-label="Eliminar tarea"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })
         )}
       </div>
 
-      {/* Input de Tarea Manual Rápida */}
-      <form onSubmit={handleSubmit} className="flex gap-2 pt-2 border-t border-slate-100">
-        <input
-          type="text"
-          value={nuevoTitulo}
-          onChange={(e) => setNuevoTitulo(e.target.value)}
-          placeholder="Añadir tarea rápida (presiona Enter)..."
-          className="flex-1 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-brand-salmon focus:border-brand-salmon text-slate-800 placeholder:text-slate-400 bg-slate-50/50"
-        />
-        <button
-          type="submit"
-          disabled={!nuevoTitulo.trim()}
-          className="p-2 bg-brand-salmon text-white rounded-lg hover:bg-brand-salmonDark disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-          aria-label="Agregar tarea"
-        >
-          <Plus className="w-4 h-4" />
-        </button>
+      {/* Input de Tarea Manual Rápida con toggle de urgencia */}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2 pt-2 border-t border-slate-100">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={nuevoTitulo}
+            onChange={(e) => setNuevoTitulo(e.target.value)}
+            placeholder="Añadir tarea manual (presiona Enter)..."
+            className="flex-1 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-brand-salmon focus:border-brand-salmon text-slate-800 placeholder:text-slate-400 bg-slate-50/50"
+          />
+          <button
+            type="submit"
+            disabled={!nuevoTitulo.trim()}
+            className="p-2 bg-brand-salmon text-white rounded-lg hover:bg-brand-salmonDark disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0 shadow-xs"
+            aria-label="Agregar tarea"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Opciones rápidas de la tarea */}
+        <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
+          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={urgenteSeleccionado}
+              onChange={(e) => setUrgenteSeleccionado(e.target.checked)}
+              className="rounded border-slate-300 text-red-600 focus:ring-red-500 h-3 w-3"
+            />
+            <span className={urgenteSeleccionado ? 'text-red-600 font-semibold' : 'text-slate-500'}>
+              Marcar como urgente
+            </span>
+          </label>
+          <span className="text-[10px] text-slate-400">Persistida en Supabase</span>
+        </div>
       </form>
     </div>
   );
