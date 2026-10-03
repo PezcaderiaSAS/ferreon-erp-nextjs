@@ -2,22 +2,20 @@
 
 ## Estado actual
 - Plataforma: Alquileres System (Next.js 14 en Vercel + Supabase Postgres RLS).
-- Facturación Recurrente y Cuentas de Cobro Periódicas (Hito 19 - SPEC-003 Completado):
-  - Servicio de dominio (`facturacion-recurrente.service.ts`): Intersección pro-rata exacta de rangos de fechas (max/min), liquidación por ítem con tarifas diarias, IVA (19%), Retefuente (2.5%) y ReteICA (0.966%) con Integer Math en COP. Constructor de mensajes y URLs para WhatsApp.
-  - Server Actions (`facturacion-recurrente.ts`): Asignación de consecutivo correlativo (`CC-PER-XXXX` o `FAC-REC-XXXX`), persistencia en tabla `facturas`, auditoría inmutable e invalidación de caché en Redis.
-  - UI/UX (`CortesPeriodicosPanel.tsx`, `EmitirCuentaCobroModal.tsx`): Selector de cortes (quincenales, mensuales, libres), KPIs proyectados del periodo, tabla tabular con selección múltiple para lote, modal con emisión y envío directo por WhatsApp.
-  - Integración en `/facturacion`: Conmutador de pestañas en `FacturacionInteractiveIsland.tsx`.
-- Pruebas y validaciones: 79 suites de Vitest pasadas, 438/438 tests aprobados (100%), 0 errores TypeScript (`tsc --noEmit`), compilación de producción Next.js (`npm run build`) en verde (33 rutas optimizadas).
+- Calendario del Dashboard y Centro de Control (Hito 17/19 - Enriquecido y Verificado en Prod):
+  - Corrección de esquema: Eliminadas columnas inexistentes `numero_contrato`, `fecha_inicio` y `fecha_fin` del select de `alquileres`. Las fechas se extraen dinámicamente de `alquiler_detalles` (min/max por contrato).
+  - Integración multi-flujo: Añadidas consultas concurrentes a `cotizaciones`, `facturas` (cuentas de cobro) y `pagos` en `obtenerDashboardDataAction`.
+  - UI/UX en `CalendarioOperativoIsland.tsx` y `ActividadDrawer.tsx`: Píldoras de filtro dedicadas para *Cotizaciones* (púrpura) y *Cobros / Facturación* (esmeralda), con badges y chips contextuales.
+- Pruebas y validaciones: 79 suites de Vitest pasadas (439 tests aprobados al 100%), 0 errores TypeScript (`tsc --noEmit`), `npm run build` en verde (32/32 páginas generadas), desplegado en `origin main` (commit `1d991117`).
 
 ## Decisiones (y por qué)
-- **Intersección Pro-Rata con Max/Min**: Garantiza cobro exacto de días en obra para contratos que iniciaron después del inicio del corte o finalizaron antes del fin del corte.
-- **Dualidad Documental (Cuenta de Cobro vs Factura IVA)**: Permite a los clientes elegir si emiten documento de cobro bajo Art. 616-1 del E.T. o factura con desglose tributario según el régimen fiscal.
-- **Emisión en Lote & Envío WhatsApp**: Agiliza la gestión de cobro periódico para decenas de contratos en obra sin fricción manual.
+- **Extracción de Fechas por Agregación de Detalles**: Como en el modelo relacional de Supabase las fechas de vigencia pertenecen a cada línea de equipo (`alquiler_detalles`), el rango de un contrato se computa con `min(fecha_inicio)` y `max(fecha_fin)` de sus ítems.
+- **Unificación de Cotizaciones y Cobros en el Calendario**: Permite a la gerencia y comerciales supervisar en una sola pantalla los despachos de maquinaria, retornos pactados, cobros/recaudos y vencimientos de cotizaciones.
 
 ## Aprendizajes y errores a evitar
-- Al calcular diferencias de días cronológicos sobre marcas de tiempo UTC, normalizar a medianoche o usar fechas ISO 'YYYY-MM-DD' para evitar desfases de horas de zona horaria.
-- Recordar usar `BypassSandbox: true` para invocar ejecutables de Node/pnpm/git en Windows bajo este entorno.
+- Nunca asumir que `alquileres` tiene columnas `fecha_inicio` o `numero_contrato`; siempre verificar el esquema de la tabla con Supabase MCP antes de estructurar consultas Server Actions.
+- En mocks de Vitest para Supabase, usar un helper encadenable (`createChainableQuery`) para evitar errores de tipo cuando se agregan llamadas a `.limit()`, `.is()` u `.order()`.
 
 ## Próximos pasos
-- Módulo de Devoluciones y Liquidación final de contratos en obra con penalidades o reembolsos de depósitos.
+- Verificar visualmente la visualización de los eventos de cotizaciones y cobros en el dashboard de producción en Vercel.
 - Opcional: Grabar demostración interactiva con Recordly para QA visual.
