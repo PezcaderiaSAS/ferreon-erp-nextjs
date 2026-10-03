@@ -46,9 +46,11 @@ const config: Config = {
           glow: 'var(--brand-glow)',
         },
         sidebar: {
-          bg: '#FFFFFF',
-          hover: '#F8FAFC',
-          active: '#FFF4F1',
+          bg: 'var(--sidebar-bg, #FFFFFF)',
+          hover: 'var(--sidebar-hover, #F8FAFC)',
+          active: 'var(--sidebar-active, #FFF4F1)',
+          border: 'var(--sidebar-border, #E2E8F0)',
+          fg: 'var(--sidebar-fg, #0F172A)',
         }
       },
       borderRadius: {

@@ -45,3 +45,6 @@ yarn-error.log*
 # Figma / Design Captures Locales
 html.to.design/
 *.h2d
+
+.vercel
+.env*

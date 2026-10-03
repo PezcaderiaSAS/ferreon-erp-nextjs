@@ -145,5 +145,23 @@
       "textPrimary": { "$type": "color", "$value": "#0F172A" },
       "textSecondary": { "$type": "color", "$value": "#64748B" }
     }
+  },
+  "theme-dark-glassmorphism": {
+    "name": "Linear Dark Glassmorphism (Oficial / Alquileres System)",
+    "colors": {
+      "brandBase": { "$type": "color", "$value": "#06B6D4" },
+      "brandAccent": { "$type": "color", "$value": "#FF8A65" },
+      "primary50": { "$type": "color", "$value": "#0F172A" },
+      "primary100": { "$type": "color", "$value": "#1E293B" },
+      "primary500": { "$type": "color", "$value": "#06B6D4" },
+      "primary600": { "$type": "color", "$value": "#0891B2" },
+      "primary700": { "$type": "color", "$value": "#0E7490" },
+      "bgCanvas": { "$type": "color", "$value": "#0B1120" },
+      "bgSurface": { "$type": "color", "$value": "#0F172A" },
+      "bgElevated": { "$type": "color", "$value": "#1E293B" },
+      "borderDefault": { "$type": "color", "$value": "rgba(255, 255, 255, 0.12)" },
+      "textPrimary": { "$type": "color", "$value": "#F8FAFC" },
+      "textSecondary": { "$type": "color", "$value": "#94A3B8" }
+    }
   }
 }

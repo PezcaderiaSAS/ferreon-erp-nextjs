@@ -183,7 +183,7 @@ export default function UltraAdminEmpresasPage() {
   const totalUsuariosActivos = empresas.reduce((acc, e) => acc + e.usuariosActivos, 0);
 
   return (
-    <div className="min-h-screen text-slate-100 p-4 sm:p-6 lg:p-8 relative">
+    <div className="-m-3 sm:-m-4 md:-m-5 lg:-m-6 xl:-m-8 min-h-full bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8 relative selection:bg-indigo-500 selection:text-white">
       {/* Resplandor decorativo de fondo */}
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 left-10 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -191,7 +191,7 @@ export default function UltraAdminEmpresasPage() {
       <div className="max-w-7xl mx-auto space-y-6 relative z-10">
         
         {/* Encabezado Principal */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
           <div>
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-gradient-to-tr from-indigo-600 to-sky-500 rounded-xl shadow-lg shadow-indigo-500/20">
@@ -199,14 +199,14 @@ export default function UltraAdminEmpresasPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                  <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow-sm">
                     Gobernanza UltraAdmin
                   </h1>
-                  <span className="px-2.5 py-0.5 text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full">
+                  <span className="px-2.5 py-0.5 text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 rounded-full">
                     Plataforma SaaS
                   </span>
                 </div>
-                <p className="text-sm text-slate-400 mt-0.5">
+                <p className="text-sm text-slate-300 font-normal mt-1">
                   Directorio transversal de empresas (tenants) y supervisión global de usuarios activos e inactivos.
                 </p>
               </div>
@@ -217,7 +217,7 @@ export default function UltraAdminEmpresasPage() {
             <button
               onClick={cargarDirectorio}
               disabled={cargando}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-sm font-semibold text-slate-200 shadow-sm transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-sm font-semibold text-slate-200 shadow-md transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />
               Sincronizar
@@ -226,21 +226,21 @@ export default function UltraAdminEmpresasPage() {
         </div>
 
         {/* Banner de Cumplimiento Legal y Registro DMCA Safe Harbor ($6 USD) */}
-        <div className="p-4 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl shrink-0 mt-0.5">
+        <div className="p-5 bg-gradient-to-r from-amber-950/70 via-orange-950/50 to-slate-900/90 border border-amber-500/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl backdrop-blur-xl">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl shrink-0 mt-0.5 shadow-sm">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-amber-200 uppercase tracking-wider">
                   Blindaje DMCA Safe Harbor (17 U.S.C. § 512)
                 </span>
-                <span className="px-2 py-0.5 text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full">
+                <span className="px-2.5 py-0.5 text-[10px] font-black bg-amber-500/30 text-amber-200 border border-amber-400/50 rounded-full">
                   Acción Legal Requerida
                 </span>
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed max-w-3xl">
+              <p className="text-xs text-amber-100/90 font-normal leading-relaxed max-w-3xl">
                 Para amparar a Alquileres System ante demandas de hasta $150,000 USD por imágenes con copyright que suban los inquilinos, es obligatorio mantener registrado el Agente de Copyright por $6 USD en el portal oficial de la Oficina de Derechos de Autor de EE. UU. (DMCA Designated Agent Directory).
               </p>
             </div>
@@ -249,7 +249,7 @@ export default function UltraAdminEmpresasPage() {
             <Link
               href="/dmca"
               target="_blank"
-              className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors flex items-center gap-1.5"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-200 bg-slate-900/90 hover:bg-slate-800 border border-slate-700 transition-all flex items-center gap-1.5"
             >
               <span>Ver Política /dmca</span>
               <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
@@ -258,7 +258,7 @@ export default function UltraAdminEmpresasPage() {
               href="https://dmca.copyright.gov/osp/"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 transition-all flex items-center gap-1.5 shadow-md shadow-amber-500/20"
+              className="px-4 py-2 rounded-xl text-xs font-black text-slate-950 bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 transition-all flex items-center gap-1.5 shadow-lg shadow-amber-500/25"
             >
               <span>Registrar Agente ($6 USD)</span>
               <ExternalLink className="w-3.5 h-3.5" />
@@ -268,55 +268,55 @@ export default function UltraAdminEmpresasPage() {
 
         {/* Tarjetas de Métricas de Plataforma */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-xl relative overflow-hidden">
+          <div className="p-5 rounded-2xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 hover:border-slate-700 shadow-xl relative overflow-hidden transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Empresas Registradas</span>
-              <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Empresas Registradas</span>
+              <div className="p-2 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-lg">
                 <Building2 className="w-5 h-5" />
               </div>
             </div>
             <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-3xl font-black text-white">{totalEmpresas}</span>
-              <span className="text-xs text-indigo-400 font-medium">Tenants activos en plataforma</span>
+              <span className="text-3xl font-black text-white font-mono">{totalEmpresas}</span>
+              <span className="text-xs text-indigo-300 font-medium">Tenants activos en plataforma</span>
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-xl relative overflow-hidden">
+          <div className="p-5 rounded-2xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 hover:border-slate-700 shadow-xl relative overflow-hidden transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Suscripciones Activas</span>
-              <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Suscripciones Activas</span>
+              <div className="p-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
             </div>
             <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-3xl font-black text-emerald-400">{empresasActivas}</span>
-              <span className="text-xs text-slate-400">de {totalEmpresas} empresas</span>
+              <span className="text-3xl font-black text-emerald-400 font-mono">{empresasActivas}</span>
+              <span className="text-xs text-slate-300 font-medium">de {totalEmpresas} empresas</span>
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-xl relative overflow-hidden">
+          <div className="p-5 rounded-2xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 hover:border-slate-700 shadow-xl relative overflow-hidden transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Usuarios Global</span>
-              <div className="p-2 bg-sky-500/10 text-sky-400 rounded-lg">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Total Usuarios Global</span>
+              <div className="p-2 bg-sky-500/20 text-sky-300 border border-sky-500/30 rounded-lg">
                 <Users className="w-5 h-5" />
               </div>
             </div>
             <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-3xl font-black text-white">{totalUsuariosGlobal}</span>
-              <span className="text-xs text-sky-400 font-medium">Cuentas vinculadas</span>
+              <span className="text-3xl font-black text-white font-mono">{totalUsuariosGlobal}</span>
+              <span className="text-xs text-sky-300 font-medium">Cuentas vinculadas</span>
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-xl relative overflow-hidden">
+          <div className="p-5 rounded-2xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 hover:border-slate-700 shadow-xl relative overflow-hidden transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Usuarios Activos</span>
-              <div className="p-2 bg-amber-500/10 text-amber-400 rounded-lg">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Usuarios Activos</span>
+              <div className="p-2 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg">
                 <Shield className="w-5 h-5" />
               </div>
             </div>
             <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-3xl font-black text-amber-400">{totalUsuariosActivos}</span>
-              <span className="text-xs text-slate-400">
+              <span className="text-3xl font-black text-amber-400 font-mono">{totalUsuariosActivos}</span>
+              <span className="text-xs text-amber-300 font-medium">
                 {totalUsuariosGlobal > 0 ? `${Math.round((totalUsuariosActivos / totalUsuariosGlobal) * 100)}% de operatividad` : '0%'}
               </span>
             </div>
@@ -324,13 +324,13 @@ export default function UltraAdminEmpresasPage() {
         </div>
 
         {/* Pestañas de Vista UltraAdmin */}
-        <div className="flex items-center gap-2 p-1.5 bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-2xl w-fit">
+        <div className="flex items-center gap-2 p-1.5 bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl w-fit shadow-md">
           <button
             onClick={() => setVistaActiva('gobernanza')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               vistaActiva === 'gobernanza'
                 ? 'bg-gradient-to-r from-indigo-600 to-sky-500 text-white shadow-lg shadow-indigo-500/25'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
@@ -341,7 +341,7 @@ export default function UltraAdminEmpresasPage() {
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               vistaActiva === 'directorio'
                 ? 'bg-gradient-to-r from-indigo-600 to-sky-500 text-white shadow-lg shadow-indigo-500/25'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
             }`}
           >
             <Layers className="w-4 h-4" />
@@ -355,7 +355,7 @@ export default function UltraAdminEmpresasPage() {
         ) : (
           <>
             {/* Barra de Filtros y Búsqueda */}
-            <div className="p-4 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-xl flex flex-col md:flex-row gap-3 items-center justify-between">
+            <div className="p-4 rounded-2xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 shadow-xl flex flex-col md:flex-row gap-3 items-center justify-between">
           <div className="relative w-full md:w-96">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
@@ -363,12 +363,12 @@ export default function UltraAdminEmpresasPage() {
               placeholder="Buscar por Nombre, NIT o Slug..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              className="w-full bg-slate-950/80 border border-slate-700 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
             />
           </div>
 
           <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
-            <span className="text-xs text-slate-400 font-medium whitespace-nowrap">Estado Suscripción:</span>
+            <span className="text-xs text-slate-300 font-semibold whitespace-nowrap">Estado Suscripción:</span>
             {['todos', 'active', 'trialing', 'past_due', 'canceled'].map((st) => (
               <button
                 key={st}
@@ -376,7 +376,7 @@ export default function UltraAdminEmpresasPage() {
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                   filtroSuscripcion === st
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                    : 'bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    : 'bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-700'
                 }`}
               >
                 {st === 'todos' ? 'Todos' : st === 'active' ? 'Activo' : st === 'trialing' ? 'Trial' : st === 'past_due' ? 'En Mora' : 'Cancelado'}
@@ -394,8 +394,8 @@ export default function UltraAdminEmpresasPage() {
         )}
 
         {/* Tabla de Empresas (Tenants) */}
-        <div className="rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
-          <div className="p-5 border-b border-slate-800/80 flex items-center justify-between">
+        <div className="rounded-2xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 shadow-2xl overflow-hidden">
+          <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
             <div className="flex items-center gap-2">
               <Layers className="w-5 h-5 text-indigo-400" />
               <h2 className="text-base font-bold text-white">Directorio Central de Inquilinos (Tenants)</h2>

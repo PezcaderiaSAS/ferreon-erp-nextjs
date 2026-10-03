@@ -43,6 +43,7 @@ export function LinearDataTable<T extends { id: string | number }>({
   batchActions = [],
   emptyMessage = 'No se encontraron registros en el sistema.',
   isLoading = false,
+  renderMobileCard,
 }: LinearDataTableProps<T>) {
   // ── Estados Locales ────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
@@ -365,7 +366,7 @@ export function LinearDataTable<T extends { id: string | number }>({
           'bg-white dark:bg-zinc-950 shadow-none'
         )}
       >
-        <table className="w-full border-collapse text-left table-fixed">
+        <table className="hidden md:table w-full border-collapse text-left table-fixed">
           {/* Encabezado Rígido (h-7: 28px) */}
           <thead>
             <tr className="h-7 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/80 dark:bg-zinc-900/60 text-[11px] font-medium tracking-wider uppercase text-zinc-500 dark:text-white/40">
@@ -510,6 +511,112 @@ export function LinearDataTable<T extends { id: string | number }>({
             )}
           </tbody>
         </table>
+
+        {/* ── VISTA MÓVIL LÍQUIDA: Tarjetas Fluidas (< 768px / md:hidden) ── */}
+        <div 
+          data-testid="linear-mobile-cards" 
+          className="block md:hidden divide-y divide-zinc-200 dark:divide-zinc-800/80 p-2 space-y-2 bg-zinc-50/50 dark:bg-zinc-950/60"
+        >
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, idx) => (
+              <div 
+                key={`skel-card-${idx}`} 
+                className="p-3 rounded-lg border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 animate-pulse space-y-2"
+              >
+                <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-1/2" />
+                <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded w-3/4" />
+                <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded w-1/3" />
+              </div>
+            ))
+          ) : filteredData.length === 0 ? (
+            <div className="py-8 text-center text-xs text-zinc-400 dark:text-white/40">
+              <p>{emptyMessage}</p>
+              <span className="text-[11px] text-zinc-400/80 dark:text-white/30 mt-1 block">
+                Presiona el botón de creación o limpia los filtros
+              </span>
+            </div>
+          ) : (
+            filteredData.map((row, index) => {
+              const isSelected = selectedIds.has(row.id);
+              const isActive = index === activeRowIndex;
+
+              if (renderMobileCard) {
+                return (
+                  <div
+                    key={`mobile-custom-${row.id}`}
+                    onClick={() => {
+                      setActiveRowIndex(index);
+                      if (onRowClick) onRowClick(row);
+                    }}
+                    className={cn(
+                      'transition-colors duration-150 rounded-lg cursor-pointer',
+                      isSelected && 'ring-1 ring-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20',
+                      isActive && 'border-indigo-500'
+                    )}
+                  >
+                    {renderMobileCard(row, isSelected)}
+                  </div>
+                );
+              }
+
+              // Fallback automático para tablas que no definan renderMobileCard específico
+              return (
+                <div
+                  key={`mobile-fallback-${row.id}`}
+                  onClick={() => {
+                    setActiveRowIndex(index);
+                    if (onRowClick) onRowClick(row);
+                  }}
+                  className={cn(
+                    'p-3 rounded-lg border transition-all duration-150 cursor-pointer text-xs space-y-1.5',
+                    'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800/80',
+                    isSelected && 'ring-2 ring-indigo-500 bg-indigo-50/30 dark:bg-indigo-950/30 border-indigo-500',
+                    isActive && !isSelected && 'border-zinc-400 dark:border-zinc-600 shadow-sm'
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-zinc-100 dark:border-zinc-800">
+                    <div className="font-semibold text-zinc-900 dark:text-white truncate">
+                      {columns[0]?.render 
+                        ? columns[0].render(row, index) 
+                        : (columns[0]?.accessorKey ? String(row[columns[0].accessorKey] ?? '') : `#${row.id}`)}
+                    </div>
+                    {enableMultiSelect && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          toggleSelectRow(row.id);
+                        }}
+                        aria-label={`Seleccionar fila ${row.id}`}
+                        className="w-4 h-4 rounded text-indigo-600 bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 cursor-pointer"
+                      />
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 pt-1 text-[11px]">
+                    {columns.slice(1).map((col) => {
+                      const cellValue = col.accessorKey ? (row[col.accessorKey] as any) : null;
+                      return (
+                        <div key={col.id} className="flex flex-col truncate">
+                          <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500">
+                            {col.header}
+                          </span>
+                          <span className={cn(
+                            'text-zinc-700 dark:text-zinc-200 truncate',
+                            col.align === 'right' && 'font-mono text-right'
+                          )}>
+                            {col.render ? col.render(row, index) : cellValue ?? '-'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {/* ── PIE DE ESTADO COMPACTO & LEYENDA DE NAVEGACIÓN ──────────────────── */}

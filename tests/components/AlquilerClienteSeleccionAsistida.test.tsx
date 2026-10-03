@@ -71,7 +71,7 @@ describe('Componente: AlquilerForm - Selección Asistida de Cliente (Bugfix)', (
         } as any,
       ],
       isLoading: false,
-    });
+    } as any);
 
     useBodegaStore.setState({
       equipos: [
@@ -87,7 +87,7 @@ describe('Componente: AlquilerForm - Selección Asistida de Cliente (Bugfix)', (
         } as any,
       ],
       isLoading: false,
-    });
+    } as any);
 
     useAlquilerStore.setState({
       alquileres: [],

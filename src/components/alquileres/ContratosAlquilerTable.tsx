@@ -281,6 +281,105 @@ export function ContratosAlquilerTable({
     []
   );
 
+  // ── 4. Renderizado Especializado para Tarjetas en Móviles (< 768px) ──────
+  const renderMobileCard = (contrato: ContratoAlquilerFila, isSelected: boolean) => {
+    const estadosConfig: Record<
+      ContratoAlquilerFila['estado'],
+      { label: string; dotClass: string; badgeClass: string }
+    > = {
+      ACTIVO: { label: 'Activo', dotClass: 'bg-emerald-500', badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+      POR_VENCER: { label: 'Por vencer', dotClass: 'bg-amber-500', badgeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+      VENCIDO: { label: 'Vencido', dotClass: 'bg-rose-500', badgeClass: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+      LIQUIDADO: { label: 'Liquidado', dotClass: 'bg-zinc-400', badgeClass: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20' },
+      BORRADOR: { label: 'Borrador', dotClass: 'bg-zinc-500', badgeClass: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20' },
+    };
+    const estConfig = estadosConfig[contrato.estado] || {
+      label: contrato.estado,
+      dotClass: 'bg-zinc-500',
+      badgeClass: 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20',
+    };
+
+    return (
+      <div className={cn(
+        'p-3.5 rounded-xl border transition-all text-xs space-y-2.5',
+        'bg-white/95 dark:bg-zinc-900/90 backdrop-blur-sm border-zinc-200/90 dark:border-white/10 shadow-xs',
+        isSelected && 'ring-2 ring-indigo-500/80 bg-indigo-50/40 dark:bg-indigo-950/40 border-indigo-500'
+      )}>
+        {/* Cabecera de la tarjeta: Consecutivo + Badge de Estado */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 font-mono font-bold text-zinc-900 dark:text-white">
+            <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
+            <span>{contrato.consecutivoCodigo}</span>
+          </div>
+          <div className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border', estConfig.badgeClass)}>
+            <span className={cn('w-1.5 h-1.5 rounded-full', estConfig.dotClass)} />
+            <span>{estConfig.label}</span>
+          </div>
+        </div>
+
+        {/* Cliente & Obra */}
+        <div className="leading-snug">
+          <p className="font-semibold text-zinc-900 dark:text-zinc-100 line-clamp-1">{contrato.clienteNombre}</p>
+          <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">NIT: {contrato.clienteNit}</p>
+        </div>
+
+        {/* Métricas: Periodo, Ítems, Total y Saldo */}
+        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-100 dark:border-white/5 text-[11px]">
+          <div>
+            <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 block">Periodo</span>
+            <span className="font-mono text-zinc-700 dark:text-zinc-300 text-[10px]">
+              {contrato.fechaInicio} → {contrato.fechaFinEstimada}
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 block">Total Est.</span>
+            <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-xs">
+              {formatearMonedaCOP(contrato.subtotalEstimado)}
+            </span>
+          </div>
+          {contrato.saldoPendiente > 0 && (
+            <div className="col-span-2 flex items-center justify-between pt-1 border-t border-dashed border-zinc-100 dark:border-white/5 text-[11px]">
+              <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400">Saldo Pendiente:</span>
+              <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                {formatearMonedaCOP(contrato.saldoPendiente)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Botones de acción contextuales en móvil */}
+        <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-zinc-100 dark:border-white/5">
+          {onVerDetalle && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onVerDetalle(contrato);
+              }}
+              className="px-2.5 py-1 text-[11px] font-semibold text-zinc-700 dark:text-zinc-200 bg-zinc-100 dark:bg-white/10 hover:bg-zinc-200 dark:hover:bg-white/15 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <span>Ver Detalle</span>
+              <ExternalLink className="w-3 h-3" />
+            </button>
+          )}
+          {onRegistrarPago && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRegistrarPago(contrato);
+              }}
+              className="px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <DollarSign className="w-3 h-3" />
+              <span>Pagar</span>
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <LinearDataTable<ContratoAlquilerFila>
       data={contratos}
@@ -299,6 +398,7 @@ export function ContratosAlquilerTable({
       enableMultiSelect={true}
       emptyMessage="No se encontraron contratos de alquiler en esta vista."
       isLoading={isLoading}
+      renderMobileCard={renderMobileCard}
     />
   );
 }

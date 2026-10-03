@@ -90,14 +90,14 @@ function SidebarNavLinks({
             href={link.href}
             title={isSidebarCollapsed ? link.label : undefined}
             onClick={() => setMobileMenuOpen(false)}
-            className={`rounded-xl text-xs sm:text-[13px] font-semibold sm:font-bold flex items-center transition-all duration-200 active:scale-95 group relative ${
+            className={`rounded-xl text-xs sm:text-[13px] font-semibold sm:font-bold flex items-center transition-all duration-150 active:scale-95 group relative ${
               isSidebarCollapsed 
                 ? 'justify-center p-2' 
                 : 'gap-2.5 px-2.5 py-1.5 sm:py-2'
             } ${
               isActive 
-                ? 'bg-brand-salmonLight text-brand-salmonDark shadow-2xs' 
-                : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
+                ? 'bg-brand-salmonLight text-brand-salmonDark shadow-2xs dark:bg-brand-salmon/20 dark:text-brand-salmon' 
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Icon className={`w-4 h-4 sm:w-[18px] sm:h-[18px] shrink-0 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
@@ -173,7 +173,7 @@ export function Sidebar() {
       {/* Sidebar Navigation */}
       <nav 
         id="tour-sidebar"
-        className={`bg-white text-slate-900 font-sans h-[100dvh] fixed left-0 top-0 border-r border-slate-200 shadow-sm flex flex-col gap-1 sm:gap-1.5 z-50 transition-all duration-300 ease-in-out ${
+        className={`bg-white/95 dark:bg-slate-950/80 backdrop-blur-md text-slate-900 dark:text-slate-100 font-sans h-[100dvh] fixed left-0 top-0 border-r border-slate-200/80 dark:border-white/10 shadow-sm flex flex-col gap-1 sm:gap-1.5 z-50 transition-all duration-300 ease-in-out ${
           isMobileMenuOpen ? 'translate-x-0 w-64 p-3' : '-translate-x-full'
         } md:translate-x-0 ${isSidebarCollapsed ? 'md:w-16 md:p-2' : 'md:w-56 lg:w-60 xl:w-64 md:p-2.5 lg:p-3'}`}
       >
@@ -186,7 +186,7 @@ export function Sidebar() {
               title="Expandir menú lateral"
               aria-label="Expandir menú lateral"
             >
-              {mounted && config.razonSocial ? config.razonSocial.charAt(0).toUpperCase() : 'F'}
+              {mounted && config.razonSocial ? config.razonSocial.charAt(0).toUpperCase() : 'A'}
             </button>
           ) : mounted && config.logoBase64 ? (
             <div className="relative h-10 w-[140px]">
@@ -198,16 +198,16 @@ export function Sidebar() {
               />
             </div>
           ) : (
-            <div className="text-2xl font-bold text-slate-900 leading-none truncate">
+            <div className="text-2xl font-bold text-slate-900 dark:text-white leading-none truncate">
               {mounted && config.razonSocial ? config.razonSocial.split(' ')[0] : 'Alquileres'}
-              <div className="text-xs text-slate-500 font-normal tracking-wide mt-1 truncate">
-                {mounted && config.razonSocial ? config.razonSocial.split(' ').slice(1).join(' ') : 'ERP System'}
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-normal tracking-wide mt-1 truncate">
+                {mounted && config.razonSocial ? config.razonSocial.split(' ').slice(1).join(' ') : 'System'}
               </div>
             </div>
           )}
           {/* Botón Cerrar visible sólo en móviles */}
           <button 
-            className="md:hidden text-slate-500 hover:text-slate-900 focus:outline-none cursor-pointer"
+            className="md:hidden text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white focus:outline-none cursor-pointer"
             onClick={() => setMobileMenuOpen(false)}
           >
             <X className="w-6 h-6" />
@@ -220,7 +220,7 @@ export function Sidebar() {
             {SIDEBAR_LINKS.map((link) => {
               const Icon = link.icon;
               return (
-                <div key={link.href} className="rounded-lg text-base font-semibold flex items-center gap-4 px-4 py-3 text-slate-400">
+                <div key={link.href} className="rounded-lg text-base font-semibold flex items-center gap-4 px-4 py-3 text-slate-400 dark:text-slate-500">
                   <Icon className="w-5 h-5 stroke-2" />
                   {!isSidebarCollapsed && link.label}
                 </div>
@@ -243,15 +243,15 @@ export function Sidebar() {
         </Suspense>
 
         {/* Badge de Suscripción / Tenant Activo al Pie */}
-        <div className="pt-2 border-t border-slate-100 mt-auto">
+        <div className="pt-2 border-t border-slate-100 dark:border-white/10 mt-auto">
           {isSidebarCollapsed ? (
             <Link 
               href="/suscripcion"
               title={tenant?.subscriptionStatus === 'active' ? 'Suscripción Activa (Pro)' : 'Modo Prueba Activo'}
-              className="w-10 h-10 mx-auto rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 flex items-center justify-center transition-colors group relative"
+              className="w-10 h-10 mx-auto rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200/80 dark:border-white/10 flex items-center justify-center transition-colors group relative"
             >
               <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-              <span className="absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-[11px] font-bold rounded shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 hidden md:block">
+              <span className="absolute left-full ml-3 px-2 py-1 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-bold rounded shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 hidden md:block">
                 Suscripción
               </span>
             </Link>
@@ -259,17 +259,17 @@ export function Sidebar() {
             <Link 
               href="/suscripcion"
               onClick={() => setMobileMenuOpen(false)}
-              className="block p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-colors"
+              className="block p-2 rounded-xl bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200/80 dark:border-white/10 transition-colors"
             >
-              <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-0.5">
-                <span className="truncate max-w-[120px]">{mounted && tenant?.nombreEmpresa ? tenant.nombreEmpresa : 'Alquileres System SaaS'}</span>
+              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-200 mb-0.5">
+                <span className="truncate max-w-[120px]">{mounted && tenant?.nombreEmpresa ? tenant.nombreEmpresa : 'Alquileres System'}</span>
                 {mounted && tenant?.subscriptionStatus === 'active' ? (
-                  <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[9px]">Pro</span>
+                  <span className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 rounded text-[9px] border border-emerald-300/40">Pro</span>
                 ) : (
-                  <span className="px-1.5 py-0.5 bg-sky-100 text-sky-700 rounded text-[9px]">Trial</span>
+                  <span className="px-1.5 py-0.5 bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 rounded text-[9px] border border-sky-300/40">Trial</span>
                 )}
               </div>
-              <p className="text-[10px] text-slate-500 flex items-center gap-1">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
                 {tenant?.subscriptionStatus === 'active' 
                   ? 'Suscripción Activa' 
@@ -280,18 +280,18 @@ export function Sidebar() {
         </div>
 
         {/* User Info / Logout Section */}
-        <div className="pt-1.5 pb-1 border-t border-slate-100">
+        <div className="pt-1.5 pb-1 border-t border-slate-100 dark:border-white/10">
           {isSidebarCollapsed ? (
             <div className="flex flex-col items-center gap-2">
               <div 
-                className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-bold text-xs shrink-0"
+                className="w-9 h-9 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-slate-200 font-bold text-xs shrink-0"
                 title={user?.email || 'Usuario'}
               >
                 {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
               </div>
               <button
                 onClick={handleLogout}
-                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
                 title="Cerrar sesión"
                 aria-label="Cerrar sesión"
               >
@@ -299,23 +299,23 @@ export function Sidebar() {
               </button>
             </div>
           ) : (
-            <div className="flex items-center justify-between p-1.5 rounded-xl hover:bg-slate-50 transition-colors">
+            <div className="flex items-center justify-between p-1.5 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
               <div className="flex items-center gap-2.5 overflow-hidden">
-                <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs shrink-0">
+                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-xs shrink-0">
                   {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <div className="flex flex-col overflow-hidden">
-                  <span className="text-xs font-semibold text-slate-800 truncate">
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                     {user?.user_metadata?.nombre || user?.email?.split('@')[0] || 'Usuario'}
                   </span>
-                  <span className="text-[10px] text-slate-500 truncate capitalize">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate capitalize">
                     {user?.user_metadata?.rol || 'Administrador'}
                   </span>
                 </div>
               </div>
               <button
                 onClick={handleLogout}
-                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0 cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors shrink-0 cursor-pointer"
                 title="Cerrar sesión"
               >
                 <LogOut className="w-4 h-4" />
@@ -331,7 +331,7 @@ export function Sidebar() {
                 Tema UI
               </label>
               <select
-                className="w-full text-[11px] p-1 rounded bg-slate-50 border border-slate-200 text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-brand-salmon cursor-pointer"
+                className="w-full text-[11px] p-1 rounded bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-1 focus:ring-brand-salmon cursor-pointer"
                 value={config.themeId || config.themeApp || 'salmon'}
                 onChange={(e) => actualizarConfig({ themeId: e.target.value as any, themeApp: e.target.value as any })}
               >
@@ -347,19 +347,19 @@ export function Sidebar() {
         </div>
 
         {/* Botón Inferior para Contraer / Expandir Sidebar en Escritorio */}
-        <div className="hidden md:flex items-center justify-center pt-2 border-t border-slate-100">
+        <div className="hidden md:flex items-center justify-center pt-2 border-t border-slate-100 dark:border-white/10">
           <button
             type="button"
             onClick={toggleSidebarCollapse}
-            className="w-full flex items-center justify-center gap-2 py-2 px-1 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors text-xs font-bold cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2 px-1 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors text-xs font-bold cursor-pointer"
             title={isSidebarCollapsed ? "Expandir menú lateral (256px)" : "Contraer a modo compacto de iconos (64px)"}
             aria-label={isSidebarCollapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
           >
             {isSidebarCollapsed ? (
-              <ChevronRight className="w-4 h-4 text-slate-600" />
+              <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-400" />
             ) : (
               <>
-                <ChevronLeft className="w-4 h-4 text-slate-500" />
+                <ChevronLeft className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                 <span>Contraer Menú</span>
               </>
             )}

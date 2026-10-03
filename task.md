@@ -167,3 +167,20 @@
 ## Tarea 30: Automatización CI/CD de Paridad de Tokens
 - [ ] Configurar GitHub Action que valide que cualquier cambio en `figma_design_tokens.json` o en tokens CSS mantenga paridad matemática estricta con el Design System de Figma.
 
+---
+
+# Speckit Tasks: Centro de Control Operativo y Calendario Multi-Flujo (SPEC-2026-DASHBOARD-CALENDAR-001)
+
+## Tarea 31: Modernización de Dashboard y Calendario Operativo [✅ COMPLETADA]
+- [x] Tipado estricto en `src/core/types/dashboard.ts` y re-export en `src/types/dashboard.ts` (DashboardKPIs, EventoCalendario, TareaOperativa, AlertaSistema).
+- [x] Servicio de dominio puro `DashboardTransaccionalService` en `src/core/services/dashboard-transaccional.service.ts` con cálculo O(N) de utilización de flota, contratos activos, devoluciones hoy y cartera COP.
+- [x] Suite de pruebas unitarias dedicada en `tests/unit/dashboard-transaccional.service.test.ts` con 7/7 tests pasando al 100%.
+- [x] Server Actions `obtenerDashboardDataAction` y `crearTareaManualAction` en `src/app/actions/dashboard.ts` con consultas concurrentes `Promise.all` en Supabase.
+- [x] Componente `DashboardSkeleton.tsx` con efecto shimmer y layout asimétrico 65/35 para CLS = 0.
+- [x] Componente `DashboardKpiGrid.tsx` con los 4 KPIs en vivo (Utilización de flota, Contratos activos, Devoluciones críticas y Cartera COP).
+- [x] Componente `CalendarioOperativoIsland.tsx` con vistas Mes, Semana y Agenda, filtrado por categorías de color semántico y navegación libre a 60 fps.
+- [x] Componente `ActividadDrawer.tsx` con slide-over accesible (Escape, focus trap) y acceso prioritario a '+ Nuevo Alquiler con esta fecha inicial'.
+- [x] Componente `ResumenTareasCard.tsx` con tareas automáticas del sistema + tareas manuales interactivas y `RecordatorioEventosFeed.tsx` con semáforos de urgencia.
+- [x] Deconstrucción de `src/app/dashboard/page.tsx` a Server Component conciso con streaming `<Suspense>` y First Load JS de 109 kB.
+- [x] Verificación de compilación: `tsc --noEmit` (0 errores) y `npm run build` exitoso (32/32 rutas).
+

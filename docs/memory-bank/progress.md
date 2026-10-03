@@ -15,6 +15,7 @@
 | **UI/UX Linear & CSS Moderno** | 🟢 Certificado | 🟢 Canónico (Hito 9) | `DESIGN.md` y `systemPatterns.md` actualizados. `<LinearDataTable<T>>` y `<ContratosAlquilerTable />` implementados. |
 | **Blindaje Legal & AppSec** | 🟢 Certificado | 🟢 Canónico (Hito 10) | Términos blindados (As Is, Liability Cap, Human-in-the-Loop), RLS + Cookies, Modal bloqueante, anti-copyleft (`exceljs`), env Zod fail-fast y `safeServerAction`. |
 | **Landing Page SaaS** | 🟢 Operativo | 🟢 Excelente | 9 secciones dinámicas, multi-moneda (COP/USD) y responsive design. |
+| **Dashboard & Calendario** | 🟢 Operativo | 🟢 Modernizado (Hito 17) | Deconstruido a RSC + Suspense + Client Island. 4 KPIs en vivo, layout 65/35, Calendario interactivo (Mes/Semana/Agenda), Drawer con '+ Nuevo Alquiler', Tareas y Feed de alertas. |
 
 
 ---
@@ -150,5 +151,19 @@
 - [x] Vinculación nativa certificada de **6,389 capas y nodos vectoriales** a las Variables de diseño de Alquileres System.
 - [x] Purgado de frames duplicados y huérfanos.
 - [x] Reportes generados: `figma_live_audit_report.md` y `figma_verification_complete_report.md`.
+
+### Hito 17: Centro de Control Operativo y Calendario Multi-Flujo (`SPEC-2026-DASHBOARD-CALENDAR-001`)
+- [x] Especificación formal `OptimizedPrompt` JSON y resolución completa del árbol de diseño vía `/grill-me`.
+- [x] Tipado estricto en `src/core/types/dashboard.ts` y re-export en `src/types/dashboard.ts` (`DashboardKPIs`, `EventoCalendario`, `TareaOperativa`, `AlertaSistema`).
+- [x] Dominio transaccional puro en `src/core/services/dashboard-transaccional.service.ts` con cálculo O(N) de utilización de flota, contratos activos, devoluciones hoy y cartera en mora.
+- [x] Suite de pruebas unitarias Vitest en `tests/unit/dashboard-transaccional.service.test.ts` pasando al 100% (7/7 tests).
+- [x] Server Actions `obtenerDashboardDataAction` y `crearTareaManualAction` en `src/app/actions/dashboard.ts` con consultas concurrentes `Promise.all` en Supabase.
+- [x] `DashboardSkeleton.tsx` shimmer para CLS = 0 con diseño asimétrico 65/35.
+- [x] `DashboardKpiGrid.tsx` con los 4 KPIs en vivo (Utilización de Flota, Contratos Activos, Devoluciones Críticas, Cartera COP).
+- [x] `CalendarioOperativoIsland.tsx` nativo con vistas Mes, Semana y Agenda, filtrado dinámico por píldoras semánticas y navegación libre a 60 fps.
+- [x] `ActividadDrawer.tsx` accesible (Escape, click outside) con botón prioritario '+ Crear Nuevo Alquiler para esta fecha inicial' y acciones contextuales.
+- [x] `ResumenTareasCard.tsx` híbrido (tareas del sistema + manuales rápidas) y `RecordatorioEventosFeed.tsx` clasificado por severidad.
+- [x] Deconstrucción de `src/app/dashboard/page.tsx` de HTML hardcodeado a Server Component conciso con streaming `<Suspense>` y First Load JS de 109 kB.
+- [x] Verificación completa: `tsc --noEmit` (0 errores) y `npm run build` exitoso (32/32 rutas compiladas en verde).
 
 
