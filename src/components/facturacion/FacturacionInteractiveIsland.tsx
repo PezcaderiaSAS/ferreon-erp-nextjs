@@ -60,6 +60,11 @@ const VisorDocumentoPDFModal = dynamic(
   { ssr: false, loading: () => <ModalSkeleton message="Preparando visor de factura PDF..." /> }
 );
 
+const CortesPeriodicosPanel = dynamic(
+  () => import('./CortesPeriodicosPanel').then((m) => m.CortesPeriodicosPanel),
+  { ssr: false, loading: () => <ModalSkeleton message="Cargando panel de cortes periódicos..." /> }
+);
+
 export interface FacturacionInteractiveIslandProps {
   initialAlquileres?: any[];
 }
@@ -76,6 +81,7 @@ export function FacturacionInteractiveIsland({
   const { showSuccessToast, showErrorToast, showInfoToast, showWarningToast } = useToastStore();
   const { formatearMoneda } = useCurrencyFormatter();
 
+  const [moduloTab, setModuloTab] = useState<'GLOBAL' | 'CORTES'>('GLOBAL');
   const [isPagoModalOpen, setIsPagoModalOpen] = useState(false);
   const [isReciboModalOpen, setIsReciboModalOpen] = useState(false);
   const [reciboGenerado, setReciboGenerado] = useState<any>(null);
@@ -214,20 +220,50 @@ export function FacturacionInteractiveIsland({
         </div>
       </div>
 
-      {/* KPI Cards (Glassmorphism & Deep Shadows) */}
-      <div id="tour-kpis-facturacion" className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Ingresos */}
-        <div className="bg-slate-900/5 backdrop-blur-md p-6 rounded-xl shadow-md border border-slate-200/60 flex flex-col gap-2 transition-all hover:border-emerald-200 hover:shadow-xl">
-          <div className="flex items-center justify-between text-slate-600">
-            <span className="text-sm font-medium">Ingresos Recibidos</span>
-            <TrendingUp className="text-brand-salmon text-[20px] w-5 h-5" />
-          </div>
-          <span className="text-4xl font-semibold text-slate-900">{formatearMoneda(ingresosMes)}</span>
-          <div className="flex items-center gap-1 text-emerald-600 text-sm font-medium">
-            <ArrowUp className="text-sm w-5 h-5" />
-            <span>Datos reales del sistema</span>
-          </div>
-        </div>
+      {/* Selector de Pestaña Principal del Módulo */}
+      <div className="flex items-center gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-3">
+        <button
+          type="button"
+          onClick={() => setModuloTab('GLOBAL')}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            moduloTab === 'GLOBAL'
+              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          💳 Facturación Global & Cartera CXC
+        </button>
+        <button
+          type="button"
+          onClick={() => setModuloTab('CORTES')}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            moduloTab === 'CORTES'
+              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          ✂️ Cortes & Cuentas de Cobro Periódicas (Pro-Rata)
+        </button>
+      </div>
+
+      {moduloTab === 'CORTES' ? (
+        <CortesPeriodicosPanel contratos={alquileres} />
+      ) : (
+        <>
+          {/* KPI Cards (Glassmorphism & Deep Shadows) */}
+          <div id="tour-kpis-facturacion" className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Ingresos */}
+            <div className="bg-slate-900/5 backdrop-blur-md p-6 rounded-xl shadow-md border border-slate-200/60 flex flex-col gap-2 transition-all hover:border-emerald-200 hover:shadow-xl">
+              <div className="flex items-center justify-between text-slate-600">
+                <span className="text-sm font-medium">Ingresos Recibidos</span>
+                <TrendingUp className="text-brand-salmon text-[20px] w-5 h-5" />
+              </div>
+              <span className="text-4xl font-semibold text-slate-900">{formatearMoneda(ingresosMes)}</span>
+              <div className="flex items-center gap-1 text-emerald-600 text-sm font-medium">
+                <ArrowUp className="text-sm w-5 h-5" />
+                <span>Datos reales del sistema</span>
+              </div>
+            </div>
         
         {/* Por Cobrar */}
         <div className="bg-slate-900/5 backdrop-blur-md p-6 rounded-xl shadow-md border border-slate-200/60 flex flex-col gap-2 transition-all hover:border-slate-300 hover:shadow-xl">
@@ -419,6 +455,8 @@ export function FacturacionInteractiveIsland({
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* Modal de Pago Mixto y Abonos */}
       {isPagoModalOpen && facturaSeleccionada && (

@@ -179,7 +179,17 @@
 - [x] Isla interactiva `CotizacionesInteractiveIsland.tsx` con 4 KPIs de pipeline comercial, filtros de estado, tabla tabular en desktop y tarjetas móviles líquidas con conversión poka-yoke a contratos.
 - [x] Server Component `src/app/cotizaciones/page.tsx` con carga paralela de cotizaciones, clientes y equipos (`First Load JS` 95.5 kB).
 - [x] Verificación completa: `tsc --noEmit` (0 errores) y `npm run build` exitoso (33 rutas compiladas en verde).
-
-
-
-
+### Hito 19: Facturación Recurrente y Cuentas de Cobro Periódicas (`SPEC-003`)
+- [x] Especificación formal EARS en `specs/003-facturacion-recurrente/spec.md`, plan técnico (`plan.md`) y desglose de tareas (`tasks.md`).
+- [x] Servicio de dominio puro `src/core/services/facturacion-recurrente.service.ts`:
+  - `calcularDiasFacturablesEnPeriodo`: Intersección estricta de rangos temporales $(\max(inicioCorte, inicioContrato)$ y $\min(finCorte, finContrato))$.
+  - `calcularCortePeriodicoAlquiler`: Liquidación pro-rata por ítem con tarifas diarias, IVA (19%), Retefuente (2.5%) y ReteICA (0.966%) con Integer Math en COP.
+  - `previsualizarLoteCortesPeriodicos`: Consolidación de KPIs del lote proyectado.
+  - `construirMensajeWhatsAppCuentaCobro`: Generador de mensajes con URL codificada `https://wa.me/...`.
+- [x] Suite de pruebas TDD en `tests/unit/facturacion-recurrente.service.test.ts` con 10/10 pruebas unitarias aprobadas al 100%. Total global: 438 tests en 79 suites.
+- [x] Server Action `emitirCuentaCobroPeriodicaAction` y `obtenerHistorialCuentasCobroAction` en `src/app/actions/facturacion-recurrente.ts`:
+  - Asignación de consecutivo correlativo (`CC-PER-XXXX` o `FAC-REC-XXXX`), persistencia en tabla `facturas`, registro de auditoría inmutable en `AuditLogger` e invalidación de caché Redis.
+- [x] Modal de emisión `EmitirCuentaCobroModal.tsx` con opciones de documento (*Cuenta de Cobro* vs *Factura con IVA*), desglose de equipos, días en obra y envío inmediato por WhatsApp.
+- [x] Panel de cortes periódicos `CortesPeriodicosPanel.tsx` con presets rápidos (1ra Quincena, 2da Quincena, Mes, Mes Anterior, Rango Libre), 3 KPIs de corte y tabla tabular con checkboxes para emisión en lote.
+- [x] Integración en `FacturacionInteractiveIsland.tsx` con conmutador de pestañas (`Facturación Global & Cartera CXC` vs `Cortes & Cuentas de Cobro Periódicas`).
+- [x] Verificación completa: `tsc --noEmit` (0 errores) y `npm run build` en verde.
