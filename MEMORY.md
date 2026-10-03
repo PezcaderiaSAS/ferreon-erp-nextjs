@@ -2,23 +2,23 @@
 
 ## Estado actual
 - Plataforma: Alquileres System (Next.js 14 en Vercel + Supabase Postgres RLS).
-- Módulo Dashboard (Hito 17 - Opción B Completada):
-  - KPIs en vivo (`DashboardKpiGrid`): Micro-gráficos Sparkline SVG dinámicos integrados, tipografía monoespaciada tabular (`tabular-nums`) para estabilidad de montos COP y contadores, y jerarquía armónica de radios anidados ($R_{outer} = 16\text{px}$, $R_{inner} = 10\text{px}$).
-  - Calendario Operativo (`CalendarioOperativoIsland`): Fechas y montos de agenda tabulares, filtros con dot badges semánticos reactivos y radios coherentes.
-  - Tareas y Alertas (`ResumenTareasCard`, `RecordatorioEventosFeed`, `ActividadDrawer`): Persistencia completa en Supabase (`dashboard_tareas`), acciones atómicas, badges semánticos y soporte Dark Mode por capas tonales.
-- Pruebas y validaciones: 77 suites de Vitest pasadas, 419/419 tests aprobados (100%), 0 errores TypeScript (`tsc --noEmit`), compilación de producción Next.js 32/32 rutas en verde.
+- Módulo Cotizaciones Rápidas (Hito 18 - SPEC-002 Completado):
+  - Ruta `/cotizaciones`: Convertida a RSC de primer nivel en el menú lateral con streaming `<Suspense>` y skeleton shimmer (First Load JS: 95.5 kB).
+  - Dominio y TDD (`cotizacion-rapida.service.ts`): Integer Math en COP, IVA 19%, retenciones, cálculo de KPIs del pipeline y constructor de enlace WhatsApp (`wa.me`). Suite de 9 pruebas unitarias aprobadas al 100%.
+  - Modal Express 30s (`CotizacionRapidaModal.tsx`): Creación de prospectos on-the-fly, verificación de stock en vivo, recálculo reactivo y envío directo por WhatsApp.
+  - Isla Interactiva (`CotizacionesInteractiveIsland.tsx`): KPIs de conversión, filtros por estado, tabla tabular en desktop, tarjetas líquidas en móvil y conversión poka-yoke a contratos en 1-clic.
+- Pruebas y validaciones: 78 suites de Vitest pasadas, 428/428 tests aprobados (100%), 0 errores TypeScript (`tsc --noEmit`), compilación de producción Next.js 33/33 rutas en verde.
 
 ## Decisiones (y por qué)
-- **Sparklines SVG puros**: Implementados en ~25 líneas sin librerías pesadas de gráficos, garantizando 0 kB de sobrecarga en el bundle cliente y rendimiento de 60 fps.
-- **Tipografía `tabular-nums`**: Evita saltos y temblores de alineación en números al cambiar de valor o mostrar tablas de cartera.
-- **Jerarquía de Radios Anidados ($R_{outer} = R_{inner} + P$)**: Garantiza alineación visual geométrica perfecta entre contenedores y elementos hijos.
-- **Persistencia en `dashboard_tareas`**: Mantiene las tareas de usuario entre recargas con RLS multitenant y soft-delete.
+- **Ruta `/cotizaciones` como RSC Autónomo**: Independiza el flujo comercial del asesor para que pueda emitir ofertas en 30 segundos sin depender del formulario denso de contratos.
+- **Creación de Prospecto On-The-Fly**: Permite cotizar a nuevos clientes con solo Nombre y Teléfono sin obligar a registrar previamente el tercero.
+- **Integración WhatsApp sin librerías externas**: Generación de URLs canónicas `https://wa.me/{tel}?text={msg}` que abren directamente la app nativa o web de WhatsApp en cualquier dispositivo.
 
 ## Aprendizajes y errores a evitar
-- No usar librerías de charting completas cuando micro-gráficos SVG resuelven con exactitud la señal visual de tendencia.
-- Evitar aplicar un único `border-radius` genérico a contenedores y elementos hijos; siempre restar el padding para evitar solapamientos o esquinas desfasadas.
-- En Server Actions de actualización/eliminación, filtrar tareas sintéticas de sistema antes de consultar tablas relacionales.
+- Escapar siempre las comillas dobles en JSX (`&quot;`) para evitar fallos de compilación con ESLint en Next.js.
+- En `ModalProps`, la propiedad de tamaño es `maxWidth` y no `size`.
+- Recordar usar `BypassSandbox: true` para invocar ejecutables de Node/pnpm/git en Windows bajo este entorno.
 
 ## Próximos pasos
-- Siguiente módulo funcional: Diseñar e implementar el flujo de Cotizaciones avanzadas o Cuentas de cobro recurrentes.
-- Opcional: Registrar recorrido en video interactivo con Recordly para QA y documentación.
+- Módulo de Facturación Recurrente y Cuentas de Cobro periódicas.
+- Opcional: Grabar demostración interactiva con Recordly para QA visual.

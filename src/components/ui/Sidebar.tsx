@@ -24,7 +24,8 @@ interface SidebarLinkItem {
 
 const SIDEBAR_LINKS: SidebarLinkItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/alquileres', icon: CalendarDays, label: 'Alquileres & Cotizaciones', modulo: 'ALQUILERES' },
+  { href: '/alquileres', icon: CalendarDays, label: 'Alquileres', modulo: 'ALQUILERES' },
+  { href: '/cotizaciones', icon: FileSpreadsheet, label: 'Cotizaciones Rápidas', modulo: 'ALQUILERES' },
   { href: '/bodega', icon: Package, label: 'Bodega', modulo: 'BODEGA' },
   { href: '/compras', icon: ShoppingBag, label: 'Compras', modulo: 'COMPRAS' },
   { href: '/subcontrataciones', icon: Handshake, label: 'Subcontratación', modulo: 'SUBCONTRATACIONES' },

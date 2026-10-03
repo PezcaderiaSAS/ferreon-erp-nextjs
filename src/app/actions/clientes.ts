@@ -194,3 +194,34 @@ export async function editarClienteAction(input: EditarClienteInput) {
   return { success: true, data };
 }
 
+/**
+ * Server Action: Obtener listado de clientes de la empresa
+ */
+export async function obtenerClientesAction() {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, data: [], error: 'No autorizado. Sesión no válida.' };
+    }
+    const empresaId = await resolveEmpresaId(user.id);
+
+    const { data, error } = await supabase
+      .from('clientes')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .order('nombre', { ascending: true });
+
+    if (error) {
+      console.error('Error en obtenerClientesAction:', error);
+      return { success: false, data: [], error: error.message };
+    }
+
+    return { success: true, data: data || [] };
+  } catch (err: any) {
+    console.error('Excepción en obtenerClientesAction:', err);
+    return { success: false, data: [], error: err.message || 'Error al obtener clientes' };
+  }
+}
+
+

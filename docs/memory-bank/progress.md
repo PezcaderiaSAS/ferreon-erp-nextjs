@@ -168,5 +168,18 @@
 - [x] Opción B: Elevación UI Premium del Dashboard — Micro-gráficos Sparkline SVG dinámicos en KPIs, tipografía tabular (`font-mono tabular-nums`) para estabilidad de dígitos en montos de cartera y calendarios, jerarquía armónica de radios anidados ($R_{outer} = 16\text{px}$, $R_{inner} = 10\text{px}$), micro-interacciones hover sutiles y elevación Dark Mode por capas tonales.
 - [x] Verificación completa: `tsc --noEmit` (0 errores) y `npm run build` exitoso (32/32 rutas compiladas en verde).
 
+### Hito 18: Módulo de Cotizaciones Rápidas, Pipeline Comercial y WhatsApp (`SPEC-002`)
+- [x] Especificación formal EARS en `specs/002-cotizaciones-rapidas/spec.md`, plan técnico (`plan.md`) y desglose de tareas (`tasks.md`).
+- [x] Servicio de dominio puro `src/core/services/cotizacion-rapida.service.ts` con Integer Math para COP, IVA 19%, retenciones, cálculo de KPIs comerciales y constructor de enlace WhatsApp (`wa.me`).
+- [x] Suite de pruebas TDD en `tests/unit/cotizaciones-rapidas.service.test.ts` (9 tests pasando al 100%). Total de pruebas elevadas a 428 en 78 suites.
+- [x] Enlace de primer nivel `/cotizaciones` en `src/components/ui/Sidebar.tsx` con icono `FileSpreadsheet`.
+- [x] Server Action `obtenerClientesAction` en `src/app/actions/clientes.ts` para carga de clientes en RSC.
+- [x] Componente esqueleto `CotizacionesSkeleton.tsx` para streaming con cero CLS.
+- [x] Modal express de 30 segundos `CotizacionRapidaModal.tsx` con soporte para creación de prospectos on-the-fly, verificación de stock en vivo, recálculo reactivo y envío directo por WhatsApp.
+- [x] Isla interactiva `CotizacionesInteractiveIsland.tsx` con 4 KPIs de pipeline comercial, filtros de estado, tabla tabular en desktop y tarjetas móviles líquidas con conversión poka-yoke a contratos.
+- [x] Server Component `src/app/cotizaciones/page.tsx` con carga paralela de cotizaciones, clientes y equipos (`First Load JS` 95.5 kB).
+- [x] Verificación completa: `tsc --noEmit` (0 errores) y `npm run build` exitoso (33 rutas compiladas en verde).
+
+
 
 
