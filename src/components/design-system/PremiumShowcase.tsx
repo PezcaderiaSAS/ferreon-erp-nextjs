@@ -17,6 +17,10 @@ import {
   ChevronDown,
   ExternalLink,
   Laptop,
+  Hash,
+  ShieldCheck,
+  User,
+  Sliders,
 } from 'lucide-react';
 import {
   PremiumTable,
@@ -35,6 +39,11 @@ import {
   PremiumWeeklyCalendarSystem,
   PremiumLinearSystem,
   PremiumResponsiveMobileTable,
+  PremiumBorderRadiusSystem,
+  PremiumDarkModeDepthSystem,
+  PremiumAvatarFallbackSystem,
+  PremiumTabularNumbersSystem,
+  PremiumStateGuardIdempotencySystem,
 } from '@/components/ui/premium';
 
 type PremiumCategory =
@@ -42,7 +51,8 @@ type PremiumCategory =
   | 'management'
   | 'data-tables'
   | 'actions-feedback'
-  | 'nav-interactions';
+  | 'nav-interactions'
+  | 'design-engineering';
 
 interface ComponentItem {
   id: string;
@@ -55,10 +65,57 @@ interface ComponentItem {
 
 export function PremiumShowcase() {
   const [activeCategory, setActiveCategory] = useState<PremiumCategory>('all');
-  const [activeTab, setActiveTab] = useState<string>('advanced-kanban');
+  const [activeTab, setActiveTab] = useState<string>('radius-system');
 
   const componentsList: ComponentItem[] = [
-    // 1. GESTIÓN Y PROYECTOS
+    // 1. INGENIERÍA DE DISEÑO & PRINCIPIOS DE SISTEMA (5 PATRONES)
+    {
+      id: 'radius-system',
+      name: 'Border Radius System (R_outer = R_inner + P)',
+      category: 'design-engineering',
+      description:
+        'Regla matemática de radios anidados para eliminar recortes visuales y desalineaciones. Selector de escala sm (4px), md (8px), lg (12px), xl (16px), full (9999px) con advertencia contra el uso de un solo radio universal.',
+      badge: 'Radius is a System · 01',
+      component: <PremiumBorderRadiusSystem />,
+    },
+    {
+      id: 'dark-mode-depth',
+      name: 'Dark Mode Surface Depth (#000 Zero Depth)',
+      category: 'design-engineering',
+      description:
+        'Arquitectura de elevación con capas tonales (#111827, #1f2937) que erradica el anti-patrón de negro puro con blanco (#000/#FFF = zero depth), reduciendo la fatiga visual con métricas y gráficos integrados.',
+      badge: 'Dark Mode is a System · 01',
+      component: <PremiumDarkModeDepthSystem />,
+    },
+    {
+      id: 'avatar-fallback',
+      name: 'Avatar Resilient Fallback Chain',
+      category: 'design-engineering',
+      description:
+        'Cadena de degradación progresiva de 3 niveles: Foto de usuario -> Iniciales extraídas -> Icono genérico predeterminado. Garantiza cero saltos de diseño (CLS) con radio 50% inmutable.',
+      badge: 'The Fallback Ships Anyway',
+      component: <PremiumAvatarFallbackSystem />,
+    },
+    {
+      id: 'tabular-numbers',
+      name: 'Tabular Numerals System (Watch the Right Edge)',
+      category: 'design-engineering',
+      description:
+        'Alineación estricta a la derecha y tipografía monospaciada numérica (font-variant-numeric: tabular-nums) para evitar que los decimales bailen (dances -> lines up) en transacciones financieras.',
+      badge: 'UI Numbers · 01',
+      component: <PremiumTabularNumbersSystem />,
+    },
+    {
+      id: 'state-guard',
+      name: 'State Guard & Idempotency Key (UI Off Isn\'t Enough)',
+      category: 'design-engineering',
+      description:
+        'Arquitectura dual de seguridad contra doble envío: protección de handler asíncrono en cliente (if inFlight return) combinada con cabecera de red Idempotency-Key en servidor para deduplicación atómica.',
+      badge: 'State Guard · 01',
+      component: <PremiumStateGuardIdempotencySystem />,
+    },
+
+    // 2. GESTIÓN Y PROYECTOS (5 PATRONES)
     {
       id: 'advanced-kanban',
       name: 'Advanced Kanban System (Sprint 38)',
@@ -105,7 +162,7 @@ export function PremiumShowcase() {
       component: <PremiumKanbanBoard />,
     },
 
-    // 2. TABLAS Y DATOS FINANCIEROS
+    // 3. TABLAS Y DATOS FINANCIEROS (3 PATRONES)
     {
       id: 'responsive-mobile-table',
       name: 'Responsive Table (Mobile UX Shell)',
@@ -134,7 +191,7 @@ export function PremiumShowcase() {
       component: <PremiumDashboardPreview />,
     },
 
-    // 3. ACCIONES, CONFIRMACIÓN Y FEEDBACK
+    // 4. ACCIONES, CONFIRMACIÓN Y FEEDBACK (4 PATRONES)
     {
       id: 'success-done-screen',
       name: 'Success/Done Screen (done ≠ dead end)',
@@ -172,7 +229,7 @@ export function PremiumShowcase() {
       component: <PremiumProfileUpload />,
     },
 
-    // 4. NAVEGACIÓN Y MICROINTERACCIONES
+    // 5. NAVEGACIÓN Y MICROINTERACCIONES (4 PATRONES)
     {
       id: 'water-ripple',
       name: 'Interactive Water Ripple Effect',
@@ -226,25 +283,25 @@ export function PremiumShowcase() {
           <div className="flex items-center gap-2">
             <span className="text-xs uppercase font-mono font-bold tracking-widest text-[#00e699] flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" />
-              Alquileres System • Premium UI Catalog
+              Alquileres System • Premium UI & Design Engineering
             </span>
             <span className="text-slate-600">•</span>
-            <span className="text-xs text-slate-400">16 Componentes de Alta Gama</span>
+            <span className="text-xs text-slate-400">21 Componentes & Principios Certificados</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
             Estándares UI Modernos & Microinteracciones
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
             Catálogo completo de componentes enriquecidos con principios de diseño avanzados:
-            físicas de arrastre, retroalimentación táctil, prevención de callejones sin salida (done ≠ dead end)
-            y adaptabilidad móvil 360px.
+            fórmula de radios anidados (R_outer = R_inner + P), profundidad tonal en modo oscuro,
+            cadena de degradación resiliente, números tabulares, prevención de doble envío y adaptabilidad 360px.
           </p>
         </div>
 
         {/* Resumen de Métrica */}
         <div className="flex items-center gap-4 bg-slate-950/80 p-4 rounded-xl border border-slate-800 shrink-0">
           <div>
-            <div className="text-2xl font-black text-[#00e699] font-mono">16</div>
+            <div className="text-2xl font-black text-[#00e699] font-mono">21</div>
             <div className="text-[11px] text-slate-400">Patrones Certificados</div>
           </div>
           <div className="h-8 w-[1px] bg-slate-800" />
@@ -266,7 +323,20 @@ export function PremiumShowcase() {
               : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
           }`}
         >
-          Todos los Componentes ({componentsList.length})
+          Todos ({componentsList.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveCategory('design-engineering')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            activeCategory === 'design-engineering'
+              ? 'bg-[#00e699] text-slate-950 shadow-sm font-bold'
+              : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+          }`}
+        >
+          <Sliders className="w-3.5 h-3.5" />
+          <span>Ingeniería & Principios (5)</span>
         </button>
 
         <button
@@ -323,7 +393,7 @@ export function PremiumShowcase() {
       </div>
 
       {/* Grid de Selector Rápido de Componentes */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
         {filteredComponents.map((item) => (
           <button
             key={item.id}

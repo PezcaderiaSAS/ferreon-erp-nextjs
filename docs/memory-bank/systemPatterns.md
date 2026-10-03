@@ -121,4 +121,12 @@ Para experiencias de usuario enriquecidas, tableros de gestión técnica y flujo
    - `PremiumHamburgerMenu`: Menú desplegable responsive con botón animado en contenedor índigo `#6366f1` y dropdown elevado.
    - `PremiumAccordion`: Acordeón de tarjetas elevadas independientes con icon badges atenuados y alternancia (+ / -).
 
+5. **Ingeniería de Diseño & Principios de Sistema (Design Engineering):**
+   - `PremiumBorderRadiusSystem`: Ley matemática de curvatura anidada (`R_outer = R_inner + Padding`). Escalas armónicas `sm`, `md`, `lg`, `xl`, `full` y rechazo categórico a un radio uniforme que corte elementos internos.
+   - `PremiumDarkModeDepthSystem`: Rechazo del falso modo oscuro `#000 / #FFF` sin profundidad; aplicación de capas semánticas elevadas (`#111827`, `#1f2937`) para reducir el deslumbramiento.
+   - `PremiumAvatarFallbackSystem`: Cadena de contingencia visual sin layout shift (`Image -> Initials -> Generic Icon`) con radio de 50% inmutable.
+   - `PremiumTabularNumbersSystem`: Rigor numérico contable con `tabular-nums` y alineación a la derecha obligatoria en todo importe o cantidad.
+   - `PremiumStateGuardIdempotencySystem`: Principio de seguridad *UI off isn't enough*. Bloqueo local del handler (`inFlight`) complementado por encabezado idempotente (`Idempotency-Key`) en backend.
+
+
 

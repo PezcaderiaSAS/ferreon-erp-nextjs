@@ -174,3 +174,11 @@ Para módulos de alta fidelidad visual y tableros interactivos (Alquileres Syste
    - `PremiumHamburgerMenu`: Menú desplegable móvil con botón estilizado en contenedor índigo `#6366f1` y panel con elevación suave.
    - `PremiumAccordion`: Acordeón de tarjetas independientes elevadas con icon badge atenuado y alternancia (+ / -).
 
+5. **Ingeniería de Diseño & Principios de Sistema (Design Engineering):**
+   - `PremiumBorderRadiusSystem`: Regla matemática de radios anidados (`R_outer = R_inner + Padding`). Selector de escala (`sm 4px`, `md 8px`, `lg 12px`, `xl 16px`, `full 9999px`) y advertencia contra el uso de un solo radio universal (*One radius everywhere is not a system*).
+   - `PremiumDarkModeDepthSystem`: Arquitectura de elevación con capas tonales (`#111827`, `#1f2937`) que erradica el anti-patrón de negro puro con blanco (`#000 / #FFF = zero depth`), reduciendo la fatiga visual con métricas y gráficos integrados.
+   - `PremiumAvatarFallbackSystem`: Cadena de degradación progresiva de 3 niveles: Foto de usuario -> Iniciales extraídas -> Icono genérico predeterminado (*The fallback ships anyway*). Garantiza cero saltos de diseño (CLS) con radio 50% inmutable.
+   - `PremiumTabularNumbersSystem`: Alineación estricta a la derecha y tipografía monospaciada numérica (`font-variant-numeric: tabular-nums`) para evitar que los decimales bailen (*dances -> lines up*) en transacciones financieras.
+   - `PremiumStateGuardIdempotencySystem`: Arquitectura dual de seguridad contra doble envío: protección de handler asíncrono en cliente (`if (inFlight) return`) combinada con cabecera de red `Idempotency-Key` en servidor para deduplicación atómica (*Guard the handler + idempotency key*).
+
+

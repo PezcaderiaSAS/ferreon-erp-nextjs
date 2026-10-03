@@ -1,5 +1,5 @@
 /**
- * Alquileres System — Catálogo de Componentes UI Premium
+ * Alquileres System — Catálogo de Componentes UI Premium & Design Engineering (21 Patrones)
  * Biblioteca unificada de componentes y microinteracciones de alta gama
  * inspirados en los estándares modernos (Linear, Tailwind, Glassmorphism, Neumorphism y Dark Mode).
  */
@@ -20,3 +20,8 @@ export * from './PremiumSuccessDoneScreen';
 export * from './PremiumWeeklyCalendarSystem';
 export * from './PremiumLinearSystem';
 export * from './PremiumResponsiveMobileTable';
+export * from './PremiumBorderRadiusSystem';
+export * from './PremiumDarkModeDepthSystem';
+export * from './PremiumAvatarFallbackSystem';
+export * from './PremiumTabularNumbersSystem';
+export * from './PremiumStateGuardIdempotencySystem';
