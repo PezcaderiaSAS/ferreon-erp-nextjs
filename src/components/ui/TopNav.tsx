@@ -11,11 +11,21 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { CajaStatusBadge } from '../caja/CajaStatusBadge';
+import { useGamificationStore } from '@/infrastructure/state/gamificationStore';
+import { RANGOS_MAESTRIA_CONFIG } from '@/core/services/gamification.service';
 
 export function TopNav() {
   const { toggleMobileMenu, toggleSidebarCollapse, isSidebarCollapsed, setTourOpen, setGuiaBotonesOpen } = useLayoutStore();
+  const {
+    xpTotal,
+    rangoActual,
+    setAcademiaModalOpen,
+    setGuiaBotonesOpen: setGuiaGamificationOpen,
+  } = useGamificationStore();
   const { tenant } = useTenantStore();
   const router = useRouter();
+
+  const configRango = RANGOS_MAESTRIA_CONFIG.find((r) => r.rango === rangoActual) || RANGOS_MAESTRIA_CONFIG[0];
 
   const [user, setUser] = useState<any>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -45,7 +55,7 @@ export function TopNav() {
 
   return (
     <header className="bg-white/90 dark:bg-slate-950/80 backdrop-blur-md text-slate-900 dark:text-slate-100 font-sans h-14 sm:h-16 sticky top-0 z-30 border-b border-slate-200/80 dark:border-white/10 shadow-sm flex items-center justify-between px-3 sm:px-6">
-      <div className="flex items-center gap-3 w-full max-w-md">
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-[160px] max-w-xs sm:max-w-sm md:max-w-md">
         <button 
           type="button"
           onClick={() => {
@@ -55,36 +65,63 @@ export function TopNav() {
               toggleSidebarCollapse();
             }
           }}
-          className="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors focus:outline-none cursor-pointer"
-          title={isSidebarCollapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
+          className="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors focus:outline-none cursor-pointer shrink-0"
+          title="Alternar menú lateral"
           aria-label="Alternar menú lateral"
         >
           <Menu className="w-6 h-6" />
         </button>
         <div className="flex items-center w-full focus-within:ring-2 focus-within:ring-brand-salmon rounded-lg overflow-hidden bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-          <Search className="w-5 h-5 ml-3 text-slate-500 dark:text-slate-400 flex-shrink-0" />
+          <Search className="w-4 h-4 sm:w-5 sm:h-5 ml-2.5 sm:ml-3 text-slate-500 dark:text-slate-400 flex-shrink-0" />
           <input 
             id="global-search-input"
             name="global_search"
             aria-label="Buscar en la plataforma"
-            className="w-full py-2 px-3 border-none focus:ring-0 text-slate-900 dark:text-slate-100 text-sm bg-transparent outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500" 
+            className="w-full py-1.5 sm:py-2 px-2.5 sm:px-3 border-none focus:ring-0 text-slate-900 dark:text-slate-100 text-xs sm:text-sm bg-transparent outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500" 
             placeholder="Buscar contratos, equipos o clientes..." 
             type="text"
           />
         </div>
       </div>
-      <div className="flex items-center gap-2 sm:gap-3 ml-4">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 ml-2 sm:ml-4 shrink-0">
         <CajaStatusBadge />
         
-        {/* Botón Guía de Botones y Acciones */}
-        <button 
+        {/* Badge Interactivo de Academia (Rango + XP) Responsivo y Anti-Truncamiento */}
+        <button
+          id="top-nav-academia-badge"
           type="button"
-          onClick={() => setGuiaBotonesOpen(true)}
+          onClick={() => setAcademiaModalOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-950/70 px-2 sm:px-2.5 py-1.5 rounded-lg transition-all border border-amber-200/80 dark:border-amber-700/50 shadow-2xs cursor-pointer active:scale-95 shrink-0"
+          title={`Academia Alquileres System: Nivel ${configRango.nivel} - ${configRango.nombre} (${xpTotal} XP)`}
+          aria-label="Abrir Academia Alquileres System"
+        >
+          <span className="text-sm shrink-0">{configRango.icono}</span>
+          {/* Pantallas estándar/laptop: Formato conciso Nivel X que nunca se corta */}
+          <span className="hidden lg:inline 2xl:hidden text-slate-800 dark:text-slate-200 font-extrabold whitespace-nowrap">
+            Nivel {configRango.nivel}
+          </span>
+          {/* Pantallas extra anchas: Nombre completo con espacio holgado */}
+          <span className="hidden 2xl:inline text-slate-900 dark:text-white font-extrabold whitespace-nowrap">
+            {configRango.nombre}
+          </span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-slate-950 shadow-xs shrink-0">
+            {xpTotal} XP
+          </span>
+        </button>
+
+        {/* Botón Guía de Botones y Flujos 360° */}
+        <button 
+          id="top-nav-guia-botones"
+          type="button"
+          onClick={() => {
+            setGuiaBotonesOpen(true);
+            setGuiaGamificationOpen(true, 'Todos');
+          }}
           className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-950/70 px-3 py-1.5 rounded-lg transition-all border border-amber-200/90 dark:border-amber-700/40 shadow-2xs cursor-pointer active:scale-95"
-          title="Ver explicación de qué hace cada botón y acción"
+          title="Ver explicación de qué hace cada botón y los 6 flujos de maquinaria (Atajo F1)"
         >
           <HelpCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-          <span className="hidden sm:inline">Guía de Botones</span>
+          <span className="hidden sm:inline">Guía 360°</span>
         </button>
 
         <button 

@@ -81,8 +81,16 @@ function SidebarNavLinks({
         const Icon = link.icon;
         
         let tourId = undefined;
+        if (link.href === '/alquileres') tourId = 'tour-sidebar-alquileres';
+        if (link.href === '/cotizaciones') tourId = 'tour-sidebar-cotizaciones';
         if (link.href === '/bodega') tourId = 'tour-bodega';
         if (link.href === '/facturacion') tourId = 'tour-facturacion';
+        if (link.href === '/devoluciones') tourId = 'tour-sidebar-devoluciones';
+        if (link.href === '/caja') tourId = 'tour-sidebar-caja';
+        if (link.href === '/clientes') tourId = 'tour-sidebar-clientes';
+        if (link.href === '/compras') tourId = 'tour-sidebar-compras';
+        if (link.href === '/subcontrataciones') tourId = 'tour-sidebar-subcontrataciones';
+        if (link.href === '/admin/empresas') tourId = 'tour-sidebar-ultraadmin';
 
         return (
           <Link 
@@ -129,6 +137,7 @@ export function Sidebar() {
 
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const effectiveCollapsed = mounted ? isSidebarCollapsed : false;
 
   useEffect(() => {
     setMounted(true);
@@ -176,11 +185,11 @@ export function Sidebar() {
         id="tour-sidebar"
         className={`bg-white/95 dark:bg-slate-950/80 backdrop-blur-md text-slate-900 dark:text-slate-100 font-sans h-[100dvh] fixed left-0 top-0 border-r border-slate-200/80 dark:border-white/10 shadow-sm flex flex-col gap-1 sm:gap-1.5 z-50 transition-all duration-300 ease-in-out ${
           isMobileMenuOpen ? 'translate-x-0 w-64 p-3' : '-translate-x-full'
-        } md:translate-x-0 ${isSidebarCollapsed ? 'md:w-16 md:p-2' : 'md:w-56 lg:w-60 xl:w-64 md:p-2.5 lg:p-3'}`}
+        } md:translate-x-0 ${effectiveCollapsed ? 'md:w-16 md:p-2' : 'md:w-56 lg:w-60 xl:w-64 md:p-2.5 lg:p-3'}`}
       >
         {/* Header con Logo / Isotipo */}
-        <div className={`mb-1.5 sm:mb-2 lg:mb-3 flex items-center justify-between relative ${isSidebarCollapsed ? 'px-1 py-1' : 'px-2.5 py-1 lg:px-3 lg:py-1.5 gap-2'}`}>
-          {isSidebarCollapsed ? (
+        <div className={`mb-1.5 sm:mb-2 lg:mb-3 flex items-center justify-between relative ${effectiveCollapsed ? 'px-1 py-1' : 'px-2.5 py-1 lg:px-3 lg:py-1.5 gap-2'}`}>
+          {effectiveCollapsed ? (
             <button
               onClick={toggleSidebarCollapse}
               className="w-10 h-10 mx-auto rounded-xl bg-gradient-to-tr from-brand-salmon to-amber-500 flex items-center justify-center text-white font-black text-base shadow-sm hover:scale-105 transition-transform cursor-pointer"
@@ -223,7 +232,7 @@ export function Sidebar() {
               return (
                 <div key={link.href} className="rounded-lg text-base font-semibold flex items-center gap-4 px-4 py-3 text-slate-400 dark:text-slate-500">
                   <Icon className="w-5 h-5 stroke-2" />
-                  {!isSidebarCollapsed && link.label}
+                  {!effectiveCollapsed && link.label}
                 </div>
               );
             })}
@@ -239,13 +248,13 @@ export function Sidebar() {
               user?.user_metadata?.rol === 'superadmin'
             }
             modulosActivos={(config as any)?.modulos_activos}
-            isSidebarCollapsed={isSidebarCollapsed}
+            isSidebarCollapsed={effectiveCollapsed}
           />
         </Suspense>
 
         {/* Badge de Suscripción / Tenant Activo al Pie */}
         <div className="pt-2 border-t border-slate-100 dark:border-white/10 mt-auto">
-          {isSidebarCollapsed ? (
+          {effectiveCollapsed ? (
             <Link 
               href="/suscripcion"
               title={tenant?.subscriptionStatus === 'active' ? 'Suscripción Activa (Pro)' : 'Modo Prueba Activo'}
@@ -282,7 +291,7 @@ export function Sidebar() {
 
         {/* User Info / Logout Section */}
         <div className="pt-1.5 pb-1 border-t border-slate-100 dark:border-white/10">
-          {isSidebarCollapsed ? (
+          {effectiveCollapsed ? (
             <div className="flex flex-col items-center gap-2">
               <div 
                 className="w-9 h-9 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-slate-200 font-bold text-xs shrink-0"
@@ -325,7 +334,7 @@ export function Sidebar() {
           )}
           
           {/* Theme Switcher Rápido (Solo pantallas muy altas 2xl) */}
-          {!isSidebarCollapsed && mounted && user && (user.user_metadata?.rol === 'admin' || user.user_metadata?.rol === 'superadmin' || !user.user_metadata?.rol) && (
+          {!effectiveCollapsed && mounted && user && (user.user_metadata?.rol === 'admin' || user.user_metadata?.rol === 'superadmin' || !user.user_metadata?.rol) && (
             <div className="mt-1 px-1 hidden 2xl:block">
               <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
                 <Palette className="w-3 h-3 text-slate-400" />
@@ -353,10 +362,10 @@ export function Sidebar() {
             type="button"
             onClick={toggleSidebarCollapse}
             className="w-full flex items-center justify-center gap-2 py-2 px-1 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors text-xs font-bold cursor-pointer"
-            title={isSidebarCollapsed ? "Expandir menú lateral (256px)" : "Contraer a modo compacto de iconos (64px)"}
-            aria-label={isSidebarCollapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
+            title={effectiveCollapsed ? "Expandir menú lateral (256px)" : "Contraer a modo compacto de iconos (64px)"}
+            aria-label={effectiveCollapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
           >
-            {isSidebarCollapsed ? (
+            {effectiveCollapsed ? (
               <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-400" />
             ) : (
               <>

@@ -5,8 +5,8 @@ import { Target, Calendar, ArrowRight } from 'lucide-react';
 
 export function PremiumGoalTracker({
   percentage = 75,
-  title = 'Flota en Operación WMS',
-  subtitle = 'Meta de utilización del parque de maquinaria',
+  title = 'Inventario en Operación WMS',
+  subtitle = 'Meta de utilización del stock de maquinaria',
   targetTasks = 120,
   completedTasks = 90,
   remainingTasks = 30,
@@ -72,7 +72,7 @@ export function PremiumGoalTracker({
           {/* Goal Stats Breakdown */}
           <ul className="flex flex-col gap-2 flex-1 text-xs">
             <li className="flex justify-between items-center text-slate-500">
-              <span>Meta Flota</span>
+              <span>Meta Inventario</span>
               <strong className="text-slate-900 font-mono font-bold">
                 {targetTasks} un.
               </strong>
@@ -111,7 +111,7 @@ export function PremiumGoalTracker({
           type="button"
           className="w-full py-3 rounded-xl bg-gradient-to-r from-[#a44df1] to-[#637ef8] text-white font-bold text-xs shadow-[0_8px_20px_rgba(164,77,241,0.3)] hover:shadow-[0_12px_24px_rgba(164,77,241,0.4)] hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-1.5"
         >
-          <span>Ver Detalles de Flota</span>
+          <span>Ver Detalles de Inventario</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>

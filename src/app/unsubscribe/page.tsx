@@ -95,7 +95,7 @@ function UnsubscribeContent() {
         ) : (
           <form onSubmit={handleManualOptOut} className="space-y-4 text-left">
             <p className="text-xs text-slate-300 leading-relaxed text-center">
-              Ingresa tu dirección de correo electrónico para dejar de recibir comunicaciones comerciales, anuncios de flota y novedades.
+              Ingresa tu dirección de correo electrónico para dejar de recibir comunicaciones comerciales, novedades de inventario y actualizaciones.
             </p>
 
             <div>

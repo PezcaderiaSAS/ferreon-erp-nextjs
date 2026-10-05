@@ -84,7 +84,7 @@ describe('DashboardTransaccionalService - Dominio y Calendario Operativo (Alquil
     it('debe calcular correctamente los 4 KPIs en vivo', () => {
       const kpis = calcularKPIsDashboard(mockAlquileres, mockEquipos, fechaHoy);
 
-      // Flota: total stock = 28, disponibles = 23, en obra = 5 (stock_total - stock_disponible - mantenimiento)
+      // Inventario: total stock = 28, disponibles = 23, en obra = 5 (stock_total - stock_disponible - mantenimiento)
       expect(kpis.equiposTotal).toBe(28);
       expect(kpis.equiposEnObra).toBe(3); // 2 alquilados (RET-01: 1, PLA-01: 2)
       expect(kpis.utilizacionFlotaPct).toBeGreaterThan(0);
@@ -118,7 +118,7 @@ describe('DashboardTransaccionalService - Dominio y Calendario Operativo (Alquil
 
   describe('2. Generación de Eventos de Calendario Operativo', () => {
     it('debe transformar alquileres en eventos de despacho y devolución', () => {
-      const eventos = generarEventosCalendario(mockAlquileres, mockEquipos);
+      const eventos = generarEventosCalendario(mockAlquileres, mockEquipos, fechaHoy);
 
       // Debe haber eventos de despacho y de devolución
       const despachos = eventos.filter((e) => e.tipo === 'ALQUILER_DESPACHO');

@@ -565,7 +565,7 @@ export default function DesignSystemPlaygroundPage() {
                   badge="Garantía de Operación"
                   headerAction={
                     <PresetBadge variant="success" pulsing>
-                      Flota Disponible
+                      Inventario Disponible
                     </PresetBadge>
                   }
                 >

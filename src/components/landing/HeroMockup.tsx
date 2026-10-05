@@ -54,7 +54,7 @@ export function HeroMockup() {
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Flota Sincronizada en Vivo
+              Inventario Sincronizado en Vivo
             </span>
           </div>
         </div>

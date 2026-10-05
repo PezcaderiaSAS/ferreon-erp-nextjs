@@ -73,7 +73,7 @@ export function DashboardKpiGrid({ kpis }: DashboardKpiGridProps) {
   const tieneCarteraMora = kpis.carteraMoraCOP > 0;
 
   // Sparklines de muestra basados en las métricas actuales para consistencia visual
-  const sparklineFlota = [
+  const sparklineInventario = [
     Math.max(1, kpis.equiposEnObra - 2),
     Math.max(1, kpis.equiposEnObra - 1),
     kpis.equiposEnObra,
@@ -101,15 +101,15 @@ export function DashboardKpiGrid({ kpis }: DashboardKpiGridProps) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-      {/* 1. Equipos en Obra / Utilización de Flota */}
+      {/* 1. Equipos en Obra / Utilización de Inventario */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-card border border-slate-200/90 dark:border-slate-800 p-5 flex flex-col justify-between transition-all duration-200 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md">
         <div className="flex justify-between items-start">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 font-mono">
-              FLOTA · 01
+              INVENTARIO · 01
             </span>
             <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-0.5">
-              Utilización de Flota
+              Utilización de Inventario
             </h3>
           </div>
           <div className="p-2 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-brand-salmon dark:text-orange-400 border border-orange-100 dark:border-orange-900/30">
@@ -139,9 +139,9 @@ export function DashboardKpiGrid({ kpis }: DashboardKpiGridProps) {
 
           <div className="hidden sm:block">
             <MiniSparkline
-              points={sparklineFlota}
+              points={sparklineInventario}
               color="#ff6b4a"
-              gradientId="spark-flota"
+              gradientId="spark-inventario"
             />
           </div>
         </div>
@@ -309,7 +309,14 @@ export function DashboardKpiGrid({ kpis }: DashboardKpiGridProps) {
 
         <div className="my-3 flex items-end justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <span className="text-xl lg:text-2xl font-extrabold font-mono tabular-nums tracking-tight text-slate-900 dark:text-slate-100 block truncate">
+            <span
+              title={formatearMonedaCOP(kpis.carteraPendienteTotalCOP)}
+              className={`${
+                formatearMonedaCOP(kpis.carteraPendienteTotalCOP).length > 11
+                  ? 'text-lg sm:text-xl font-extrabold'
+                  : 'text-xl lg:text-2xl font-extrabold'
+              } font-mono tabular-nums tracking-tight text-slate-900 dark:text-slate-100 block whitespace-nowrap`}
+            >
               {formatearMonedaCOP(kpis.carteraPendienteTotalCOP)}
             </span>
             <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 truncate">
@@ -317,7 +324,7 @@ export function DashboardKpiGrid({ kpis }: DashboardKpiGridProps) {
             </p>
           </div>
 
-          <div className="hidden sm:block shrink-0">
+          <div className="hidden xl:block shrink-0">
             <MiniSparkline
               points={sparklineCartera}
               color={tieneCarteraMora ? '#f59e0b' : '#10b981'}
