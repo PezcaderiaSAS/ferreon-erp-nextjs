@@ -17,8 +17,9 @@
 - **Hito 15 (Adaptación Legal de PDF a Cuenta de Cobro - SPEC-2026-LEGAL-CUENTA-COBRO-001):** ✅ **100% COMPLETADO Y CERTIFICADO** (Adaptación normativa colombiana bajo Art. 616-1 y Art. 437 Par. 3 del E.T. en `ContratoAlquilerPDF.tsx`, `EnterprisePDFService`, `AlquileresInteractiveIsland.tsx` y `VisorDocumentoPDFModal.tsx` con prefijo unificado `CC-#00XXX`, leyenda legal obligatoria y regeneración retrocompatible de contratos existentes).
 - **Hito 16 (Auditoría de Producción, Tokens W3C, Marca Canónica y Conexión Figma en Vivo - SPEC-2026-FIGMA-DEVTOOLS-001):** ✅ **100% COMPLETADO Y CERTIFICADO** (Auditoría de rutas en Vercel con Chrome DevTools MCP, homologación canónica a marca "Alquileres System SaaS", generación de catálogo W3C Design Tokens `figma_design_tokens.json`, blueprint `figma_components_blueprint.md`; importación y verificación en vivo de las **14 pantallas canónicas al 100%** en Figma `xQ7iOmkYpLy6F1H9QnYv5F`; desarrollo del plugin nativo bidireccional **Sync Studio v2.0** (`figma-tokens-sync`), inyección de **33 variables oficiales** con soporte dual adaptado a Figma Free y vinculación nativa de **6,389 capas y nodos vectoriales** al Design System).
 - **Hito 17 (Centro de Control Operativo y Calendario Multi-Flujo - SPEC-2026-DASHBOARD-CALENDAR-001):** ✅ **100% COMPLETADO Y CERTIFICADO** (Deconstrucción de `/dashboard` a Server Component conciso con prefetch concurrente vía `obtenerDashboardDataAction` en `src/app/actions/dashboard.ts` y servicio de dominio puro `DashboardTransaccionalService`; 4 KPIs en vivo: Utilización de Flota, Contratos Activos, Devoluciones Críticas y Cartera Pendiente en COP; layout asimétrico 65/35 con `DashboardSkeleton` shimmer sin CLS; `CalendarioOperativoIsland` con vistas Mes, Semana y Agenda y filtros de color semántico; `ActividadDrawer` contextual con acción prioritaria '+ Nuevo Alquiler para esta fecha inicial'; `ResumenTareasCard` híbrido y `RecordatorioEventosFeed` clasificado por severidad).
+- **Hito 20 (Corrección Integral del Flujo de Devolución e Integridad Transaccional - SPEC-2026-DEVOLUCION-INTEGRITY-001):** ✅ **100% COMPLETADO Y CERTIFICADO** (Resolución de error de FK en `devolucion_detalles` mediante migración DDL `20261005130000_fix_devolucion_avanzada_fk_and_kardex.sql` en Supabase; reordenamiento transaccional estricto con inserción de cabecera padre `devoluciones` antes de detalles; inyección inmutable en `kardex_inventario` `DEVOLUCION_ENTRADA`; blindaje defensivo en Server Action `procesarDevolucionAvanzadaAction` para desacoplar transacciones de caja de la devolución; homologación de la UI en `AlquileresInteractiveIsland.tsx` a `InspeccionTecnicaModal` con soporte Split-Line y PDF).
 
-- **Estado de Pruebas:** 73 suites de pruebas / 403 tests unitarios e integración pasando al 100%, 16/16 tests Playwright E2E aprobados, 0 errores de TypeScript (`tsc --noEmit`), compilación de producción Next.js 32/32 rutas en verde (`npx next build`), despliegue validado en Vercel.
+- **Estado de Pruebas:** 64 suites de pruebas / 386 tests unitarios e integración pasando al 100%, 0 errores de TypeScript (`tsc --noEmit`), suites específicas `devolucion-avanzada-fk-integridad.test.ts` y `devoluciones-transaccional.service.test.ts` en verde.
 
 
 ---
@@ -92,5 +93,16 @@
 
 ---
 
+10. **Hito 20: Corrección Integral del Flujo de Devolución e Integridad Transaccional (`SPEC-2026-DEVOLUCION-INTEGRITY-001`):**
+    - **Causa Raíz Diagnosticada:** Error de violación de clave foránea `devolucion_detalles_devolucion_id_fkey` en la RPC `procesar_devolucion_avanzada` debido a la ejecución de inserciones en `public.devolucion_detalles` antes de haber persistido la cabecera padre `public.devoluciones`.
+    - **Migración DDL Canónica:** Creación y aplicación de `supabase/migrations/20261005130000_fix_devolucion_avanzada_fk_and_kardex.sql` en Supabase Cloud (`eqruvswlpsttuyuglwts`).
+    - **Algoritmo Transaccional Pre-Calculado:** La función en PL/pgSQL calcula previamente en memoria los días causados, totales y liquidaciones; luego inserta la cabecera `public.devoluciones` obteniendo el ID padre canónico, y posteriormente inserta los detalles `public.devolucion_detalles` con FK íntegra.
+    - **Trazabilidad WMS & Kardex:** Cada ítem procesado genera un registro inmutable en `public.kardex_inventario` con `tipo_movimiento = 'DEVOLUCION_ENTRADA'` y saldo final actualizado.
+    - **Desacoplamiento de Caja:** En `src/app/actions/devoluciones.ts`, la liquidación con caja se ejecuta de forma segura; si no hay turno abierto o el medio no es efectivo, la devolución finaliza exitosamente y el saldo pendiente se preserva en `alquileres.saldo_pendiente` para cobro/pago posterior.
+    - **Homologación de UI:** En `AlquileresInteractiveIsland.tsx`, se retiró el modal anticuado `RegistrarDevolucionModal` y se homologó a `InspeccionTecnicaModal` para garantizar Split-Line y generación de comprobante PDF en todos los puntos de entrada.
+
+---
+
 ## 3. Próximos Pasos en el Roadmap
+- **Validación en Producción:** Verificación manual de cierre de contratos con la nueva RPC en Supabase y generación de comprobante PDF.
 - **Hito 8 / Auditoría Integral:** Revisión de performance web, Core Web Vitals y verificación E2E de flujos integrados en Alquileres System.

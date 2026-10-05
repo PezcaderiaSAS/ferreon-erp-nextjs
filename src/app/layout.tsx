@@ -32,7 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${inter.variable} ${jetbrainsMono.variable} ${inter.className}`} suppressHydrationWarning>
-      <body className="antialiased font-sans bg-slate-50 text-slate-900 min-h-screen flex" suppressHydrationWarning>
+      <body className="antialiased font-sans bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen flex" suppressHydrationWarning>
         <CipaPrivacyGuard>
           <RealtimeProvider>
             <AppShell>

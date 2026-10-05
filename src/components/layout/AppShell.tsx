@@ -51,7 +51,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div data-theme={activeTheme} className="flex-1 flex w-full min-h-screen transition-colors duration-150">
+    <div data-theme={activeTheme} className="flex-1 flex w-full min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-150">
       <Sidebar />
       <div 
         suppressHydrationWarning
@@ -68,7 +68,7 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         )}
         <TopNav />
-        <main className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 overflow-y-auto overflow-x-hidden safe-area-pb custom-scrollbar pb-24 sm:pb-28">
+        <main className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-y-auto overflow-x-hidden safe-area-pb custom-scrollbar pb-24 sm:pb-28">
           {children}
         </main>
       </div>

@@ -42,9 +42,9 @@ const AlquilerForm = dynamic(
   { ssr: false, loading: () => <ModalSkeleton message="Cargando formulario de contrato..." /> }
 );
 
-const RegistrarDevolucionModal = dynamic(
-  () => import('@/components/devoluciones/RegistrarDevolucionModal').then((m) => m.RegistrarDevolucionModal),
-  { ssr: false, loading: () => <ModalSkeleton message="Cargando módulo de devoluciones..." /> }
+const InspeccionTecnicaModal = dynamic(
+  () => import('@/components/devoluciones/InspeccionTecnicaModal').then((m) => m.InspeccionTecnicaModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Cargando módulo de inspección técnica y recepción..." /> }
 );
 
 const HistorialDevolucionesModal = dynamic(
@@ -722,14 +722,18 @@ export function AlquileresInteractiveIsland({
         proveedorAliadoNit: d.proveedor_aliado_nit || d.proveedorAliadoNit || '',
         devuelto: Boolean(d.devuelto),
         cantidadDevuelta: Number(d.cantidad_devuelta ?? d.cantidadDevuelta ?? 0),
+        detalleId: d.id,
+        nombreEquipo: nombreItem,
+        cantidadContratada: cant,
+        cantidadDevueltaPrevia: Number(d.cantidad_devuelta ?? d.cantidadDevuelta ?? 0),
       };
     });
 
     const adapter = {
       ...contrato,
       cliente_id: contrato.cliente_id || (contrato as any).clienteId,
-      clienteNombre: contrato.clienteNombre || (contrato as any).cliente?.nombre,
-      clienteNit: (contrato as any).clienteNit || (contrato as any).clienteDocumento || (contrato as any).cliente?.nit || (contrato as any).cliente?.nit_cedula,
+      clienteNombre: contrato.clienteNombre || (contrato as any).cliente?.nombre || 'Cliente',
+      clienteNit: (contrato as any).clienteNit || (contrato as any).clienteDocumento || (contrato as any).cliente?.nit || (contrato as any).cliente?.nit_cedula || 'N/A',
       clienteTelefono: (contrato as any).clienteTelefono || (contrato as any).cliente?.telefono,
       flete_entrega: Number(contrato.flete_entrega ?? contrato.fleteEntrega ?? (contrato as any).valor_transporte ?? 0),
       fleteEntrega: Number(contrato.fleteEntrega ?? contrato.flete_entrega ?? (contrato as any).valor_transporte ?? 0),
@@ -737,6 +741,9 @@ export function AlquileresInteractiveIsland({
       fleteRecogida: Number(contrato.fleteRecogida ?? contrato.flete_recogida ?? 0),
       deposito: Number(contrato.deposito ?? (contrato as any).deposito_garantia ?? (contrato as any).depositoAplicado ?? 0),
       depositoAplicado: Number(contrato.deposito ?? (contrato as any).deposito_garantia ?? (contrato as any).depositoAplicado ?? 0),
+      depositoGarantia: Number(contrato.deposito ?? (contrato as any).deposito_garantia ?? (contrato as any).depositoAplicado ?? 0),
+      fechaInicio: (contrato as any).fechaInicio || contrato.fecha_inicio_contrato || (contrato as any).fecha_inicio || '',
+      fechaFinEstimada: (contrato as any).fechaFinEstimada || contrato.fecha_fin_estimada || (contrato as any).fecha_fin || '',
       garantia_monto: Number(contrato.garantia_monto ?? contrato.garantiaMonto ?? 0),
       garantiaMonto: Number(contrato.garantiaMonto ?? contrato.garantia_monto ?? 0),
       garantia_tipo: contrato.garantia_tipo || contrato.garantiaTipo || 'Efectivo',
@@ -1489,11 +1496,17 @@ export function AlquileresInteractiveIsland({
         pagosFiltrados={pagosGlobal.filter(p => p.alquilerId === contratoActivo?.id)}
       />
 
-      <RegistrarDevolucionModal
+      <InspeccionTecnicaModal
         isOpen={showDevolucionModal}
-        onClose={() => setShowDevolucionModal(false)}
-        contratoParaDevolucion={contratoActivo}
-        onConfirmarDevolucion={handleConfirmarDevolucion}
+        onClose={() => {
+          setShowDevolucionModal(false);
+          setContratoActivo(null);
+        }}
+        contrato={contratoActivo}
+        onSuccess={() => {
+          fetchAllData();
+          setShowDevolucionModal(false);
+        }}
       />
 
       <HistorialDevolucionesModal

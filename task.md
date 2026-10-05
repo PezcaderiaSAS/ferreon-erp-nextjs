@@ -216,3 +216,27 @@
 - [x] Deconstrucción de `src/app/dashboard/page.tsx` a Server Component conciso con streaming `<Suspense>` y First Load JS de 109 kB.
 - [x] Verificación de compilación: `tsc --noEmit` (0 errores) y `npm run build` exitoso (32/32 rutas).
 
+---
+
+# Speckit Tasks: Corrección Integral del Flujo de Devolución e Integridad Transaccional (SPEC-2026-DEVOLUCION-INTEGRITY-001)
+
+## Tarea 32: Migración DDL y Reestructuración de RPC 'procesar_devolucion_avanzada' [✅ COMPLETADA]
+- [x] Crear migración `supabase/migrations/20261005130000_fix_devolucion_avanzada_fk_and_kardex.sql`.
+- [x] Reestructurar el algoritmo en PL/pgSQL para pre-calcular días causados, alquiler liquidado, daños y reposiciones.
+- [x] Insertar la cabecera `public.devoluciones` ANTES de los detalles `public.devolucion_detalles`, resolviendo la violación de foreign key `devolucion_detalles_devolucion_id_fkey`.
+- [x] Insertar movimientos inmutables en `public.kardex_inventario` (`DEVOLUCION_ENTRADA`) por cada ítem recibido.
+- [x] Ejecutar la migración vía Supabase MCP en el proyecto `eqruvswlpsttuyuglwts`. (✅ *Aplicada con éxito*).
+
+## Tarea 33: Blindaje de Server Action 'procesarDevolucionAvanzadaAction' [✅ COMPLETADA]
+- [x] En `src/app/actions/devoluciones.ts`, verificar manejo de errores y retorno de datos para UI.
+- [x] Asegurar que si no hay sesión de caja abierta o no es efectivo, la devolución se complete exitosamente sin arrojar excepción.
+- [x] Validar registro de auditoría en `audit_logs` con `AuditLogger.logAsync`.
+
+## Tarea 34: Homologación de Entrada de Devolución en UI [✅ COMPLETADA]
+- [x] En `src/components/alquileres/AlquileresInteractiveIsland.tsx`, homologar el botón de devolución para abrir `InspeccionTecnicaModal` pasando el contrato completo.
+- [x] En `src/components/devoluciones/InspeccionTecnicaModal.tsx`, asegurar que la respuesta y generación del comprobante PDF funcionen de manera fluida.
+
+## Tarea 35: Suite de Pruebas Automatizadas y Verificación de Calidad [✅ COMPLETADA]
+- [x] Crear test de integración/unitario en `tests/unit/devolucion-avanzada-fk-integridad.test.ts` que valide el flujo completo de devolución, Split-Line y Kardex (5/5 tests pasando).
+- [x] Ejecutar `npm run test` asegurando 100% de suites en verde (64/64 suites pasadas, 386/386 tests en verde).
+- [x] Ejecutar `npx tsc --noEmit` asegurando cero errores de compilación de TypeScript.

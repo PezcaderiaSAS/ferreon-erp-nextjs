@@ -220,7 +220,7 @@ export function DevolucionesInteractiveIsland({
           </div>
 
           {/* Tabla de Densidad Quirúrgica (~30px por fila) */}
-          <div className="bg-white dark:bg-zinc-900/50 rounded-md shadow-none border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900 rounded-md shadow-none border border-zinc-200 dark:border-zinc-800 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse table-fixed">
                 <colgroup>
@@ -230,7 +230,7 @@ export function DevolucionesInteractiveIsland({
                   <col className="w-auto" />
                   <col className="w-44" />
                 </colgroup>
-                <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-[10px] font-semibold">
+                <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 uppercase tracking-wider text-[10px] font-semibold">
                   <tr className="h-7.5">
                     <th className="px-2.5 py-1">Contrato</th>
                     <th className="px-2.5 py-1">Cliente</th>
@@ -253,12 +253,12 @@ export function DevolucionesInteractiveIsland({
                       </td>
                       <td className="px-2.5 py-1 truncate">
                         <span className="font-medium text-zinc-900 dark:text-zinc-100 truncate block">{ctr.clienteNombre}</span>
-                        <span className="text-[10px] text-zinc-400 font-mono truncate">{ctr.clienteNit}</span>
+                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono truncate">{ctr.clienteNit}</span>
                       </td>
                       <td className="px-2.5 py-1 text-right font-mono tabular-nums font-medium text-zinc-900 dark:text-zinc-100">
                         ${ctr.depositoGarantia.toLocaleString('es-CO')}
                       </td>
-                      <td className="px-2.5 py-1 text-zinc-600 dark:text-zinc-400 truncate">
+                      <td className="px-2.5 py-1 text-zinc-700 dark:text-zinc-300 truncate">
                         {ctr.equiposResumen}
                       </td>
                       <td className="px-2.5 py-1 text-right">
@@ -301,7 +301,7 @@ export function DevolucionesInteractiveIsland({
 
       {/* PESTAÑA 2: HISTORIAL DE ACTAS */}
       {tabActiva === 'historial' && (
-        <div className="bg-white dark:bg-zinc-900/50 rounded-md shadow-none border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+        <div className="bg-white dark:bg-zinc-900 rounded-md shadow-none border border-zinc-200 dark:border-zinc-800 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse table-fixed">
               <colgroup>
@@ -313,7 +313,7 @@ export function DevolucionesInteractiveIsland({
                 <col className="w-36" />
                 <col className="w-24" />
               </colgroup>
-              <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-[10px] font-semibold">
+              <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 uppercase tracking-wider text-[10px] font-semibold">
                 <tr className="h-7.5">
                   <th className="px-2.5 py-1">Acta</th>
                   <th className="px-2.5 py-1">Fecha / Hora</th>

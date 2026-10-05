@@ -193,3 +193,13 @@
 - [x] Panel de cortes periódicos `CortesPeriodicosPanel.tsx` con presets rápidos (1ra Quincena, 2da Quincena, Mes, Mes Anterior, Rango Libre), 3 KPIs de corte y tabla tabular con checkboxes para emisión en lote.
 - [x] Integración en `FacturacionInteractiveIsland.tsx` con conmutador de pestañas (`Facturación Global & Cartera CXC` vs `Cortes & Cuentas de Cobro Periódicas`).
 - [x] Verificación completa: `tsc --noEmit` (0 errores) y `npm run build` en verde.
+
+### Hito 20: Corrección Integral del Flujo de Devolución e Integridad Transaccional (`SPEC-2026-DEVOLUCION-INTEGRITY-001`)
+- [x] Diagnóstico de causa raíz del error de clave foránea `devolucion_detalles_devolucion_id_fkey` en la función PL/pgSQL `procesar_devolucion_avanzada`.
+- [x] Migración DDL `supabase/migrations/20261005130000_fix_devolucion_avanzada_fk_and_kardex.sql` con reordenamiento transaccional estricto (pre-cálculo -> inserción cabecera padre -> inserción de detalles hijos).
+- [x] Trazabilidad WMS con inserción inmutable de movimientos en `public.kardex_inventario` (`DEVOLUCION_ENTRADA`) con actualización de saldo de stock.
+- [x] Aplicación de la migración en vivo a Supabase Cloud (`eqruvswlpsttuyuglwts`) vía Supabase MCP.
+- [x] Blindaje de Server Action `src/app/actions/devoluciones.ts` para desacoplar transacciones de caja de la devolución y evitar excepciones abortivas si no hay caja abierta.
+- [x] Homologación de la UI en `src/components/alquileres/AlquileresInteractiveIsland.tsx` conectando el botón de devolución a `InspeccionTecnicaModal` con soporte completo de Split-Line y generación de comprobante PDF.
+- [x] Suite de pruebas automatizadas en `tests/unit/devolucion-avanzada-fk-integridad.test.ts` (5/5 tests pasando al 100%).
+- [x] Verificación integral: `tsc --noEmit` (0 errores) y 386/386 tests pasando en 64 suites de Vitest.

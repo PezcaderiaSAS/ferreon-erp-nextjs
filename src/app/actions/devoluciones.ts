@@ -117,6 +117,13 @@ export async function procesarDevolucionAvanzadaAction(input: ProcesarDevolucion
     };
   }
 
+  if (!resultRPC || resultRPC.success === false) {
+    return {
+      success: false,
+      error: resultRPC?.message || 'Error al procesar la devolución en la base de datos'
+    };
+  }
+
   // 3. Impacto en Caja (Sesión activa) si aplica resolución de saldo en efectivo
   const saldoNeto = Number(resultRPC?.saldo_neto) || 0;
   const tipoResolucion = resultRPC?.tipo_resolucion;

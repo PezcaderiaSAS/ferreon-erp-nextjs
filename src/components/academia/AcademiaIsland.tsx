@@ -31,7 +31,7 @@ export function AcademiaIsland() {
     setGuiaBotonesOpen,
   } = useGamificationStore();
 
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true);
 
   const progresoNivel = calcularProgresoSiguienteNivel(xpTotal);
   const configRango = RANGOS_MAESTRIA_CONFIG.find((r) => r.rango === rangoActual) || RANGOS_MAESTRIA_CONFIG[0];
