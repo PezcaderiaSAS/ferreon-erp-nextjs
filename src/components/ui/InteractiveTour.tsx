@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, ChevronRight } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTourStore } from '../../infrastructure/state/tourStore';
+import { useGamificationStore } from '@/infrastructure/state/gamificationStore';
 
 export interface TourStep {
   targetId: string;
@@ -118,6 +119,11 @@ export function InteractiveTour({ steps, tourId }: InteractiveTourProps) {
       nextStep();
     } else {
       completeTour();
+      try {
+        useGamificationStore.getState().completarTour(tourId);
+      } catch {
+        // Safe non-blocking
+      }
     }
   };
 

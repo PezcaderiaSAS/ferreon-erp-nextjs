@@ -72,4 +72,6 @@ export interface LinearDataTableProps<T extends { id: string | number }> {
   emptyMessage?: string;
   /** Estado de carga */
   isLoading?: boolean;
+  /** Función de renderizado para tarjetas en pantallas móviles (< 768px) */
+  renderMobileCard?: (item: T, isSelected: boolean) => React.ReactNode;
 }

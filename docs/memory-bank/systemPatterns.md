@@ -75,3 +75,58 @@ Este documento establece las convenciones de arquitectura, patrones de diseño y
    - **Viewports Verticales:** Prohibido `height: 100%` en contenedores de aplicación sin ancestros con altura explícita. Obligatorio unidades de viewport dinámicas `min-height: 100dvh` (`min-h-[100dvh]`).
    - **Especificidad:** Prohibido resolver conflictos con `!important`. Obligatorio arquitectura en capas `@layer base, components, utilities;`.
 
+---
+
+## 5. Paridad Bidireccional de Diseño (Design Tokens & Figma Sync)
+
+### 5.1 Especificación W3C Design Tokens Community Group (DTCG)
+- Los tokens de diseño en `figma_design_tokens.json` y `DESIGN.md` representan el contrato de verdad entre el código frontend (Tailwind/CSS) y Figma.
+- Cada token se categoriza semánticamente en Color (`$type: color`), Espaciado (`$type: dimension`) y Radio de Borde (`$type: dimension`).
+
+### 5.2 Arquitectura del Plugin Sync Studio v2.0 (`figma-tokens-sync/`)
+- **Plugin Nativo Local sin Dependencias SaaS:** Elimina costos recurrentes o restricciones de Tokens Studio Pro operando 100% en el sandbox local de Figma Desktop.
+- **Comunicación Iframe ⇄ Sandbox:** La interfaz visual (`ui.html`) se comunica bidireccionalmente con el motor de Figma (`code.js`) vía `parent.postMessage` y `figma.ui.onmessage`.
+- **Compatibilidad Arquitectónica con Figma Free:** Ante la restricción de 1 solo modo por colección (`Limited to 1 modes only`), se adoptó el patrón de colecciones hermanas:
+  - `Alquileres System — Design Tokens` (Tema Canónico / Salmón Pastel).
+  - `Alquileres System — Cyber Cyan (Dark)` (Tema Alternativo / Cyber Cyan).
+- **Enlace Nativo de Capas (`setBoundVariable`):** Vinculación formal de capas a las Variables mediante `setBoundVariableForPaint`, asegurando que modificar un token en el sistema propague reactivamente los cambios sobre las 14 vistas del lienzo.
+
+---
+
+## 6. Arquitectura de Componentes UI Premium & Microinteracciones (16 Patrones)
+
+Para experiencias de usuario enriquecidas, tableros de gestión técnica y flujos de completado, el sistema dispone de la biblioteca modular `@/components/ui/premium`:
+
+1. **Gestión Técnica de Proyectos y Tareas:**
+   - `PremiumAdvancedKanban`: Soporte de Sprint 38, rotación física al arrastrar (`rotate(2deg) scale(1.02)`), marcadores de decisión en neón esmeralda (`#00e699`) y límites WIP visuales (`4/4`).
+   - `PremiumLinearSystem`: Adhesión estricta a los 5 pilares de Linear (alta densidad, bordes `#30363d`, acento único `#00e699`, atajos de teclado y alineación monospace).
+   - `PremiumWeeklyCalendarSystem`: Rejilla semanal con cero colapso de eventos (Zero-Overlaps Grid), discriminación categórica por color (Work `#0d9488`, Personal `#d97706`, Team `#6d28d9`) y leyenda de 40 eventos.
+   - `PremiumUpcomingMeetings`: Panel de 2 columnas con sidebar gradiente oscuro, selector horizontal en píldoras y avatares superpuestos.
+   - `PremiumKanbanBoard`: Tablero de 4 columnas con etiquetas de prioridad, avatares, comentarios y adjuntos.
+
+2. **Tablas Adaptativas y Datos Financieros:**
+   - `PremiumResponsiveMobileTable`: Shell móvil de 360px (`border-radius: 32px`) que transforma filas en tarjetas fluidas con métricas financieras destacadas y comparativa de escritorio.
+   - `PremiumTable`: Tabla enterprise con toolbar integrada, buscador en tiempo real, filtros, estados visuales y avatares con iniciales.
+   - `PremiumDashboardPreview`: Panel analítico Dark Mode con flat accents, banner de bienvenida, métricas y gráfico SVG con toggles 7d/30d/90d.
+
+3. **Acciones, Confirmación y Anti Dead-End UX:**
+   - `PremiumSuccessDoneScreen`: Principio *done ≠ dead end*, resplandor neón fosforescente (`#00e699`), caja de destinatario y llamada a la acción secundaria (*Next Step*).
+   - `PremiumToast` & `PremiumToastShowcase`: Avisos flotantes con gradientes a 135deg según jerarquía cromática y animación de entrada con rebote `cubic-bezier`.
+   - `PremiumGoalTracker`: Card de objetivos con cabecera en gradiente vibrante, progreso circular radial SVG y caja de deadline.
+   - `PremiumProfileUpload`: Carga de avatar circular con badge flotante de cámara, zona dropzone y botones con gradientes.
+
+4. **Navegación y Microinteracciones:**
+   - `PremiumWaterRipple`: Canvas interactivo de fluido con gradiente oceánico profundo y ondas expansivas en coordenadas de clic a 60 FPS con aceleración GPU.
+   - `PremiumStickyHeader`: Barra fija con desenfoque de fondo glassmorphic de 12px, listener de scroll dinámico y botón CTA con gradiente.
+   - `PremiumHamburgerMenu`: Menú desplegable responsive con botón animado en contenedor índigo `#6366f1` y dropdown elevado.
+   - `PremiumAccordion`: Acordeón de tarjetas elevadas independientes con icon badges atenuados y alternancia (+ / -).
+
+5. **Ingeniería de Diseño & Principios de Sistema (Design Engineering):**
+   - `PremiumBorderRadiusSystem`: Ley matemática de curvatura anidada (`R_outer = R_inner + Padding`). Escalas armónicas `sm`, `md`, `lg`, `xl`, `full` y rechazo categórico a un radio uniforme que corte elementos internos.
+   - `PremiumDarkModeDepthSystem`: Rechazo del falso modo oscuro `#000 / #FFF` sin profundidad; aplicación de capas semánticas elevadas (`#111827`, `#1f2937`) para reducir el deslumbramiento.
+   - `PremiumAvatarFallbackSystem`: Cadena de contingencia visual sin layout shift (`Image -> Initials -> Generic Icon`) con radio de 50% inmutable.
+   - `PremiumTabularNumbersSystem`: Rigor numérico contable con `tabular-nums` y alineación a la derecha obligatoria en todo importe o cantidad.
+   - `PremiumStateGuardIdempotencySystem`: Principio de seguridad *UI off isn't enough*. Bloqueo local del handler (`inFlight`) complementado por encabezado idempotente (`Idempotency-Key`) en backend.
+
+
+

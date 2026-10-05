@@ -135,26 +135,32 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+          <label htmlFor="equipo-sku" className="text-xs font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
             <span>Código / SKU</span>
             <span className="text-[10px] bg-brand-salmonLight text-brand-salmonDark px-1.5 py-0.5 rounded font-normal">Autogenerado</span>
           </label>
           <input 
+            id="equipo-sku"
+            name="sku"
             type="text"
             value={sku}
             onChange={(e) => setSku(e.target.value)}
             className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-900 font-mono bg-slate-50 font-bold"
             placeholder="Ej: EQ-001"
+            aria-label="Código o SKU del equipo"
           />
           {formErrors.sku && <span className="text-xs text-red-500">{formErrors.sku}</span>}
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Categoría</label>
+          <label htmlFor="equipo-categoria" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Categoría</label>
           <select 
+            id="equipo-categoria"
+            name="categoria"
             value={categoria}
             onChange={(e) => setCategoria(e.target.value)}
             className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-900 bg-white"
+            aria-label="Categoría del equipo"
           >
             <option value="Construcción">Construcción</option>
             <option value="Herramientas Eléctricas">Herramientas Eléctricas</option>
@@ -167,56 +173,68 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Nombre del Equipo</label>
+        <label htmlFor="equipo-nombre" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Nombre del Equipo</label>
         <input 
+          id="equipo-nombre"
+          name="nombre"
           type="text"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-900"
           placeholder="Ej: Mezcladora de Concreto 2 Bultos"
+          aria-label="Nombre del equipo"
         />
         {formErrors.nombre && <span className="text-xs text-red-500">{formErrors.nombre}</span>}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Tarifa Diaria ($ COP)</label>
+          <label htmlFor="equipo-tarifa-diaria" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Tarifa Diaria ($ COP)</label>
           <input 
+            id="equipo-tarifa-diaria"
+            name="tarifaDiaria"
             type="number"
             min="0"
             value={tarifaDiaria}
             onChange={(e) => setTarifaDiaria(parseFloat(e.target.value) || 0)}
             className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-900 font-semibold"
             placeholder="35000"
+            aria-label="Tarifa de alquiler por día"
           />
           {formErrors.tarifaDiaria && <span className="text-xs text-red-500">{formErrors.tarifaDiaria}</span>}
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider text-amber-700">Valor Reposición ($)</label>
+          <label htmlFor="equipo-valor-reposicion" className="text-xs font-semibold text-slate-600 uppercase tracking-wider text-amber-700">Valor Reposición ($)</label>
           <input 
+            id="equipo-valor-reposicion"
+            name="valorReposicion"
             type="number"
             min="1"
             value={valorReposicion}
             onChange={(e) => setValorReposicion(parseFloat(e.target.value) || 0)}
             className="px-3 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm text-amber-900 font-semibold bg-amber-50"
             placeholder="Valor si se pierde o daña"
+            aria-label="Valor de reposición en caso de pérdida o daño"
           />
           {formErrors.valorReposicion && <span className="text-xs text-red-500">{formErrors.valorReposicion}</span>}
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-1">
+          <label htmlFor="equipo-stock-inicial" className="text-xs font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-1">
             <span>Stock Inicial en Bodega</span>
             <span className="text-slate-400 text-xs font-normal">(Unidades)</span>
           </label>
           <input 
+            id="equipo-stock-inicial"
+            name="stockInicial"
             type="number"
             min="1"
             value={stockInicial}
             onChange={(e) => setStockInicial(parseInt(e.target.value, 10) || 1)}
             className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-900 font-bold text-emerald-700 bg-emerald-50/30"
             placeholder="1"
+            aria-label="Stock físico inicial en unidades"
           />
           {formErrors.stockInicial && <span className="text-xs text-red-500">{formErrors.stockInicial}</span>}
         </div>

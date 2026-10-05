@@ -122,11 +122,11 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // 6. Verificación de sesión con Timeout Guard (1200ms para prevenir 504 MIDDLEWARE_INVOCATION_TIMEOUT)
+  // 6. Verificación de sesión con Timeout Guard (2500ms para prevenir 504 MIDDLEWARE_INVOCATION_TIMEOUT con margen de latencia)
   let user = null;
   try {
     const timeoutPromise = new Promise<{ data: { user: null } }>((resolve) =>
-      setTimeout(() => resolve({ data: { user: null } }), 1200)
+      setTimeout(() => resolve({ data: { user: null } }), 2500)
     );
 
     const { data } = await Promise.race([

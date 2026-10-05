@@ -4,6 +4,8 @@
     "scripts/**",
     "scratch/**",
     "supabase/**",
+    "figma-tokens-sync/**",
+    "html.to.design/**",
     "*.mjs",
     "test-*.mjs"
   ]

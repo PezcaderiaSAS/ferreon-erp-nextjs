@@ -105,7 +105,7 @@ export const LANDING_CONFIG = {
       "Normativa colombiana (COP sin centavos)",
     ],
     mockup: {
-      title: "Control de Flota y Contratos",
+      title: "Control de Inventario y Contratos",
       growthMetric: "+48%",
       growthLabel: "Rotación de Maquinaria",
       floatingTag: "Idempotencia & Cero Errores",
@@ -223,7 +223,7 @@ export const LANDING_CONFIG = {
       {
         id: "bodega_compras",
         label: "Bodega & Suministros",
-        badge: "Almacén y Flota",
+        badge: "Almacén e Inventario",
         description: "Trazabilidad de equipos serializados y abastecimiento directo con cuentas por pagar.",
         modules: [
           {
@@ -236,7 +236,7 @@ export const LANDING_CONFIG = {
             description: "Control de inventario por número de serie físico, horómetro, estado operativo (Disponible, En Obra, Mantenimiento) y Kardex de movimientos.",
             route: "/bodega",
             kpis: [
-              { label: "Equipos en Flota", value: "348", hint: "Seriales registrados" },
+              { label: "Equipos Registrados", value: "348", hint: "Seriales registrados" },
               { label: "Tasa de Disponibilidad", value: "64%", hint: "Listos en almacén" },
               { label: "En Mantenimiento", value: "9", hint: "Preventivo / Correctivo" },
             ],
@@ -471,11 +471,11 @@ export const LANDING_CONFIG = {
       {
         id: "business",
         name: "Business",
-        description: "Para grandes flotas de maquinaria pesada, múltiples sedes y proyectos de infraestructura.",
+        description: "Para grandes inventarios de maquinaria, múltiples sedes y proyectos de infraestructura.",
         priceCOP: { monthly: 220000, annual: 176000 },
         priceUSD: { monthly: 49, annual: 39 },
         features: [
-          "Todo lo incluido en Pro para flotas corporativas",
+          "Todo lo incluido en Pro para empresas con múltiples sedes",
           "Módulo de Subcontratación a terceros con margen",
           "Gobernanza UltraAdmin con control de licencias",
           "Soporte multi-sede con bodegas descentralizadas",

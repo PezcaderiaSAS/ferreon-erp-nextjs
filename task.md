@@ -130,31 +130,89 @@
 
 # Speckit Tasks: Formalización Directa 1-Clic sin Bloqueo de Fechas (SPEC-2026-COTIZACION-1CLIC-SIN-BLOQUEO-FECHAS-001)
 
-## Tarea 23: Migración SQL - Eliminar Excepción de Fecha Pasada en RPC Transaccional [✅ COMPLETADA]
+## Tarea 23a: Migración SQL - Eliminar Excepción de Fecha Pasada en RPC Transaccional [✅ COMPLETADA]
 - [x] Crear archivo de migración `supabase/migrations/20260928_eliminar_bloqueo_fechas_cotizaciones.sql`.
 - [x] Retirar la validación `RAISE EXCEPTION 'ERR_FECHA_INICIO_PASADA...'` en la función `formalizar_alquiler_cotizacion_transaccional`.
 - [x] Preservar las fechas cotizadas originales si no se envía `nueva_fecha_inicio` y mantener el cálculo dinámico de curva de stock.
 - [x] Aplicar la migración a la base de datos Supabase vía MCP. (✅ *Ejecutada con éxito con apply_migration en proyecto eqruvswlpsttuyuglwts*).
 
-## Tarea 24: Limpieza en Server Actions y Wizard de Alquileres [✅ COMPLETADA]
+## Tarea 24a: Limpieza en Server Actions y Wizard de Alquileres [✅ COMPLETADA]
 - [x] En `src/app/actions/cotizaciones.ts`, ajustar el manejo de errores para no rechazar fechas pasadas y tipar explícitamente `ConvertirCotizacionResultado`.
 - [x] En `src/components/forms/alquiler/useAlquilerForm.ts`, remover el bloqueo `if (esFechaInicioEnPasado)` al formalizar o guardar contrato en `validateCurrentStep` y `validatePayload`.
 - [x] En `src/components/forms/alquiler/StepClienteGarantias.tsx`, humanizar el banner convirtiéndolo en indicador informativo de registro diferido/retroactivo.
 
-## Tarea 25: Formalización Directa 1-Clic en 'AlquileresInteractiveIsland.tsx' [✅ COMPLETADA]
+## Tarea 25a: Formalización Directa 1-Clic en 'AlquileresInteractiveIsland.tsx' [✅ COMPLETADA]
 - [x] Crear manejador `handleFormalizarDirecto(cot)` en `AlquileresInteractiveIsland.tsx`.
 - [x] Implementar estado `convertiendoCotizacionId` con spinner de carga `Loader2` y deshabilitación física de doble clic en el botón de la fila.
 - [x] Conectar Server Action con idempotencia `conv_1clic_${cot.id}_${Date.now()}`.
 - [x] Emitir notificación toast de éxito y actualizar reactivamente el estado en la tabla (`handleTabChange('contratos')`).
 - [x] Si la respuesta indica error de stock (`res.esErrorStock`), abrir el modal asistido para gestión de faltante.
 
-## Tarea 26: Desactivación de Bloqueo de Fechas en 'ConvertirCotizacionModal.tsx' [✅ COMPLETADA]
+## Tarea 26a: Desactivación de Bloqueo de Fechas en 'ConvertirCotizacionModal.tsx' [✅ COMPLETADA]
 - [x] Retirar la validación restrictiva `if (fechaExpirada && ...)` en `handleFormalizar`.
 - [x] Eliminar el banner de advertencia forzada *"Ratificación de Fecha de Despacho Requerida"*, reemplazándolo por un selector opcional no intrusivo que preserva por defecto las fechas originales.
 
-## Tarea 27: Pruebas Unitarias y Validación de Calidad [✅ COMPLETADA]
+## Tarea 27a: Pruebas Unitarias y Validación de Calidad [✅ COMPLETADA]
 - [x] Actualizar `tests/unit/formalizar-cotizacion-polimorfica.test.ts` para verificar formalización con fecha pasada sin arrojar error.
 - [x] Actualizar `tests/components/ConvertirCotizacionModal.test.tsx` y `tests/integration/components/cotizacion-alquileres-flow.integration.test.tsx` para reflejar el soporte diferido y selector opcional de reprogramación.
 - [x] Ejecutar `npm run test` y verificar 100% de suites en verde (65/65 suites pasadas, 354/354 tests en verde).
 - [x] Ejecutar `npm run typecheck` asegurando cero errores de compilación de TypeScript.
+
+---
+
+# Speckit Tasks: Tokens W3C y Blueprint de Componentes para Figma & DevTools (SPEC-2026-FIGMA-DEVTOOLS-001)
+
+## Tarea 23: Especificación Formal de Requerimientos y PRD [✅ COMPLETADA]
+- [x] Elaborar PRD de especificación (`speckit_figma_devtools_prd.md`) alineando objetivos, alcance de las 8 vistas y flujo transaccional crítico.
+
+## Tarea 24: Catálogo de Tokens W3C Design Tokens JSON [✅ COMPLETADA]
+- [x] Generar `figma_design_tokens.json` con tokens primitivos, escala tipográfica `Inter` / `JetBrains Mono` y modos conmutables (`salmon-pastel` y `cyber-cyan`).
+
+## Tarea 25: Blueprint de Anatomía y Estados de Componentes para Figma [✅ COMPLETADA]
+- [x] Generar `figma_components_blueprint.md` con la jerarquía de frames, desglose de las 8 pantallas y matriz de estados interactivos y Poka-Yoke.
+
+## Tarea 26: Toolkit de Sincronización y Plugin Local de Figma [✅ COMPLETADA]
+- [x] Crear plugin local en `figma-tokens-sync/` con `manifest.json` y `code.js` para generar Variables nativas y modos conmutables en 1 clic en Figma.
+- [x] Crear guía de integración paso a paso `figma-tokens-sync/README.md` (Plugin local, Tokens Studio GitHub Sync y auditoría REST).
+
+## Tarea 27: Conexión en Vivo y Auditoría de Archivo Figma [✅ COMPLETADA]
+- [x] Cliente oficial Figma API (`scripts/figma-api-client.mjs`) configurado con token PAT de Pezcaderia SAS y sanitizado en `.env.local`.
+- [x] Conexión y auditoría en tiempo real del archivo `Alquileres System` (`xQ7iOmkYpLy6F1H9QnYv5F`): 14 secciones, 1,306 componentes, 88 colores y 52 estilos tipográficos certificados.
+- [x] Generación de reporte formal `figma_live_audit_report.md`.
+
+---
+
+# Tareas Pendientes Enmarcadas (Roadmap Próxima Sesión)
+
+## Tarea 28: Inyección de Colección de Variables en Figma (Sync Studio v2.0) [✅ COMPLETADA]
+- [x] Ejecutar el plugin `figma-tokens-sync` en Figma para inyectar las 33 variables oficiales de `Alquileres System — Design Tokens` con soporte dual adaptado a Figma Free (Salmon Pastel y Cyber Cyan), 9 espaciados y 6 radios.
+
+## Tarea 29: Cobertura Visual de Vistas en Figma (html.to.design / Builder.io) [✅ 14 de 14 COMPLETADAS - 100%]
+- [x] Importar `/auth/login` (`https://alquileres-erp-nextjs-ruby.vercel.app/auth/login`) — ✅ *Completada*.
+- [x] Importar `/dashboard` (`https://alquileres-erp-nextjs-ruby.vercel.app/dashboard`) — ✅ *Completada (Sections 24 y 25)*.
+- [x] Importar `/alquileres` (`https://alquileres-erp-nextjs-ruby.vercel.app/alquileres`) — ✅ *Completada (Sections 26 y 27)*.
+- [x] Importar `/bodega` (`https://alquileres-erp-nextjs-ruby.vercel.app/bodega`) — ✅ *Completada (Sections 28 y 29 - 248 componentes)*.
+- [x] Importar `/compras` (`https://alquileres-erp-nextjs-ruby.vercel.app/compras`) — ✅ *Completada (Sections 30 y 31)*.
+- [x] Importar `/subcontrataciones` (`https://alquileres-erp-nextjs-ruby.vercel.app/subcontrataciones`) — ✅ *Completada (Sections 32 y 33)*.
+- [x] Importar `/devoluciones` (`https://alquileres-erp-nextjs-ruby.vercel.app/devoluciones`) — ✅ *Completada (Confirmada en vivo en el lienzo)*.
+
+## Tarea 30: Automatización CI/CD de Paridad de Tokens
+- [ ] Configurar GitHub Action que valide que cualquier cambio en `figma_design_tokens.json` o en tokens CSS mantenga paridad matemática estricta con el Design System de Figma.
+
+---
+
+# Speckit Tasks: Centro de Control Operativo y Calendario Multi-Flujo (SPEC-2026-DASHBOARD-CALENDAR-001)
+
+## Tarea 31: Modernización de Dashboard y Calendario Operativo [✅ COMPLETADA]
+- [x] Tipado estricto en `src/core/types/dashboard.ts` y re-export en `src/types/dashboard.ts` (DashboardKPIs, EventoCalendario, TareaOperativa, AlertaSistema).
+- [x] Servicio de dominio puro `DashboardTransaccionalService` en `src/core/services/dashboard-transaccional.service.ts` con cálculo O(N) de utilización de flota, contratos activos, devoluciones hoy y cartera COP.
+- [x] Suite de pruebas unitarias dedicada en `tests/unit/dashboard-transaccional.service.test.ts` con 7/7 tests pasando al 100%.
+- [x] Server Actions `obtenerDashboardDataAction` y `crearTareaManualAction` en `src/app/actions/dashboard.ts` con consultas concurrentes `Promise.all` en Supabase.
+- [x] Componente `DashboardSkeleton.tsx` con efecto shimmer y layout asimétrico 65/35 para CLS = 0.
+- [x] Componente `DashboardKpiGrid.tsx` con los 4 KPIs en vivo (Utilización de flota, Contratos activos, Devoluciones críticas y Cartera COP).
+- [x] Componente `CalendarioOperativoIsland.tsx` con vistas Mes, Semana y Agenda, filtrado por categorías de color semántico y navegación libre a 60 fps.
+- [x] Componente `ActividadDrawer.tsx` con slide-over accesible (Escape, focus trap) y acceso prioritario a '+ Nuevo Alquiler con esta fecha inicial'.
+- [x] Componente `ResumenTareasCard.tsx` con tareas automáticas del sistema + tareas manuales interactivas y `RecordatorioEventosFeed.tsx` con semáforos de urgencia.
+- [x] Deconstrucción de `src/app/dashboard/page.tsx` a Server Component conciso con streaming `<Suspense>` y First Load JS de 109 kB.
+- [x] Verificación de compilación: `tsc --noEmit` (0 errores) y `npm run build` exitoso (32/32 rutas).
 

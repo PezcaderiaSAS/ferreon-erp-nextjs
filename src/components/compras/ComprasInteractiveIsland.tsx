@@ -498,11 +498,14 @@ export function ComprasInteractiveIsland({
             <div className="relative w-full sm:w-80">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
+                id="compras-search-input"
+                name="compras_search"
                 type="text"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Buscar por orden, proveedor o NIT..."
                 className="w-full text-xs pl-9 pr-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-salmon"
+                aria-label="Buscar compras por orden, proveedor o NIT"
               />
             </div>
 
@@ -872,11 +875,14 @@ export function ComprasInteractiveIsland({
             <div className="relative w-full sm:w-80">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
+                id="cxp-search-input"
+                name="cxp_search"
                 type="text"
                 value={searchCXP}
                 onChange={e => setSearchCXP(e.target.value)}
                 placeholder="Buscar por orden, proveedor o NIT..."
                 className="w-full text-xs pl-9 pr-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+                aria-label="Buscar cuentas por pagar por orden, proveedor o NIT"
               />
             </div>
 
@@ -1089,11 +1095,14 @@ export function ComprasInteractiveIsland({
             <div className="relative w-full sm:w-96">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
+                id="proveedores-search-input"
+                name="proveedores_search"
                 type="text"
                 value={searchProveedor}
                 onChange={e => setSearchProveedor(e.target.value)}
                 placeholder="Búsqueda asistida por Razón Social, NIT, Contacto o Ciudad..."
                 className="w-full text-xs pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                aria-label="Buscar proveedores por razón social, NIT o contacto"
               />
             </div>
 

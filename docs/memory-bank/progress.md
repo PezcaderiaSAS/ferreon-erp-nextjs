@@ -15,6 +15,7 @@
 | **UI/UX Linear & CSS Moderno** | 🟢 Certificado | 🟢 Canónico (Hito 9) | `DESIGN.md` y `systemPatterns.md` actualizados. `<LinearDataTable<T>>` y `<ContratosAlquilerTable />` implementados. |
 | **Blindaje Legal & AppSec** | 🟢 Certificado | 🟢 Canónico (Hito 10) | Términos blindados (As Is, Liability Cap, Human-in-the-Loop), RLS + Cookies, Modal bloqueante, anti-copyleft (`exceljs`), env Zod fail-fast y `safeServerAction`. |
 | **Landing Page SaaS** | 🟢 Operativo | 🟢 Excelente | 9 secciones dinámicas, multi-moneda (COP/USD) y responsive design. |
+| **Dashboard & Calendario** | 🟢 Operativo | 🟢 Modernizado (Hito 17) | Deconstruido a RSC + Suspense + Client Island. 4 KPIs en vivo, layout 65/35, Calendario interactivo (Mes/Semana/Agenda), Drawer con '+ Nuevo Alquiler', Tareas y Feed de alertas. |
 
 
 ---
@@ -137,4 +138,58 @@
 - [x] Ampliación de tests en `tests/unit/contrato-pdf-cliente-real.test.ts` verificando título, consecutivo CC, leyenda legal colombiana y regeneración retrocompatible (100% en verde).
 - [x] Verificación global: `tsc --noEmit` con 0 errores y 13/13 tests de motores PDF aprobados.
 
+### Hito 16: Auditoría de Producción, Tokens W3C, Marca Canónica y Figma en Vivo (`SPEC-2026-FIGMA-DEVTOOLS-001`)
+- [x] Auditoría integral de las 8 rutas de producción en Vercel con Chrome DevTools MCP.
+- [x] Homologación de marca canónica obligatoria "Alquileres System SaaS" en Sidebar, TopNav y metadata.
+- [x] Corrección de CSP para carga de avatares Dicebear en `/configuracion` y timeout de middleware elevado a 2500ms.
+- [x] Favicon dinámico en `icon.tsx` y atributos a11y (`id`, `name`, `htmlFor`, `aria-label`) en formularios.
+- [x] Catálogo W3C Design Tokens JSON (`figma_design_tokens.json`) con modos duales (*Salmón Pastel* y *Cyber Cyan*).
+- [x] Blueprint de Componentes para Figma (`figma_components_blueprint.md`).
+- [x] Plugin nativo interactivo y bidireccional Sync Studio v2.0 (`figma-tokens-sync/` con `manifest.json`, `code.js`, `ui.html` y `inject-tokens-console.js`) para sincronización código ⇄ Figma sin dependencias SaaS.
+- [x] Cobertura visual del 100% de las 14 pantallas canónicas importadas y auditadas en Figma (`xQ7iOmkYpLy6F1H9QnYv5F`).
+- [x] Inyección de 33 variables oficiales con soporte dual adaptado a Figma Free (*Salmon Pastel* y *Cyber Cyan*), 9 espaciados y 6 radios.
+- [x] Vinculación nativa certificada de **6,389 capas y nodos vectoriales** a las Variables de diseño de Alquileres System.
+- [x] Purgado de frames duplicados y huérfanos.
+- [x] Reportes generados: `figma_live_audit_report.md` y `figma_verification_complete_report.md`.
 
+### Hito 17: Centro de Control Operativo y Calendario Multi-Flujo (`SPEC-2026-DASHBOARD-CALENDAR-001`)
+- [x] Especificación formal `OptimizedPrompt` JSON y resolución completa del árbol de diseño vía `/grill-me`.
+- [x] Tipado estricto en `src/core/types/dashboard.ts` y re-export en `src/types/dashboard.ts` (`DashboardKPIs`, `EventoCalendario`, `TareaOperativa`, `AlertaSistema`).
+- [x] Dominio transaccional puro en `src/core/services/dashboard-transaccional.service.ts` con cálculo O(N) de utilización de flota, contratos activos, devoluciones hoy y cartera en mora.
+- [x] Suite de pruebas unitarias Vitest en `tests/unit/dashboard-transaccional.service.test.ts` pasando al 100% (7/7 tests).
+- [x] Server Actions `obtenerDashboardDataAction` y `crearTareaManualAction` en `src/app/actions/dashboard.ts` con consultas concurrentes `Promise.all` en Supabase.
+- [x] `DashboardSkeleton.tsx` shimmer para CLS = 0 con diseño asimétrico 65/35.
+- [x] `DashboardKpiGrid.tsx` con los 4 KPIs en vivo (Utilización de Flota, Contratos Activos, Devoluciones Críticas, Cartera COP).
+- [x] `CalendarioOperativoIsland.tsx` nativo con vistas Mes, Semana y Agenda, filtrado dinámico por píldoras semánticas y navegación libre a 60 fps.
+- [x] `ActividadDrawer.tsx` accesible (Escape, click outside) con botón prioritario '+ Crear Nuevo Alquiler para esta fecha inicial' y acciones contextuales.
+- [x] `ResumenTareasCard.tsx` híbrido (tareas del sistema + manuales rápidas) y `RecordatorioEventosFeed.tsx` clasificado por severidad.
+- [x] Deconstrucción de `src/app/dashboard/page.tsx` de HTML hardcodeado a Server Component conciso con streaming `<Suspense>` y First Load JS de 109 kB.
+- [x] Persistencia de Tareas Manuales en Supabase: Tabla `dashboard_tareas` con RLS, Server Actions `crearTareaManualAction`, `toggleTareaCompletadaAction`, `eliminarTareaManualAction` (soft-delete), actualización optimista en UI y suite de pruebas `dashboard-tareas-actions.test.ts` (419 tests en verde en 77 suites).
+- [x] Opción B: Elevación UI Premium del Dashboard — Micro-gráficos Sparkline SVG dinámicos en KPIs, tipografía tabular (`font-mono tabular-nums`) para estabilidad de dígitos en montos de cartera y calendarios, jerarquía armónica de radios anidados ($R_{outer} = 16\text{px}$, $R_{inner} = 10\text{px}$), micro-interacciones hover sutiles y elevación Dark Mode por capas tonales.
+- [x] Verificación completa: `tsc --noEmit` (0 errores) y `npm run build` exitoso (32/32 rutas compiladas en verde).
+
+### Hito 18: Módulo de Cotizaciones Rápidas, Pipeline Comercial y WhatsApp (`SPEC-002`)
+- [x] Especificación formal EARS en `specs/002-cotizaciones-rapidas/spec.md`, plan técnico (`plan.md`) y desglose de tareas (`tasks.md`).
+- [x] Servicio de dominio puro `src/core/services/cotizacion-rapida.service.ts` con Integer Math para COP, IVA 19%, retenciones, cálculo de KPIs comerciales y constructor de enlace WhatsApp (`wa.me`).
+- [x] Suite de pruebas TDD en `tests/unit/cotizaciones-rapidas.service.test.ts` (9 tests pasando al 100%). Total de pruebas elevadas a 428 en 78 suites.
+- [x] Enlace de primer nivel `/cotizaciones` en `src/components/ui/Sidebar.tsx` con icono `FileSpreadsheet`.
+- [x] Server Action `obtenerClientesAction` en `src/app/actions/clientes.ts` para carga de clientes en RSC.
+- [x] Componente esqueleto `CotizacionesSkeleton.tsx` para streaming con cero CLS.
+- [x] Modal express de 30 segundos `CotizacionRapidaModal.tsx` con soporte para creación de prospectos on-the-fly, verificación de stock en vivo, recálculo reactivo y envío directo por WhatsApp.
+- [x] Isla interactiva `CotizacionesInteractiveIsland.tsx` con 4 KPIs de pipeline comercial, filtros de estado, tabla tabular en desktop y tarjetas móviles líquidas con conversión poka-yoke a contratos.
+- [x] Server Component `src/app/cotizaciones/page.tsx` con carga paralela de cotizaciones, clientes y equipos (`First Load JS` 95.5 kB).
+- [x] Verificación completa: `tsc --noEmit` (0 errores) y `npm run build` exitoso (33 rutas compiladas en verde).
+### Hito 19: Facturación Recurrente y Cuentas de Cobro Periódicas (`SPEC-003`)
+- [x] Especificación formal EARS en `specs/003-facturacion-recurrente/spec.md`, plan técnico (`plan.md`) y desglose de tareas (`tasks.md`).
+- [x] Servicio de dominio puro `src/core/services/facturacion-recurrente.service.ts`:
+  - `calcularDiasFacturablesEnPeriodo`: Intersección estricta de rangos temporales $(\max(inicioCorte, inicioContrato)$ y $\min(finCorte, finContrato))$.
+  - `calcularCortePeriodicoAlquiler`: Liquidación pro-rata por ítem con tarifas diarias, IVA (19%), Retefuente (2.5%) y ReteICA (0.966%) con Integer Math en COP.
+  - `previsualizarLoteCortesPeriodicos`: Consolidación de KPIs del lote proyectado.
+  - `construirMensajeWhatsAppCuentaCobro`: Generador de mensajes con URL codificada `https://wa.me/...`.
+- [x] Suite de pruebas TDD en `tests/unit/facturacion-recurrente.service.test.ts` con 10/10 pruebas unitarias aprobadas al 100%. Total global: 438 tests en 79 suites.
+- [x] Server Action `emitirCuentaCobroPeriodicaAction` y `obtenerHistorialCuentasCobroAction` en `src/app/actions/facturacion-recurrente.ts`:
+  - Asignación de consecutivo correlativo (`CC-PER-XXXX` o `FAC-REC-XXXX`), persistencia en tabla `facturas`, registro de auditoría inmutable en `AuditLogger` e invalidación de caché Redis.
+- [x] Modal de emisión `EmitirCuentaCobroModal.tsx` con opciones de documento (*Cuenta de Cobro* vs *Factura con IVA*), desglose de equipos, días en obra y envío inmediato por WhatsApp.
+- [x] Panel de cortes periódicos `CortesPeriodicosPanel.tsx` con presets rápidos (1ra Quincena, 2da Quincena, Mes, Mes Anterior, Rango Libre), 3 KPIs de corte y tabla tabular con checkboxes para emisión en lote.
+- [x] Integración en `FacturacionInteractiveIsland.tsx` con conmutador de pestañas (`Facturación Global & Cartera CXC` vs `Cortes & Cuentas de Cobro Periódicas`).
+- [x] Verificación completa: `tsc --noEmit` (0 errores) y `npm run build` en verde.

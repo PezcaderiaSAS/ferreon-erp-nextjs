@@ -14,13 +14,13 @@ import { LANDING_CONFIG } from '../config/landing';
 
 export const metadata: Metadata = {
   title: "Alquileres System — La Plataforma Todo en Uno para Equipos Modernos de Maquinaria y Obras",
-  description: "Planifica contratos de alquiler, controla despachos de maquinaria pesada y maximiza la rentabilidad operativa de tu flota con Alquileres System.",
+  description: "Planifica contratos de alquiler, controla despachos de maquinaria pesada y maximiza la rentabilidad operativa de tu inventario con Alquileres System.",
   keywords: [
     "alquiler de maquinaria",
     "gestión de equipos de construcción",
     "software de alquileres",
     "ERP maquinaria",
-    "control de flota",
+    "control de inventario",
     "facturación de alquileres",
     "Alquileres System",
     "FerreOn ERP",

@@ -12,9 +12,11 @@
 
 # Variables de Entorno y Secretos (NUNCA subir a GitHub)
 .env
+.env*
 .env*.local
 .env.production
 .env.staging
+.env.vercel*
 
 # Supabase Local
 /supabase/.temp/
@@ -36,6 +38,13 @@ yarn-error.log*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
+
+.vercel
+.reports/
+
+# Figma / Design Captures Locales
+html.to.design/
+*.h2d
 
 .vercel
 .env*

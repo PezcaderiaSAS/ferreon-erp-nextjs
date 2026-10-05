@@ -7,6 +7,7 @@ export default defineConfig({
     environmentMatchGlobs: [
       ['tests/components/**', 'happy-dom'],
       ['tests/integration/components/**', 'happy-dom'],
+      ['src/**/__tests__/**', 'happy-dom'],
     ],
     setupFiles: ['./__tests__/setup.ts'],
     alias: {
@@ -17,6 +18,7 @@ export default defineConfig({
       'tests/unit/**/*.test.{ts,tsx}',
       'tests/integration/**/*.test.{ts,tsx}',
       'tests/components/**/*.test.{ts,tsx}',
+      'src/**/__tests__/**/*.test.{ts,tsx}',
     ],
     globals: true,
   },

@@ -101,6 +101,21 @@ export function ModulesExplorerSection() {
   // 5. Alquileres: Duración
   const [diasAlquiler, setDiasAlquiler] = useState<number>(7);
 
+  const getGlosaPorDias = (dias: number) => {
+    switch (dias) {
+      case 1:
+        return 'SON: TRESCIENTOS MIL PESOS M/CTE CON RETENCIÓN EN CUSTODIA';
+      case 7:
+        return 'SON: UN MILLÓN TRESCIENTOS OCHENTA MIL PESOS M/CTE CON RETENCIÓN EN CUSTODIA';
+      case 15:
+        return 'SON: DOS MILLONES OCHOCIENTOS VEINTE MIL PESOS M/CTE CON RETENCIÓN EN CUSTODIA';
+      case 30:
+        return 'SON: CINCO MILLONES QUINIENTOS VEINTE MIL PESOS M/CTE CON RETENCIÓN EN CUSTODIA';
+      default:
+        return `SON: ${((dias * 180000) + 120000).toLocaleString('es-CO')} PESOS M/CTE CON RETENCIÓN EN CUSTODIA`;
+    }
+  };
+
   // 6. UltraAdmin: Switch de módulo
   const [moduloFacturacionActivo, setModuloFacturacionActivo] = useState(true);
   const [moduloCajaActivo, setModuloCajaActivo] = useState(true);
@@ -689,7 +704,7 @@ export function ModulesExplorerSection() {
 
                   <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 text-[11px] text-slate-400">
                     <span className="text-slate-300 font-semibold block mb-0.5">Glosa Jurídica:</span>
-                    &quot;SON: DOCIENTOS MIL PESOS M/CTE CON RETENCIÓN EN CUSTODIA&quot;
+                    &quot;{getGlosaPorDias(diasAlquiler)}&quot;
                   </div>
                 </div>
               )}

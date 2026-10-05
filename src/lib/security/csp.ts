@@ -57,7 +57,7 @@ export function buildCspHeader(nonce?: string, isDev: boolean = false): string {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
-    "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://vercel.com https://lh3.googleusercontent.com",
+    "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://vercel.com https://lh3.googleusercontent.com https://api.dicebear.com",
     `connect-src ${connectSrcDirectives}`,
     "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://vercel.live",
     "frame-ancestors 'none'",

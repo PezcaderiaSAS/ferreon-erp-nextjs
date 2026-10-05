@@ -89,7 +89,7 @@ export default function PrivacidadPage() {
               </div>
               <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 space-y-2">
                 <div className="font-semibold text-white text-xs uppercase tracking-wider text-orange-400">Datos Transaccionales del Negocio</div>
-                <p className="text-xs text-slate-400">Clientes finales de contratos, órdenes de alquiler, inspecciones de averías, arqueos de caja y comprobantes para la emisión de contratos en PDF y control de flota.</p>
+                <p className="text-xs text-slate-400">Clientes finales de contratos, órdenes de alquiler, inspecciones de averías, arqueos de caja y comprobantes para la emisión de contratos en PDF y control de inventario.</p>
               </div>
             </div>
             <p className="pt-2 text-xs text-slate-400">
