@@ -529,7 +529,7 @@ export default function LoginPage() {
           
           <div className="space-y-4">
             <h2 className="text-4xl xl:text-5xl font-black tracking-tight leading-tight font-display bg-gradient-to-r from-white via-orange-100 to-amber-200 bg-clip-text text-transparent">
-              Control Total de tu Flota y Facturación en Tiempo Real.
+              Control Total de tu Inventario y Facturación en Tiempo Real.
             </h2>
             <p className="text-slate-300 text-base xl:text-lg leading-relaxed font-normal">
               Digitaliza contratos de alquiler con bloqueo pesimista de stock, emisión de comprobantes en PDF y seguimiento de cartera en un solo lugar.
