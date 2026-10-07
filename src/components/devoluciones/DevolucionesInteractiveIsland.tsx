@@ -92,8 +92,9 @@ export function DevolucionesInteractiveIsland({
 
   // Mapear contratos con equipos pendientes de retorno usando el servicio de dominio
   const contratosConPendientes = useMemo(() => {
-    return DevolucionesTransaccionalService.mapearContratosConPendientes(alquileres);
-  }, [alquileres]);
+    const fuente = alquileres && alquileres.length > 0 ? alquileres : (initialAlquileres || []);
+    return DevolucionesTransaccionalService.mapearContratosConPendientes(fuente);
+  }, [alquileres, initialAlquileres]);
 
   // Contratos filtrados por buscador reactivo insensible a acentos
   const contratosFiltrados = useMemo(() => {

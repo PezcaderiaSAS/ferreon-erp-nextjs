@@ -578,27 +578,34 @@ export function AlquileresInteractiveIsland({
   };
 
   const handleConfirmarDevolucion = async (
-    cantidades: { [equipoId: string]: number },
-    danos: { [equipoId: string]: number },
+    cantidades: { [key: string]: number },
+    danos: { [key: string]: number },
     pagoDanos: { monto: number; metodo: string; referencia: string } | null
   ) => {
     if (!contratoActivo) return;
 
-    const original = alquileres.find(a => a.id === contratoActivo.id);
-    if (!original) return;
+    const original = alquileres.find(a => String(a.id) === String(contratoActivo.id));
+    const detallesList = contratoActivo.detalles || contratoActivo.items || original?.detalles || (original as any)?.alquiler_detalles || [];
 
     try {
       const devolucionesPayload: any[] = [];
-      const detallesList = original.detalles || [];
 
-      Object.keys(cantidades).forEach(equipoId => {
-        const cantDev = cantidades[equipoId] || 0;
-        const costoDano = danos[equipoId] || 0;
-        const det = detallesList.find((d: any) => String(d.equipo_id || d.itemId || d.id) === String(equipoId) || String(d.id) === String(equipoId));
+      Object.keys(cantidades).forEach(key => {
+        const cantDev = cantidades[key] || 0;
+        const costoDano = danos[key] || 0;
+        const det = detallesList.find((d: any) => 
+          String(d.id) === String(key) || 
+          String(d.detalleId) === String(key) ||
+          String(d.equipo_id) === String(key) || 
+          String(d.itemId) === String(key) || 
+          String(d.equipoId) === String(key)
+        );
         
+        const finalDetalleId = det?.id ?? det?.detalleId ?? key;
+
         if (cantDev > 0 || costoDano > 0) {
           devolucionesPayload.push({
-            detalleId: det ? det.id : equipoId,
+            detalleId: finalDetalleId,
             cantidadDevuelta: cantDev,
             costoDano: costoDano
           });
@@ -612,7 +619,7 @@ export function AlquileresInteractiveIsland({
         });
 
         if (!res.success) {
-          alert(`Error al procesar devolución en BD: ${res.error}`);
+          useToastStore.getState().showErrorToast(`Error al procesar devolución en BD: ${res.error}`);
           return;
         }
       }
@@ -629,10 +636,10 @@ export function AlquileresInteractiveIsland({
 
       await fetchAllData();
       setShowDevolucionModal(false);
-      alert("Devolución procesada y stock restituido correctamente.");
+      useToastStore.getState().showSuccessToast("¡Devolución registrada exitosamente! El inventario ha sido reingresado a bodega.");
     } catch (error: any) {
       console.error('Error al procesar devolución:', error);
-      alert('Ocurrió un error inesperado al procesar la devolución.');
+      useToastStore.getState().showErrorToast('Ocurrió un error inesperado al procesar la devolución.');
     }
   };
 
