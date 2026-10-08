@@ -529,9 +529,11 @@ export function BodegaInteractiveIsland({ initialEquipos }: BodegaInteractiveIsl
         maxWidth="2xl"
       >
         <BodegaForm 
-          onSuccess={() => {
-            setIsCreateModalOpen(false);
+          onSuccess={(eq, addAnother) => {
             refrescarInventario();
+            if (!addAnother) {
+              setIsCreateModalOpen(false);
+            }
           }}
           onCancel={() => setIsCreateModalOpen(false)}
         />
