@@ -9,6 +9,7 @@ import { AlquilerEntity } from '../../../core/domain/entities/alquiler';
 import { formatearFechaLocal } from '../../../core/utils/fechas';
 import { AlquilerUI } from '../../../infrastructure/state/alquilerStore';
 import { useClienteStore } from '../../../infrastructure/state/clienteStore';
+import { ChangeClientModal } from './ChangeClientModal';
 
 interface DetalleAlquilerModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export function DetalleAlquilerModal({
   onEdit
 }: DetalleAlquilerModalProps) {
   const { clientes } = useClienteStore();
+  const [isChangeClientModalOpen, setIsChangeClientModalOpen] = React.useState(false);
   
   if (!alquiler) return null;
 
@@ -55,6 +57,14 @@ export function DetalleAlquilerModal({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-bold text-white">{clienteNombreFinal}</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsChangeClientModalOpen(true)}
+                  className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-lg border border-slate-700 transition-colors flex items-center gap-1"
+                >
+                  <Pen className="w-3 h-3" />
+                  Cambiar
+                </button>
                 <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                   alquiler.estado === 'ACTIVO' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
                   alquiler.estado === 'FINALIZADO' && (alquiler.total || 0) - (alquiler.totalPagado || 0) > 0 ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' :
@@ -222,6 +232,18 @@ export function DetalleAlquilerModal({
           </div>
         </div>
       </div>
+
+      <ChangeClientModal
+        isOpen={isChangeClientModalOpen}
+        onClose={() => setIsChangeClientModalOpen(false)}
+        alquilerId={alquiler.id}
+        clienteActualId={alquiler.cliente_id}
+        clienteActualNombre={clienteNombreFinal}
+        onSuccess={() => {
+          setIsChangeClientModalOpen(false);
+          // Opcional: Refrescar data, el alquilerDetail refetch debería ocurrir automáticamente si usamos revalidatePath / store.
+        }}
+      />
     </Modal>
   );
 }

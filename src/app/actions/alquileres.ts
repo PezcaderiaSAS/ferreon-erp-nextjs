@@ -97,6 +97,12 @@ export interface RegistrarAbonoInput {
   referencia?: string;
 }
 
+export interface UpdateRentalClientInput {
+  alquilerId: string | number;
+  clienteId: string | number;
+  idempotencyKey?: string;
+}
+
 // ----------------------------------------------------------------------------
 // Esquemas de Validación Zod
 // ----------------------------------------------------------------------------
@@ -154,6 +160,12 @@ const DevolucionItemZodSchema = z.object({
 const ProcesarDevolucionZodSchema = z.object({
   alquilerId: z.union([z.string(), z.number()]),
   devoluciones: z.array(DevolucionItemZodSchema).min(1, 'Debe especificar al menos un ítem devuelto'),
+}).passthrough();
+
+const UpdateRentalClientZodSchema = z.object({
+  alquilerId: z.union([z.string(), z.number()]),
+  clienteId: z.union([z.string(), z.number()]),
+  idempotencyKey: z.string().optional().nullable(),
 }).passthrough();
 
 // ----------------------------------------------------------------------------
@@ -497,4 +509,62 @@ export async function obtenerAlquileresAction() {
     console.error('[obtenerAlquileresAction] Exception:', err);
     return { success: false, error: err?.message || 'Error al obtener alquileres', data: [] };
   }
+}
+
+/**
+ * Server Action: Cambio de Cliente en Alquiler Activo
+ */
+export async function updateRentalClientAction(input: UpdateRentalClientInput) {
+  const validation = validateActionInput(input, UpdateRentalClientZodSchema);
+  if (!validation.success) {
+    return { success: false, error: validation.error || 'Datos inválidos' };
+  }
+  const cleanInput = validation.data;
+  
+  const supabase = await createServerSupabaseClient();
+  const numericAlquilerId = typeof cleanInput.alquilerId === 'string' ? parseInt(cleanInput.alquilerId, 10) : cleanInput.alquilerId;
+  const numericClienteId = typeof cleanInput.clienteId === 'string' ? parseInt(cleanInput.clienteId, 10) : cleanInput.clienteId;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const empresaId = await resolveEmpresaId(user?.id);
+
+  const { error: updErr } = await supabase
+    .from('alquileres')
+    .update({ 
+      cliente_id: numericClienteId,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', numericAlquilerId)
+    .eq('empresa_id', empresaId);
+
+  if (updErr) {
+    return { success: false, error: `Error al cambiar de cliente: ${updErr.message}` };
+  }
+
+  // Auditoría Inmutable
+  AuditLogger.logAsync({
+    modulo: 'ALQUILERES',
+    accion: 'EDITAR_ALQUILER',
+    descripcion: `Cambio de titular para el alquiler ID ${numericAlquilerId}. Nuevo cliente ID: ${numericClienteId}.`,
+    entidadId: numericAlquilerId.toString(),
+    detalles: { alquilerId: numericAlquilerId, nuevoClienteId: numericClienteId },
+    userId: user?.id,
+    userEmail: user?.email,
+  });
+
+  // Regeneración asíncrona del PDF en segundo plano (Zero-Latency for UI)
+  fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/alquileres/${numericAlquilerId}/pdf`, { 
+    method: 'POST' 
+  }).catch(e => console.warn('[updateRentalClientAction] PDF regeneracion fallida en background:', e));
+
+  try {
+    await invalidateTenantCache(user?.id, ['alquileres']);
+  } catch (cErr) {
+    console.warn('[updateRentalClientAction] Cache clear error:', cErr);
+  }
+
+  safeRevalidatePath('/alquileres');
+  safeRevalidatePath(`/alquileres/${numericAlquilerId}`);
+  
+  return { success: true };
 }
