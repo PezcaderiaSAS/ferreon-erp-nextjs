@@ -122,8 +122,9 @@ export function BodegaMassForm({ onSuccess, onCancel }: BodegaMassFormProps) {
                   <input
                     type="text"
                     value={item.sku}
-                    onChange={(e) => updateItem(item.id, 'sku', e.target.value)}
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-1 focus:ring-brand-salmon"
+                    readOnly
+                    disabled
+                    className="w-full px-2 py-1.5 border border-slate-200 rounded text-sm bg-slate-100 text-slate-500 cursor-not-allowed select-none"
                     placeholder="SKU"
                   />
                 </td>
