@@ -11,8 +11,11 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser();
     const tenantId = user?.id || 'default';
 
+    const empresaId = await resolveEmpresaId(user?.id);
+    const tenantKey = empresaId || user?.id || 'default';
+
     // 1. Intento de Lectura en Caché Aislado por Tenant (Read-Through)
-    const cachedData = await getTenantCache<any[]>(tenantId, 'equipos');
+    const cachedData = await getTenantCache<any[]>(tenantKey, 'equipos_v2');
     if (cachedData) {
       return NextResponse.json(
         {
@@ -29,8 +32,6 @@ export async function GET() {
         }
       );
     }
-
-    const empresaId = await resolveEmpresaId(user?.id);
 
     // 2. Consulta a Base de Datos protegida por RLS (Miss)
     const { data, error } = await supabase
@@ -58,7 +59,7 @@ export async function GET() {
 
     // 4. Escritura en Caché Multi-Tenant (TTL 1 Hora)
     if (validatedData.length > 0) {
-      await setTenantCache(tenantId, 'equipos', validatedData, 3600);
+      await setTenantCache(tenantKey, 'equipos_v2', validatedData, 3600);
     }
 
     // 5. Retorno al Cliente
