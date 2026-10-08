@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Button } from '../ui/Button';
 import { useBodegaStore } from '../../infrastructure/state/bodegaStore';
 import { Plus, Trash2, Save } from 'lucide-react';
-import { crearEquipoAction } from '../../app/actions/equipos';
+import { crearEquipoAction, crearEquiposMasivoAction } from '../../app/actions/equipos';
 
 interface BodegaMassFormProps {
   onSuccess: () => void;
@@ -23,11 +23,11 @@ export function BodegaMassForm({ onSuccess, onCancel }: BodegaMassFormProps) {
   const handleAddRow = () => {
     // Generate a temporary SKU based on the last one
     const lastSku = items[items.length - 1]?.sku || generarSiguienteSKU();
-    const match = lastSku.match(/SKU-(\d+)/);
+    const match = lastSku.match(/EQ-(\d+)/);
     let nextSku = generarSiguienteSKU();
     if (match) {
       const num = parseInt(match[1], 10) + 1;
-      nextSku = `SKU-${num.toString().padStart(3, '0')}`;
+      nextSku = `EQ-${num.toString().padStart(3, '0')}`;
     }
 
     setItems([...items, {
@@ -70,33 +70,19 @@ export function BodegaMassForm({ onSuccess, onCancel }: BodegaMassFormProps) {
     setIsSubmitting(true);
     
     try {
-      let successCount = 0;
-      let errorMessages: string[] = [];
+      const result = await crearEquiposMasivoAction(items.map(item => ({
+        sku: item.sku,
+        nombre: item.nombre.trim().toUpperCase(),
+        categoria: item.categoria.trim(),
+        tarifaDiaria: item.tarifaDiaria,
+        valorReposicion: item.valorReposicion,
+        stockInicial: item.stockInicial
+      })));
 
-      for (const item of items) {
-        const result = await crearEquipoAction({
-          sku: item.sku,
-          nombre: item.nombre.trim().toUpperCase(),
-          categoria: item.categoria.trim(),
-          tarifaDiaria: item.tarifaDiaria,
-          valorReposicion: item.valorReposicion,
-          stockInicial: item.stockInicial
-        });
-
-        if (result.success) {
-          successCount++;
-        } else {
-          errorMessages.push(`Error en "${item.nombre}": ${result.error}`);
-        }
-      }
-
-      if (errorMessages.length > 0) {
-        setErrors(errorMessages);
-        if (successCount > 0) {
-          alert(`Se guardaron ${successCount} equipos exitosamente, pero hubo errores.`);
-          onSuccess(); // Refresh anyway to show the saved ones
-        }
+      if (!result.success) {
+        setErrors([`Error masivo: ${result.error}`]);
       } else {
+        alert(`Se guardaron ${result.count} equipos exitosamente en la bodega.`);
         onSuccess();
       }
     } catch (e: any) {

@@ -120,9 +120,11 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
         throw new Error(result.error);
       }
 
-      // 3. Update real ID
+      // 3. Update real ID replacing the optimistic temp ID
       const finalEquipo = { ...newEquipo, id: result.data.id };
-      store.updateEquipo(finalEquipo);
+      useBodegaStore.setState((state) => ({
+        equipos: state.equipos.map(e => e.id === tempId ? finalEquipo : e)
+      }));
       
       if (addAnother) {
         setNombre('');

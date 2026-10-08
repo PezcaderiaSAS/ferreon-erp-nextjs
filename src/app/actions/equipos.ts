@@ -127,6 +127,100 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
   return { success: true, data };
 }
 
+export async function crearEquiposMasivoAction(inputs: CrearEquipoInput[]) {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para crear equipos.' };
+  }
+  const userIdentifier = user.email || user.id;
+  const empresaId = await resolveEmpresaId(user.id);
+
+  const validInputs = [];
+  for (const input of inputs) {
+    const validation = validateActionInput(input, CrearEquipoZodSchema);
+    if (!validation.success) {
+      return { success: false, error: `Datos inválidos en el SKU ${input.sku}: ${validation.error}` };
+    }
+    validInputs.push(validation.data);
+  }
+
+  const payloadToInsert = validInputs.map(input => ({
+    empresa_id: empresaId,
+    codigo: input.sku.trim().toUpperCase(),
+    nombre: input.nombre.trim(),
+    categoria: input.categoria.trim(),
+    tarifa_diaria: input.tarifaDiaria,
+    valor_reposicion: input.valorReposicion,
+    stock_total: input.stockInicial,
+    stock_disponible: input.stockInicial,
+    stock_en_obra: 0,
+    stock_mantenimiento: 0,
+    estado: 'Activo'
+  }));
+
+  const { data, error } = await supabase
+    .from('equipos')
+    .insert(payloadToInsert)
+    .select();
+
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: `Error de restricción única: Al menos uno de los SKUs (Códigos) ya se encuentra registrado en el sistema.` };
+    }
+    console.error('Error Supabase crearEquiposMasivoAction:', error);
+    return { success: false, error: `Error al guardar equipos en BD: ${error.message}` };
+  }
+
+  // Kardex Bulk Insert
+  const kardexPayload = data
+    .map((equipo: any) => {
+      const originalInput = validInputs.find(i => i.sku.trim().toUpperCase() === equipo.codigo);
+      if (originalInput && originalInput.stockInicial > 0) {
+        return {
+          equipo_id: equipo.id,
+          empresa_id: empresaId || null,
+          tenant_id: empresaId || null,
+          tipo_movimiento: 'ENTRADA_INICIAL',
+          cantidad_delta: originalInput.stockInicial,
+          stock_resultante: originalInput.stockInicial,
+          costo_unitario: originalInput.valorReposicion || 0,
+          costo_total: (originalInput.valorReposicion || 0) * originalInput.stockInicial,
+          costo_promedio_resultante: originalInput.valorReposicion || 0,
+          motivo: 'Inventario inicial al dar de alta el equipo en catálogo',
+          referencia_documento: `SKU-${originalInput.sku}`,
+          usuario_id: user.id || userIdentifier,
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
+
+  if (kardexPayload.length > 0) {
+    try {
+      const adminClient = createAdminSupabaseClient();
+      await adminClient.from('kardex_inventario').insert(kardexPayload);
+    } catch (kardexErr) {
+      console.warn('[crearEquiposMasivoAction] Advertencia al asentar kardex en bloque:', kardexErr);
+    }
+  }
+
+  await invalidateTenantCache(user.id, ['equipos']);
+
+  AuditLogger.logAsync({
+    modulo: 'BODEGA',
+    accion: 'CREAR_EQUIPOS_MASIVO',
+    descripcion: `Nuevos equipos registrados en bloque: ${data.length} ítems.`,
+    entidadId: 'MASIVO',
+    detalles: { cantidad: data.length, empresaId },
+    userId: user.id,
+    userEmail: user.email,
+  });
+
+  revalidatePath('/bodega');
+  return { success: true, count: data.length };
+}
+
 export interface EditarEquipoInput {
   id: string | number;
   nombre: string;
