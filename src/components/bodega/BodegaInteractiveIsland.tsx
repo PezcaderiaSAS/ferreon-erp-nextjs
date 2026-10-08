@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { Modal } from '@/components/ui/Modal';
 import { ModalSkeleton } from '@/components/ui/ModalSkeleton';
 import { BodegaForm } from '@/components/forms/BodegaForm';
+import { BodegaMassForm } from '@/components/forms/BodegaMassForm';
 import { useBodegaStore, EquipoUI } from '@/infrastructure/state/bodegaStore';
 import { equipoToEquipoUI } from '@/lib/mappers';
 import { liberarMantenimientoAction, obtenerEquiposAction } from '@/app/actions/equipos';
@@ -33,6 +34,7 @@ interface BodegaInteractiveIslandProps {
 
 export function BodegaInteractiveIsland({ initialEquipos }: BodegaInteractiveIslandProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isMassCreateModalOpen, setIsMassCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isKardexModalOpen, setIsKardexModalOpen] = useState(false);
   const [selectedEquipo, setSelectedEquipo] = useState<EquipoUI | null>(null);
@@ -223,6 +225,16 @@ export function BodegaInteractiveIsland({ initialEquipos }: BodegaInteractiveIsl
             <span className="hidden sm:inline">Sincronizar</span>
           </button>
 
+          <button 
+            type="button"
+            onClick={() => setIsMassCreateModalOpen(true)}
+            className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl transition-colors shadow-sm w-full sm:w-auto text-sm font-semibold cursor-pointer"
+            aria-label="Añadir múltiples equipos"
+          >
+            <Warehouse className="w-4 h-4" />
+            <span className="hidden sm:inline">Creación Masiva</span>
+          </button>
+          
           <button 
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
@@ -536,6 +548,22 @@ export function BodegaInteractiveIsland({ initialEquipos }: BodegaInteractiveIsl
             }
           }}
           onCancel={() => setIsCreateModalOpen(false)}
+        />
+      </Modal>
+
+      {/* Modal para Creación Masiva */}
+      <Modal 
+        isOpen={isMassCreateModalOpen} 
+        onClose={() => setIsMassCreateModalOpen(false)}
+        title="Creación Masiva de Equipos"
+        maxWidth="5xl"
+      >
+        <BodegaMassForm 
+          onSuccess={() => {
+            refrescarInventario();
+            setIsMassCreateModalOpen(false);
+          }}
+          onCancel={() => setIsMassCreateModalOpen(false)}
         />
       </Modal>
 

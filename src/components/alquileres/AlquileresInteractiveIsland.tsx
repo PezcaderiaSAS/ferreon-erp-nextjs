@@ -21,6 +21,8 @@ import { useDirtyFormGuard } from '@/hooks/useDirtyFormGuard';
 import { DiscardChangesModal } from '@/components/ui/DiscardChangesModal';
 
 import { obtenerCotizacionesAction, convertirCotizacionAContratoAction } from '@/app/actions/cotizaciones';
+import { obtenerEquiposAction } from '@/app/actions/equipos';
+import { obtenerClientesAction } from '@/app/actions/clientes';
 import {
   obtenerAlquileresAction,
   procesarDevolucionAction,
@@ -365,8 +367,8 @@ export function AlquileresInteractiveIsland({
       setLoading(true);
       const [alqResult, cliResult, eqResult, cotResult] = await Promise.allSettled([
         obtenerAlquileresAction(),
-        fetch('/api/clientes', { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-        fetch('/api/equipos', { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        obtenerClientesAction(),
+        obtenerEquiposAction(),
         obtenerCotizacionesAction()
       ]);
 

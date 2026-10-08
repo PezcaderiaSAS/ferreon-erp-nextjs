@@ -43,6 +43,7 @@ import {
   AbonoProveedorUI,
   obtenerHistorialAbonosAction
 } from '@/app/actions/cuentas-por-pagar';
+import { obtenerEquiposAction } from '@/app/actions/equipos';
 import { useCurrencyFormatter } from '@/lib/hooks/useCurrencyFormatter';
 import { useToastStore } from '@/infrastructure/state/toastStore';
 
@@ -140,7 +141,7 @@ export function ComprasInteractiveIsland({
         obtenerComprasAction(100),
         obtenerProveedoresAction(),
         obtenerCuentasPorPagarAction(),
-        fetch('/api/equipos', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ success: false, data: [] }))
+        obtenerEquiposAction()
       ]);
 
       if (resCompras.success && resCompras.data) {

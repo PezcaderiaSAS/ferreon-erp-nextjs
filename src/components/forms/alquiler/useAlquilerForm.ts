@@ -5,6 +5,8 @@ import { useAlquilerStore } from '../../../infrastructure/state/alquilerStore';
 import { useEmpresaStore } from '../../../infrastructure/state/empresaStore';
 import { crearAlquilerAction, editarAlquilerAction } from '../../../app/actions/alquileres';
 import { crearAlquilerSegmentadoAction } from '../../../app/actions/alquiler-segmentado';
+import { obtenerEquiposAction } from '../../../app/actions/equipos';
+import { obtenerClientesAction } from '../../../app/actions/clientes';
 import { equipoToEquipoUI } from '../../../lib/mappers';
 import { idempotencyManager } from '../../../lib/idempotency';
 import { EnterprisePDFService } from '../../../core/services/pdf-factura-generator.service';
@@ -54,19 +56,15 @@ export function useAlquilerForm({
   const fetchCatalogsBackground = useCallback(async () => {
     try {
       const [resCli, resEq] = await Promise.all([
-        fetch('/api/clientes', { cache: 'no-store' }),
-        fetch('/api/equipos', { cache: 'no-store' })
-      ]);
-      const [jsonCli, jsonEq] = await Promise.all([
-        resCli.json(),
-        resEq.json()
+        obtenerClientesAction(),
+        obtenerEquiposAction()
       ]);
       // Reemplazar siempre (no fusionar) para limpiar datos de otro tenant
-      if (jsonCli.success && Array.isArray(jsonCli.data)) {
-        setClientes(jsonCli.data);
+      if (resCli.success && Array.isArray(resCli.data)) {
+        setClientes(resCli.data);
       }
-      if (jsonEq.success && Array.isArray(jsonEq.data)) {
-        setEquipos(jsonEq.data.map(equipoToEquipoUI));
+      if (resEq.success && Array.isArray(resEq.data)) {
+        setEquipos(resEq.data.map(equipoToEquipoUI));
       }
     } catch (err) {
       console.warn('[useAlquilerForm] Error al sincronizar catálogos en background:', err);
