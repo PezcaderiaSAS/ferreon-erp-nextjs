@@ -128,10 +128,6 @@ export function ChangeClientModal({
         }
 
         setIsSuccess(true);
-        setTimeout(() => {
-          if (onSuccess) onSuccess(selectedClientId);
-          handleClose();
-        }, 1200);
       } catch (err: any) {
         setErrorMsg(err.message || 'Ocurrió un error inesperado al procesar la solicitud.');
       }
@@ -146,14 +142,24 @@ export function ChangeClientModal({
       maxWidth="md"
     >
       {isSuccess ? (
-        <div className="py-12 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500">
-          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+        <div className="py-10 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500">
+          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
             <CheckCircle2 className="w-10 h-10 text-emerald-600" />
           </div>
-          <h3 className="text-xl font-bold text-slate-800 mb-1">¡Cambio Exitoso!</h3>
-          <p className="text-sm text-slate-500 text-center px-4">
+          <h3 className="text-xl font-bold text-slate-800 mb-2">¡Cambio Exitoso!</h3>
+          <p className="text-sm text-slate-500 text-center px-4 mb-8">
             El contrato y el PDF han sido actualizados con el nuevo titular.
           </p>
+          <button
+            type="button"
+            onClick={() => {
+              if (onSuccess) onSuccess(selectedClientId);
+              handleClose();
+            }}
+            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all cursor-pointer active:scale-98"
+          >
+            Continuar y Cerrar
+          </button>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6 py-2 animate-in fade-in duration-300">
