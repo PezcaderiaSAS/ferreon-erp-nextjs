@@ -1198,9 +1198,7 @@ export function useAlquilerForm({
         store.sanitizeStore();
         setSavedAlquilerData(alquilerUi);
         setIsSuccess(true);
-        if (onSuccess) {
-          onSuccess(alquilerUi);
-        }
+        // Delegamos el onSuccess a la vista de éxito (AlquilerSuccessView)
         return true;
       } else {
         const result = await crearAlquilerSegmentadoAction({
@@ -1289,7 +1287,7 @@ export function useAlquilerForm({
 
         setSavedAlquilerData(alquilerFinal);
         setIsSuccess(true);
-        if (onSuccess) onSuccess(alquilerFinal);
+        // Delegamos el onSuccess a la vista de éxito (AlquilerSuccessView)
         return true;
       }
     } catch (err: any) {

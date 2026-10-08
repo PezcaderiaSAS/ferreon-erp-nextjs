@@ -50,16 +50,12 @@ export function AlquilerForm({
   }, [form]);
 
   if (form.isSuccess && form.savedAlquilerData) {
-    if (form.isEditMode) {
-      // En modo edición, el ciclo finaliza de inmediato cerrando el modal
-      return null;
-    }
     return (
       <AlquilerSuccessView
         isEditMode={form.isEditMode}
         savedAlquilerData={form.savedAlquilerData}
         onPrint={form.handleAbrirImpresionHTML}
-        onContinue={() => onSuccess(form.savedAlquilerData)}
+        onContinue={() => onSuccess && onSuccess(form.savedAlquilerData)}
       />
     );
   }
