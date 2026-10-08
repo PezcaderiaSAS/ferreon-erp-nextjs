@@ -138,12 +138,17 @@ export function BodegaMassForm({ onSuccess, onCancel }: BodegaMassFormProps) {
                   />
                 </td>
                 <td className="p-2">
-                  <input
-                    type="text"
+                  <select
                     value={item.categoria}
                     onChange={(e) => updateItem(item.id, 'categoria', e.target.value)}
-                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-1 focus:ring-brand-salmon"
-                  />
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-1 focus:ring-brand-salmon bg-white"
+                  >
+                    <option value="Construcción">Construcción</option>
+                    <option value="Herramientas Eléctricas">Herramientas Eléctricas</option>
+                    <option value="Maquinaria Pesada">Maquinaria Pesada</option>
+                    <option value="Andamios & Estructuras">Andamios & Estructuras</option>
+                    <option value="Equipos de Medición">Equipos de Medición</option>
+                  </select>
                 </td>
                 <td className="p-2">
                   <input

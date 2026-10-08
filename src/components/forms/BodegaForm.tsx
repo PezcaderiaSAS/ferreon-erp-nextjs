@@ -160,8 +160,9 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
             name="sku"
             type="text"
             value={sku}
-            onChange={(e) => setSku(e.target.value)}
-            className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-900 font-mono bg-slate-50 font-bold"
+            readOnly
+            disabled
+            className="px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-500 font-mono bg-slate-100 font-bold cursor-not-allowed select-none"
             placeholder="Ej: EQ-001"
             aria-label="Código o SKU del equipo"
           />
