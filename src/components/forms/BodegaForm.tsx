@@ -264,7 +264,7 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
         </button>
         <Button 
           type="button" 
-          variant="outline"
+          variant="secondary"
           isLoading={isSubmittingAnother}
           disabled={isSubmitting}
           onClick={(e) => onSubmit(e as unknown as React.FormEvent, true)}
