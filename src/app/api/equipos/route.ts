@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getTenantCache, setTenantCache } from "@/lib/redis";
-import { createServerSupabaseClient } from "@/infrastructure/persistence/supabase/server";
+import { createServerSupabaseClient, resolveEmpresaId } from "@/infrastructure/persistence/supabase/server";
 import { EquipoSchema } from "@/infrastructure/dtos/equipo.dto";
 
 export const dynamic = 'force-dynamic';
@@ -30,10 +30,13 @@ export async function GET() {
       );
     }
 
+    const empresaId = await resolveEmpresaId(user?.id);
+
     // 2. Consulta a Base de Datos protegida por RLS (Miss)
     const { data, error } = await supabase
       .from("equipos")
       .select("*")
+      .eq("empresa_id", empresaId)
       .order("id", { ascending: false });
 
     if (error) {

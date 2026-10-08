@@ -24,6 +24,7 @@ export interface StepEquiposLogisticaProps {
   equiposActivos: any[];
   tipoDocumento?: 'COTIZACION' | 'CONTRATO';
   addItemRow: () => void;
+  duplicateItemRow?: (index: number) => void;
   segmentarItemRow?: (index: number) => void;
   removeItemRow: (index: number) => void;
   updateItemRow: (index: number, field: keyof ItemRow, value: any) => void;
@@ -66,6 +67,7 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
   equiposActivos,
   tipoDocumento = 'COTIZACION',
   addItemRow,
+  duplicateItemRow,
   segmentarItemRow,
   removeItemRow,
   updateItemRow,
@@ -165,6 +167,10 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                     } flex flex-col gap-2.5 relative`}
                   style={{ zIndex: isComboboxOpen ? 100 : Math.max(1, 40 - index) }}
                 >
+                  {/* Número de línea */}
+                  <span className="absolute top-2 right-2 text-[9px] font-mono font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                    #{field.lineaNumero || index + 1}
+                  </span>
                   {/* ═══ LAYOUT DE 2 FILAS ═══════════════════════════════════════
                       Fila 1: Equipo Requerido (ancho completo)
                       Fila 2: Grid de 7 columnas explícitas sin overflow
@@ -226,8 +232,10 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                       <input
                         type="number"
                         min={0}
-                        value={field.precioDiario === 0 ? '' : field.precioDiario}
+                        step="any"
+                        value={field.precioDiario}
                         placeholder="0"
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => {
                           const v = e.target.value;
                           updateItemRow(index, 'precioDiario', v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
@@ -242,7 +250,9 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                       <input
                         type="number"
                         min={1}
+                        step={1}
                         value={field.cantidad}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => updateItemRow(index, 'cantidad', parseInt(e.target.value, 10) || 1)}
                         className="w-full px-1.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-center font-bold font-mono"
                       />
@@ -289,8 +299,10 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                       <input
                         type="number"
                         min={0}
-                        value={subtotalFila === 0 ? '' : subtotalFila}
+                        step="any"
+                        value={subtotalFila}
                         placeholder="0"
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => {
                           const v = e.target.value;
                           updateItemRow(index, 'subtotal', v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
@@ -315,10 +327,21 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                           type="button"
                           onClick={() => segmentarItemRow(index)}
                           className="px-2.5 py-1.5 text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200/80 rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
-                          title="Segmentar"
+                          title="Segmentar para continuar alquiler"
                         >
                           <Split className="w-3.5 h-3.5" />
                           <span>Segmentar</span>
+                        </button>
+                      )}
+                      {duplicateItemRow && field.itemId && (
+                        <button
+                          type="button"
+                          onClick={() => duplicateItemRow(index)}
+                          className="px-2.5 py-1.5 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Duplicar esta fila"
+                        >
+                          <Layers className="w-3.5 h-3.5" />
+                          <span>Duplicar</span>
                         </button>
                       )}
                       {items.length > 1 && (
@@ -527,8 +550,10 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
             <input
               type="number"
               min={0}
-              value={fleteEntrega === 0 ? '' : fleteEntrega}
+              step="any"
+              value={fleteEntrega}
               placeholder="0"
+              onFocus={(e) => e.target.select()}
               onChange={(e) => {
                 const v = e.target.value;
                 setFleteEntrega(v === '' ? 0 : Math.max(0, parseFloat(v) || 0));
@@ -545,8 +570,10 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
             <input
               type="number"
               min={0}
-              value={fleteRecogida === 0 ? '' : fleteRecogida}
+              step="any"
+              value={fleteRecogida}
               placeholder="0"
+              onFocus={(e) => e.target.select()}
               onChange={(e) => {
                 const v = e.target.value;
                 setFleteRecogida(v === '' ? 0 : Math.max(0, parseFloat(v) || 0));

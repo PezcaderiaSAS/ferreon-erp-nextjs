@@ -43,6 +43,10 @@ export interface StepClienteGarantiasProps {
   fechaFinEstimadaContrato: string;
   handleFechaInicioMasterChange: (val: string) => void;
   handleFechaFinMasterChange: (val: string) => void;
+  horaInicioContrato?: string;
+  setHoraInicioContrato?: (val: string) => void;
+  horaFinContrato?: string;
+  setHoraFinContrato?: (val: string) => void;
   esFechaInicioEnPasado?: boolean;
   ratificarFechaInicioAHoy?: () => void;
   garantiaTipo: string;
@@ -97,6 +101,10 @@ export const StepClienteGarantias: React.FC<StepClienteGarantiasProps> = ({
   fechaFinEstimadaContrato,
   handleFechaInicioMasterChange,
   handleFechaFinMasterChange,
+  horaInicioContrato = '07:00',
+  setHoraInicioContrato,
+  horaFinContrato = '17:00',
+  setHoraFinContrato,
   esFechaInicioEnPasado = false,
   ratificarFechaInicioAHoy,
   garantiaTipo,
@@ -489,12 +497,22 @@ export const StepClienteGarantias: React.FC<StepClienteGarantiasProps> = ({
               <Calendar className="w-3.5 h-3.5 text-teal-700" />
               <span>Fecha Inicio del Alquiler *</span>
             </label>
-            <input 
-              type="date" 
-              value={fechaInicioContrato}
-              onChange={(e) => handleFechaInicioMasterChange(e.target.value)}
-              className="px-3.5 py-2.5 bg-white border border-teal-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all font-medium shadow-2xs" 
-            />
+            <div className="flex gap-2">
+              <input 
+                type="date" 
+                value={fechaInicioContrato}
+                onChange={(e) => handleFechaInicioMasterChange(e.target.value)}
+                className="flex-1 px-3 py-2.5 bg-white border border-teal-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all font-medium shadow-2xs" 
+              />
+              {setHoraInicioContrato && (
+                <input
+                  type="time"
+                  value={horaInicioContrato}
+                  onChange={(e) => setHoraInicioContrato(e.target.value)}
+                  className="w-24 px-2 py-2.5 bg-white border border-teal-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all font-mono text-center shadow-2xs"
+                />
+              )}
+            </div>
             {formErrors.fechaInicioContrato && (
               <span className="text-[11px] text-rose-600 font-semibold">{formErrors.fechaInicioContrato}</span>
             )}
@@ -506,13 +524,23 @@ export const StepClienteGarantias: React.FC<StepClienteGarantiasProps> = ({
               <Calendar className="w-3.5 h-3.5 text-teal-700" />
               <span>Fecha Fin Estimada *</span>
             </label>
-            <input 
-              type="date" 
-              value={fechaFinEstimadaContrato}
-              min={fechaInicioContrato}
-              onChange={(e) => handleFechaFinMasterChange(e.target.value)}
-              className="px-3.5 py-2.5 bg-white border border-teal-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all font-medium shadow-2xs" 
-            />
+            <div className="flex gap-2">
+              <input 
+                type="date" 
+                value={fechaFinEstimadaContrato}
+                min={fechaInicioContrato}
+                onChange={(e) => handleFechaFinMasterChange(e.target.value)}
+                className="flex-1 px-3 py-2.5 bg-white border border-teal-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all font-medium shadow-2xs" 
+              />
+              {setHoraFinContrato && (
+                <input
+                  type="time"
+                  value={horaFinContrato}
+                  onChange={(e) => setHoraFinContrato(e.target.value)}
+                  className="w-24 px-2 py-2.5 bg-white border border-teal-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all font-mono text-center shadow-2xs"
+                />
+              )}
+            </div>
             {formErrors.fechaFinEstimadaContrato && (
               <span className="text-[11px] text-rose-600 font-semibold">{formErrors.fechaFinEstimadaContrato}</span>
             )}
@@ -593,7 +621,9 @@ export const StepClienteGarantias: React.FC<StepClienteGarantiasProps> = ({
             <input 
               type="number" 
               min={0}
+              step="any"
               value={garantiaMonto}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => setGarantiaMonto(parseFloat(e.target.value) || 0)}
               className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 text-right font-mono tabular-nums focus:bg-white focus:ring-2 focus:ring-teal-600/25 focus:border-teal-600 outline-none transition-all" 
             />
@@ -614,8 +644,10 @@ export const StepClienteGarantias: React.FC<StepClienteGarantiasProps> = ({
             <input 
               type="number" 
               min={0}
+              step="any"
               disabled={depositoExoneradoCredito}
               value={depositoExoneradoCredito ? 0 : deposito}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => setDeposito(parseFloat(e.target.value) || 0)}
               className={`px-3.5 py-2.5 border rounded-xl text-xs sm:text-sm text-right font-mono tabular-nums outline-none transition-all ${
                 depositoExoneradoCredito

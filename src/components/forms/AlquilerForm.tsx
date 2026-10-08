@@ -97,6 +97,10 @@ export function AlquilerForm({
             fechaFinEstimadaContrato={form.fechaFinEstimadaContrato}
             handleFechaInicioMasterChange={form.handleFechaInicioMasterChange}
             handleFechaFinMasterChange={form.handleFechaFinMasterChange}
+            horaInicioContrato={form.horaInicioContrato}
+            setHoraInicioContrato={form.setHoraInicioContrato}
+            horaFinContrato={form.horaFinContrato}
+            setHoraFinContrato={form.setHoraFinContrato}
             esFechaInicioEnPasado={form.esFechaInicioEnPasado}
             ratificarFechaInicioAHoy={form.ratificarFechaInicioAHoy}
             garantiaTipo={form.garantiaTipo}
@@ -128,6 +132,7 @@ export function AlquilerForm({
             equiposActivos={form.equiposActivos}
             tipoDocumento={form.tipoDocumento}
             addItemRow={form.addItemRow}
+            duplicateItemRow={form.duplicateItemRow}
             removeItemRow={form.removeItemRow}
             updateItemRow={form.updateItemRow}
             verificarStockItem={form.verificarStockItem}

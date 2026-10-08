@@ -49,7 +49,8 @@ export function useAlquilerForm({
 
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
 
-  // Sincronización en background sin latencia
+  // Sincronización en background sin latencia — siempre reemplaza el store
+  // para evitar mezcla de datos entre tenants distintos.
   const fetchCatalogsBackground = useCallback(async () => {
     try {
       const [resCli, resEq] = await Promise.all([
@@ -60,6 +61,7 @@ export function useAlquilerForm({
         resCli.json(),
         resEq.json()
       ]);
+      // Reemplazar siempre (no fusionar) para limpiar datos de otro tenant
       if (jsonCli.success && Array.isArray(jsonCli.data)) {
         setClientes(jsonCli.data);
       }
@@ -145,10 +147,22 @@ export function useAlquilerForm({
     return todayStr;
   });
 
-  const [fleteEntrega, setFleteEntrega] = useState<number>(initialData ? (initialData.flete_entrega || initialData.fleteEntrega || 0) : 30000);
-  const [fleteRecogida, setFleteRecogida] = useState<number>(initialData ? (initialData.flete_recogida || initialData.fleteRecogida || 0) : 30000);
-  const [deposito, setDeposito] = useState<number>(initialData ? (initialData.deposito || 0) : 50000);
-  const [garantiaMonto, setGarantiaMonto] = useState<number>(initialData ? (initialData.garantia_monto || initialData.garantiaMonto || 0) : 300000);
+  // Hora de inicio y fin del alquiler (para contratos con horario específico)
+  const [horaInicioContrato, setHoraInicioContrato] = useState<string>(() => {
+    if (initialData?.hora_inicio) return initialData.hora_inicio;
+    if (initialData?.horaInicio) return initialData.horaInicio;
+    return '07:00';
+  });
+  const [horaFinContrato, setHoraFinContrato] = useState<string>(() => {
+    if (initialData?.hora_fin) return initialData.hora_fin;
+    if (initialData?.horaFin) return initialData.horaFin;
+    return '17:00';
+  });
+
+  const [fleteEntrega, setFleteEntrega] = useState<number>(initialData ? (initialData.flete_entrega || initialData.fleteEntrega || 0) : 0);
+  const [fleteRecogida, setFleteRecogida] = useState<number>(initialData ? (initialData.flete_recogida || initialData.fleteRecogida || 0) : 0);
+  const [deposito, setDeposito] = useState<number>(initialData ? (initialData.deposito || 0) : 0);
+  const [garantiaMonto, setGarantiaMonto] = useState<number>(initialData ? (initialData.garantia_monto || initialData.garantiaMonto || 0) : 0);
   const [garantiaTipo, setGarantiaTipo] = useState<string>(initialData?.garantia_tipo || initialData?.garantiaTipo || 'Efectivo');
   const [observaciones, setObservaciones] = useState<string>(initialData?.observaciones || initialData?.observacionesGenerales || '');
   const [detallesLogistica, setDetallesLogistica] = useState<string>(initialData?.detalles_logistica || initialData?.detallesLogistica || '');
@@ -297,6 +311,23 @@ export function useAlquilerForm({
       ];
     });
   }, [fechaInicioContrato, fechaFinEstimadaContrato]);
+
+  const duplicateItemRow = useCallback((index: number) => {
+    const newRowId = `dup_${Date.now()}_${Math.random()}`;
+    setAutoFocusRowId(newRowId);
+    setItems(prev => {
+      const base = prev[index];
+      if (!base) return prev;
+      const newRow = { 
+        ...base, 
+        id: newRowId, 
+        lineaNumero: prev.length + 1 
+      };
+      const copia = [...prev];
+      copia.splice(index + 1, 0, newRow);
+      return copia.map((row, idx) => ({ ...row, lineaNumero: idx + 1 }));
+    });
+  }, []);
 
   const segmentarItemRow = useCallback((index: number) => {
     setItems(prev => {
@@ -841,6 +872,11 @@ export function useAlquilerForm({
         ? item.subtotal
         : (item.precioDiario || 0) * (item.cantidad || 1) * dias;
 
+      // Combinar fecha con hora de inicio/fin del contrato (Hora Colombia UTC-5)
+      // Garantiza almacenamiento correcto en campos TIMESTAMPTZ de la base de datos
+      const fechaInicioTz = `${item.fechaInicio}T${horaInicioContrato}:00-05:00`;
+      const fechaFinTz = `${item.fechaFinEstimada}T${horaFinContrato}:00-05:00`;
+
       return {
         lineaNumero: item.lineaNumero || idx + 1,
         itemId: item.itemId,
@@ -852,9 +888,9 @@ export function useAlquilerForm({
         tarifaDiaria: item.precioDiario,
         tarifaAplicada: item.precioDiario,
         tarifaPersonalizada: Boolean(item.tarifaPersonalizada),
-        fechaInicio: item.fechaInicio,
-        fechaFin: item.fechaFinEstimada,
-        fechaFinEstimada: item.fechaFinEstimada,
+        fechaInicio: fechaInicioTz,
+        fechaFin: fechaFinTz,
+        fechaFinEstimada: fechaFinTz,
         dias,
         subtotal: subtotalLinea,
         subtotalLineaEstimado: subtotalLinea,
@@ -928,6 +964,10 @@ export function useAlquilerForm({
       fecha_inicio: fechaInicioContrato,
       fechaFinEstimada: fechaFinEstimadaContrato,
       fecha_fin_estimada: fechaFinEstimadaContrato,
+      horaInicio: horaInicioContrato,
+      hora_inicio: horaInicioContrato,
+      horaFin: horaFinContrato,
+      hora_fin: horaFinContrato,
       estado: estadoEfectivo,
       empresa: empresaConfig,
       formatoPapel: 'LETTER' as 'LETTER' | 'A5',
@@ -1329,6 +1369,10 @@ export function useAlquilerForm({
     fechaFinEstimadaContrato,
     handleFechaInicioMasterChange,
     handleFechaFinMasterChange,
+    horaInicioContrato,
+    setHoraInicioContrato,
+    horaFinContrato,
+    setHoraFinContrato,
     fleteEntrega,
     setFleteEntrega,
     fleteRecogida,
@@ -1364,6 +1408,7 @@ export function useAlquilerForm({
     items,
     setItems,
     addItemRow,
+    duplicateItemRow,
     segmentarItemRow,
     removeItemRow,
     updateItemRow,
