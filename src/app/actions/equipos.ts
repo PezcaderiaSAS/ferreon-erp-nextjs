@@ -209,7 +209,7 @@ export async function crearEquiposMasivoAction(inputs: CrearEquipoInput[]) {
 
   AuditLogger.logAsync({
     modulo: 'BODEGA',
-    accion: 'CREAR_EQUIPOS_MASIVO',
+    accion: 'CARGA_MASIVA_EQUIPOS',
     descripcion: `Nuevos equipos registrados en bloque: ${data.length} ítems.`,
     entidadId: 'MASIVO',
     detalles: { cantidad: data.length, empresaId },
