@@ -27,6 +27,7 @@ export function ChangeClientModal({
   const { clientes, agregarCliente } = useClienteStore();
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   // Estado del combobox
   const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -47,6 +48,7 @@ export function ChangeClientModal({
     setNewClientTelefono('');
     setNewClientEmail('');
     setErrorMsg(null);
+    setIsSuccess(false);
   };
 
   const handleClose = () => {
@@ -125,8 +127,11 @@ export function ChangeClientModal({
           return;
         }
 
-        if (onSuccess) onSuccess();
-        handleClose();
+        setIsSuccess(true);
+        setTimeout(() => {
+          if (onSuccess) onSuccess();
+          handleClose();
+        }, 1200);
       } catch (err: any) {
         setErrorMsg(err.message || 'Ocurrió un error inesperado al procesar la solicitud.');
       }
@@ -137,10 +142,21 @@ export function ChangeClientModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Cambiar Titular del Alquiler"
+      title={isSuccess ? '' : 'Cambiar Titular del Alquiler'}
       maxWidth="md"
     >
-      <form onSubmit={handleSubmit} className="space-y-6 py-2">
+      {isSuccess ? (
+        <div className="py-12 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500">
+          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+            <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+          </div>
+          <h3 className="text-xl font-bold text-slate-800 mb-1">¡Cambio Exitoso!</h3>
+          <p className="text-sm text-slate-500 text-center px-4">
+            El contrato y el PDF han sido actualizados con el nuevo titular.
+          </p>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-6 py-2 animate-in fade-in duration-300">
         {errorMsg && (
           <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-sm text-rose-800 animate-in fade-in duration-200">
             <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
@@ -280,6 +296,7 @@ export function ChangeClientModal({
           </button>
         </div>
       </form>
+      )}
     </Modal>
   );
 }

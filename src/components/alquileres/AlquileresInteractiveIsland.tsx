@@ -141,6 +141,12 @@ export function AlquileresInteractiveIsland({
   const [isFormDirty, setIsFormDirty] = useState(false);
   const { attemptAction, showDiscardModal, confirmDiscard, cancelDiscard } = useDirtyFormGuard(isFormDirty);
 
+  // Evitar Hydration Mismatch de Zustand (persist) y tooltips
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Modales
   const [showDevolucionModal, setShowDevolucionModal] = useState<boolean>(false);
   const [showHistorialDevolucionesModal, setShowHistorialDevolucionesModal] = useState<boolean>(false);
@@ -823,6 +829,10 @@ export function AlquileresInteractiveIsland({
       alert("Error al generar el documento");
     }
   };
+
+  if (!mounted) {
+    return <ModalSkeleton message="Cargando entorno de alquileres..." />;
+  }
 
   return (
     <div className="flex flex-col gap-3.5 sm:gap-5 lg:gap-6 h-full" onClick={() => setActiveDropdown(null)}>

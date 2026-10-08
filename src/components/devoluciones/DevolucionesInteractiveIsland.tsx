@@ -124,6 +124,15 @@ export function DevolucionesInteractiveIsland({
     setShowReimpresionModal(true);
   };
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <ModalSkeleton message="Cargando módulo de devoluciones..." />;
+  }
+
   return (
     <div className="flex flex-col gap-3.5 h-full isolate stack-isolate animate-fadeIn">
       {/* ── Cabecera Principal Linear ──────────────────────────────────────── */}
