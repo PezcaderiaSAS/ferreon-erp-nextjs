@@ -1389,6 +1389,17 @@ export function AlquileresInteractiveIsland({
           setShowDetalleModal(false);
           openAction(alq, 'EDITAR');
         }}
+        onClientChanged={(nuevoClienteId) => {
+          // 1. Actualización optimista local del alquiler seleccionado para que el modal cambie al instante
+          if (selectedAlquilerForDetalle) {
+            setSelectedAlquilerForDetalle({
+              ...selectedAlquilerForDetalle,
+              cliente_id: nuevoClienteId,
+            });
+          }
+          // 2. Refrescar la grilla de alquileres de fondo para que la tabla principal también se actualice
+          fetchAllData();
+        }}
       />
 
       <AprobarCotizacionModal

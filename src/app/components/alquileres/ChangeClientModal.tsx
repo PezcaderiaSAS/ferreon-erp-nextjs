@@ -13,7 +13,7 @@ export interface ChangeClientModalProps {
   alquilerId: string | number;
   clienteActualId?: string | number;
   clienteActualNombre?: string;
-  onSuccess?: () => void;
+  onSuccess?: (nuevoClienteId: string) => void;
 }
 
 export function ChangeClientModal({
@@ -129,7 +129,7 @@ export function ChangeClientModal({
 
         setIsSuccess(true);
         setTimeout(() => {
-          if (onSuccess) onSuccess();
+          if (onSuccess) onSuccess(selectedClientId);
           handleClose();
         }, 1200);
       } catch (err: any) {

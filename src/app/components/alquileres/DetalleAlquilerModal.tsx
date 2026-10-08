@@ -16,13 +16,15 @@ interface DetalleAlquilerModalProps {
   onClose: () => void;
   alquiler: AlquilerUI | null;
   onEdit: (alquiler: AlquilerUI) => void;
+  onClientChanged?: (nuevoClienteId: string) => void;
 }
 
 export function DetalleAlquilerModal({
   isOpen,
   onClose,
   alquiler,
-  onEdit
+  onEdit,
+  onClientChanged
 }: DetalleAlquilerModalProps) {
   const { clientes } = useClienteStore();
   const [isChangeClientModalOpen, setIsChangeClientModalOpen] = React.useState(false);
@@ -239,9 +241,12 @@ export function DetalleAlquilerModal({
         alquilerId={alquiler.id}
         clienteActualId={alquiler.cliente_id}
         clienteActualNombre={clienteNombreFinal}
-        onSuccess={() => {
+        onSuccess={(nuevoClienteId) => {
           setIsChangeClientModalOpen(false);
-          // Opcional: Refrescar data, el alquilerDetail refetch debería ocurrir automáticamente si usamos revalidatePath / store.
+          // Refrescar data automáticamente para actualizar UI
+          if (onClientChanged) {
+            onClientChanged(nuevoClienteId);
+          }
         }}
       />
     </Modal>
