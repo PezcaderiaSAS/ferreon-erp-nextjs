@@ -52,6 +52,8 @@
 - [x] Creación de `BodegaSkeleton.tsx` con shimmer adaptado a tokens de diseño para streaming sin CLS.
 - [x] Creación de `BodegaInteractiveIsland.tsx` con filtros reactivos Zero-Latency, lazy-loading de modales y feedback optimista.
 - [x] Transformación de `src/app/bodega/page.tsx` de monolito cliente (495 líneas) a RSC conciso (~25 líneas).
+- [x] Refinamiento de UX/UI en Bodega: Inserción atómica masiva (`crearEquiposMasivoAction`), restricción de categorías a listas cerradas y blindaje inmutable (read-only) de auto-generación de SKUs en UI.
+- [x] Refactorización Data-Layer en Bodega: Ejecución de purga y re-secuenciación de SKUs corruptos (timestamps largos) directamente en Supabase, reestableciendo el consecutivo estricto `EQ-XXX`.
 - [x] Verificación completa: `tsc --noEmit` (0 errores) y 295/295 tests pasando al 100% (**57 suites en verde**).
 
 ### Hito 5: Devoluciones & Modales On-The-Fly (`SPEC-2026-ARCH-RESTRUCT-005`)
