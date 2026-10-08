@@ -72,6 +72,7 @@ export default function OnboardingPage() {
     }
 
     checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   const calcularEdad = (fechaStr: string) => {
