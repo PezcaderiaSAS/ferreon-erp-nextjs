@@ -775,8 +775,8 @@ export function useAlquilerForm({
         return false;
       }
 
-      // Regla de Consistencia Temporal (Poka-Yoke): Solo aplica a formalización de contratos
-      if (tipoDocumento === 'CONTRATO' && esFechaInicioEnPasado) {
+      // Regla de Consistencia Temporal (Poka-Yoke): Solo aplica a formalización inicial de contratos
+      if (tipoDocumento === 'CONTRATO' && esFechaInicioEnPasado && !isEditMode) {
         setFormErrors(prev => ({
           ...prev,
           fechaInicioContrato: `La fecha cotizada (${fechaInicioContrato}) ya venció. Debe ratificar la fecha real de despacho en muelle.`
@@ -956,8 +956,9 @@ export function useAlquilerForm({
       margen_total_subcontratacion: margenTotalSubcontratacion,
       margenTotalSubcontratacion,
       totalItemsSubcontratados,
-      created_at: fechaRegistro,
-      fechaEmision: fechaRegistro,
+      created_at: initialData?.created_at || (initialData as any)?.createdAt || new Date().toISOString(),
+      fechaEmision: initialData?.created_at || new Date().toISOString(),
+      horaEmision: horaInicioContrato,
       fechaInicio: fechaInicioContrato,
       fecha_inicio: fechaInicioContrato,
       fechaFinEstimada: fechaFinEstimadaContrato,
@@ -1061,7 +1062,7 @@ export function useAlquilerForm({
         return false;
       }
 
-      if (esFechaInicioEnPasado) {
+      if (esFechaInicioEnPasado && !isEditMode) {
         setErrorMsg(`Inconsistencia temporal: La fecha de inicio del contrato (${fechaInicioContrato}) está en el pasado. Debe ratificar la fecha real de despacho en muelle antes de formalizar.`);
         setCurrentStep(1);
         return false;
@@ -1198,7 +1199,9 @@ export function useAlquilerForm({
         store.sanitizeStore();
         setSavedAlquilerData(alquilerUi);
         setIsSuccess(true);
-        // Delegamos el onSuccess a la vista de éxito (AlquilerSuccessView)
+        if (onSuccess) {
+          onSuccess(alquilerUi);
+        }
         return true;
       } else {
         const result = await crearAlquilerSegmentadoAction({

@@ -195,3 +195,19 @@
 - [x] Panel de cortes periódicos `CortesPeriodicosPanel.tsx` con presets rápidos (1ra Quincena, 2da Quincena, Mes, Mes Anterior, Rango Libre), 3 KPIs de corte y tabla tabular con checkboxes para emisión en lote.
 - [x] Integración en `FacturacionInteractiveIsland.tsx` con conmutador de pestañas (`Facturación Global & Cartera CXC` vs `Cortes & Cuentas de Cobro Periódicas`).
 - [x] Verificación completa: `tsc --noEmit` (0 errores) y `npm run build` en verde.
+
+### Hito 20: Edición Transaccional de Alquileres en Wizard de 3 Pasos (`SPEC-006`)
+- [x] Especificación formal EARS en `specs/006-edicion-alquileres-wizard/spec.md`, plan técnico (`plan.md`) y desglose de tareas (`tasks.md`).
+- [x] Corrección de RPC PostgreSQL en Supabase: Migración `20261009_fix_editar_alquiler_rpc.sql` con casteo seguro de `cliente_id` a `BIGINT` (evitando error 42804), aislamiento estricto de deducción de stock en bodega para cotizaciones comerciales y bypass dinámico de restricciones DDL.
+- [x] Actualización de `AlquilerTransaccionalService.editarContrato` en `src/core/services/alquiler-transaccional.service.ts` con soporte polimórfico para cotizaciones UUID y paso de garantías y estados.
+- [x] UI/UX Poka-Yoke: Bypass de `esFechaInicioEnPasado` en `useAlquilerForm.ts` para contratos en ejecución, banner visible de mensajes de error en `AlquilerForm.tsx` y `StepResumenLiquidacion.tsx`, y cierre inmediato con feedback reactivo al guardar.
+- [x] Verificación interactiva en vivo con Chrome DevTools MCP: Edición probada sobre el Contrato #42 (reajuste de flete a $15.000 COP, total reactivo a $40.000 COP en tabla y base de datos, 0 errores en consola).
+
+### Hito 21: Evidencia Temporal de Fecha y Hora en Documentos PDF & Alternador A5 (`SPEC-007`)
+- [x] Especificación formal EARS en `specs/007-pdf-fecha-hora-emision/spec.md`, plan técnico (`plan.md`) y desglose de tareas (`tasks.md`).
+- [x] Utilidades canónicas de fecha en `src/core/utils/fechas.ts`: `formatearHoraLocal` y `resolverFechaYHoraDocumento` respetando la zona horaria `America/Bogota` (UTC-5) para neutralizar desfasajes de UTC.
+- [x] `EnterprisePDFService`: Integración de `Fecha: DD/MM/YYYY` y `Hora: hh:mm AM/PM` en el badge de cabecera (`doc-badge`) y en la leyenda legal del pie de página (`.footer`).
+- [x] Alternador dinámico Carta / Media Carta (A5) vía CSS (`body.a5-active`) sin recargar ventanas emergentes, escalando tipografía y tablas proporcionalmente.
+- [x] Suite de pruebas unitarias `src/core/utils/__tests__/fechas.test.ts` con cobertura de zona horaria y resolución de estampa temporal.
+- [x] Verificación visual con Chrome DevTools MCP en Carta y A5 (capturas aprobadas, 0 errores y 0 warnings en consola) y compilación `npm run build` exitosa (32/32 rutas en verde).
+

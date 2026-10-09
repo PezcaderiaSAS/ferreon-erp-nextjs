@@ -64,6 +64,28 @@ export function AlquilerForm({
     <div className="space-y-6">
       <AlquilerStepper currentStep={form.currentStep} onStepClick={form.setCurrentStep} />
 
+      {form.errorMsg && (
+        <div className="p-4 bg-red-50 border-2 border-red-300 rounded-2xl flex items-start gap-3 text-red-800 animate-fadeIn shadow-sm">
+          <span className="text-xl shrink-0">⚠️</span>
+          <div className="flex-1">
+            <h4 className="text-xs font-black uppercase tracking-wider text-red-900">
+              Atención: No se pudo completar la operación
+            </h4>
+            <p className="text-sm mt-0.5 font-medium leading-relaxed">
+              {form.errorMsg}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => form.setErrorMsg(null)}
+            className="text-red-400 hover:text-red-700 text-sm font-bold p-1 rounded-lg hover:bg-red-100/50 cursor-pointer"
+            title="Cerrar mensaje"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <form onSubmit={(e) => { e.preventDefault(); }} className="space-y-6">
         {/* PASO 1: CLIENTE Y GARANTÍAS */}
         {form.currentStep === 1 && (
@@ -186,6 +208,7 @@ export function AlquilerForm({
             totalItemsSubcontratados={form.totalItemsSubcontratados}
             depositoExoneradoCredito={form.depositoExoneradoCredito}
             onOpenPreview={() => form.setIsPreviewModalOpen(true)}
+            isEditMode={form.isEditMode}
           />
         )}
 
@@ -236,13 +259,13 @@ export function AlquilerForm({
                     onClick={() => form.guardarComoCotizacion()}
                     isLoading={form.isSubmitting}
                     disabled={form.isSubmitting}
-                    className="px-6 py-2.5 min-w-[190px] bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25 font-bold text-xs sm:text-sm rounded-xl flex items-center space-x-2 cursor-pointer active:scale-98 disabled:pointer-events-none disabled:opacity-50"
+                    className="px-6 py-2.5 min-w-[210px] bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25 font-bold text-xs sm:text-sm rounded-xl flex items-center space-x-2 cursor-pointer active:scale-98 disabled:pointer-events-none disabled:opacity-50"
                   >
                     <span>📄</span>
                     <span>
                       {form.isSubmitting 
-                        ? "Guardando Cotización..." 
-                        : (form.isEditMode ? "Guardar Cotización" : "Guardar Cotización (COT)")}
+                        ? (form.isEditMode ? "Guardando Cambios..." : "Guardando Cotización...") 
+                        : (form.isEditMode ? "Guardar Cambios de Cotización" : "Guardar Cotización (COT)")}
                     </span>
                   </Button>
                 ) : (
@@ -251,13 +274,13 @@ export function AlquilerForm({
                     onClick={() => form.formalizarComoContrato()}
                     isLoading={form.isSubmitting}
                     disabled={form.isSubmitting}
-                    className="px-6 py-2.5 min-w-[190px] bg-emerald-700 hover:bg-emerald-800 text-white shadow-lg shadow-emerald-700/25 font-bold text-xs sm:text-sm rounded-xl flex items-center space-x-2 cursor-pointer active:scale-98 disabled:pointer-events-none disabled:opacity-50"
+                    className="px-6 py-2.5 min-w-[210px] bg-emerald-700 hover:bg-emerald-800 text-white shadow-lg shadow-emerald-700/25 font-bold text-xs sm:text-sm rounded-xl flex items-center space-x-2 cursor-pointer active:scale-98 disabled:pointer-events-none disabled:opacity-50"
                   >
                     <span>✅</span>
                     <span>
                       {form.isSubmitting 
-                        ? "Formalizando Contrato..." 
-                        : (form.isEditMode ? "Guardar Contrato" : "Formalizar Contrato (ALQ)")}
+                        ? (form.isEditMode ? "Guardando Cambios..." : "Formalizando Contrato...") 
+                        : (form.isEditMode ? "Guardar Cambios del Contrato" : "Formalizar Contrato (ALQ)")}
                     </span>
                   </Button>
                 )}

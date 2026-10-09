@@ -693,8 +693,12 @@ export function AlquileresInteractiveIsland({
       };
     });
 
+    const modoDeterminado = (contrato.estado === 'COTIZACION' || (contrato as any).tipo === 'COTIZACION' || (contrato as any).tipoDocumento === 'COTIZACION') ? 'COTIZACION' : 'CONTRATO';
     const adapter = {
       ...contrato,
+      tipoDocumento: modoDeterminado,
+      tipo: modoDeterminado,
+      estado: contrato.estado || (modoDeterminado === 'COTIZACION' ? 'COTIZACION' : 'ACTIVO'),
       cliente_id: contrato.cliente_id || (contrato as any).clienteId,
       clienteNombre: contrato.clienteNombre || (contrato as any).cliente?.nombre,
       clienteNit: (contrato as any).clienteNit || (contrato as any).clienteDocumento || (contrato as any).cliente?.nit || (contrato as any).cliente?.nit_cedula,
@@ -725,6 +729,7 @@ export function AlquileresInteractiveIsland({
           alert("Este contrato no puede ser editado porque se encuentra finalizado, cancelado o cuenta con devoluciones registradas.");
           return;
         }
+        setModoCreacionInicial(modoDeterminado);
         setIsModalOpen(true);
         break;
       }
@@ -795,6 +800,7 @@ export function AlquileresInteractiveIsland({
         tipo: contrato.estado === 'COTIZACION' ? 'COTIZACION' : 'CUENTA_COBRO',
         consecutivo: contrato.consecutivo || parseInt(String(contrato.id || "").replace(/\D/g, '') || "0") || Date.now() % 10000,
         fechaEmision: new Date().toISOString(),
+        created_at: contrato.created_at || (contrato as any).createdAt,
         fechaInicioGeneral: new Date(contrato.createdAt || contrato.created_at || Date.now()).toISOString(),
         clienteNombre,
         clienteNit,
@@ -1346,6 +1352,15 @@ export function AlquileresInteractiveIsland({
             if (alquiler) {
               // Optimistic UI: actualización instantánea en el store local (latencia = 0ms)
               useAlquilerStore.getState().updateAlquiler(alquiler);
+              if (eraEdicion) {
+                const conNum = alquiler.consecutivo || alquiler.id;
+                const esCot = alquiler.tipoDocumento === 'COTIZACION' || alquiler.estado === 'COTIZACION';
+                useToastStore.getState().showSuccessToast(
+                  esCot 
+                    ? `¡Cotización #${conNum} actualizada exitosamente!` 
+                    : `¡Contrato #${conNum} actualizado exitosamente!`
+                );
+              }
             }
 
             // Revalidación en segundo plano sin congelar la UI

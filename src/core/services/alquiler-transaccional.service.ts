@@ -418,9 +418,6 @@ export class AlquilerTransaccionalService {
     supabase: any,
     params: EdicionContratoParams
   ): Promise<{ success: boolean; data?: any; error?: string }> {
-    const numericAlquilerId =
-      typeof params.alquilerId === 'string' ? parseInt(params.alquilerId, 10) : params.alquilerId;
-
     const liquidacion = this.calcularLiquidacion(
       params.items,
       params.fleteEntrega,
@@ -428,9 +425,56 @@ export class AlquilerTransaccionalService {
       params.deposito
     );
 
+    const numericClienteId =
+      params.clienteId ? (typeof params.clienteId === 'string' ? parseInt(params.clienteId, 10) : params.clienteId) : null;
+
+    // Soporte polimórfico: si el ID es un UUID, corresponde a la tabla 'cotizaciones'
+    if (typeof params.alquilerId === 'string' && params.alquilerId.includes('-')) {
+      const cotId = params.alquilerId;
+      const { error: cotErr } = await supabase
+        .from('cotizaciones')
+        .update({
+          cliente_id: numericClienteId,
+          cliente_nombre: params.clienteNombre,
+          subtotal: liquidacion.subtotalEquipos,
+          valor_transporte: liquidacion.fleteEntrega + liquidacion.fleteRecogida,
+          deposito_garantia: liquidacion.deposito,
+          total: liquidacion.total,
+          observaciones: params.observaciones || '',
+          obra_direccion: params.detallesLogistica || '',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', cotId);
+
+      if (cotErr) {
+        return { success: false, error: `Error al editar cotización: ${cotErr.message}` };
+      }
+
+      await supabase.from('cotizaciones_detalles').delete().eq('cotizacion_id', cotId);
+      const nuevosDetalles = liquidacion.itemsLiquidados.map((it) => ({
+        cotizacion_id: cotId,
+        equipo_id: typeof it.equipoId === 'string' ? parseInt(it.equipoId, 10) : it.equipoId,
+        cantidad: it.cantidad,
+        dias: it.diasContratados,
+        tarifa_diaria: it.tarifaAplicada,
+        subtotal: it.subtotalLinea,
+      }));
+      await supabase.from('cotizaciones_detalles').insert(nuevosDetalles);
+
+      return { 
+        success: true, 
+        data: { id: cotId, consecutivo: cotId, estado: 'COTIZACION', total: liquidacion.total } 
+      };
+    }
+
+    const numericAlquilerId =
+      typeof params.alquilerId === 'string' ? parseInt(params.alquilerId, 10) : params.alquilerId;
+
     const payload = {
       empresa_id: params.empresaId,
       alquiler_id: numericAlquilerId,
+      cliente_id: numericClienteId,
+      estado: params.estado || 'ACTIVO',
       subtotal_equipos: liquidacion.subtotalEquipos,
       flete_entrega: liquidacion.fleteEntrega,
       flete_recogida: liquidacion.fleteRecogida,
@@ -439,10 +483,11 @@ export class AlquilerTransaccionalService {
       deposito: liquidacion.deposito,
       saldo_pendiente: liquidacion.saldoPendiente,
       garantia_monto: Math.round(Number(params.garantiaMonto || 0)),
+      garantia_tipo: params.garantiaTipo || 'Efectivo',
       observaciones: params.observaciones || '',
       detalles_logistica: params.detallesLogistica || '',
       items: liquidacion.itemsLiquidados.map((it) => ({
-        equipo_id: it.equipoId,
+        equipo_id: typeof it.equipoId === 'string' ? parseInt(it.equipoId, 10) : it.equipoId,
         cantidad: it.cantidad,
         tarifa_aplicada: it.tarifaAplicada,
         dias_contratados: it.diasContratados,

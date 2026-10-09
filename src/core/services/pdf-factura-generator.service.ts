@@ -1,5 +1,5 @@
 import { numeroALetras, formatearMonedaCOP } from "../utils/numero-a-letras";
-import { formatearFechaLocal, calcularDiasEntreFechas } from "../utils/fechas";
+import { formatearFechaLocal, calcularDiasEntreFechas, resolverFechaYHoraDocumento } from "../utils/fechas";
 import { EmpresaConfig, DEFAULT_EMPRESA_CONFIG } from "../domain/entities/empresa-config";
 import { resolveCompanyTheme } from "../domain/theme/theme-tokens";
 
@@ -22,6 +22,11 @@ export interface DocumentoPDFPayload {
   tipo: "COTIZACION" | "CONTRATO" | "CUENTA_COBRO" | "FACTURA";
   consecutivo: number | string;
   fechaEmision: string;
+  horaEmision?: string;
+  created_at?: string;
+  createdAt?: string;
+  horaInicio?: string;
+  hora_inicio?: string;
   fechaVencimiento?: string;
   fechaInicioGeneral?: string;
   clienteNombre: string;
@@ -155,9 +160,16 @@ export class EnterprisePDFService {
       : (payload.saldoPendiente ? Number(payload.saldoPendiente) : (payload.totalPagar ? Number(payload.totalPagar) : totalGeneral));
     const totalEnLetras = numeroALetras(montoParaLetras);
 
-    const fechaEmisionValid = payload.fechaEmision && !isNaN(new Date(payload.fechaEmision).getTime())
-      ? new Date(payload.fechaEmision)
-      : new Date();
+    const fechaHoraDoc = resolverFechaYHoraDocumento({
+      fechaEmision: payload.fechaEmision,
+      horaEmision: payload.horaEmision,
+      created_at: payload.created_at || (payload as any).createdAt,
+      createdAt: (payload as any).createdAt || payload.created_at,
+      horaInicio: payload.horaInicio || (payload as any).hora_inicio,
+      hora_inicio: (payload as any).hora_inicio || payload.horaInicio,
+    });
+    const fechaDocDisplay = fechaHoraDoc.fecha;
+    const horaDocDisplay = fechaHoraDoc.hora;
 
     const tituloDoc =
       payload.tipo === "COTIZACION"
@@ -459,14 +471,51 @@ export class EnterprisePDFService {
         display: none !important; 
       }
     }
+    body.a5-active {
+      padding: 10px;
+      font-size: 8pt;
+    }
+    body.a5-active .document-container {
+      max-width: 600px;
+      padding: 18px 20px;
+    }
+    body.a5-active .brand-title { font-size: 14pt; }
+    body.a5-active .brand-sub { font-size: 7.5pt; }
+    body.a5-active .brand-meta { font-size: 6.8pt; }
+    body.a5-active .doc-badge { padding: 4px 10px; }
+    body.a5-active .doc-badge h2 { font-size: 10pt; }
+    body.a5-active .doc-badge p { font-size: 6.8pt; }
+    body.a5-active .grid-info { padding: 8px 10px; }
+    body.a5-active .info-block h4 { font-size: 7pt; }
+    body.a5-active .info-block p { font-size: 7.5pt; }
+    body.a5-active th { padding: 4px 6px; font-size: 7pt; }
+    body.a5-active td { padding: 4px 6px; font-size: 7.2pt; }
+    body.a5-active .conditions-box { font-size: 6.8pt; padding: 6px 8px; }
+    body.a5-active .totals-table td { padding: 3px 6px; font-size: 7.5pt; }
+    body.a5-active .total-row { font-size: 8.5pt !important; }
+    body.a5-active .letras-box { font-size: 7pt; }
+    body.a5-active .bank-box { font-size: 6.8pt; }
+    body.a5-active .signatures { margin-top: 16px; }
+    body.a5-active .sig-line { font-size: 7pt; }
+    body.a5-active .sig-sub { font-size: 6.5pt; }
+    body.a5-active .footer { font-size: 6pt; }
   </style>
+  <script>
+    function toggleFormato() {
+      var isA5Now = document.body.classList.toggle('a5-active');
+      var btn = document.getElementById('btn-format-toggle');
+      if (btn) {
+        btn.innerText = isA5Now ? '📄 Cambiar a Tamaño Carta' : '📑 Cambiar a Media Carta (A5)';
+      }
+    }
+  </script>
 </head>
-<body>
+<body class="${isA5 ? 'a5-active' : ''}">
   <div class="document-container">
     <div class="toolbar no-print">
       <div class="format-toggle">
         <span>Formato de Papel:</span>
-        <button class="btn btn-secondary" onclick="window.location.search = window.location.search.includes('format=A5') ? window.location.search.replace('format=A5', 'format=LETTER') : window.location.search + '&format=A5'">
+        <button id="btn-format-toggle" class="btn btn-secondary" onclick="toggleFormato()">
           ${isA5 ? "📄 Cambiar a Tamaño Carta" : "📑 Cambiar a Media Carta (A5)"}
         </button>
       </div>
@@ -492,7 +541,8 @@ export class EnterprisePDFService {
       <div class="doc-badge">
         <h2>${tituloDoc}</h2>
         <p><strong>N°: ${consecutivoDisplay}</strong></p>
-        <p>Fecha: ${formatearFechaLocal(fechaEmisionValid)}</p>
+        <p>Fecha: ${fechaDocDisplay}</p>
+        <p>Hora: ${horaDocDisplay}</p>
       </div>
     </div>
 
@@ -612,7 +662,7 @@ export class EnterprisePDFService {
     </div>
 
     <div class="footer">
-      Cuenta de Cobro oficial expedida por ${emp.razonSocial}. Horario de corte: ${emp.notasFacturaPDF}
+      ${tituloDoc} oficial expedida por ${emp.razonSocial} el ${fechaDocDisplay} a las ${horaDocDisplay}. Horario de corte: ${emp.notasFacturaPDF}
     </div>
   </div>
 </body>

@@ -264,6 +264,7 @@ export async function editarAlquilerAction(input: EditarAlquilerInput) {
   const result = await AlquilerTransaccionalService.editarContrato(supabase, {
     alquilerId: cleanInput.alquilerId,
     clienteId: cleanInput.clienteId || '',
+    clienteNombre: cleanInput.clienteNombre || undefined,
     fleteEntrega: cleanInput.fleteEntrega,
     fleteRecogida: cleanInput.fleteRecogida,
     deposito: cleanInput.deposito,
@@ -272,6 +273,7 @@ export async function editarAlquilerAction(input: EditarAlquilerInput) {
     observaciones: cleanInput.observaciones || undefined,
     detallesLogistica: cleanInput.detallesLogistica || undefined,
     items: cleanInput.items as ItemAlquilerCalculoInput[],
+    estado: cleanInput.estado || 'ACTIVO',
     empresaId,
     userIdentifier,
   });

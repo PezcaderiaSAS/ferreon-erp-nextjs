@@ -32,6 +32,7 @@ interface StepResumenLiquidacionProps {
   totalItemsSubcontratados: number;
   depositoExoneradoCredito: boolean;
   onOpenPreview?: () => void;
+  isEditMode?: boolean;
 }
 
 export const StepResumenLiquidacion: React.FC<StepResumenLiquidacionProps> = ({
@@ -63,6 +64,7 @@ export const StepResumenLiquidacion: React.FC<StepResumenLiquidacionProps> = ({
   totalItemsSubcontratados,
   depositoExoneradoCredito,
   onOpenPreview,
+  isEditMode = false,
 }) => {
   const colateralTotal = Number(deposito) + Number(garantiaMonto);
   const minimoColateralRequerido = valorReposicionTotal * 0.1;
@@ -436,8 +438,8 @@ export const StepResumenLiquidacion: React.FC<StepResumenLiquidacionProps> = ({
                 )}
                 <span>
                   {isSubmitting 
-                    ? "Guardando Cotización en Base de Datos..." 
-                    : "Guardar como Cotización (COT-xxx)"}
+                    ? (isEditMode ? "Guardando Cambios..." : "Guardando Cotización en Base de Datos...") 
+                    : (isEditMode ? "Guardar Cambios de Cotización" : "Guardar como Cotización (COT-xxx)")}
                 </span>
               </span>
               <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-extrabold uppercase">
@@ -467,8 +469,8 @@ export const StepResumenLiquidacion: React.FC<StepResumenLiquidacionProps> = ({
                 )}
                 <span>
                   {isSubmitting 
-                    ? "Formalizando Contrato en Base de Datos..." 
-                    : "Formalizar Contrato de Alquiler (ALQ-xxx)"}
+                    ? (isEditMode ? "Guardando Cambios..." : "Formalizando Contrato en Base de Datos...") 
+                    : (isEditMode ? "Guardar Cambios del Contrato" : "Formalizar Contrato de Alquiler (ALQ-xxx)")}
                 </span>
               </span>
               <span className="text-[10px] bg-emerald-800 text-emerald-100 px-2 py-0.5 rounded-full font-extrabold uppercase border border-emerald-600">
