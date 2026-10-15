@@ -24,4 +24,4 @@
 - Mantener siempre `MEMORY.md` en $\le 50$ líneas consolidando contexto histórico en `docs/memory-bank/`.
 
 ## Próximos pasos
-- Despliegue continuo o siguiente hito funcional del backlog.
+- Monitoreo de observabilidad y feedback operativo en producción sobre contratos y PDFs emitidos.
