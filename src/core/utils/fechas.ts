@@ -204,3 +204,26 @@ export function resolverFechaYHoraDocumento(payload: {
   return { fecha, hora };
 }
 
+/**
+ * Retorna la fecha de hoy en formato ISO "YYYY-MM-DD" basado en el calendario local del sistema,
+ * neutralizando el desfase que causa new Date().toISOString().split('T')[0] en horario nocturno (UTC-5).
+ */
+export function obtenerFechaHoyISO(): string {
+  const d = new Date();
+  const anio = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
+}
+
+/**
+ * Convierte cualquier fecha (Date, string ISO o timestamp) a formato "YYYY-MM-DD" local seguro.
+ */
+export function formatearFechaISO(fechaInput: string | Date | null | undefined): string {
+  if (!fechaInput) return obtenerFechaHoyISO();
+  const d = parsearFechaLocal(fechaInput);
+  const anio = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
+}

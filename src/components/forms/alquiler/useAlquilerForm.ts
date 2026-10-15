@@ -10,6 +10,7 @@ import { obtenerClientesAction } from '../../../app/actions/clientes';
 import { equipoToEquipoUI } from '../../../lib/mappers';
 import { idempotencyManager } from '../../../lib/idempotency';
 import { EnterprisePDFService } from '../../../core/services/pdf-factura-generator.service';
+import { obtenerFechaHoyISO, formatearFechaISO } from '../../../core/utils/fechas';
 import { alquilerSchema, ItemRow, AlquilerFormProps } from './types';
 import { OverbookingConflictInfo } from './ModalResolucionOverbooking';
 
@@ -49,7 +50,7 @@ export function useAlquilerForm({
   const [conflictoOverbooking, setConflictoOverbooking] = useState<OverbookingConflictInfo | null>(null);
   const [isModalOverbookingOpen, setIsModalOverbookingOpen] = useState(false);
 
-  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const todayStr = useMemo(() => obtenerFechaHoyISO(), []);
 
   // Sincronización en background sin latencia — siempre reemplaza el store
   // para evitar mezcla de datos entre tenants distintos.
@@ -124,24 +125,24 @@ export function useAlquilerForm({
 
   const [clienteId, setClienteId] = useState<string>(String(initialData?.cliente_id || initialData?.clienteId || ''));
   const [fechaRegistro, setFechaRegistro] = useState<string>(
-    initialData?.created_at ? new Date(initialData.created_at).toISOString().split('T')[0] : 
-    (initialData?.createdAt ? new Date(initialData.createdAt).toISOString().split('T')[0] : todayStr)
+    initialData?.created_at ? formatearFechaISO(initialData.created_at) : 
+    (initialData?.createdAt ? formatearFechaISO(initialData.createdAt) : todayStr)
   );
 
   // Rango Maestro de Fechas para todo el contrato
   const [fechaInicioContrato, setFechaInicioContrato] = useState<string>(() => {
-    if (initialData?.fecha_inicio) return new Date(initialData.fecha_inicio).toISOString().split('T')[0];
-    if (initialData?.fechaInicio) return new Date(initialData.fechaInicio).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fecha_inicio) return new Date(initialData.detalles[0].fecha_inicio).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fechaInicio) return new Date(initialData.detalles[0].fechaInicio).toISOString().split('T')[0];
+    if (initialData?.fecha_inicio) return formatearFechaISO(initialData.fecha_inicio);
+    if (initialData?.fechaInicio) return formatearFechaISO(initialData.fechaInicio);
+    if (initialData?.detalles?.[0]?.fecha_inicio) return formatearFechaISO(initialData.detalles[0].fecha_inicio);
+    if (initialData?.detalles?.[0]?.fechaInicio) return formatearFechaISO(initialData.detalles[0].fechaInicio);
     return todayStr;
   });
 
   const [fechaFinEstimadaContrato, setFechaFinEstimadaContrato] = useState<string>(() => {
-    if (initialData?.fecha_fin_estimada) return new Date(initialData.fecha_fin_estimada).toISOString().split('T')[0];
-    if (initialData?.fechaFinEstimada) return new Date(initialData.fechaFinEstimada).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fecha_fin_estimada) return new Date(initialData.detalles[0].fecha_fin_estimada).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fechaFinEstimada) return new Date(initialData.detalles[0].fechaFinEstimada).toISOString().split('T')[0];
+    if (initialData?.fecha_fin_estimada) return formatearFechaISO(initialData.fecha_fin_estimada);
+    if (initialData?.fechaFinEstimada) return formatearFechaISO(initialData.fechaFinEstimada);
+    if (initialData?.detalles?.[0]?.fecha_fin_estimada) return formatearFechaISO(initialData.detalles[0].fecha_fin_estimada);
+    if (initialData?.detalles?.[0]?.fechaFinEstimada) return formatearFechaISO(initialData.detalles[0].fechaFinEstimada);
     return todayStr;
   });
 
@@ -172,8 +173,8 @@ export function useAlquilerForm({
     const sourceDetalles = initialData?.alquiler_detalles || initialData?.detalles || initialData?.items || initialData?.cotizaciones_detalles;
     if (sourceDetalles && sourceDetalles.length > 0) {
       return sourceDetalles.map((d: any, idx: number) => {
-        const start = d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (d.fechaInicio ? new Date(d.fechaInicio).toISOString().split('T')[0] : todayStr);
-        const end = d.fecha_fin ? new Date(d.fecha_fin).toISOString().split('T')[0] : (d.fecha_fin_estimada ? new Date(d.fecha_fin_estimada).toISOString().split('T')[0] : (d.fechaFinEstimada ? new Date(d.fechaFinEstimada).toISOString().split('T')[0] : (d.fechaFin ? new Date(d.fechaFin).toISOString().split('T')[0] : todayStr)));
+        const start = d.fecha_inicio ? formatearFechaISO(d.fecha_inicio) : (d.fechaInicio ? formatearFechaISO(d.fechaInicio) : todayStr);
+        const end = d.fecha_fin ? formatearFechaISO(d.fecha_fin) : (d.fecha_fin_estimada ? formatearFechaISO(d.fecha_fin_estimada) : (d.fechaFinEstimada ? formatearFechaISO(d.fechaFinEstimada) : (d.fechaFin ? formatearFechaISO(d.fechaFin) : todayStr)));
         const sDate = new Date(`${start}T00:00:00Z`);
         const eDate = new Date(`${end}T00:00:00Z`);
         const dias = Math.max(1, Math.ceil((eDate.getTime() - sDate.getTime()) / (1000 * 60 * 60 * 24)));
@@ -674,7 +675,7 @@ export function useAlquilerForm({
     const nuevoInicio = todayStr;
     const nuevaFechaFin = new Date();
     nuevaFechaFin.setDate(nuevaFechaFin.getDate() + duracionDias);
-    const nuevoFin = nuevaFechaFin.toISOString().split('T')[0];
+    const nuevoFin = formatearFechaISO(nuevaFechaFin);
 
     setFechaInicioContrato(nuevoInicio);
     setFechaFinEstimadaContrato(nuevoFin);
@@ -792,20 +793,14 @@ export function useAlquilerForm({
         return false;
       }
     } else if (currentStep === 2) {
+      if (items.length === 0) {
+        setFormErrors(prev => ({ ...prev, items: 'Debe incluir al menos un equipo en el alquiler' }));
+        return false;
+      }
       const hasEmptyItem = items.some(it => !it.itemId);
       if (hasEmptyItem) {
         setFormErrors(prev => ({ ...prev, items: 'Seleccione un equipo para cada fila' }));
         return false;
-      }
-      
-      // La regla del colateral del 10% solo es obligatoria para contratos y cuando no haya exoneración por crédito corporativo
-      if (tipoDocumento === 'CONTRATO' && !depositoExoneradoCredito) {
-        const minimoRequerido = valorReposicionTotal * 0.1;
-        const garantiaTotal = Number(deposito) + Number(garantiaMonto);
-        if (garantiaTotal < minimoRequerido) {
-          setErrorMsg(`Bloqueo de Seguridad: Se requiere un colateral (Depósito + Garantía) mínimo del 10% del valor de los equipos (${formatearCOP(minimoRequerido)}). El colateral actual es ${formatearCOP(garantiaTotal)}. Puede exonerarlo en el Paso 1 si el cliente cuenta con línea de crédito aprobada.`);
-          return false;
-        }
       }
     }
     return true;
@@ -1073,8 +1068,7 @@ export function useAlquilerForm({
         const minimoRequerido = valorReposicionTotal * 0.1;
         const garantiaTotal = Number(deposito) + Number(garantiaMonto);
         if (garantiaTotal < minimoRequerido) {
-          setErrorMsg(`Colateral insuficiente: Se requiere un colateral (Depósito + Garantía) mínimo del 10% del valor de reposición (${formatearCOP(minimoRequerido)}). El actual es ${formatearCOP(garantiaTotal)}.`);
-          setCurrentStep(1);
+          setErrorMsg(`Colateral insuficiente: Se requiere un colateral (Depósito + Garantía) mínimo del 10% del valor de reposición (${formatearCOP(minimoRequerido)}). El actual es ${formatearCOP(garantiaTotal)}. Puede ajustar el depósito al 10% o exonerarlo por crédito corporativo en este panel.`);
           return false;
         }
       }

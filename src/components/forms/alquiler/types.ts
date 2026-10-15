@@ -12,7 +12,7 @@ export const alquilerSchema = z.object({
   fleteRecogida: z.number().min(0),
   deposito: z.number().min(0),
   depositoExoneradoCredito: z.boolean().default(false),
-  garantiaTipo: z.string(),
+  garantiaTipo: z.string().default('Efectivo'),
   garantiaMonto: z.number().min(0).default(0),
   // Parámetros Tributarios Multipaís (LATAM)
   aplicaImpuesto: z.boolean().default(false),

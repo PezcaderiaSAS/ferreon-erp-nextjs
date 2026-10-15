@@ -17,7 +17,7 @@ export const AlquilerItemSegmentadoSchema = z.object({
   subtotalLinea: z.coerce.number().min(0, 'El subtotal de la línea no puede ser negativo'),
   subtotalPersonalizado: z.boolean().default(false),
   esSubcontratado: z.boolean().optional().nullable().default(false),
-  proveedorSubcontratadoId: z.string().uuid().optional().nullable(),
+  proveedorSubcontratadoId: z.union([z.string().uuid(), z.literal('')]).optional().nullable(),
   costoDiarioProveedor: z.coerce.number().min(0).optional().nullable(),
 }).refine((data) => {
   const inicio = new Date(`${data.fechaInicio}T00:00:00Z`).getTime();

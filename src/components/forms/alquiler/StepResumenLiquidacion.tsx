@@ -31,6 +31,8 @@ interface StepResumenLiquidacionProps {
   margenTotalSubcontratacion: number;
   totalItemsSubcontratados: number;
   depositoExoneradoCredito: boolean;
+  setDeposito?: (val: number) => void;
+  setDepositoExoneradoCredito?: (val: boolean) => void;
   onOpenPreview?: () => void;
   isEditMode?: boolean;
 }
@@ -63,6 +65,8 @@ export const StepResumenLiquidacion: React.FC<StepResumenLiquidacionProps> = ({
   margenTotalSubcontratacion,
   totalItemsSubcontratados,
   depositoExoneradoCredito,
+  setDeposito,
+  setDepositoExoneradoCredito,
   onOpenPreview,
   isEditMode = false,
 }) => {
@@ -195,25 +199,52 @@ export const StepResumenLiquidacion: React.FC<StepResumenLiquidacionProps> = ({
               </div>
             </div>
           ) : (
-            <div className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 transition-colors ${
+            <div className={`p-3.5 rounded-xl border text-xs flex flex-col gap-2.5 transition-colors ${
               cumpleGarantia 
                 ? 'bg-emerald-50/70 border-emerald-200 text-emerald-800' 
-                : 'bg-amber-50/80 border-amber-300 text-amber-900'
+                : 'bg-amber-50/90 border-amber-300 text-amber-900'
             }`}>
-              {cumpleGarantia ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-              ) : (
-                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              )}
-              <div>
-                <div className="font-bold text-[11px]">
-                  {cumpleGarantia ? "Colateral de Seguridad Cumplido (10%)" : "Atención: Colateral Insuficiente"}
-                </div>
-                <div className="text-[10.5px] mt-0.5 leading-relaxed">
-                  Mínimo requerido (10% reposición): <span className="font-mono font-bold">{formatearCOP(minimoColateralRequerido)}</span>. 
-                  Colateral actual: <span className="font-mono font-bold">{formatearCOP(colateralTotal)}</span>.
+              <div className="flex items-start gap-2.5">
+                {cumpleGarantia ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                )}
+                <div className="flex-1">
+                  <div className="font-bold text-[11px]">
+                    {cumpleGarantia ? "Colateral de Seguridad Cumplido (10%)" : "Atención: Colateral Insuficiente"}
+                  </div>
+                  <div className="text-[10.5px] mt-0.5 leading-relaxed">
+                    Mínimo requerido (10% reposición): <span className="font-mono font-bold">{formatearCOP(minimoColateralRequerido)}</span>. 
+                    Colateral actual: <span className="font-mono font-bold">{formatearCOP(colateralTotal)}</span>.
+                  </div>
                 </div>
               </div>
+
+              {!cumpleGarantia && (
+                <div className="pt-2 border-t border-amber-200/80 flex flex-wrap items-center gap-2">
+                  {setDeposito && (
+                    <button
+                      type="button"
+                      onClick={() => setDeposito(minimoColateralRequerido)}
+                      className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] rounded-lg transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Ajustar Depósito al 10% ({formatearCOP(minimoColateralRequerido)})</span>
+                    </button>
+                  )}
+                  {setDepositoExoneradoCredito && (
+                    <button
+                      type="button"
+                      onClick={() => setDepositoExoneradoCredito(true)}
+                      className="px-2.5 py-1.5 bg-white hover:bg-amber-100/60 border border-amber-300 text-amber-900 font-bold text-[11px] rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Building2 className="w-3.5 h-3.5 text-amber-700" />
+                      <span>Exonerar por Crédito Corporativo</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -350,11 +381,27 @@ export const StepResumenLiquidacion: React.FC<StepResumenLiquidacionProps> = ({
                   <span className="font-mono tabular-nums">{formatearCOP(deposito)}</span>
                 </div>
               ) : (
-                <div className="flex justify-between py-1 text-slate-300">
+                <div className="flex justify-between items-center py-1 text-slate-300">
                   <span>Anticipo / Depósito Inicial:</span>
-                  <span className="font-bold text-amber-400 font-mono tabular-nums">
-                    {depositoExoneradoCredito ? '$0 (Exonerado Crédito)' : `- ${formatearCOP(deposito)}`}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {setDeposito && !depositoExoneradoCredito ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-amber-400 font-mono">$</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={deposito}
+                          onChange={(e) => setDeposito(parseFloat(e.target.value) || 0)}
+                          className="w-24 px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-amber-400 font-mono text-xs text-right font-bold focus:border-amber-400 focus:outline-none"
+                        />
+                      </div>
+                    ) : (
+                      <span className="font-bold text-amber-400 font-mono tabular-nums">
+                        {depositoExoneradoCredito ? '$0 (Exonerado Crédito)' : `- ${formatearCOP(deposito)}`}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
 

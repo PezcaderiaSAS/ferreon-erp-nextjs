@@ -207,6 +207,8 @@ export function AlquilerForm({
             margenTotalSubcontratacion={form.margenTotalSubcontratacion}
             totalItemsSubcontratados={form.totalItemsSubcontratados}
             depositoExoneradoCredito={form.depositoExoneradoCredito}
+            setDeposito={form.setDeposito}
+            setDepositoExoneradoCredito={form.setDepositoExoneradoCredito}
             onOpenPreview={() => form.setIsPreviewModalOpen(true)}
             isEditMode={form.isEditMode}
           />

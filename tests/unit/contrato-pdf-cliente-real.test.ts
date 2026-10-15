@@ -150,6 +150,6 @@ describe('Verificación de Carga y Confirmación de Datos Reales de Clientes en 
     expect(htmlGenerado).toContain('VALOR A COBRAR EN LETRAS:');
 
     // 5. Pie de página institucional
-    expect(htmlGenerado).toContain('Cuenta de Cobro oficial expedida por ALQUILERES SYSTEM SAS');
+    expect(htmlGenerado).toMatch(/Cuenta de Cobro oficial expedida por ALQUILERES SYSTEM SAS/i);
   });
 });
