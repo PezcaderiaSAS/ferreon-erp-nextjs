@@ -196,8 +196,11 @@
 - [x] Importar `/subcontrataciones` (`https://alquileres-erp-nextjs-ruby.vercel.app/subcontrataciones`) — ✅ *Completada (Sections 32 y 33)*.
 - [x] Importar `/devoluciones` (`https://alquileres-erp-nextjs-ruby.vercel.app/devoluciones`) — ✅ *Completada (Confirmada en vivo en el lienzo)*.
 
-## Tarea 30: Automatización CI/CD de Paridad de Tokens
-- [ ] Configurar GitHub Action que valide que cualquier cambio en `figma_design_tokens.json` o en tokens CSS mantenga paridad matemática estricta con el Design System de Figma.
+## Tarea 30: Automatización CI/CD de Paridad de Tokens [✅ COMPLETADA]
+- [x] Configurar script de auditoría `scripts/audit-tokens-parity.mjs` con 14 verificaciones W3C DTCG y paridad con Tailwind CSS y globals.css.
+- [x] Agregar comando `"audit:tokens"` en `package.json`.
+- [x] Crear workflow de GitHub Actions `.github/workflows/tokens-parity.yml` con triggers en push, PR y workflow_dispatch.
+- [x] Validar que `npm run audit:tokens` pase con 100% de paridad matemática (14/14 checks en verde).
 
 ---
 

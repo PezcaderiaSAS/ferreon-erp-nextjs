@@ -152,6 +152,7 @@
 - [x] Inyección de 33 variables oficiales con soporte dual adaptado a Figma Free (*Salmon Pastel* y *Cyber Cyan*), 9 espaciados y 6 radios.
 - [x] Vinculación nativa certificada de **6,389 capas y nodos vectoriales** a las Variables de diseño de Alquileres System.
 - [x] Purgado de frames duplicados y huérfanos.
+- [x] Automatización CI/CD de Paridad de Tokens (`scripts/audit-tokens-parity.mjs` y `.github/workflows/tokens-parity.yml`) validando paridad W3C DTCG y CSS/Tailwind al 100%.
 - [x] Reportes generados: `figma_live_audit_report.md` y `figma_verification_complete_report.md`.
 
 ### Hito 17: Centro de Control Operativo y Calendario Multi-Flujo (`SPEC-2026-DASHBOARD-CALENDAR-001`)

@@ -18,7 +18,8 @@
     "prisma:format": "prisma format",
     "supabase:gen-types": "supabase gen types typescript --local > src/infrastructure/persistence/supabase/database.types.ts",
     "doctor": "npx react-doctor@latest",
-    "audit:licenses": "node scripts/audit-licenses.mjs"
+    "audit:licenses": "node scripts/audit-licenses.mjs",
+    "audit:tokens": "node scripts/audit-tokens-parity.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
