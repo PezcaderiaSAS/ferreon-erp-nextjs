@@ -756,23 +756,33 @@ export function useAlquilerForm({
     setFormErrors({});
     if (currentStep === 1) {
       if (!clienteId) {
-        setFormErrors(prev => ({ ...prev, clienteId: 'Debe seleccionar un cliente' }));
+        const msg = 'Paso 1: Debe seleccionar un cliente antes de continuar.';
+        setFormErrors(prev => ({ ...prev, clienteId: msg }));
+        setErrorMsg(msg);
         return false;
       }
       if (!fechaRegistro) {
-        setFormErrors(prev => ({ ...prev, fechaRegistro: 'La fecha de registro es requerida' }));
+        const msg = 'Paso 1: La fecha de registro es requerida.';
+        setFormErrors(prev => ({ ...prev, fechaRegistro: msg }));
+        setErrorMsg(msg);
         return false;
       }
       if (!fechaInicioContrato) {
-        setFormErrors(prev => ({ ...prev, fechaInicioContrato: 'La fecha de inicio es requerida' }));
+        const msg = 'Paso 1: La fecha de inicio del alquiler es requerida.';
+        setFormErrors(prev => ({ ...prev, fechaInicioContrato: msg }));
+        setErrorMsg(msg);
         return false;
       }
       if (!fechaFinEstimadaContrato) {
-        setFormErrors(prev => ({ ...prev, fechaFinEstimadaContrato: 'La fecha fin estimada es requerida' }));
+        const msg = 'Paso 1: La fecha fin estimada es requerida.';
+        setFormErrors(prev => ({ ...prev, fechaFinEstimadaContrato: msg }));
+        setErrorMsg(msg);
         return false;
       }
       if (fechaFinEstimadaContrato < fechaInicioContrato) {
-        setFormErrors(prev => ({ ...prev, fechaFinEstimadaContrato: 'La fecha final no puede ser menor a la de inicio' }));
+        const msg = 'Paso 1: La fecha fin estimada no puede ser menor a la fecha de inicio.';
+        setFormErrors(prev => ({ ...prev, fechaFinEstimadaContrato: msg }));
+        setErrorMsg(msg);
         return false;
       }
 
@@ -794,13 +804,51 @@ export function useAlquilerForm({
       }
     } else if (currentStep === 2) {
       if (items.length === 0) {
-        setFormErrors(prev => ({ ...prev, items: 'Debe incluir al menos un equipo en el alquiler' }));
+        const msg = 'Paso 2: Debe incluir al menos una maquinaria o equipo en la lista para poder continuar.';
+        setFormErrors(prev => ({ ...prev, items: msg }));
+        setErrorMsg(msg);
         return false;
       }
-      const hasEmptyItem = items.some(it => !it.itemId);
-      if (hasEmptyItem) {
-        setFormErrors(prev => ({ ...prev, items: 'Seleccione un equipo para cada fila' }));
+      const emptyIndex = items.findIndex(it => !it.itemId);
+      if (emptyIndex !== -1) {
+        const numLinea = items[emptyIndex].lineaNumero || (emptyIndex + 1);
+        const msg = `Paso 2 (Fila #${numLinea}): Debe seleccionar un equipo del catálogo para poder continuar al resumen.`;
+        setFormErrors(prev => ({
+          ...prev,
+          items: msg,
+          [`item_${items[emptyIndex].id}`]: 'Seleccione un equipo del catálogo'
+        }));
+        setErrorMsg(msg);
         return false;
+      }
+
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const numLinea = it.lineaNumero || (i + 1);
+        if (!it.fechaInicio) {
+          const msg = `Paso 2 (Fila #${numLinea}): La fecha de inicio del alquiler es requerida.`;
+          setFormErrors(prev => ({ ...prev, items: msg }));
+          setErrorMsg(msg);
+          return false;
+        }
+        if (!it.fechaFinEstimada) {
+          const msg = `Paso 2 (Fila #${numLinea}): La fecha de finalización es requerida.`;
+          setFormErrors(prev => ({ ...prev, items: msg }));
+          setErrorMsg(msg);
+          return false;
+        }
+        if (it.fechaFinEstimada < it.fechaInicio) {
+          const msg = `Paso 2 (Fila #${numLinea}): La fecha fin (${it.fechaFinEstimada}) no puede ser anterior a la fecha de inicio (${it.fechaInicio}).`;
+          setFormErrors(prev => ({ ...prev, items: msg }));
+          setErrorMsg(msg);
+          return false;
+        }
+        if (Number(it.cantidad || 0) <= 0) {
+          const msg = `Paso 2 (Fila #${numLinea}): La cantidad de equipos solicitada debe ser al menos 1.`;
+          setFormErrors(prev => ({ ...prev, items: msg }));
+          setErrorMsg(msg);
+          return false;
+        }
       }
     }
     return true;

@@ -225,4 +225,108 @@ describe('Pruebas E2E/Integración: Registro de Nuevo Alquiler y Respaldo Asisti
     expect(callPayload.deposito).toBe(0);
     expect(callPayload.estado).toBe('ACTIVO');
   });
+
+  it('Muestra un mensaje explicativo claro y destacado si se intenta avanzar del Paso 2 sin seleccionar equipo', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <AlquilerForm
+        modoInicial="COTIZACION"
+        onSuccess={mockOnSuccess}
+        onCancel={mockOnCancel}
+      />
+    );
+
+    // 1. Paso 1: Seleccionar cliente y avanzar
+    const searchInput = screen.getByPlaceholderText('Escriba nombre o NIT para buscar...');
+    await user.type(searchInput, 'Bolívar');
+    const clienteOption = await screen.findByText('Constructora Bolívar S.A.');
+    await user.click(clienteOption);
+
+    const btnContinuar = screen.getByRole('button', { name: /continuar/i });
+    await user.click(btnContinuar);
+
+    // Verificamos Paso 2
+    await waitFor(() => {
+      expect(screen.getByText(/Maquinaria y Equipos Solicitados/i)).toBeInTheDocument();
+    });
+
+    // 2. Intentar avanzar al Paso 3 SIN seleccionar equipo
+    await user.click(btnContinuar);
+
+    // Debe mostrarse el mensaje explicativo en la pantalla indicando exactamente la causa
+    await waitFor(() => {
+      expect(screen.getAllByText(/Paso 2 \(Fila #1\): Debe seleccionar un equipo del catálogo para poder continuar al resumen\./i).length).toBeGreaterThan(0);
+    });
+
+    // El formulario no avanza a Paso 3, permanece en Paso 2
+    expect(screen.getByText(/Maquinaria y Equipos Solicitados/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Condiciones Especiales y Logística/i)).not.toBeInTheDocument();
+  });
+
+  it('Permite seleccionar equipos con stock 0 en Cotizaciones y avanzar exitosamente al Paso 3', async () => {
+    const user = userEvent.setup();
+
+    const mockEquipoSinStock = [
+      {
+        id: 99,
+        codigo: 'TEST-01',
+        nombre: 'EQUIPO TEST SCRATCH',
+        tarifa_dia: 10000,
+        tarifa_diaria: 10000,
+        precioDiario: 10000,
+        stock_disponible: 0,
+        stockDisponible: 0,
+        valor_reposicion: 1000000,
+        valorReposicion: 1000000,
+        estado: 'Activo',
+      },
+    ];
+
+    vi.spyOn(equiposActions, 'obtenerEquiposAction').mockResolvedValue({
+      success: true,
+      data: mockEquipoSinStock as any,
+    });
+
+    useBodegaStore.setState({
+      equipos: mockEquipoSinStock as any,
+      isLoading: false,
+    } as any);
+
+    render(
+      <AlquilerForm
+        modoInicial="COTIZACION"
+        onSuccess={mockOnSuccess}
+        onCancel={mockOnCancel}
+      />
+    );
+
+    // 1. Paso 1: Seleccionar cliente y avanzar
+    const searchInput = screen.getByPlaceholderText('Escriba nombre o NIT para buscar...');
+    await user.type(searchInput, 'Bolívar');
+    const clienteOption = await screen.findByText('Constructora Bolívar S.A.');
+    await user.click(clienteOption);
+
+    const btnContinuar = screen.getByRole('button', { name: /continuar/i });
+    await user.click(btnContinuar);
+
+    // Verificamos Paso 2
+    await waitFor(() => {
+      expect(screen.getByText(/Maquinaria y Equipos Solicitados/i)).toBeInTheDocument();
+    });
+
+    // 2. Seleccionar equipo sin stock en bodega (debe estar habilitado para cotizaciones)
+    const comboboxInput = screen.getByPlaceholderText('Escriba nombre o código...');
+    await user.type(comboboxInput, 'EQUIPO TEST SCRATCH');
+
+    const equipoOption = await screen.findByText(/EQUIPO TEST SCRATCH/i);
+    await user.click(equipoOption);
+
+    // 3. Hacer clic en Continuar -> Debe avanzar al Paso 3 sin trabas
+    await user.click(btnContinuar);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Condiciones Especiales y Logística/i)).toBeInTheDocument();
+    });
+  });
 });

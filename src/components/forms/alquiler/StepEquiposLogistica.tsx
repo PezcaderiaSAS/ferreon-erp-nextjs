@@ -140,6 +140,21 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
           </div>
         </div>
 
+        {/* Banner de Validación de Error en Paso 2 */}
+        {formErrors.items && (
+          <div className="p-3.5 bg-rose-50 border-2 border-rose-300 rounded-xl flex items-start gap-3 text-rose-800 animate-fadeIn shadow-xs">
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-xs font-black text-rose-900 uppercase tracking-wide">
+                Atención: Complete los requisitos del Paso 2
+              </p>
+              <p className="text-xs font-semibold text-rose-700 mt-0.5 leading-relaxed">
+                {formErrors.items}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Filas de equipos con scroll optimizado */}
         <div className="flex flex-col">
           <div className="space-y-3 max-h-[480px] overflow-y-auto overflow-x-hidden pb-4 pr-1" id="items-scroll-area">
@@ -155,13 +170,16 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                 : { disponible: 0, stockInsuficiente: false, faltante: 0, equipo: null };
 
               const margenDiarioUnitario = (field.precioDiario || 0) - (field.costoSubcontrato || 0);
+              const hasRowError = !field.itemId && Boolean(formErrors.items || formErrors[`item_${field.id}`]);
 
               return (
                 <div
                   key={field.id}
                   className={`p-3 sm:p-3.5 rounded-2xl border transition-all ${isComboboxOpen
                       ? 'bg-white border-teal-500 shadow-xl ring-2 ring-teal-500/20'
-                      : field.esSubcontratado
+                      : hasRowError
+                        ? 'bg-rose-50/40 border-rose-400 ring-2 ring-rose-400/20 shadow-xs'
+                        : field.esSubcontratado
                         ? 'bg-indigo-50/40 border-indigo-200/90 shadow-2xs'
                         : 'bg-slate-50/90 border-slate-200/90 hover:border-slate-300'
                     } flex flex-col gap-2.5 relative`}
@@ -192,6 +210,7 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                     <EquipoCombobox
                       equipos={equiposActivos}
                       value={field.itemId}
+                      permitirSinStock={tipoDocumento === 'COTIZACION' || field.esSubcontratado || true}
                       placeholder="Escriba nombre o código..."
                       autoFocus={autoFocusRowId === field.id}
                       onCrearNuevo={() => setIsCreandoEquipo(true)}
@@ -221,6 +240,12 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
                         setItems(newItems);
                       }}
                     />
+                    {hasRowError && (
+                      <p className="text-[11px] text-rose-600 font-semibold flex items-center gap-1 mt-1 animate-fadeIn">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                        <span>Debe seleccionar un equipo del catálogo para esta fila antes de continuar.</span>
+                      </p>
+                    )}
                   </div>
 
                   {/* FILA 2 — Grid de campos numéricos/fechas (7 cols) */}
