@@ -88,6 +88,7 @@ export default function UltraAdminEmpresasPage() {
 
   useEffect(() => {
     cargarDirectorio();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Cargar usuarios al seleccionar empresa

@@ -6,6 +6,8 @@ import {
   SubcontratacionesInteractiveIsland,
 } from '@/components/subcontrataciones';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Subcontrataciones & Tercerización | Alquileres System',
   description:

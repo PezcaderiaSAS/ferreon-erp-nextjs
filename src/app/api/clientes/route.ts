@@ -40,10 +40,13 @@ export async function GET() {
       );
     }
 
+    const empresaId = await resolveEmpresaId(user?.id);
+
     // 2. Consulta Base de Datos protegida por RLS (Miss)
     const { data, error } = await supabase
       .from("clientes")
       .select("*")
+      .eq("empresa_id", empresaId)
       .is("deleted_at", null)
       .order("nombre", { ascending: true });
 

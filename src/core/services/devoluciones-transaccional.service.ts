@@ -153,22 +153,36 @@ export class DevolucionesTransaccionalService {
   public static mapearContratosConPendientes(alquileres: any[]): ContratoConPendientesUI[] {
     if (!Array.isArray(alquileres)) return [];
 
-    const activos = alquileres.filter((a) => a && (a.estado === 'ACTIVO' || a.estado === 'VENCIDO'));
+    const activos = alquileres.filter((a) => a && (a.estado === 'ACTIVO' || a.estado === 'VENCIDO' || a.estado === 'ACTIVO_EN_OBRA'));
 
     return activos
       .map((a) => {
-        const detalles = a.detalles || [];
-        const pendientes = detalles.filter((d: any) => {
+        const rawDetalles = a.detalles || a.alquiler_detalles || a.items || [];
+        const detalles = rawDetalles.map((d: any) => {
           const contratada = Number(d.cantidad) || 0;
-          const devuelta = Number(d.cantidadDevuelta) || 0;
-          return contratada > devuelta;
+          const devuelta = Number(d.cantidadDevuelta ?? d.cantidad_devuelta ?? 0);
+          const nombre = d.equipos?.nombre || d.nombreItem || d.equipoNombre || d.nombre || 'Equipo';
+          return {
+            ...d,
+            detalleId: d.id || d.detalleId || d.itemId,
+            equipoId: d.equipo_id || d.itemId || d.equipoId,
+            nombreEquipo: nombre,
+            cantidadContratada: contratada,
+            cantidadDevueltaPrevia: devuelta,
+            tarifaDiaria: Number(d.tarifaAplicada ?? d.tarifa_aplicada ?? d.tarifaDiaria ?? d.tarifa_diaria ?? 0),
+            fechaInicio: d.fechaInicio || d.fecha_inicio || a.created_at || new Date().toISOString(),
+            fechaFinEstimada: d.fechaFinEstimada || d.fecha_fin || a.fecha_fin_estimada || null,
+            esSubcontratado: Boolean(d.esSubcontratado || d.es_subcontratado || d.subcontratado),
+          };
         });
+
+        const pendientes = detalles.filter((d: any) => d.cantidadContratada > d.cantidadDevueltaPrevia);
 
         const resumen =
           pendientes
             .map((d: any) => {
-              const remanente = (Number(d.cantidad) || 0) - (Number(d.cantidadDevuelta) || 0);
-              return `${remanente}x ${d.nombreItem || d.equipoNombre || 'Equipo'}`;
+              const remanente = d.cantidadContratada - d.cantidadDevueltaPrevia;
+              return `${remanente}x ${d.nombreEquipo}`;
             })
             .join(', ') || 'Sin pendientes';
 
@@ -178,24 +192,24 @@ export class DevolucionesTransaccionalService {
 
         return {
           id: a.id || `CTR-${a.consecutivo}`,
-          consecutivo: a.consecutivo || 1,
-          clienteNombre: a.clienteNombre || a.clientes?.nombre || 'Cliente General',
-          clienteNit: a.clienteNit || a.clientes?.nit_cedula || 'Sin NIT',
-          clienteTelefono: a.clienteTelefono || a.clientes?.telefono || '',
-          depositoGarantia: Number(a.deposito || a.depositoGarantia || 0),
-          fechaInicio: a.created_at || a.fechaInicio || new Date().toISOString(),
+          consecutivo: a.consecutivo || a.id || 1,
+          clienteNombre: a.clienteNombre || a.cliente_nombre || a.clientes?.nombre || 'Cliente General',
+          clienteNit: a.clienteNit || a.cliente_nit || a.clientes?.nit_cedula || 'Sin NIT',
+          clienteTelefono: a.clienteTelefono || a.cliente_telefono || a.clientes?.telefono || '',
+          depositoGarantia: Number(a.deposito ?? a.depositoGarantia ?? a.deposito_garantia ?? 0),
+          fechaInicio: a.created_at || a.fechaInicio || a.fecha_inicio || new Date().toISOString(),
           fechaEsperada,
           equiposResumen: resumen,
           estadoRetraso: 'En tiempo',
           detallesCompletos: detalles.map((d: any) => ({
-            detalleId: d.id || d.itemId || d.detalleId,
-            equipoId: d.itemId || d.equipoId,
-            nombreEquipo: d.nombreItem || d.equipoNombre || 'Equipo',
-            cantidadContratada: Number(d.cantidad) || 0,
-            cantidadDevueltaPrevia: Number(d.cantidadDevuelta) || 0,
-            tarifaDiaria: Number(d.tarifaAplicada || d.tarifaDiaria || 0),
-            fechaInicio: d.fechaInicio || a.created_at || new Date().toISOString(),
-            esSubcontratado: Boolean(d.esSubcontratado || d.subcontratado),
+            detalleId: d.detalleId,
+            equipoId: d.equipoId,
+            nombreEquipo: d.nombreEquipo,
+            cantidadContratada: d.cantidadContratada,
+            cantidadDevueltaPrevia: d.cantidadDevueltaPrevia,
+            tarifaDiaria: d.tarifaDiaria,
+            fechaInicio: d.fechaInicio,
+            esSubcontratado: d.esSubcontratado,
           })),
         };
       })

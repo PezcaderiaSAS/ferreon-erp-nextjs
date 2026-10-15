@@ -18,7 +18,7 @@ const equipoSchema = z.object({
 });
 
 interface BodegaFormProps {
-  onSuccess: (equipo?: Equipo) => void;
+  onSuccess: (equipo?: Equipo, addAnother?: boolean) => void;
   onCancel: () => void;
 }
 
@@ -33,14 +33,15 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
   const [stockInicial, setStockInicial] = useState<number>(1);
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [idempotencyKey] = useState(() => idempotencyManager.generateKey());
+  const [isSubmittingAnother, setIsSubmittingAnother] = useState(false);
+  const [idempotencyKey, setIdempotencyKey] = useState(() => idempotencyManager.generateKey());
 
   useEffect(() => {
     const nextSku = generarSiguienteSKU();
     setSku(nextSku);
   }, [generarSiguienteSKU]);
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent, addAnother: boolean = false) => {
     e.preventDefault();
     setFormErrors({});
 
@@ -69,7 +70,11 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
       return;
     }
 
-    setIsSubmitting(true);
+    if (addAnother) {
+      setIsSubmittingAnother(true);
+    } else {
+      setIsSubmitting(true);
+    }
     
     // Guardamos snapshot para rollback
     const store = useBodegaStore.getState();
@@ -115,11 +120,21 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
         throw new Error(result.error);
       }
 
-      // 3. Update real ID
+      // 3. Update real ID replacing the optimistic temp ID
       const finalEquipo = { ...newEquipo, id: result.data.id };
-      store.updateEquipo(finalEquipo);
+      useBodegaStore.setState((state) => ({
+        equipos: state.equipos.map(e => e.id === tempId ? finalEquipo : e)
+      }));
       
-      onSuccess(finalEquipo as unknown as Equipo);
+      if (addAnother) {
+        setNombre('');
+        setIdempotencyKey(idempotencyManager.generateKey());
+        const nextSku = generarSiguienteSKU();
+        setSku(nextSku);
+        onSuccess(finalEquipo as unknown as Equipo, true);
+      } else {
+        onSuccess(finalEquipo as unknown as Equipo, false);
+      }
     } catch (error: any) {
       // 4. Rollback Optimista
       store.restoreSnapshot(previousEquipos);
@@ -128,11 +143,12 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
       alert(`No se pudo guardar el equipo en Supabase: ${error.message}`);
     } finally {
       setIsSubmitting(false);
+      setIsSubmittingAnother(false);
     }
   };
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form onSubmit={(e) => onSubmit(e, false)} className="flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor="equipo-sku" className="text-xs font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
@@ -144,8 +160,9 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
             name="sku"
             type="text"
             value={sku}
-            onChange={(e) => setSku(e.target.value)}
-            className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-900 font-mono bg-slate-50 font-bold"
+            readOnly
+            disabled
+            className="px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-salmon focus:border-brand-salmon text-sm text-slate-500 font-mono bg-slate-100 font-bold cursor-not-allowed select-none"
             placeholder="Ej: EQ-001"
             aria-label="Código o SKU del equipo"
           />
@@ -249,8 +266,19 @@ export function BodegaForm({ onSuccess, onCancel }: BodegaFormProps) {
           Cancelar
         </button>
         <Button 
+          type="button" 
+          variant="secondary"
+          isLoading={isSubmittingAnother}
+          disabled={isSubmitting}
+          onClick={(e) => onSubmit(e as unknown as React.FormEvent, true)}
+          className="min-w-[170px]"
+        >
+          Guardar y Añadir Otro
+        </Button>
+        <Button 
           type="submit" 
           isLoading={isSubmitting}
+          disabled={isSubmittingAnother}
           className="min-w-[150px]"
         >
           Guardar Equipo

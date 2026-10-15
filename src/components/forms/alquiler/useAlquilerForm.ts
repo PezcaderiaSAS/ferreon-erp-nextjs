@@ -5,9 +5,12 @@ import { useAlquilerStore } from '../../../infrastructure/state/alquilerStore';
 import { useEmpresaStore } from '../../../infrastructure/state/empresaStore';
 import { crearAlquilerAction, editarAlquilerAction } from '../../../app/actions/alquileres';
 import { crearAlquilerSegmentadoAction } from '../../../app/actions/alquiler-segmentado';
+import { obtenerEquiposAction } from '../../../app/actions/equipos';
+import { obtenerClientesAction } from '../../../app/actions/clientes';
 import { equipoToEquipoUI } from '../../../lib/mappers';
 import { idempotencyManager } from '../../../lib/idempotency';
 import { EnterprisePDFService } from '../../../core/services/pdf-factura-generator.service';
+import { obtenerFechaHoyISO, formatearFechaISO } from '../../../core/utils/fechas';
 import { alquilerSchema, ItemRow, AlquilerFormProps } from './types';
 import { OverbookingConflictInfo } from './ModalResolucionOverbooking';
 
@@ -47,24 +50,22 @@ export function useAlquilerForm({
   const [conflictoOverbooking, setConflictoOverbooking] = useState<OverbookingConflictInfo | null>(null);
   const [isModalOverbookingOpen, setIsModalOverbookingOpen] = useState(false);
 
-  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const todayStr = useMemo(() => obtenerFechaHoyISO(), []);
 
-  // Sincronización en background sin latencia
+  // Sincronización en background sin latencia — siempre reemplaza el store
+  // para evitar mezcla de datos entre tenants distintos.
   const fetchCatalogsBackground = useCallback(async () => {
     try {
       const [resCli, resEq] = await Promise.all([
-        fetch('/api/clientes', { cache: 'no-store' }),
-        fetch('/api/equipos', { cache: 'no-store' })
+        obtenerClientesAction(),
+        obtenerEquiposAction()
       ]);
-      const [jsonCli, jsonEq] = await Promise.all([
-        resCli.json(),
-        resEq.json()
-      ]);
-      if (jsonCli.success && Array.isArray(jsonCli.data)) {
-        setClientes(jsonCli.data);
+      // Reemplazar siempre (no fusionar) para limpiar datos de otro tenant
+      if (resCli.success && Array.isArray(resCli.data)) {
+        setClientes(resCli.data);
       }
-      if (jsonEq.success && Array.isArray(jsonEq.data)) {
-        setEquipos(jsonEq.data.map(equipoToEquipoUI));
+      if (resEq.success && Array.isArray(resEq.data)) {
+        setEquipos(resEq.data.map(equipoToEquipoUI));
       }
     } catch (err) {
       console.warn('[useAlquilerForm] Error al sincronizar catálogos en background:', err);
@@ -124,31 +125,43 @@ export function useAlquilerForm({
 
   const [clienteId, setClienteId] = useState<string>(String(initialData?.cliente_id || initialData?.clienteId || ''));
   const [fechaRegistro, setFechaRegistro] = useState<string>(
-    initialData?.created_at ? new Date(initialData.created_at).toISOString().split('T')[0] : 
-    (initialData?.createdAt ? new Date(initialData.createdAt).toISOString().split('T')[0] : todayStr)
+    initialData?.created_at ? formatearFechaISO(initialData.created_at) : 
+    (initialData?.createdAt ? formatearFechaISO(initialData.createdAt) : todayStr)
   );
 
   // Rango Maestro de Fechas para todo el contrato
   const [fechaInicioContrato, setFechaInicioContrato] = useState<string>(() => {
-    if (initialData?.fecha_inicio) return new Date(initialData.fecha_inicio).toISOString().split('T')[0];
-    if (initialData?.fechaInicio) return new Date(initialData.fechaInicio).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fecha_inicio) return new Date(initialData.detalles[0].fecha_inicio).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fechaInicio) return new Date(initialData.detalles[0].fechaInicio).toISOString().split('T')[0];
+    if (initialData?.fecha_inicio) return formatearFechaISO(initialData.fecha_inicio);
+    if (initialData?.fechaInicio) return formatearFechaISO(initialData.fechaInicio);
+    if (initialData?.detalles?.[0]?.fecha_inicio) return formatearFechaISO(initialData.detalles[0].fecha_inicio);
+    if (initialData?.detalles?.[0]?.fechaInicio) return formatearFechaISO(initialData.detalles[0].fechaInicio);
     return todayStr;
   });
 
   const [fechaFinEstimadaContrato, setFechaFinEstimadaContrato] = useState<string>(() => {
-    if (initialData?.fecha_fin_estimada) return new Date(initialData.fecha_fin_estimada).toISOString().split('T')[0];
-    if (initialData?.fechaFinEstimada) return new Date(initialData.fechaFinEstimada).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fecha_fin_estimada) return new Date(initialData.detalles[0].fecha_fin_estimada).toISOString().split('T')[0];
-    if (initialData?.detalles?.[0]?.fechaFinEstimada) return new Date(initialData.detalles[0].fechaFinEstimada).toISOString().split('T')[0];
+    if (initialData?.fecha_fin_estimada) return formatearFechaISO(initialData.fecha_fin_estimada);
+    if (initialData?.fechaFinEstimada) return formatearFechaISO(initialData.fechaFinEstimada);
+    if (initialData?.detalles?.[0]?.fecha_fin_estimada) return formatearFechaISO(initialData.detalles[0].fecha_fin_estimada);
+    if (initialData?.detalles?.[0]?.fechaFinEstimada) return formatearFechaISO(initialData.detalles[0].fechaFinEstimada);
     return todayStr;
   });
 
-  const [fleteEntrega, setFleteEntrega] = useState<number>(initialData ? (initialData.flete_entrega || initialData.fleteEntrega || 0) : 30000);
-  const [fleteRecogida, setFleteRecogida] = useState<number>(initialData ? (initialData.flete_recogida || initialData.fleteRecogida || 0) : 30000);
-  const [deposito, setDeposito] = useState<number>(initialData ? (initialData.deposito || 0) : 50000);
-  const [garantiaMonto, setGarantiaMonto] = useState<number>(initialData ? (initialData.garantia_monto || initialData.garantiaMonto || 0) : 300000);
+  // Hora de inicio y fin del alquiler (para contratos con horario específico)
+  const [horaInicioContrato, setHoraInicioContrato] = useState<string>(() => {
+    if (initialData?.hora_inicio) return initialData.hora_inicio;
+    if (initialData?.horaInicio) return initialData.horaInicio;
+    return '07:00';
+  });
+  const [horaFinContrato, setHoraFinContrato] = useState<string>(() => {
+    if (initialData?.hora_fin) return initialData.hora_fin;
+    if (initialData?.horaFin) return initialData.horaFin;
+    return '17:00';
+  });
+
+  const [fleteEntrega, setFleteEntrega] = useState<number>(initialData ? (initialData.flete_entrega || initialData.fleteEntrega || 0) : 0);
+  const [fleteRecogida, setFleteRecogida] = useState<number>(initialData ? (initialData.flete_recogida || initialData.fleteRecogida || 0) : 0);
+  const [deposito, setDeposito] = useState<number>(initialData ? (initialData.deposito || 0) : 0);
+  const [garantiaMonto, setGarantiaMonto] = useState<number>(initialData ? (initialData.garantia_monto || initialData.garantiaMonto || 0) : 0);
   const [garantiaTipo, setGarantiaTipo] = useState<string>(initialData?.garantia_tipo || initialData?.garantiaTipo || 'Efectivo');
   const [observaciones, setObservaciones] = useState<string>(initialData?.observaciones || initialData?.observacionesGenerales || '');
   const [detallesLogistica, setDetallesLogistica] = useState<string>(initialData?.detalles_logistica || initialData?.detallesLogistica || '');
@@ -160,8 +173,8 @@ export function useAlquilerForm({
     const sourceDetalles = initialData?.alquiler_detalles || initialData?.detalles || initialData?.items || initialData?.cotizaciones_detalles;
     if (sourceDetalles && sourceDetalles.length > 0) {
       return sourceDetalles.map((d: any, idx: number) => {
-        const start = d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (d.fechaInicio ? new Date(d.fechaInicio).toISOString().split('T')[0] : todayStr);
-        const end = d.fecha_fin ? new Date(d.fecha_fin).toISOString().split('T')[0] : (d.fecha_fin_estimada ? new Date(d.fecha_fin_estimada).toISOString().split('T')[0] : (d.fechaFinEstimada ? new Date(d.fechaFinEstimada).toISOString().split('T')[0] : (d.fechaFin ? new Date(d.fechaFin).toISOString().split('T')[0] : todayStr)));
+        const start = d.fecha_inicio ? formatearFechaISO(d.fecha_inicio) : (d.fechaInicio ? formatearFechaISO(d.fechaInicio) : todayStr);
+        const end = d.fecha_fin ? formatearFechaISO(d.fecha_fin) : (d.fecha_fin_estimada ? formatearFechaISO(d.fecha_fin_estimada) : (d.fechaFinEstimada ? formatearFechaISO(d.fechaFinEstimada) : (d.fechaFin ? formatearFechaISO(d.fechaFin) : todayStr)));
         const sDate = new Date(`${start}T00:00:00Z`);
         const eDate = new Date(`${end}T00:00:00Z`);
         const dias = Math.max(1, Math.ceil((eDate.getTime() - sDate.getTime()) / (1000 * 60 * 60 * 24)));
@@ -297,6 +310,23 @@ export function useAlquilerForm({
       ];
     });
   }, [fechaInicioContrato, fechaFinEstimadaContrato]);
+
+  const duplicateItemRow = useCallback((index: number) => {
+    const newRowId = `dup_${Date.now()}_${Math.random()}`;
+    setAutoFocusRowId(newRowId);
+    setItems(prev => {
+      const base = prev[index];
+      if (!base) return prev;
+      const newRow = { 
+        ...base, 
+        id: newRowId, 
+        lineaNumero: prev.length + 1 
+      };
+      const copia = [...prev];
+      copia.splice(index + 1, 0, newRow);
+      return copia.map((row, idx) => ({ ...row, lineaNumero: idx + 1 }));
+    });
+  }, []);
 
   const segmentarItemRow = useCallback((index: number) => {
     setItems(prev => {
@@ -645,7 +675,7 @@ export function useAlquilerForm({
     const nuevoInicio = todayStr;
     const nuevaFechaFin = new Date();
     nuevaFechaFin.setDate(nuevaFechaFin.getDate() + duracionDias);
-    const nuevoFin = nuevaFechaFin.toISOString().split('T')[0];
+    const nuevoFin = formatearFechaISO(nuevaFechaFin);
 
     setFechaInicioContrato(nuevoInicio);
     setFechaFinEstimadaContrato(nuevoFin);
@@ -726,23 +756,33 @@ export function useAlquilerForm({
     setFormErrors({});
     if (currentStep === 1) {
       if (!clienteId) {
-        setFormErrors(prev => ({ ...prev, clienteId: 'Debe seleccionar un cliente' }));
+        const msg = 'Paso 1: Debe seleccionar un cliente antes de continuar.';
+        setFormErrors(prev => ({ ...prev, clienteId: msg }));
+        setErrorMsg(msg);
         return false;
       }
       if (!fechaRegistro) {
-        setFormErrors(prev => ({ ...prev, fechaRegistro: 'La fecha de registro es requerida' }));
+        const msg = 'Paso 1: La fecha de registro es requerida.';
+        setFormErrors(prev => ({ ...prev, fechaRegistro: msg }));
+        setErrorMsg(msg);
         return false;
       }
       if (!fechaInicioContrato) {
-        setFormErrors(prev => ({ ...prev, fechaInicioContrato: 'La fecha de inicio es requerida' }));
+        const msg = 'Paso 1: La fecha de inicio del alquiler es requerida.';
+        setFormErrors(prev => ({ ...prev, fechaInicioContrato: msg }));
+        setErrorMsg(msg);
         return false;
       }
       if (!fechaFinEstimadaContrato) {
-        setFormErrors(prev => ({ ...prev, fechaFinEstimadaContrato: 'La fecha fin estimada es requerida' }));
+        const msg = 'Paso 1: La fecha fin estimada es requerida.';
+        setFormErrors(prev => ({ ...prev, fechaFinEstimadaContrato: msg }));
+        setErrorMsg(msg);
         return false;
       }
       if (fechaFinEstimadaContrato < fechaInicioContrato) {
-        setFormErrors(prev => ({ ...prev, fechaFinEstimadaContrato: 'La fecha final no puede ser menor a la de inicio' }));
+        const msg = 'Paso 1: La fecha fin estimada no puede ser menor a la fecha de inicio.';
+        setFormErrors(prev => ({ ...prev, fechaFinEstimadaContrato: msg }));
+        setErrorMsg(msg);
         return false;
       }
 
@@ -753,18 +793,50 @@ export function useAlquilerForm({
         return false;
       }
     } else if (currentStep === 2) {
-      const hasEmptyItem = items.some(it => !it.itemId);
-      if (hasEmptyItem) {
-        setFormErrors(prev => ({ ...prev, items: 'Seleccione un equipo para cada fila' }));
+      if (items.length === 0) {
+        const msg = 'Paso 2: Debe incluir al menos una maquinaria o equipo en la lista para poder continuar.';
+        setFormErrors(prev => ({ ...prev, items: msg }));
+        setErrorMsg(msg);
         return false;
       }
-      
-      // La regla del colateral del 10% solo es obligatoria para contratos y cuando no haya exoneración por crédito corporativo
-      if (tipoDocumento === 'CONTRATO' && !depositoExoneradoCredito) {
-        const minimoRequerido = valorReposicionTotal * 0.1;
-        const garantiaTotal = Number(deposito) + Number(garantiaMonto);
-        if (garantiaTotal < minimoRequerido) {
-          setErrorMsg(`Bloqueo de Seguridad: Se requiere un colateral (Depósito + Garantía) mínimo del 10% del valor de los equipos (${formatearCOP(minimoRequerido)}). El colateral actual es ${formatearCOP(garantiaTotal)}. Puede exonerarlo en el Paso 1 si el cliente cuenta con línea de crédito aprobada.`);
+      const emptyIndex = items.findIndex(it => !it.itemId);
+      if (emptyIndex !== -1) {
+        const numLinea = items[emptyIndex].lineaNumero || (emptyIndex + 1);
+        const msg = `Paso 2 (Fila #${numLinea}): Debe seleccionar un equipo del catálogo para poder continuar al resumen.`;
+        setFormErrors(prev => ({
+          ...prev,
+          items: msg,
+          [`item_${items[emptyIndex].id}`]: 'Seleccione un equipo del catálogo'
+        }));
+        setErrorMsg(msg);
+        return false;
+      }
+
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const numLinea = it.lineaNumero || (i + 1);
+        if (!it.fechaInicio) {
+          const msg = `Paso 2 (Fila #${numLinea}): La fecha de inicio del alquiler es requerida.`;
+          setFormErrors(prev => ({ ...prev, items: msg }));
+          setErrorMsg(msg);
+          return false;
+        }
+        if (!it.fechaFinEstimada) {
+          const msg = `Paso 2 (Fila #${numLinea}): La fecha de finalización es requerida.`;
+          setFormErrors(prev => ({ ...prev, items: msg }));
+          setErrorMsg(msg);
+          return false;
+        }
+        if (it.fechaFinEstimada < it.fechaInicio) {
+          const msg = `Paso 2 (Fila #${numLinea}): La fecha fin (${it.fechaFinEstimada}) no puede ser anterior a la fecha de inicio (${it.fechaInicio}).`;
+          setFormErrors(prev => ({ ...prev, items: msg }));
+          setErrorMsg(msg);
+          return false;
+        }
+        if (Number(it.cantidad || 0) <= 0) {
+          const msg = `Paso 2 (Fila #${numLinea}): La cantidad de equipos solicitada debe ser al menos 1.`;
+          setFormErrors(prev => ({ ...prev, items: msg }));
+          setErrorMsg(msg);
           return false;
         }
       }
@@ -831,6 +903,11 @@ export function useAlquilerForm({
         ? item.subtotal
         : (item.precioDiario || 0) * (item.cantidad || 1) * dias;
 
+      // Combinar fecha con hora de inicio/fin del contrato (Hora Colombia UTC-5)
+      // Garantiza almacenamiento correcto en campos TIMESTAMPTZ de la base de datos
+      const fechaInicioTz = `${item.fechaInicio}T${horaInicioContrato}:00-05:00`;
+      const fechaFinTz = `${item.fechaFinEstimada}T${horaFinContrato}:00-05:00`;
+
       return {
         lineaNumero: item.lineaNumero || idx + 1,
         itemId: item.itemId,
@@ -842,9 +919,9 @@ export function useAlquilerForm({
         tarifaDiaria: item.precioDiario,
         tarifaAplicada: item.precioDiario,
         tarifaPersonalizada: Boolean(item.tarifaPersonalizada),
-        fechaInicio: item.fechaInicio,
-        fechaFin: item.fechaFinEstimada,
-        fechaFinEstimada: item.fechaFinEstimada,
+        fechaInicio: fechaInicioTz,
+        fechaFin: fechaFinTz,
+        fechaFinEstimada: fechaFinTz,
         dias,
         subtotal: subtotalLinea,
         subtotalLineaEstimado: subtotalLinea,
@@ -912,12 +989,17 @@ export function useAlquilerForm({
       margen_total_subcontratacion: margenTotalSubcontratacion,
       margenTotalSubcontratacion,
       totalItemsSubcontratados,
-      created_at: fechaRegistro,
-      fechaEmision: fechaRegistro,
+      created_at: initialData?.created_at || (initialData as any)?.createdAt || new Date().toISOString(),
+      fechaEmision: initialData?.created_at || new Date().toISOString(),
+      horaEmision: horaInicioContrato,
       fechaInicio: fechaInicioContrato,
       fecha_inicio: fechaInicioContrato,
       fechaFinEstimada: fechaFinEstimadaContrato,
       fecha_fin_estimada: fechaFinEstimadaContrato,
+      horaInicio: horaInicioContrato,
+      hora_inicio: horaInicioContrato,
+      horaFin: horaFinContrato,
+      hora_fin: horaFinContrato,
       estado: estadoEfectivo,
       empresa: empresaConfig,
       formatoPapel: 'LETTER' as 'LETTER' | 'A5',
@@ -1018,8 +1100,7 @@ export function useAlquilerForm({
         const minimoRequerido = valorReposicionTotal * 0.1;
         const garantiaTotal = Number(deposito) + Number(garantiaMonto);
         if (garantiaTotal < minimoRequerido) {
-          setErrorMsg(`Colateral insuficiente: Se requiere un colateral (Depósito + Garantía) mínimo del 10% del valor de reposición (${formatearCOP(minimoRequerido)}). El actual es ${formatearCOP(garantiaTotal)}.`);
-          setCurrentStep(1);
+          setErrorMsg(`Colateral insuficiente: Se requiere un colateral (Depósito + Garantía) mínimo del 10% del valor de reposición (${formatearCOP(minimoRequerido)}). El actual es ${formatearCOP(garantiaTotal)}. Puede ajustar el depósito al 10% o exonerarlo por crédito corporativo en este panel.`);
           return false;
         }
       }
@@ -1235,7 +1316,7 @@ export function useAlquilerForm({
 
         setSavedAlquilerData(alquilerFinal);
         setIsSuccess(true);
-        if (onSuccess) onSuccess(alquilerFinal);
+        // Delegamos el onSuccess a la vista de éxito (AlquilerSuccessView)
         return true;
       }
     } catch (err: any) {
@@ -1313,6 +1394,10 @@ export function useAlquilerForm({
     fechaFinEstimadaContrato,
     handleFechaInicioMasterChange,
     handleFechaFinMasterChange,
+    horaInicioContrato,
+    setHoraInicioContrato,
+    horaFinContrato,
+    setHoraFinContrato,
     fleteEntrega,
     setFleteEntrega,
     fleteRecogida,
@@ -1348,6 +1433,7 @@ export function useAlquilerForm({
     items,
     setItems,
     addItemRow,
+    duplicateItemRow,
     segmentarItemRow,
     removeItemRow,
     updateItemRow,

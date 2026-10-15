@@ -21,6 +21,8 @@ import { useDirtyFormGuard } from '@/hooks/useDirtyFormGuard';
 import { DiscardChangesModal } from '@/components/ui/DiscardChangesModal';
 
 import { obtenerCotizacionesAction, convertirCotizacionAContratoAction } from '@/app/actions/cotizaciones';
+import { obtenerEquiposAction } from '@/app/actions/equipos';
+import { obtenerClientesAction } from '@/app/actions/clientes';
 import {
   obtenerAlquileresAction,
   procesarDevolucionAction,
@@ -138,6 +140,12 @@ export function AlquileresInteractiveIsland({
   // Guard de cambios sin guardar
   const [isFormDirty, setIsFormDirty] = useState(false);
   const { attemptAction, showDiscardModal, confirmDiscard, cancelDiscard } = useDirtyFormGuard(isFormDirty);
+
+  // Evitar Hydration Mismatch de Zustand (persist) y tooltips
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Modales
   const [showDevolucionModal, setShowDevolucionModal] = useState<boolean>(false);
@@ -365,8 +373,8 @@ export function AlquileresInteractiveIsland({
       setLoading(true);
       const [alqResult, cliResult, eqResult, cotResult] = await Promise.allSettled([
         obtenerAlquileresAction(),
-        fetch('/api/clientes', { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-        fetch('/api/equipos', { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        obtenerClientesAction(),
+        obtenerEquiposAction(),
         obtenerCotizacionesAction()
       ]);
 
@@ -625,27 +633,34 @@ export function AlquileresInteractiveIsland({
   };
 
   const handleConfirmarDevolucion = async (
-    cantidades: { [equipoId: string]: number },
-    danos: { [equipoId: string]: number },
+    cantidades: { [key: string]: number },
+    danos: { [key: string]: number },
     pagoDanos: { monto: number; metodo: string; referencia: string } | null
   ) => {
     if (!contratoActivo) return;
 
-    const original = alquileres.find(a => a.id === contratoActivo.id);
-    if (!original) return;
+    const original = alquileres.find(a => String(a.id) === String(contratoActivo.id));
+    const detallesList = contratoActivo.detalles || contratoActivo.items || original?.detalles || (original as any)?.alquiler_detalles || [];
 
     try {
       const devolucionesPayload: any[] = [];
-      const detallesList = original.detalles || [];
 
-      Object.keys(cantidades).forEach(equipoId => {
-        const cantDev = cantidades[equipoId] || 0;
-        const costoDano = danos[equipoId] || 0;
-        const det = detallesList.find((d: any) => String(d.equipo_id || d.itemId || d.id) === String(equipoId) || String(d.id) === String(equipoId));
+      Object.keys(cantidades).forEach(key => {
+        const cantDev = cantidades[key] || 0;
+        const costoDano = danos[key] || 0;
+        const det = detallesList.find((d: any) => 
+          String(d.id) === String(key) || 
+          String(d.detalleId) === String(key) ||
+          String(d.equipo_id) === String(key) || 
+          String(d.itemId) === String(key) || 
+          String(d.equipoId) === String(key)
+        );
         
+        const finalDetalleId = det?.id ?? det?.detalleId ?? key;
+
         if (cantDev > 0 || costoDano > 0) {
           devolucionesPayload.push({
-            detalleId: det ? det.id : equipoId,
+            detalleId: finalDetalleId,
             cantidadDevuelta: cantDev,
             costoDano: costoDano
           });
@@ -659,7 +674,7 @@ export function AlquileresInteractiveIsland({
         });
 
         if (!res.success) {
-          alert(`Error al procesar devolución en BD: ${res.error}`);
+          useToastStore.getState().showErrorToast(`Error al procesar devolución en BD: ${res.error}`);
           return;
         }
       }
@@ -676,10 +691,10 @@ export function AlquileresInteractiveIsland({
 
       await fetchAllData();
       setShowDevolucionModal(false);
-      alert("Devolución procesada y stock restituido correctamente.");
+      useToastStore.getState().showSuccessToast("¡Devolución registrada exitosamente! El inventario ha sido reingresado a bodega.");
     } catch (error: any) {
       console.error('Error al procesar devolución:', error);
-      alert('Ocurrió un error inesperado al procesar la devolución.');
+      useToastStore.getState().showErrorToast('Ocurrió un error inesperado al procesar la devolución.');
     }
   };
 
@@ -729,8 +744,12 @@ export function AlquileresInteractiveIsland({
       };
     });
 
+    const modoDeterminado = (contrato.estado === 'COTIZACION' || (contrato as any).tipo === 'COTIZACION' || (contrato as any).tipoDocumento === 'COTIZACION') ? 'COTIZACION' : 'CONTRATO';
     const adapter = {
       ...contrato,
+      tipoDocumento: modoDeterminado,
+      tipo: modoDeterminado,
+      estado: contrato.estado || (modoDeterminado === 'COTIZACION' ? 'COTIZACION' : 'ACTIVO'),
       cliente_id: contrato.cliente_id || (contrato as any).clienteId,
       clienteNombre: contrato.clienteNombre || (contrato as any).cliente?.nombre || 'Cliente',
       clienteNit: (contrato as any).clienteNit || (contrato as any).clienteDocumento || (contrato as any).cliente?.nit || (contrato as any).cliente?.nit_cedula || 'N/A',
@@ -764,6 +783,7 @@ export function AlquileresInteractiveIsland({
           alert("Este contrato no puede ser editado porque se encuentra finalizado, cancelado o cuenta con devoluciones registradas.");
           return;
         }
+        setModoCreacionInicial(modoDeterminado);
         setIsModalOpen(true);
         break;
       }
@@ -834,6 +854,7 @@ export function AlquileresInteractiveIsland({
         tipo: contrato.estado === 'COTIZACION' ? 'COTIZACION' : 'CUENTA_COBRO',
         consecutivo: contrato.consecutivo || parseInt(String(contrato.id || "").replace(/\D/g, '') || "0") || Date.now() % 10000,
         fechaEmision: new Date().toISOString(),
+        created_at: contrato.created_at || (contrato as any).createdAt,
         fechaInicioGeneral: new Date(contrato.createdAt || contrato.created_at || Date.now()).toISOString(),
         clienteNombre,
         clienteNit,
@@ -868,6 +889,10 @@ export function AlquileresInteractiveIsland({
       alert("Error al generar el documento");
     }
   };
+
+  if (!mounted) {
+    return <ModalSkeleton message="Cargando entorno de alquileres..." />;
+  }
 
   return (
     <div className="flex flex-col gap-3.5 sm:gap-5 lg:gap-6 h-full" onClick={() => setActiveDropdown(null)}>
@@ -1388,6 +1413,15 @@ export function AlquileresInteractiveIsland({
             if (alquiler) {
               // Optimistic UI: actualización instantánea en el store local (latencia = 0ms)
               useAlquilerStore.getState().updateAlquiler(alquiler);
+              if (eraEdicion) {
+                const conNum = alquiler.consecutivo || alquiler.id;
+                const esCot = alquiler.tipoDocumento === 'COTIZACION' || alquiler.estado === 'COTIZACION';
+                useToastStore.getState().showSuccessToast(
+                  esCot 
+                    ? `¡Cotización #${conNum} actualizada exitosamente!` 
+                    : `¡Contrato #${conNum} actualizado exitosamente!`
+                );
+              }
             }
 
             // Revalidación en segundo plano sin congelar la UI
@@ -1430,6 +1464,17 @@ export function AlquileresInteractiveIsland({
         onEdit={(alq) => {
           setShowDetalleModal(false);
           openAction(alq, 'EDITAR');
+        }}
+        onClientChanged={(nuevoClienteId) => {
+          // 1. Actualización optimista local del alquiler seleccionado para que el modal cambie al instante
+          if (selectedAlquilerForDetalle) {
+            setSelectedAlquilerForDetalle({
+              ...selectedAlquilerForDetalle,
+              cliente_id: nuevoClienteId,
+            });
+          }
+          // 2. Refrescar la grilla de alquileres de fondo para que la tabla principal también se actualice
+          fetchAllData();
         }}
       />
 

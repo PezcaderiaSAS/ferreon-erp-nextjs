@@ -48,3 +48,4 @@ html.to.design/
 
 .vercel
 .env*
+/.snapshots/

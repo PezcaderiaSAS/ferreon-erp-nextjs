@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getTenantCache, setTenantCache } from "@/lib/redis";
-import { createServerSupabaseClient } from "@/infrastructure/persistence/supabase/server";
+import { createServerSupabaseClient, resolveEmpresaId } from "@/infrastructure/persistence/supabase/server";
 import { EquipoSchema } from "@/infrastructure/dtos/equipo.dto";
 
 export const dynamic = 'force-dynamic';
@@ -11,8 +11,11 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser();
     const tenantId = user?.id || 'default';
 
+    const empresaId = await resolveEmpresaId(user?.id);
+    const tenantKey = empresaId || user?.id || 'default';
+
     // 1. Intento de Lectura en Caché Aislado por Tenant (Read-Through)
-    const cachedData = await getTenantCache<any[]>(tenantId, 'equipos');
+    const cachedData = await getTenantCache<any[]>(tenantKey, 'equipos_v2');
     if (cachedData) {
       return NextResponse.json(
         {
@@ -34,6 +37,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from("equipos")
       .select("*")
+      .eq("empresa_id", empresaId)
       .order("id", { ascending: false });
 
     if (error) {
@@ -55,7 +59,7 @@ export async function GET() {
 
     // 4. Escritura en Caché Multi-Tenant (TTL 1 Hora)
     if (validatedData.length > 0) {
-      await setTenantCache(tenantId, 'equipos', validatedData, 3600);
+      await setTenantCache(tenantKey, 'equipos_v2', validatedData, 3600);
     }
 
     // 5. Retorno al Cliente

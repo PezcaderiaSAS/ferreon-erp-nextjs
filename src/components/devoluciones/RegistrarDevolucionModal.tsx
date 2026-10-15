@@ -31,12 +31,14 @@ export function RegistrarDevolucionModal({
 
   React.useEffect(() => {
     if (isOpen && contratoParaDevolucion) {
-      const initialCantidades: { [eqId: string]: number } = {};
-      const initialDanos: { [eqId: string]: number } = {};
-      contratoParaDevolucion.items.forEach((it: any) => {
-        const pendientes = it.cantidad - (it.cantidadDevuelta || 0);
-        initialCantidades[it.equipoId] = pendientes;
-        initialDanos[it.equipoId] = 0;
+      const initialCantidades: { [key: string]: number } = {};
+      const initialDanos: { [key: string]: number } = {};
+      const itemsList = contratoParaDevolucion.items || contratoParaDevolucion.detalles || [];
+      itemsList.forEach((it: any) => {
+        const itemKey = String(it.id || it.detalleId || it.equipoId);
+        const pendientes = Number(it.cantidad || 0) - Number(it.cantidadDevuelta || it.cantidad_devuelta || 0);
+        initialCantidades[itemKey] = Math.max(0, pendientes);
+        initialDanos[itemKey] = 0;
       });
       setCantidades(initialCantidades);
       setDanos(initialDanos);
@@ -48,6 +50,7 @@ export function RegistrarDevolucionModal({
   if (!isOpen || !contratoParaDevolucion) return null;
 
   const totalDanos = Object.values(danos).reduce((acc, curr) => acc + (curr || 0), 0);
+  const itemsParaDevolver = contratoParaDevolucion.items || contratoParaDevolucion.detalles || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +74,7 @@ export function RegistrarDevolucionModal({
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-50 text-sky-600 border border-sky-100">
-              ALQ-{contratoParaDevolucion.consecutivo}
+              ALQ-{contratoParaDevolucion.consecutivo || contratoParaDevolucion.id}
             </span>
             <h2 className="text-xl font-black text-slate-800 mt-2">Recepción de Equipos & Registro de Daños</h2>
           </div>
@@ -82,12 +85,13 @@ export function RegistrarDevolucionModal({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
-            {contratoParaDevolucion.items.map((it: any) => {
-              const pendientes = it.cantidad - (it.cantidadDevuelta || 0);
+            {itemsParaDevolver.map((it: any) => {
+              const itemKey = String(it.id || it.detalleId || it.equipoId);
+              const pendientes = Math.max(0, Number(it.cantidad || 0) - Number(it.cantidadDevuelta || it.cantidad_devuelta || 0));
               return (
-                <div key={it.equipoId} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
+                <div key={itemKey} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
                   <div className="flex justify-between items-center text-sm">
-                    <strong className="text-slate-700">{it.nombre}</strong>
+                    <strong className="text-slate-700">{it.nombre || it.nombreItem || 'Equipo'}</strong>
                     <span className="text-sky-600 font-bold bg-sky-100/50 px-2 py-1 rounded-lg text-xs">
                       Pendientes: {pendientes} u.
                     </span>
@@ -102,8 +106,8 @@ export function RegistrarDevolucionModal({
                         type="number" 
                         min={0} 
                         max={pendientes}
-                        value={cantidades[it.equipoId] ?? 0}
-                        onChange={(e) => setCantidades({ ...cantidades, [it.equipoId]: parseInt(e.target.value, 10) || 0 })}
+                        value={cantidades[itemKey] ?? 0}
+                        onChange={(e) => setCantidades({ ...cantidades, [itemKey]: parseInt(e.target.value, 10) || 0 })}
                         className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
                       />
                     </div>
@@ -113,9 +117,9 @@ export function RegistrarDevolucionModal({
                       </label>
                       <input 
                         type="number" 
-                        min={0}
-                        value={danos[it.equipoId] ?? 0}
-                        onChange={(e) => setDanos({ ...danos, [it.equipoId]: parseFloat(e.target.value) || 0 })}
+                        min={0} 
+                        value={danos[itemKey] ?? 0}
+                        onChange={(e) => setDanos({ ...danos, [itemKey]: parseFloat(e.target.value) || 0 })}
                         className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all"
                       />
                     </div>

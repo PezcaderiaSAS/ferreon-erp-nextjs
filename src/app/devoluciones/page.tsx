@@ -5,6 +5,8 @@ import { obtenerHistorialDevolucionesAction } from '@/app/actions/devoluciones';
 import { obtenerSesionActivaAction } from '@/app/actions/caja';
 import { DevolucionesSkeleton, DevolucionesInteractiveIsland } from '@/components/devoluciones';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Recepción y Devoluciones | Alquileres System',
   description: 'Inspección técnica de maquinaria, liquidación de depósitos y Split-Line en Alquileres System.',

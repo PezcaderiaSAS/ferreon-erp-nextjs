@@ -61,10 +61,14 @@ export const AlquilerSuccessView: React.FC<AlquilerSuccessViewProps> = ({
           <button
             type="button"
             onClick={() => onContinue(savedAlquilerData)}
-            className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+            className={`w-full sm:w-auto px-6 py-2.5 font-bold rounded-xl text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 ${
+              isEditMode 
+                ? 'bg-slate-800 hover:bg-slate-900 text-white' 
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+            }`}
           >
-            <span>Continuar y Ver en Listado</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>{isEditMode ? 'Cerrar' : 'Continuar y Ver en Listado'}</span>
+            {!isEditMode && <ArrowRight className="w-4 h-4" />}
           </button>
         </div>
       </div>

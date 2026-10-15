@@ -15,6 +15,7 @@ export interface EquipoComboboxProps {
   onOpenChange?: (isOpen: boolean) => void;
   className?: string;
   initialName?: string;
+  permitirSinStock?: boolean;
 }
 
 /**
@@ -50,6 +51,7 @@ export function EquipoCombobox({
   onOpenChange,
   className = '',
   initialName = '',
+  permitirSinStock = true,
 }: EquipoComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -142,25 +144,12 @@ export function EquipoCombobox({
     }
   }, [highlightedIndex, isOpen]);
 
-  // Listener para cerrar al hacer clic fuera del componente
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setSearchQuery(selectedEquipo ? selectedEquipo.nombre : '');
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [selectedEquipo]);
-
   // Manejar selección de un equipo
   const handleSelect = useCallback(
     (eq: EquipoUI) => {
       const stock = (eq as any).stock_disponible ?? eq.stockDisponible ?? 0;
-      if (stock <= 0) {
-        // Poka-Yoke: No permitir seleccionar si no hay stock
+      if (stock <= 0 && !permitirSinStock) {
+        // Poka-Yoke: No permitir seleccionar si no hay stock cuando permitirSinStock es false
         return;
       }
       onChange(String(eq.id), eq);
@@ -168,8 +157,33 @@ export function EquipoCombobox({
       setIsOpen(false);
       inputRef.current?.blur();
     },
-    [onChange]
+    [onChange, permitirSinStock]
   );
+
+  // Listener para cerrar al hacer clic fuera del componente con auto-selección inteligente
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        // Si el usuario escribió un nombre que coincide exactamente con algún equipo, auto-seleccionarlo
+        if (!selectedEquipo && searchQuery.trim()) {
+          const match = equipos.find(
+            (e) =>
+              normalizeText(e.nombre) === normalizeText(searchQuery) ||
+              (e.codigo && normalizeText(e.codigo) === normalizeText(searchQuery))
+          );
+          if (match && ((match.stock_disponible ?? match.stockDisponible ?? 0) > 0 || permitirSinStock)) {
+            handleSelect(match);
+            return;
+          }
+        }
+        setSearchQuery(selectedEquipo ? selectedEquipo.nombre : '');
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [selectedEquipo, searchQuery, equipos, permitirSinStock, handleSelect]);
 
   // Manejar limpieza de selección
   const handleClear = useCallback(
@@ -207,6 +221,8 @@ export function EquipoCombobox({
       e.preventDefault();
       if (isOpen && filteredEquipos[highlightedIndex]) {
         handleSelect(filteredEquipos[highlightedIndex]);
+      } else if (!isOpen && filteredEquipos.length > 0) {
+        handleSelect(filteredEquipos[0]);
       } else if (!isOpen) {
         setIsOpen(true);
       }
@@ -215,8 +231,12 @@ export function EquipoCombobox({
       setIsOpen(false);
       setSearchQuery(selectedEquipo ? selectedEquipo.nombre : '');
     } else if (e.key === 'Tab') {
-      setIsOpen(false);
-      setSearchQuery(selectedEquipo ? selectedEquipo.nombre : '');
+      if (isOpen && filteredEquipos[highlightedIndex]) {
+        handleSelect(filteredEquipos[highlightedIndex]);
+      } else {
+        setIsOpen(false);
+        setSearchQuery(selectedEquipo ? selectedEquipo.nombre : '');
+      }
     }
   };
 
@@ -300,6 +320,7 @@ export function EquipoCombobox({
               const isHighlighted = highlightedIndex === index;
               const stock = eq.stock_disponible ?? eq.stockDisponible ?? 0;
               const isAvailable = stock > 0;
+              const canSelect = isAvailable || Boolean(permitirSinStock);
               const tarifa = eq.tarifa_diaria ?? eq.tarifaDiaria ?? 0;
 
               return (
@@ -311,13 +332,13 @@ export function EquipoCombobox({
                   }}
                   role="option"
                   aria-selected={isSelected}
-                  aria-disabled={!isAvailable}
+                  aria-disabled={!canSelect}
                   onClick={() => {
-                    if (isAvailable) handleSelect(eq);
+                    if (canSelect) handleSelect(eq);
                   }}
                   onMouseEnter={() => setHighlightedIndex(index)}
                   className={`px-3.5 py-2.5 text-xs transition-colors cursor-pointer flex items-center justify-between gap-2 ${
-                    !isAvailable
+                    !canSelect
                       ? 'opacity-50 bg-slate-50/50 cursor-not-allowed'
                       : isHighlighted
                       ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 border-l-4 border-teal-600 pl-2.5'
@@ -354,10 +375,16 @@ export function EquipoCombobox({
                       className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                         isAvailable
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : permitirSinStock
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
                           : 'bg-rose-50 text-rose-700 border-rose-200'
                       }`}
                     >
-                      {isAvailable ? `${stock} disp.` : 'Sin stock'}
+                      {isAvailable
+                        ? `${stock} disp.`
+                        : permitirSinStock
+                        ? 'Sin stock (Cotizar / Subcontratar)'
+                        : 'Sin stock'}
                     </span>
                   </div>
                 </div>

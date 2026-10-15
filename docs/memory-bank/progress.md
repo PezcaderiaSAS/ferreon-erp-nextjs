@@ -52,6 +52,8 @@
 - [x] Creación de `BodegaSkeleton.tsx` con shimmer adaptado a tokens de diseño para streaming sin CLS.
 - [x] Creación de `BodegaInteractiveIsland.tsx` con filtros reactivos Zero-Latency, lazy-loading de modales y feedback optimista.
 - [x] Transformación de `src/app/bodega/page.tsx` de monolito cliente (495 líneas) a RSC conciso (~25 líneas).
+- [x] Refinamiento de UX/UI en Bodega: Inserción atómica masiva (`crearEquiposMasivoAction`), restricción de categorías a listas cerradas y blindaje inmutable (read-only) de auto-generación de SKUs en UI.
+- [x] Refactorización Data-Layer en Bodega: Ejecución de purga y re-secuenciación de SKUs corruptos (timestamps largos) directamente en Supabase, reestableciendo el consecutivo estricto `EQ-XXX`.
 - [x] Verificación completa: `tsc --noEmit` (0 errores) y 295/295 tests pasando al 100% (**57 suites en verde**).
 
 ### Hito 5: Devoluciones & Modales On-The-Fly (`SPEC-2026-ARCH-RESTRUCT-005`)
@@ -194,7 +196,22 @@
 - [x] Integración en `FacturacionInteractiveIsland.tsx` con conmutador de pestañas (`Facturación Global & Cartera CXC` vs `Cortes & Cuentas de Cobro Periódicas`).
 - [x] Verificación completa: `tsc --noEmit` (0 errores) y `npm run build` en verde.
 
-### Hito 20: Corrección Integral del Flujo de Devolución e Integridad Transaccional (`SPEC-2026-DEVOLUCION-INTEGRITY-001`)
+### Hito 20: Edición Transaccional de Alquileres en Wizard de 3 Pasos (`SPEC-006`)
+- [x] Especificación formal EARS en `specs/006-edicion-alquileres-wizard/spec.md`, plan técnico (`plan.md`) y desglose de tareas (`tasks.md`).
+- [x] Corrección de RPC PostgreSQL en Supabase: Migración `20261009_fix_editar_alquiler_rpc.sql` con casteo seguro de `cliente_id` a `BIGINT` (evitando error 42804), aislamiento estricto de deducción de stock en bodega para cotizaciones comerciales y bypass dinámico de restricciones DDL.
+- [x] Actualización de `AlquilerTransaccionalService.editarContrato` en `src/core/services/alquiler-transaccional.service.ts` con soporte polimórfico para cotizaciones UUID y paso de garantías y estados.
+- [x] UI/UX Poka-Yoke: Bypass de `esFechaInicioEnPasado` en `useAlquilerForm.ts` para contratos en ejecución, banner visible de mensajes de error en `AlquilerForm.tsx` y `StepResumenLiquidacion.tsx`, y cierre inmediato con feedback reactivo al guardar.
+- [x] Verificación interactiva en vivo con Chrome DevTools MCP: Edición probada sobre el Contrato #42 (reajuste de flete a $15.000 COP, total reactivo a $40.000 COP en tabla y base de datos, 0 errores en consola).
+
+### Hito 21: Evidencia Temporal de Fecha y Hora en Documentos PDF & Alternador A5 (`SPEC-007`)
+- [x] Especificación formal EARS en `specs/007-pdf-fecha-hora-emision/spec.md`, plan técnico (`plan.md`) y desglose de tareas (`tasks.md`).
+- [x] Utilidades canónicas de fecha en `src/core/utils/fechas.ts`: `formatearHoraLocal` y `resolverFechaYHoraDocumento` respetando la zona horaria `America/Bogota` (UTC-5) para neutralizar desfasajes de UTC.
+- [x] `EnterprisePDFService`: Integración de `Fecha: DD/MM/YYYY` y `Hora: hh:mm AM/PM` en el badge de cabecera (`doc-badge`) y en la leyenda legal del pie de página (`.footer`).
+- [x] Alternador dinámico Carta / Media Carta (A5) vía CSS (`body.a5-active`) sin recargar ventanas emergentes, escalando tipografía y tablas proporcionalmente.
+- [x] Suite de pruebas unitarias `src/core/utils/__tests__/fechas.test.ts` con cobertura de zona horaria y resolución de estampa temporal.
+- [x] Verificación visual con Chrome DevTools MCP en Carta y A5 (capturas aprobadas, 0 errores y 0 warnings en consola) y compilación `npm run build` exitosa (32/32 rutas en verde).
+
+### Hito 22: Corrección Integral del Flujo de Devolución e Integridad Transaccional (`SPEC-2026-DEVOLUCION-INTEGRITY-001`)
 - [x] Diagnóstico de causa raíz del error de clave foránea `devolucion_detalles_devolucion_id_fkey` en la función PL/pgSQL `procesar_devolucion_avanzada`.
 - [x] Migración DDL `supabase/migrations/20261005130000_fix_devolucion_avanzada_fk_and_kardex.sql` con reordenamiento transaccional estricto (pre-cálculo -> inserción cabecera padre -> inserción de detalles hijos).
 - [x] Trazabilidad WMS con inserción inmutable de movimientos en `public.kardex_inventario` (`DEVOLUCION_ENTRADA`) con actualización de saldo de stock.
@@ -203,3 +220,9 @@
 - [x] Homologación de la UI en `src/components/alquileres/AlquileresInteractiveIsland.tsx` conectando el botón de devolución a `InspeccionTecnicaModal` con soporte completo de Split-Line y generación de comprobante PDF.
 - [x] Suite de pruebas automatizadas en `tests/unit/devolucion-avanzada-fk-integridad.test.ts` (5/5 tests pasando al 100%).
 - [x] Verificación integral: `tsc --noEmit` (0 errores) y 386/386 tests pasando en 64 suites de Vitest.
+
+### Hito 23: Balance de Stock, Formalización de Cotizaciones y Sticky Table UX (`SPEC-2026-STOCK-BALANCE-001`)
+- [x] Migración `supabase/migrations/20261005_fix_formalizar_cotizacion_stock_balance.sql` con recalibración exacta de 26 equipos contra contratos activos en obra.
+- [x] RPC blindada `formalizar_alquiler_cotizacion_transaccional` con validación preventiva de stock y control Poka-Yoke de inventario (`STOCK_INSUFICIENTE`).
+- [x] Tabla de alta densidad en `DevolucionesInteractiveIsland.tsx` con sticky right action column, micro-avatares invariantes y `tabular-nums`.
+- [x] Despliegue en producción en Vercel (`https://alquileres-erp-nextjs-ruby.vercel.app`).

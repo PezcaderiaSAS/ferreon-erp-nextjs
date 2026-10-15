@@ -63,6 +63,7 @@ export function TenantDetailDrawer() {
     } else {
       setFeedbackMsg(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawerAbierto, tenantSeleccionado?.id]);
 
   const cargarUsuariosTenant = async (empresaId: string) => {
