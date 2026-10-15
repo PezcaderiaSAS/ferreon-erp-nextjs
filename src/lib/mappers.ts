@@ -11,6 +11,7 @@ import { AlquilerEntity } from '../core/domain/entities/alquiler';
 import { EquipoUI } from '../infrastructure/state/bodegaStore';
 import { ClienteUI } from '../infrastructure/state/clienteStore';
 import { AlquilerUI } from '../infrastructure/state/alquilerStore';
+import { formatearFechaISO, obtenerFechaHoyISO } from '../core/utils/fechas';
 
 // ─────────────────────────────────────────────
 // EQUIPO ↔ EQUIPO UI
@@ -142,9 +143,9 @@ export function alquilerEntityToAlquilerUI(entity: any): AlquilerUI {
       dias,
       diasContratados: dias,
       dias_contratados: dias,
-      fechaInicio: d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (d.fechaInicio || (entity.created_at ? new Date(entity.created_at).toISOString().split('T')[0] : '')),
-      fechaFin: d.fecha_fin ? new Date(d.fecha_fin).toISOString().split('T')[0] : (d.fechaFin || d.fechaFinEstimada || (entity.created_at ? new Date(entity.created_at).toISOString().split('T')[0] : '')),
-      fechaFinEstimada: d.fecha_fin ? new Date(d.fecha_fin).toISOString().split('T')[0] : (d.fechaFinEstimada || d.fechaFin || (entity.created_at ? new Date(entity.created_at).toISOString().split('T')[0] : '')),
+      fechaInicio: d.fecha_inicio ? formatearFechaISO(d.fecha_inicio) : (d.fechaInicio ? formatearFechaISO(d.fechaInicio) : (entity.created_at ? formatearFechaISO(entity.created_at) : '')),
+      fechaFin: d.fecha_fin ? formatearFechaISO(d.fecha_fin) : (d.fechaFin ? formatearFechaISO(d.fechaFin) : (d.fechaFinEstimada ? formatearFechaISO(d.fechaFinEstimada) : (entity.created_at ? formatearFechaISO(entity.created_at) : ''))),
+      fechaFinEstimada: d.fecha_fin ? formatearFechaISO(d.fecha_fin) : (d.fechaFinEstimada ? formatearFechaISO(d.fechaFinEstimada) : (d.fechaFin ? formatearFechaISO(d.fechaFin) : (entity.created_at ? formatearFechaISO(entity.created_at) : ''))),
       subtotal,
       subtotalLineaEstimado: subtotal,
       subtotal_linea: subtotal,

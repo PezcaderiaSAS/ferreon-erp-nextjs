@@ -33,6 +33,7 @@ import { registrarPagoAction } from '@/app/actions/pagos';
 
 import { alquilerEntityToAlquilerUI, equipoToEquipoUI } from '@/lib/mappers';
 import { EnterprisePDFService, DocumentoPDFPayload } from '@/core/services/pdf-factura-generator.service';
+import { formatearFechaISO, calcularDiasEntreFechas, formatearFechaLocal } from '@/core/utils/fechas';
 import { AutoTourTrigger } from '@/components/ui/AutoTourTrigger';
 import { InteractiveTour } from '@/components/ui/InteractiveTour';
 import { ALQUILERES_STEPS } from '@/config/tours/TourConfigs';
@@ -703,8 +704,8 @@ export function AlquileresInteractiveIsland({
     const detallesNormalizados = rawDetalles.map((d: any, idx: number) => {
       const equipoId = String(d.equipo_id || d.equipoId || d.itemId || d.item_id || '');
       const nombreItem = d.equipos?.nombre || d.nombreItem || d.nombre || 'Equipo';
-      const start = d.fecha_inicio ? new Date(d.fecha_inicio).toISOString().split('T')[0] : (d.fechaInicio || '');
-      const end = d.fecha_fin ? new Date(d.fecha_fin).toISOString().split('T')[0] : (d.fecha_fin_estimada ? new Date(d.fecha_fin_estimada).toISOString().split('T')[0] : (d.fechaFinEstimada || d.fechaFin || ''));
+      const start = d.fecha_inicio ? formatearFechaISO(d.fecha_inicio) : (d.fechaInicio ? formatearFechaISO(d.fechaInicio) : '');
+      const end = d.fecha_fin ? formatearFechaISO(d.fecha_fin) : (d.fecha_fin_estimada ? formatearFechaISO(d.fecha_fin_estimada) : (d.fechaFinEstimada ? formatearFechaISO(d.fechaFinEstimada) : (d.fechaFin ? formatearFechaISO(d.fechaFin) : '')));
       const tarifa = Number(d.tarifa_aplicada ?? d.tarifaDiaria ?? d.precioDiario ?? d.valor_unitario ?? 0);
       const cant = Number(d.cantidad ?? 1);
       const subtotal = Number(d.subtotal_linea ?? d.subtotalLinea ?? d.subtotal ?? (tarifa * cant));
@@ -811,10 +812,11 @@ export function AlquileresInteractiveIsland({
 
       const rawItems = contrato.detalles || contrato.alquiler_detalles || contrato.items || [];
       const itemsMapeados = rawItems.map((d: any) => {
-        const fInicio = new Date(d.fechaInicio || d.fecha_inicio || contrato.createdAt || contrato.created_at || Date.now()).getTime();
-        const fFin = new Date(d.fechaFinEstimada || d.fecha_fin_estimada || d.fechaFin || d.fecha_fin || contrato.createdAt || contrato.created_at || Date.now()).getTime();
-        const diffMs = fFin - fInicio;
-        const dias = Number(d.dias || d.dias_contratados || Math.max(1, Math.ceil(diffMs / 86400000)));
+        const rawFInicio = d.fechaInicio || d.fecha_inicio || contrato.createdAt || contrato.created_at;
+        const rawFFin = d.fechaFinEstimada || d.fecha_fin_estimada || d.fechaFin || d.fecha_fin || rawFInicio;
+        const fInicio = formatearFechaISO(rawFInicio);
+        const fFin = formatearFechaISO(rawFFin);
+        const dias = Number(d.dias || d.dias_contratados || calcularDiasEntreFechas(fInicio, fFin));
         
         const tarifaDiaria = Number(d.tarifa_aplicada ?? d.tarifaAplicada ?? d.valor_unitario ?? d.tarifaDiaria ?? d.equipos?.tarifa_diaria ?? d.equipo?.tarifa_diaria ?? 0);
         const cantidad = Number(d.cantidad || 1);
@@ -830,8 +832,8 @@ export function AlquileresInteractiveIsland({
           cantidad,
           nombre: nombreEquipo,
           codigo: codigoEquipo,
-          fechaInicio: new Date(fInicio).toISOString(),
-          fechaFin: new Date(fFin).toISOString(),
+          fechaInicio: fInicio,
+          fechaFin: fFin,
           dias,
           tarifaDiaria,
           subtotal: subtotalLinea,

@@ -43,8 +43,9 @@ This project is indexed by GitNexus as **ferreon-erp-nextjs** (4293 symbols, 925
 
 <!-- gitnexus:end -->
 
-## Banco de Memoria Canónico (Ground Truth para Agentes)
-Todo agente o subagente que opere sobre este proyecto DEBE consultar obligatoriamente los 5 archivos de `docs/memory-bank/` antes de proponer cambios estructurales o modificar código:
+## Constitución Técnica y Banco de Memoria Canónico (Ground Truth para Agentes)
+Todo agente o subagente que opere sobre este proyecto DEBE consultar obligatoriamente `docs/constitution.md` y los 5 archivos de `docs/memory-bank/` antes de proponer cambios estructurales o modificar código:
+0. `docs/constitution.md`: Principios innegociables v5.0 (RSC, Server Actions, RLS, Moneda COP, Disyuntor de Artefactos y Loop DevTools Dual).
 1. `docs/memory-bank/productContext.md`: Visión del producto, terminología oficial y directriz de marca (**Alquileres System**).
 2. `docs/memory-bank/systemPatterns.md`: Estándares de Next.js App Router (RSC, Client Islands, Server Actions delgadas, RPC pesimista y límites de Zustand).
 3. `docs/memory-bank/techContext.md`: Stack técnico consolidado, directrices de pooler (6543 vs 5432) y Upstash Redis.

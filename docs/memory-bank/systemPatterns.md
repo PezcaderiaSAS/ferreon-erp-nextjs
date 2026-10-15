@@ -128,5 +128,36 @@ Para experiencias de usuario enriquecidas, tableros de gestión técnica y flujo
    - `PremiumTabularNumbersSystem`: Rigor numérico contable con `tabular-nums` y alineación a la derecha obligatoria en todo importe o cantidad.
    - `PremiumStateGuardIdempotencySystem`: Principio de seguridad *UI off isn't enough*. Bloqueo local del handler (`inFlight`) complementado por encabezado idempotente (`Idempotency-Key`) en backend.
 
+---
+
+## 7. Estándar Inmutable de Manejo de Fechas y Zona Horaria (Colombia UTC-5)
+
+### 7.1 Causa Raíz de Desfasajes y Antipatrones Prohibidos
+- **Antipatrón 1:** `new Date("YYYY-MM-DD").toISOString().split('T')[0]`.
+  - En JavaScript, las fechas sin hora se interpretan a las `00:00:00 UTC`. Al evaluar en Colombia (`UTC-5`), restan 5 horas (19:00:00 del día anterior), cambiando la fecha al día previo.
+- **Antipatrón 2:** `new Date(string).toLocaleDateString('es-CO')` sin fijar la zona horaria.
+  - Depende del entorno del sistema operativo donde se ejecute. En Vercel (servidor UTC) y navegadores clientes genera desalineación de fechas.
+- **Antipatrón 3:** Sobreescritura en cascada desde campos maestros (`fechaInicioContrato`) hacia ítems hijos ya configurados.
+
+### 7.2 Funciones Canónicas Obligatorias (`src/core/utils/fechas.ts`)
+| Función | Propósito | Garantía Arquitectónica |
+| :--- | :--- | :--- |
+| `parsearFechaLocal(input)` | Conversión a objeto Date local | Ancla la fecha a las 12:00:00 (mediodía) neutralizando desfases UTC-5. |
+| `obtenerFechaHoyISO()` | Fecha actual en formato `YYYY-MM-DD` | Basada en el calendario local del sistema; previene saltos en horario nocturno. |
+| `formatearFechaISO(input)` | Serialización segura `YYYY-MM-DD` | Preserva el día exacto para persistencia en bases de datos y Zustand. |
+| `formatearFechaLocal(input)` | Representación visual `DD/MM/YYYY` | Formato legal colombiano con o sin separadores personalizados. |
+| `calcularDiasEntreFechas(i, f)` | Cómputo de días de alquiler | Cálculo de días transcurridos con guardia matemática estricta: $\max(1, \text{días})$. |
+| `resolverFechaYHoraDocumento(p)` | Emisión legal en documentos PDF | Retorna `{ fecha, hora }` formateada con zona horaria `America/Bogota`. |
+
+### 7.3 Reglas de Estado en Formularios (`useAlquilerForm.ts`)
+- Las fechas maestras solo actúan como plantilla por defecto al crear una fila inicial vacía (`prev.length === 1 && !prev[0].itemId`).
+- Una vez el usuario selecciona un equipo y configura sus fechas, sus renglones quedan **bloqueados** contra modificaciones accidentales del encabezado.
+- Se permite el registro de cotizaciones y contratos retroactivos (fechas en el pasado) garantizando siempre congruencia matemática (`fechaFin >= fechaInicio`).
+
+### 7.4 Protocolo de Datos para Generadores de PDF
+- Toda exportación de PDF (`EnterprisePDFService`, `@react-pdf/renderer`, `VisorDocumentoPDFModal`, `ReciboCajaMixtoPDFModal`, `OrdenSubcontratacionPDFModal`, `ComprobanteDevolucionPDFModal`) debe consumir únicamente fechas serializadas con `formatearFechaISO` o `formatearFechaLocal`.
+- El mapeo en `src/lib/mappers.ts` (`alquilerEntityToAlquilerUI`) tiene prohibido llamar a `new Date().toISOString()`; debe usar `formatearFechaISO(d.fecha_inicio)`.
+
+
 
 

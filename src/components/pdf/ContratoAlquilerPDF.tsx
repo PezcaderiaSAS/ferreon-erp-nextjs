@@ -1,7 +1,7 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/renderer';
 import { numeroALetras } from '../../core/utils/numero-a-letras';
-import { formatearFechaLocal, calcularDiasEntreFechas } from '../../core/utils/fechas';
+import { formatearFechaLocal, calcularDiasEntreFechas, parsearFechaLocal, obtenerFechaHoyISO } from '../../core/utils/fechas';
 import { resolveCompanyTheme, ThemeTokens } from '../../core/domain/theme/theme-tokens';
 import { EmpresaConfig } from '../../core/domain/entities/empresa-config';
 
@@ -334,7 +334,7 @@ export interface LineaAlquilerPDFProcesada {
  */
 export function sanitizarYOrdenarLineas(
   rawDetalles: any[], 
-  fechaDocFallback: string = new Date().toISOString()
+  fechaDocFallback: string = obtenerFechaHoyISO()
 ): LineaAlquilerPDFProcesada[] {
   const lista = Array.isArray(rawDetalles) ? rawDetalles : [];
 
@@ -377,7 +377,7 @@ export function sanitizarYOrdenarLineas(
       const esSub = Boolean(item.es_subcontratado || item.esSubcontratado);
       const nombreFinal = `${nombreBase}${codigoDisplay ? ` (${codigoDisplay})` : ''}${esSub ? ' [Re-Rent]' : ''}`;
       
-      const timeParsed = new Date(fInicio).getTime();
+      const timeParsed = parsearFechaLocal(fInicio).getTime();
       const rawTimeInicio = isNaN(timeParsed) ? 0 : timeParsed;
       const equipoId = item.equipo_id || item.equipoId || item.itemId || '';
 
@@ -471,7 +471,7 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
     }).format(Math.round(valor || 0));
   };
 
-  const fechaDoc = data.created_at || data.fechaRegistro || new Date().toISOString();
+  const fechaDoc = data.created_at || data.fechaRegistro || obtenerFechaHoyISO();
   const fechaFormat = formatearFechaLocal(fechaDoc);
 
   // Extracción tolerante y defensiva de cliente

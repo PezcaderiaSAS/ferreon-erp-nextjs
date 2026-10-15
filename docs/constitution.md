@@ -31,8 +31,17 @@ Esta Constitución establece los principios innegociables de ingeniería, diseñ
 2. **Transaccionalidad Atómica y Concurrencia**:
    - Bloqueo a nivel de fila (`FOR UPDATE`) en stock de equipos y balances contables para evitar sobreventa (*overselling*) o duplicidad de estados.
    - Transacciones atómicas garantizadas con reversión total (`ROLLBACK`) ante excepciones.
-3. **Manejo de Fechas Locales**:
-   - Cumplimiento de huso horario local (Colombia: `America/Bogota`, UTC-5) para vigencias de contratos, vencimientos y reportes operativos.
+3. **Ley Canónica de Fechas, Zona Horaria (Colombia UTC-5) y Motores PDF**:
+   - **Huso Horario Inmutable:** Todo contrato, cotización, devolución, factura o comprobante opera bajo `America/Bogota` (UTC-5).
+   - **Prohibición de Conversiones Implícitas UTC:** Queda terminantemente prohibido utilizar `new Date("YYYY-MM-DD").toISOString()` o `new Date("YYYY-MM-DD").toLocaleDateString()` directamente sobre cadenas puras de fecha, ya que causan saltos de día involuntarios al evaluar a medianoche UTC (19:00:00 del día anterior en Colombia).
+   - **Utilidades Canónicas Obligatorias:** Todo procesamiento de fechas DEBE realizarse mediante `src/core/utils/fechas.ts`:
+     - `parsearFechaLocal(fecha)`: Ancla determinísticamente la fecha a las 12:00:00 locales.
+     - `formatearFechaISO(fecha)`: Genera invariablemente el formato `YYYY-MM-DD` sin desfase.
+     - `formatearFechaLocal(fecha)`: Produce la representación oficial colombiana `DD/MM/YYYY`.
+     - `calcularDiasEntreFechas(inicio, fin)`: Cómputo de días con guardia matemática de mínimo 1 día.
+     - `resolverFechaYHoraDocumento(payload)`: Emisión legal de fecha y hora exacta en zona colombiana.
+   - **Protección contra Sobreescritura en Cascada:** Al editar formularios de alquiler/cotización, cambiar las fechas maestras del encabezado jamás debe sobreescribir las fechas de los ítems individuales ya configurados.
+   - **Gobernanza de Documentos PDF:** Las tablas de maquinaria en PDFs deben incluir sin excepción las 7 columnas canónicas con fechas exactas, días calculados $\ge 1$ y subtotales congruentes.
 
 ---
 

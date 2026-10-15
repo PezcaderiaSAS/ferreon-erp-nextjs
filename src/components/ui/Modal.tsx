@@ -2,7 +2,7 @@
 
 import React, { useEffect, useId } from 'react';
 import { X } from 'lucide-react';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useModalAccessibility } from '@/hooks/useModalAccessibility';
 
 interface ModalProps {
   isOpen: boolean;
@@ -10,6 +10,8 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl' | 'full';
+  isBlocked?: boolean;
+  isNestedOpen?: boolean;
 }
 
 const maxWidthMap = {
@@ -26,12 +28,22 @@ const maxWidthMap = {
   full: 'max-w-[95vw]',
 };
 
-export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: ModalProps) {
+export function Modal({ 
+  isOpen, 
+  onClose, 
+  title, 
+  children, 
+  maxWidth = 'md',
+  isBlocked = false,
+  isNestedOpen = false,
+}: ModalProps) {
   const titleId = useId();
 
-  const modalRef = useFocusTrap<HTMLDivElement>({
-    isActive: isOpen,
-    onEscape: onClose,
+  const modalRef = useModalAccessibility<HTMLDivElement>({
+    isOpen,
+    onClose,
+    isBlocked,
+    isNestedOpen,
   });
 
   useEffect(() => {

@@ -12,6 +12,7 @@
 
 import { AlquilerUI } from '@/infrastructure/state/alquilerStore';
 import { DocumentoPDFPayload } from './pdf-factura-generator.service';
+import { formatearFechaLocal, formatearFechaISO, calcularDiasEntreFechas } from '../utils/fechas';
 
 export type EstadoFactura = 'Pagada' | 'Pendiente' | 'Vencida';
 
@@ -69,9 +70,9 @@ export function mapearAlquileresAFacturas(alquileres: any[]): FacturaUI[] {
       }
 
       const clienteNombre = a.clienteNombre || (a.cliente_id ? `Cliente ${a.cliente_id}` : 'Consumidor Final');
-      const fechaEmision = a.created_at ? new Date(a.created_at).toLocaleDateString('es-CO') : new Date().toLocaleDateString('es-CO');
+      const fechaEmision = a.created_at ? formatearFechaLocal(a.created_at) : formatearFechaLocal(new Date());
       const vencimiento = a.fecha_vencimiento 
-        ? new Date(a.fecha_vencimiento).toLocaleDateString('es-CO') 
+        ? formatearFechaLocal(a.fecha_vencimiento) 
         : 'Por definir';
 
       return {
@@ -183,16 +184,21 @@ export function construirPayloadFacturaPDF(
     clienteTelefono: (alq as any).clienteTelefono || rawCliente?.telefono || '',
     clienteEmail: (alq as any).clienteEmail || rawCliente?.email || '',
     detallesLogistica: alq.detalles_logistica || (alq as any).detallesLogistica || '',
-    items: detallesList.map((d: any) => ({
-      cantidad: Number(d.cantidad || 1),
-      nombre: d.equipos?.nombre || d.equipo?.nombre || d.nombreItem || d.nombre || 'Equipo de Alquiler',
-      codigo: d.equipos?.codigo || d.equipo?.codigo || d.codigo || '',
-      fechaInicio: d.fecha_inicio || d.fechaInicio || (alq.created_at || new Date().toISOString()),
-      fechaFin: d.fecha_fin || d.fechaFin || alq.fecha_vencimiento || new Date().toISOString(),
-      dias: Number(d.dias_contratados || d.dias || 1),
-      tarifaDiaria: Number(d.tarifa_aplicada ?? d.tarifaAplicada ?? d.tarifaDiaria ?? d.valor_unitario ?? 0),
-      subtotal: Number(d.subtotal_linea ?? d.subtotal ?? 0),
-    })),
+    items: detallesList.map((d: any) => {
+      const fInicio = d.fecha_inicio || d.fechaInicio || (alq.created_at || new Date().toISOString());
+      const fFin = d.fecha_fin || d.fechaFin || alq.fecha_vencimiento || fInicio;
+      const dias = Number(d.dias_contratados || d.dias || calcularDiasEntreFechas(fInicio, fFin));
+      return {
+        cantidad: Number(d.cantidad || 1),
+        nombre: d.equipos?.nombre || d.equipo?.nombre || d.nombreItem || d.nombre || 'Equipo de Alquiler',
+        codigo: d.equipos?.codigo || d.equipo?.codigo || d.codigo || '',
+        fechaInicio: formatearFechaISO(fInicio),
+        fechaFin: formatearFechaISO(fFin),
+        dias,
+        tarifaDiaria: Number(d.tarifa_aplicada ?? d.tarifaAplicada ?? d.tarifaDiaria ?? d.valor_unitario ?? 0),
+        subtotal: Number(d.subtotal_linea ?? d.subtotal ?? 0),
+      };
+    }),
     subtotalEquipos: Number(alq.subtotal_equipos || subtotalCalc),
     fleteEntrega: Number(alq.flete_entrega ?? alq.fleteEntrega ?? (alq as any).valor_transporte ?? 0),
     fleteRecogida: Number(alq.flete_recogida ?? alq.fleteRecogida ?? 0),

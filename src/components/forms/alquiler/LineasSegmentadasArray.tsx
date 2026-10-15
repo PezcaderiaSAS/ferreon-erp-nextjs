@@ -6,6 +6,7 @@ import { crearAlquilerSegmentadoAction, ActionStandardResponse } from '@/app/act
 import { ModalResolucionOverbooking, OverbookingConflictInfo } from './ModalResolucionOverbooking';
 import { EquipoCombobox } from '../../ui/EquipoCombobox';
 import { formatearMonedaConLetras } from '../../../core/utils/numero-a-letras';
+import { obtenerFechaHoyISO, calcularDiasEntreFechas } from '../../../core/utils/fechas';
 
 export interface FormLineaItem {
   clientId: string;
@@ -51,7 +52,7 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
   onLineasChange,
   setIsCreandoEquipo,
 }) => {
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = obtenerFechaHoyISO();
 
   const [lineas, setLineas] = useState<FormLineaItem[]>([
     {
@@ -80,10 +81,7 @@ export const LineasSegmentadasArray: React.FC<LineasSegmentadasArrayProps> = ({
 
   // Recalcular diferencia en días naturales
   const calcularDias = (inicio: string, fin: string): number => {
-    if (!inicio || !fin) return 1;
-    const d1 = new Date(`${inicio}T00:00:00Z`).getTime();
-    const d2 = new Date(`${fin}T00:00:00Z`).getTime();
-    return Math.max(1, Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)));
+    return calcularDiasEntreFechas(inicio, fin);
   };
 
   const handleAgregarLinea = () => {

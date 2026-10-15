@@ -10,7 +10,7 @@ import { obtenerClientesAction } from '../../../app/actions/clientes';
 import { equipoToEquipoUI } from '../../../lib/mappers';
 import { idempotencyManager } from '../../../lib/idempotency';
 import { EnterprisePDFService } from '../../../core/services/pdf-factura-generator.service';
-import { obtenerFechaHoyISO, formatearFechaISO } from '../../../core/utils/fechas';
+import { obtenerFechaHoyISO, formatearFechaISO, calcularDiasEntreFechas, parsearFechaLocal } from '../../../core/utils/fechas';
 import { alquilerSchema, ItemRow, AlquilerFormProps } from './types';
 import { OverbookingConflictInfo } from './ModalResolucionOverbooking';
 
@@ -223,7 +223,7 @@ export function useAlquilerForm({
     }];
   });
 
-  // Sincronización en cascada de fechas maestras (Poka-Yoke)
+  // Sincronización de fechas maestras (Bloquea sobreescritura destructiva sobre ítems existentes)
   const handleFechaInicioMasterChange = (newStart: string) => {
     setFechaInicioContrato(newStart);
     let targetEnd = fechaFinEstimadaContrato;
@@ -231,13 +231,18 @@ export function useAlquilerForm({
       targetEnd = newStart;
       setFechaFinEstimadaContrato(newStart);
     }
-    if (!initialData) {
-      setItems(prev => prev.map(item => ({
-        ...item,
-        fechaInicio: newStart,
-        fechaFinEstimada: targetEnd
-      })));
-    }
+    // Preservar ítems configurados; solo sincronizar fila inicial vacía si aún no tiene equipo
+    setItems(prev => {
+      if (prev.length === 1 && !prev[0].itemId) {
+        return [{
+          ...prev[0],
+          fechaInicio: newStart,
+          fechaFinEstimada: targetEnd,
+          dias: calcularDiasEntreFechas(newStart, targetEnd)
+        }];
+      }
+      return prev;
+    });
   };
 
   const handleFechaFinMasterChange = (newEnd: string) => {
@@ -246,12 +251,17 @@ export function useAlquilerForm({
       targetEnd = fechaInicioContrato;
     }
     setFechaFinEstimadaContrato(targetEnd);
-    if (!initialData) {
-      setItems(prev => prev.map(item => ({
-        ...item,
-        fechaFinEstimada: targetEnd
-      })));
-    }
+    // Preservar ítems configurados; solo sincronizar fila inicial vacía
+    setItems(prev => {
+      if (prev.length === 1 && !prev[0].itemId) {
+        return [{
+          ...prev[0],
+          fechaFinEstimada: targetEnd,
+          dias: calcularDiasEntreFechas(prev[0].fechaInicio, targetEnd)
+        }];
+      }
+      return prev;
+    });
   };
 
   const initialStateStr = useMemo(() => {
@@ -287,9 +297,7 @@ export function useAlquilerForm({
     setItems(prev => {
       const start = fechaInicioContrato;
       const end = fechaFinEstimadaContrato;
-      const sDate = new Date(`${start}T00:00:00Z`);
-      const eDate = new Date(`${end}T00:00:00Z`);
-      const dias = Math.max(1, Math.ceil((eDate.getTime() - sDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const dias = calcularDiasEntreFechas(start, end);
       return [
         ...prev,
         { 
@@ -665,25 +673,33 @@ export function useAlquilerForm({
     return Boolean(fechaInicioContrato && fechaInicioContrato < todayStr);
   }, [fechaInicioContrato, todayStr]);
 
-  // Ratificación de fecha de inicio a hoy preservando los días de obra pactados
+  // Ratificación opcional de fecha de inicio a hoy preservando los días de obra pactados
   const ratificarFechaInicioAHoy = useCallback(() => {
-    const startOriginal = new Date(fechaInicioContrato);
-    const endOriginal = new Date(fechaFinEstimadaContrato);
+    const startOriginal = parsearFechaLocal(fechaInicioContrato);
+    const endOriginal = parsearFechaLocal(fechaFinEstimadaContrato);
     const diffMs = endOriginal.getTime() - startOriginal.getTime();
     const duracionDias = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 
     const nuevoInicio = todayStr;
-    const nuevaFechaFin = new Date();
+    const nuevaFechaFin = parsearFechaLocal(todayStr);
     nuevaFechaFin.setDate(nuevaFechaFin.getDate() + duracionDias);
     const nuevoFin = formatearFechaISO(nuevaFechaFin);
 
     setFechaInicioContrato(nuevoInicio);
     setFechaFinEstimadaContrato(nuevoFin);
-    setItems(prev => prev.map(item => ({
-      ...item,
-      fechaInicio: nuevoInicio,
-      fechaFinEstimada: nuevoFin
-    })));
+    // Preservar los tramos individuales de items que ya tengan rangos específicos;
+    // solo actualizar aquellos que coincidían con la fecha general o filas vacías
+    setItems(prev => prev.map(item => {
+      if (item.fechaInicio === fechaInicioContrato) {
+        return {
+          ...item,
+          fechaInicio: nuevoInicio,
+          fechaFinEstimada: nuevoFin,
+          dias: duracionDias
+        };
+      }
+      return item;
+    }));
     setFormErrors(prev => {
       const copy = { ...prev };
       delete copy.fechaInicioContrato;
@@ -700,10 +716,7 @@ export function useAlquilerForm({
         return acc + item.subtotal;
       }
       
-      const start = new Date(item.fechaInicio);
-      const end = new Date(item.fechaFinEstimada);
-      const diffMs = end.getTime() - start.getTime();
-      const dias = item.dias || Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      const dias = item.dias || calcularDiasEntreFechas(item.fechaInicio, item.fechaFinEstimada);
 
       return acc + ((item.precioDiario || 0) * (item.cantidad || 1) * dias);
     }, 0);
@@ -732,10 +745,7 @@ export function useAlquilerForm({
   const costoTotalSubcontratacion = useMemo(() => {
     return items.reduce((acc, item) => {
       if (!item.esSubcontratado || !item.itemId) return acc;
-      const start = new Date(item.fechaInicio);
-      const end = new Date(item.fechaFinEstimada);
-      const diffMs = end.getTime() - start.getTime();
-      const dias = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      const dias = item.dias || calcularDiasEntreFechas(item.fechaInicio, item.fechaFinEstimada);
       return acc + ((Number(item.costoSubcontrato) || 0) * (item.cantidad || 1) * dias);
     }, 0);
   }, [items]);

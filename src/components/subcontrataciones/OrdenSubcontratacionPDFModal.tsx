@@ -6,6 +6,7 @@ import { Printer, FileText, X } from 'lucide-react';
 import { useEmpresaStore } from '@/infrastructure/state/empresaStore';
 import { DEFAULT_EMPRESA_CONFIG } from '@/core/domain/entities/empresa-config';
 import { formatearMonedaCOP, numeroALetras } from '@/core/utils/numero-a-letras';
+import { formatearFechaLocal } from '@/core/utils/fechas';
 
 interface DetalleSubPDF {
   cantidad: number;
@@ -36,13 +37,13 @@ export function OrdenSubcontratacionPDFModal({
 
   const consecutivo = subcontratacion.consecutivo || 'SUB-0000';
   const fechaEmision = subcontratacion.fecha_emision 
-    ? new Date(subcontratacion.fecha_emision).toLocaleDateString('es-CO') 
-    : new Date().toLocaleDateString('es-CO');
+    ? formatearFechaLocal(subcontratacion.fecha_emision) 
+    : formatearFechaLocal(new Date());
   const fechaRecepcion = subcontratacion.fecha_recepcion_estimada 
-    ? new Date(subcontratacion.fecha_recepcion_estimada).toLocaleDateString('es-CO') 
+    ? formatearFechaLocal(subcontratacion.fecha_recepcion_estimada) 
     : 'Inmediata';
   const fechaDevolucion = subcontratacion.fecha_devolucion_estimada 
-    ? new Date(subcontratacion.fecha_devolucion_estimada).toLocaleDateString('es-CO') 
+    ? formatearFechaLocal(subcontratacion.fecha_devolucion_estimada) 
     : 'Por definir';
 
   const detalles: DetalleSubPDF[] = subcontratacion.subcontrataciones_detalles || subcontratacion.detalles || [];

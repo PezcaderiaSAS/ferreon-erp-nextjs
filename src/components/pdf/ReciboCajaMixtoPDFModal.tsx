@@ -13,6 +13,7 @@ import {
   Smartphone
 } from 'lucide-react';
 import { useEmpresaStore } from '../../infrastructure/state/empresaStore';
+import { resolverFechaYHoraDocumento } from '../../core/utils/fechas';
 
 export interface ReciboCajaMetodoDetalle {
   metodo: string;
@@ -70,10 +71,8 @@ export function ReciboCajaMixtoPDFModal({
     const empresaNit = empresaConfig?.nit ? `NIT: ${empresaConfig.nit}` : 'NIT: 901.458.320-1';
     const empresaDireccion = empresaConfig?.direccion || 'Sede Principal - Colombia';
     const empresaTelefono = empresaConfig?.telefono || 'PBX: (601) 850-2020';
-    const fechaFormateada = new Date(recibo.fecha).toLocaleString('es-CO', {
-      dateStyle: 'medium',
-      timeStyle: 'short'
-    });
+    const fechaHora = resolverFechaYHoraDocumento({ fechaEmision: recibo.fecha });
+    const fechaFormateada = `${fechaHora.fecha} ${fechaHora.hora}`;
 
     if (formato === 'THERMAL_80MM') {
       // Formato Ticket Térmico POS 80mm

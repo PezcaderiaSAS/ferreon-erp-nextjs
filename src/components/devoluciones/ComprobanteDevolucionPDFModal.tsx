@@ -2,6 +2,7 @@
 
 import React, { useRef } from 'react';
 import { Printer, X, ShieldCheck, CheckCircle2, AlertTriangle, AlertOctagon } from 'lucide-react';
+import { resolverFechaYHoraDocumento } from '@/core/utils/fechas';
 
 interface DetalleItemImpresion {
   nombreEquipo: string;
@@ -126,7 +127,10 @@ export const ComprobanteDevolucionPDFModal: React.FC<ComprobanteDevolucionPDFMod
               </span>
               <p className="text-lg font-black text-slate-900 mt-1">{data.consecutivo}</p>
               <p className="text-xs text-slate-500 mt-0.5">
-                Fecha: {new Date(data.fechaDevolucion).toLocaleString('es-CO')}
+                Fecha: {(() => {
+                  const fh = resolverFechaYHoraDocumento({ fechaEmision: data.fechaDevolucion });
+                  return `${fh.fecha} ${fh.hora}`;
+                })()}
               </p>
               <p className="text-xs font-bold text-slate-700">Contrato Ref: #{data.contratoConsecutivo}</p>
             </div>

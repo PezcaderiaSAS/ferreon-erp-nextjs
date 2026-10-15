@@ -19,6 +19,7 @@ import {
   EstadoInspeccionTecnica,
   ItemLiquidadoResultado
 } from './liquidacion-devolucion.service';
+import { formatearFechaLocal } from '../utils/fechas';
 
 export {
   calcularDiasEfectivosUso,
@@ -187,7 +188,7 @@ export class DevolucionesTransaccionalService {
             .join(', ') || 'Sin pendientes';
 
         const fechaEsperada = detalles[0]?.fechaFinEstimada
-          ? new Date(detalles[0].fechaFinEstimada).toLocaleDateString('es-CO')
+          ? formatearFechaLocal(detalles[0].fechaFinEstimada)
           : 'A convenir';
 
         return {

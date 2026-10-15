@@ -22,6 +22,8 @@ import { useAlquilerStore } from '../../../infrastructure/state/alquilerStore';
 import { convertirCotizacionAContratoAction } from '../../../app/actions/cotizaciones';
 import { CotizacionBlockingOverlay, EtapaConversion } from './CotizacionBlockingOverlay';
 import { CrearSubcontratacionModal, type ItemFormRow } from '@/components/subcontrataciones';
+import { useModalAccessibility } from '@/hooks/useModalAccessibility';
+import { obtenerFechaHoyISO, formatearFechaISO } from '../../../core/utils/fechas';
 import Link from 'next/link';
 
 interface ConvertirCotizacionModalProps {
@@ -40,7 +42,7 @@ export function ConvertirCotizacionModal({
   const { equipos } = useBodegaStore();
   const { addAlquiler } = useAlquilerStore();
 
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => obtenerFechaHoyISO(), []);
 
   const [detallesLogistica, setDetallesLogistica] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -51,6 +53,14 @@ export function ConvertirCotizacionModal({
   const [isSubcontratarModalOpen, setIsSubcontratarModalOpen] = useState(false);
   const [subcontratadosEnSesion, setSubcontratadosEnSesion] = useState<Set<string>>(new Set());
   const [subcontratacionExitosaMsg, setSubcontratacionExitosaMsg] = useState<string | null>(null);
+
+  // Accesibilidad WCAG 2.1 AA con trampa de foco y Escape LIFO
+  const modalContainerRef = useModalAccessibility<HTMLDivElement>({
+    isOpen,
+    onClose,
+    isBlocked: isPending,
+    isNestedOpen: isSubcontratarModalOpen,
+  });
 
   // Normalizar ítems de la cotización
   const itemsCotizacion = useMemo(() => {
@@ -71,16 +81,17 @@ export function ConvertirCotizacionModal({
   const { fechaInicioOriginal, fechaExpirada } = useMemo(() => {
     if (!cotizacion) return { fechaInicioOriginal: todayStr, fechaExpirada: false };
 
-    let minFecha = cotizacion.fecha_inicio || cotizacion.fechaInicio || cotizacion.fecha_emision || cotizacion.fechaEmision || todayStr;
+    let rawMinFecha = cotizacion.fecha_inicio || cotizacion.fechaInicio || cotizacion.fecha_emision || cotizacion.fechaEmision || todayStr;
     
     // Si los ítems traen fecha_inicio, buscar la menor
     itemsCotizacion.forEach((it: any) => {
       const f = it.fecha_inicio || it.fechaInicio;
-      if (f && f < minFecha) {
-        minFecha = f;
+      if (f && f < rawMinFecha) {
+        rawMinFecha = f;
       }
     });
 
+    const minFecha = formatearFechaISO(rawMinFecha);
     const isPast = Boolean(minFecha && minFecha < todayStr);
     return {
       fechaInicioOriginal: minFecha,
@@ -210,7 +221,11 @@ export function ConvertirCotizacionModal({
         aria-modal="true"
         aria-labelledby="modal-conversion-title"
       >
-        <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-auto max-h-[94vh] flex flex-col animate-in zoom-in-95 duration-200">
+        <div 
+          ref={modalContainerRef}
+          className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-auto max-h-[94vh] flex flex-col animate-in zoom-in-95 duration-200 outline-none"
+          tabIndex={-1}
+        >
           
           {/* Encabezado Institucional */}
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
@@ -230,6 +245,7 @@ export function ConvertirCotizacionModal({
             <button
               onClick={onClose}
               disabled={isPending}
+              aria-label="Cerrar modal de formalización"
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -329,8 +345,15 @@ export function ConvertirCotizacionModal({
 
               <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
                 {analisisStock.items.length === 0 ? (
-                  <div className="p-4 text-center text-sm text-slate-400">
-                    No se encontraron detalles de equipos en esta cotización.
+                  <div className="p-4 text-center text-sm text-slate-400 space-y-2.5">
+                    <p>No se encontraron detalles de equipos en esta cotización.</p>
+                    <Link
+                      href={`/cotizaciones?editar=${cotizacion?.id || cotizacion?.consecutivo || ''}`}
+                      onClick={onClose}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/40 hover:bg-amber-100 transition-colors"
+                    >
+                      ✏️ Editar Cotización y Añadir Equipos
+                    </Link>
                   </div>
                 ) : (
                   analisisStock.items.map((it) => (

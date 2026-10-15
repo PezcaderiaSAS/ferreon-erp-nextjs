@@ -301,12 +301,13 @@ export function DevolucionesInteractiveIsland({
                         <button
                           type="button"
                           disabled={openingContratoId === ctr.id}
+                          aria-label={`Iniciar inspección técnica y devolución para contrato #${ctr.consecutivo || ctr.id} de ${ctr.clienteNombre}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleOpenInspeccion(ctr);
                           }}
                           className={cn(
-                            "h-6 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm text-xs font-medium inline-flex items-center gap-1.5 transition-colors shadow-none cursor-pointer whitespace-nowrap active:scale-95",
+                            "h-6 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm text-xs font-medium inline-flex items-center gap-1.5 transition-all shadow-none cursor-pointer whitespace-nowrap active:scale-[0.98]",
                             openingContratoId === ctr.id && "opacity-70 pointer-events-none"
                           )}
                         >
@@ -420,7 +421,8 @@ export function DevolucionesInteractiveIsland({
                         <button
                           type="button"
                           onClick={() => handleVerComprobanteHistorial(acta)}
-                          className="h-6 w-6 p-0 grid place-items-center mx-auto bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 rounded-sm border border-zinc-200 dark:border-zinc-700 transition-colors cursor-pointer active:scale-95"
+                          aria-label={`Ver e imprimir comprobante oficial de devolución acta #${acta.consecutivo} para contrato #${acta.alquileres?.consecutivo || acta.alquiler_id}`}
+                          className="h-6 w-6 p-0 grid place-items-center mx-auto bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 rounded-sm border border-zinc-200 dark:border-zinc-700 transition-all cursor-pointer active:scale-90"
                           title="Ver e Imprimir Comprobante Oficial"
                         >
                           <Printer className="w-3.5 h-3.5" />

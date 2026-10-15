@@ -190,7 +190,13 @@ export function CrearSubcontratacionModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Registrar Orden de Subcontratación de Maquinaria" maxWidth="4xl">
+    <Modal 
+      isOpen={isOpen} 
+      onClose={onClose} 
+      isBlocked={isSubmitting}
+      title="Registrar Orden de Subcontratación de Maquinaria" 
+      maxWidth="4xl"
+    >
       <form onSubmit={handleSubmit} className="flex flex-col space-y-5 text-xs sm:text-sm">
         {errorMsg && (
           <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-center gap-2 text-xs font-semibold">

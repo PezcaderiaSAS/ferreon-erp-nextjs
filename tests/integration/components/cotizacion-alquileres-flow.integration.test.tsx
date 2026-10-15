@@ -174,7 +174,7 @@ describe('Integración de Componentes: Flujo de Formalización de Cotizaciones a
     });
   });
 
-  it('Flujo 3: Manejo asistido de Overbooking Concurrente con redirección a subcontrataciones', async () => {
+  it('Flujo 3: Manejo asistido de Overbooking Concurrente con acción de Subcontratación On-The-Fly', async () => {
     const user = userEvent.setup();
     const handleClose = vi.fn();
 
@@ -201,8 +201,8 @@ describe('Integración de Componentes: Flujo de Formalización de Cotizaciones a
 
     await waitFor(() => {
       expect(screen.getByText(/ERR_OVERBOOKING_CONCURRENTE/i)).toBeInTheDocument();
-      const linkSubcontrataciones = screen.getByRole('link', { name: /subcontratar equipo/i });
-      expect(linkSubcontrataciones).toHaveAttribute('href', '/subcontrataciones?cotizacionId=17');
+      const botonSubcontratacion = screen.getByRole('button', { name: /subcontratar on-the-fly/i });
+      expect(botonSubcontratacion).toBeInTheDocument();
     }, { timeout: 3000 });
   });
 });

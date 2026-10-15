@@ -1,9 +1,19 @@
 /**
- * Utilidades canónicas de manejo y formateo seguro de fechas en FerreOn ERP.
+ * ============================================================================
+ * UTILIDADES CANÓNICAS DE FECHAS Y ZONA HORARIA — ALQUILERES SYSTEM
+ * ============================================================================
+ * Módulo de referencia obligatorio para todo el ERP, WMS y Motores de PDF.
  * 
- * Neutraliza el desfase de zona horaria UTC (ej. UTC-5 Colombia) donde las cadenas
- * "YYYY-MM-DD" se interpretan tradicionalmente a las 00:00:00 UTC, restando 5 horas
- * y mostrando el día anterior en PDF y vistas previas.
+ * DIRECTIVAS ARQUITECTÓNICAS INMUTABLES:
+ * 1. Zona Horaria de Negocio: 'America/Bogota' (UTC-5 Colombia).
+ * 2. Prohibición Absoluta: NUNCA usar `new Date("YYYY-MM-DD").toISOString().split('T')[0]`
+ *    ni `new Date("YYYY-MM-DD").toLocaleDateString()` para fechas de calendario puro,
+ *    ya que se evalúan a las 00:00:00 UTC restando 5 horas y alterando el día en Colombia.
+ * 3. Anclaje a Mediodía: `parsearFechaLocal` fija la hora a las 12:00:00 para blindar
+ *    la fecha contra desfasajes de huso horario en cualquier servidor o navegador.
+ * 4. Cálculo de Días: Todo cómputo de alquiler exige un mínimo de 1 día (Math.max(1, dias)).
+ * 5. Emisión Legal de Documentos: Usar `resolverFechaYHoraDocumento` para PDFs y recibos.
+ * ============================================================================
  */
 
 /**

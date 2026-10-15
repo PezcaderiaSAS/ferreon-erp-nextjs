@@ -47,3 +47,17 @@
   Toda mutación de alquiler o stock invoca `invalidateTenantCache(empresaId, prefix)`.
 - **TTL Defensivo:**
   Máximo 300 segundos (5 minutos) para catálogos y 60 segundos para resúmenes de KPI.
+
+---
+
+## 5. Convenciones de Fechas y Persistencia Temporal (PostgreSQL)
+
+1. **Campos de Calendario Puro (`DATE`):**
+   - Fechas de entrega, inicio de contrato, fin estimado y vencimiento se almacenan como `DATE` (`YYYY-MM-DD`).
+   - Sin componente de hora para blindar la fecha contra conversiones implícitas de huso horario en serialización JSON.
+2. **Marcas Temporales de Auditoría (`TIMESTAMPTZ`):**
+   - Columnas `created_at`, `updated_at`, `auditoria_logs.timestamp` utilizan `TIMESTAMPTZ` en UTC.
+   - En frontend y PDFs, se formatean a zona horaria local (`America/Bogota`) con `resolverFechaYHoraDocumento()`.
+3. **Módulo Canónico de Utilidades:**
+   - Todo cálculo y serialización temporal debe provenir estrictamente de `src/core/utils/fechas.ts`. Prohibido el uso de `moment` o invocaciones no ancladas de `new Date()`.
+

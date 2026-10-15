@@ -14,6 +14,7 @@ import {
   type CotizacionItemCalculo,
   type ImpuestosCotizacionConfig
 } from '@/core/services/cotizacion-rapida.service';
+import { formatearFechaISO } from '@/core/utils/fechas';
 
 export interface CotizacionRapidaModalProps {
   isOpen: boolean;
@@ -74,7 +75,7 @@ export function CotizacionRapidaModal({
   const fechaVencimientoCalculada = useMemo(() => {
     const fecha = new Date();
     fecha.setDate(fecha.getDate() + diasVigencia);
-    return fecha.toISOString().split('T')[0];
+    return formatearFechaISO(fecha);
   }, [diasVigencia]);
 
   // Manejo de Selección de Cliente Existente

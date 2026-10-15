@@ -8,6 +8,7 @@
  * 3. Ejecución atómica de reserva y devolución de stock mediante RPCs de PostgreSQL.
  * 4. Límites de confianza estrictos: el servidor recalcula tarifas, días y subtotales.
  */
+import { calcularDiasEntreFechas, formatearFechaISO, obtenerFechaHoyISO } from '../utils/fechas';
 
 export interface ItemAlquilerCalculoInput {
   itemId: string | number;
@@ -94,12 +95,12 @@ export class AlquilerTransaccionalService {
     let subtotalEquipos = 0;
 
     const itemsLiquidados: ItemLiquidado[] = items.map((item: any) => {
-      const startStr = item.fechaInicio || item.fecha_inicio || new Date().toISOString().split('T')[0];
-      const endStr = item.fechaFinEstimada || item.fechaFin || item.fecha_fin || item.fecha_fin_estimada || startStr;
-      const start = new Date(startStr);
-      const end = new Date(endStr);
-      const diffMs = end.getTime() - start.getTime();
-      const dias = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      const hoyDefault = obtenerFechaHoyISO();
+      const rawStart = item.fechaInicio || item.fecha_inicio || hoyDefault;
+      const rawEnd = item.fechaFinEstimada || item.fechaFin || item.fecha_fin || item.fecha_fin_estimada || rawStart;
+      const startStr = formatearFechaISO(rawStart);
+      const endStr = formatearFechaISO(rawEnd);
+      const dias = calcularDiasEntreFechas(startStr, endStr);
       const cant = Math.max(1, Number(item.cantidad || 1));
       const tarifa = Math.max(0, Number(item.tarifaAplicada ?? item.tarifaDiaria ?? item.precioDiario ?? item.tarifa_aplicada ?? 0));
       const subtotalLinea = Math.round(tarifa * cant * dias);
