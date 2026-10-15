@@ -14,12 +14,14 @@ import {
   ShieldCheck,
   Calendar,
   Layers,
-  Sparkles
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import { useBodegaStore } from '../../../infrastructure/state/bodegaStore';
 import { useAlquilerStore } from '../../../infrastructure/state/alquilerStore';
 import { convertirCotizacionAContratoAction } from '../../../app/actions/cotizaciones';
 import { CotizacionBlockingOverlay, EtapaConversion } from './CotizacionBlockingOverlay';
+import { CrearSubcontratacionModal, type ItemFormRow } from '@/components/subcontrataciones';
 import Link from 'next/link';
 
 interface ConvertirCotizacionModalProps {
@@ -46,6 +48,9 @@ export function ConvertirCotizacionModal({
   const [showOverlay, setShowOverlay] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [esErrorStock, setEsErrorStock] = useState(false);
+  const [isSubcontratarModalOpen, setIsSubcontratarModalOpen] = useState(false);
+  const [subcontratadosEnSesion, setSubcontratadosEnSesion] = useState<Set<string>>(new Set());
+  const [subcontratacionExitosaMsg, setSubcontratacionExitosaMsg] = useState<string | null>(null);
 
   // Normalizar ítems de la cotización
   const itemsCotizacion = useMemo(() => {
@@ -93,7 +98,9 @@ export function ConvertirCotizacionModal({
 
     const itemsConStock = itemsCotizacion.map((it: any) => {
       const equipoId = it.equipo_id || it.equipoId || it.id;
-      const esSubcontratado = Boolean(it.es_subcontratado || it.esSubcontratado);
+      const esPreviamenteSubcontratado = Boolean(it.es_subcontratado || it.esSubcontratado);
+      const esSubcontratadoEnSesion = subcontratadosEnSesion.has(String(equipoId));
+      const esSubcontratado = esPreviamenteSubcontratado || esSubcontratadoEnSesion;
       
       const equipoEnBodega = equipos.find(
         (e) => String(e.id) === String(equipoId) || e.codigo === it.codigo
@@ -130,7 +137,21 @@ export function ConvertirCotizacionModal({
       totalItems,
       items: itemsConStock
     };
-  }, [itemsCotizacion, equipos]);
+  }, [itemsCotizacion, equipos, subcontratadosEnSesion]);
+
+  // Ítems preparados para la orden de subcontratación On-the-Fly
+  const itemsParaSubcontratar: ItemFormRow[] = useMemo(() => {
+    return analisisStock.items
+      .filter(it => (!it.disponibleSuficiente || it.faltante > 0) && !it.esSubcontratado)
+      .map(it => ({
+        equipoId: it.id,
+        descripcionItem: it.nombre,
+        cantidad: it.faltante > 0 ? it.faltante : it.cantidadRequerida,
+        diasPactados: 7,
+        costoDiarioUnitario: Math.round(it.tarifaDiaria * 0.75),
+        tarifaDiariaCliente: it.tarifaDiaria
+      }));
+  }, [analisisStock.items]);
 
   if (!isOpen || !cotizacion) return null;
 
@@ -218,7 +239,18 @@ export function ConvertirCotizacionModal({
           {/* Cuerpo del Modal */}
           <div className="p-4 sm:p-5 space-y-3.5 sm:space-y-4 max-h-[75vh] md:max-h-[78vh] overflow-y-auto custom-scrollbar">
             
-            {/* Mensaje de Error si aplica */}
+            {/* Banner de Éxito de Subcontratación On-the-Fly */}
+            {subcontratacionExitosaMsg && (
+              <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-200 text-sm flex items-start gap-3 animate-in fade-in duration-150">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-semibold text-emerald-900 dark:text-emerald-100">Subcontratación Vinculada</p>
+                  <p className="text-xs mt-0.5">{subcontratacionExitosaMsg}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Mensaje de Error si aplica con Resolver On-The-Fly */}
             {errorMsg && (
               <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 text-rose-800 dark:text-rose-200 text-sm flex items-start gap-3 animate-in fade-in duration-150">
                 <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
@@ -226,17 +258,18 @@ export function ConvertirCotizacionModal({
                   <p className="font-semibold">Imposible formalizar contrato</p>
                   <p className="text-xs mt-0.5">{errorMsg}</p>
                   {esErrorStock && (
-                    <div className="mt-3 pt-2.5 border-t border-rose-200 dark:border-rose-800/40 flex items-center justify-between">
+                    <div className="mt-3 pt-2.5 border-t border-rose-200 dark:border-rose-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <span className="text-xs text-rose-700 dark:text-rose-300 font-medium">
-                        ¿Desea cubrir las unidades faltantes con un aliado?
+                        ¿Desea cubrir las unidades faltantes con un aliado sin abandonar esta pantalla?
                       </span>
-                      <Link
-                        href={`/subcontrataciones?cotizacionId=${cotizacion.id}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-colors shadow-2xs"
+                      <button
+                        type="button"
+                        onClick={() => setIsSubcontratarModalOpen(true)}
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
                       >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        Subcontratar Equipo
-                      </Link>
+                        <Zap className="w-3.5 h-3.5 fill-current" />
+                        Subcontratar On-The-Fly (1-Clic)
+                      </button>
                     </div>
                   )}
                 </div>
@@ -420,6 +453,32 @@ export function ConvertirCotizacionModal({
         consecutivo={cotizacion.consecutivo}
         etapa={overlayEtapa}
       />
+
+      {/* Modal On-The-Fly de Subcontratación Asistida */}
+      {isSubcontratarModalOpen && (
+        <CrearSubcontratacionModal
+          isOpen={isSubcontratarModalOpen}
+          onClose={() => setIsSubcontratarModalOpen(false)}
+          alquilerIdPreseleccionado={cotizacion.alquiler_id || undefined}
+          cotizacionIdPreseleccionada={cotizacion.id}
+          initialItems={itemsParaSubcontratar.length > 0 ? itemsParaSubcontratar : undefined}
+          initialFechaRecepcion={fechaInicioOriginal}
+          observacionesPredefinidas={`Subcontratación express para cubrir unidades en Cotización #${cotizacion.consecutivo || cotizacion.id}`}
+          onSuccess={(nuevaSub) => {
+            // Registrar los IDs de los equipos subcontratados para liberar el Poka-Yoke local
+            const idsSubcontratados = new Set(subcontratadosEnSesion);
+            itemsParaSubcontratar.forEach((it) => {
+              if (it.equipoId) idsSubcontratados.add(String(it.equipoId));
+            });
+            setSubcontratadosEnSesion(idsSubcontratados);
+            setErrorMsg(null);
+            setEsErrorStock(false);
+            setSubcontratacionExitosaMsg(
+              `Orden de subcontratación ${nuevaSub?.consecutivo ? '#' + nuevaSub.consecutivo : ''} generada exitosamente. Las unidades faltantes ahora están respaldadas por el proveedor aliado. Proceda con la formalización.`
+            );
+          }}
+        />
+      )}
     </>
   );
 }

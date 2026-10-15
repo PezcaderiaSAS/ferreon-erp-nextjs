@@ -242,7 +242,55 @@ describe('Componente: ConvertirCotizacionModal', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/ERR_OVERBOOKING_CONCURRENTE/i)).toBeInTheDocument();
-      expect(screen.getByText(/Subcontratar Equipo/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /subcontratar on-the-fly/i })).toBeInTheDocument();
     }, { timeout: 3000 });
+  });
+
+  it('al pulsar "Subcontratar On-The-Fly" abre el modal de subcontratación asistido con datos pre-cargados', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(cotizacionesActions, 'convertirCotizacionAContratoAction')
+      .mockResolvedValueOnce({
+        success: false,
+        codigoError: 'ERR_OVERBOOKING_CONCURRENTE',
+        error: 'ERR_OVERBOOKING_CONCURRENTE: Déficit detectado',
+        esErrorStock: true,
+      });
+
+    const cotizacionMock = {
+      id: '17',
+      consecutivo: 'COT-017',
+      cliente_nombre: 'Constructora Bolívar',
+      fecha_inicio: '2026-10-10',
+      detalles: [
+        {
+          id: 101,
+          equipo_id: 2, // Stock 0 en bodega según beforeEach
+          nombre: 'Taladro Percutor Bosch',
+          cantidad: 3,
+          tarifa_diaria: 25000,
+        },
+      ],
+    };
+
+    render(
+      <ConvertirCotizacionModal
+        isOpen={true}
+        onClose={mockOnClose}
+        cotizacion={cotizacionMock}
+        onSuccess={mockOnSuccess}
+      />
+    );
+
+    const btnFormalizar = screen.getByRole('button', { name: /formalizar contrato/i });
+    await user.click(btnFormalizar);
+
+    const btnSubcontratar = await screen.findByRole('button', { name: /subcontratar on-the-fly/i });
+    expect(btnSubcontratar).toBeInTheDocument();
+
+    await user.click(btnSubcontratar);
+
+    // Debe abrir el modal de subcontratación
+    expect(screen.getByText(/Registrar Orden de Subcontratación de Maquinaria/i)).toBeInTheDocument();
+    expect(screen.getByDisplayValue(/Taladro Percutor Bosch/i)).toBeInTheDocument();
   });
 });

@@ -17,6 +17,7 @@ import { EquipoCombobox } from '../../ui/EquipoCombobox';
 import { formatearMonedaConLetras } from '../../../core/utils/numero-a-letras';
 import { ItemRow } from './types';
 import { ModalResolucionOverbooking, OverbookingConflictInfo } from './ModalResolucionOverbooking';
+import { CrearSubcontratacionModal, type ItemFormRow } from '@/components/subcontrataciones';
 
 export interface StepEquiposLogisticaProps {
   items: ItemRow[];
@@ -92,6 +93,16 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
   setIsModalOverbookingOpen,
   resolverConflictoOverbooking,
 }) => {
+  const [subcontratarDirectoModal, setSubcontratarDirectoModal] = React.useState<{
+    isOpen: boolean;
+    items: ItemFormRow[];
+    fechaInicio?: string;
+    fechaFin?: string;
+  }>({
+    isOpen: false,
+    items: [],
+  });
+
   return (
     <div className="space-y-4 animate-fadeIn">
       {/* Lista de Maquinaria y Equipos */}
@@ -632,6 +643,40 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
             if (resolverConflictoOverbooking) {
               resolverConflictoOverbooking('AJUSTAR_CANTIDAD', lineaIndex, nuevaCantidad);
             }
+          }}
+          onSubcontratarDirecto={(conflicto) => {
+            if (resolverConflictoOverbooking) {
+              resolverConflictoOverbooking('DIVIDIR', conflicto.lineaIndex, conflicto.capacidadDisponible, conflicto.deficit);
+            }
+            setIsModalOverbookingOpen(false);
+            setSubcontratarDirectoModal({
+              isOpen: true,
+              fechaInicio: conflicto.diaPico,
+              items: [
+                {
+                  equipoId: conflicto.equipoId,
+                  descripcionItem: conflicto.equipoNombre,
+                  cantidad: conflicto.deficit,
+                  diasPactados: 7,
+                  costoDiarioUnitario: 0,
+                  tarifaDiariaCliente: 0
+                }
+              ]
+            });
+          }}
+        />
+      )}
+
+      {/* Modal On-The-Fly de Subcontratación Asistida */}
+      {subcontratarDirectoModal.isOpen && (
+        <CrearSubcontratacionModal
+          isOpen={subcontratarDirectoModal.isOpen}
+          onClose={() => setSubcontratarDirectoModal(prev => ({ ...prev, isOpen: false }))}
+          initialItems={subcontratarDirectoModal.items}
+          initialFechaRecepcion={subcontratarDirectoModal.fechaInicio}
+          observacionesPredefinidas="Subcontratación On-the-Fly generada para cubrir déficit de stock"
+          onSuccess={(nuevaSub) => {
+            setSubcontratarDirectoModal(prev => ({ ...prev, isOpen: false }));
           }}
         />
       )}

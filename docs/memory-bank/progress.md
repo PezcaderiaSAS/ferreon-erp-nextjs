@@ -226,3 +226,12 @@
 - [x] RPC blindada `formalizar_alquiler_cotizacion_transaccional` con validación preventiva de stock y control Poka-Yoke de inventario (`STOCK_INSUFICIENTE`).
 - [x] Tabla de alta densidad en `DevolucionesInteractiveIsland.tsx` con sticky right action column, micro-avatares invariantes y `tabular-nums`.
 - [x] Despliegue en producción en Vercel (`https://alquileres-erp-nextjs-ruby.vercel.app`).
+
+### Hito 24: Subcontratación Asistida On-The-Fly ante Déficit / Overbooking (`SPEC-2026-SUBCONTRATACION-ON-THE-FLY-001`)
+- [x] Extensión de `CrearSubcontratacionModal` con soporte de `initialItems`, `cotizacionIdPreseleccionada`, `initialFechaRecepcion` y pre-cargas asistidas.
+- [x] Integración de botón reactivo '⚡ Subcontratar On-The-Fly (1-Clic)' en `ConvertirCotizacionModal` eliminando la redirección de URL y preservando el estado de la cotización.
+- [x] Conexión de `onSubcontratarDirecto` en `ModalResolucionOverbooking` y `StepEquiposLogistica` para dividir la línea y registrar la orden de subcontratación sin abandonar el wizard.
+- [x] Suite de pruebas unitarias `tests/unit/subcontratacion-on-the-fly.test.ts` (7/7 tests pasando al 100%).
+- [x] Actualización de `tests/components/ConvertirCotizacionModal.test.tsx` (7/7 tests pasando al 100%).
+- [x] Verificación completa: `tsc --noEmit` con 0 errores y compilación en verde.
+

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { AlertTriangle, Split, Calendar, Layers, X, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Split, Calendar, Layers, X, ShieldAlert, Zap } from 'lucide-react';
 
 export interface OverbookingConflictInfo {
   lineaIndex: number;
@@ -21,6 +21,7 @@ export interface ModalResolucionOverbookingProps {
   onDividirLinea: (lineaIndex: number, cantidadDisponible: number, cantidadSubcontratada: number) => void;
   onAjustarFechas: (lineaIndex: number, nuevaFechaInicio: string) => void;
   onAjustarCantidad: (lineaIndex: number, nuevaCantidad: number) => void;
+  onSubcontratarDirecto?: (conflicto: OverbookingConflictInfo) => void;
 }
 
 export const ModalResolucionOverbooking: React.FC<ModalResolucionOverbookingProps> = ({
@@ -30,6 +31,7 @@ export const ModalResolucionOverbooking: React.FC<ModalResolucionOverbookingProp
   onDividirLinea,
   onAjustarFechas,
   onAjustarCantidad,
+  onSubcontratarDirecto,
 }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -178,6 +180,28 @@ export const ModalResolucionOverbooking: React.FC<ModalResolucionOverbookingProp
                 </span>
               </div>
             </button>
+
+            {/* Opción 4: Subcontratar Faltante Directo con Proveedor */}
+            {onSubcontratarDirecto && (
+              <button
+                type="button"
+                onClick={() => onSubcontratarDirecto(conflicto)}
+                className="w-full p-3 text-left border border-amber-300 dark:border-amber-700 hover:border-amber-500 rounded-lg bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-50 transition-all flex items-start gap-3 group"
+              >
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 rounded-lg group-hover:bg-amber-200 transition-colors shrink-0 mt-0.5">
+                  <Zap className="w-4 h-4 fill-current" />
+                </div>
+                <div>
+                  <span className="block text-xs font-bold text-amber-900 dark:text-amber-100 group-hover:text-amber-950 flex items-center gap-1.5">
+                    Subcontratar Déficit Inmediatamente (Proveedor Aliado)
+                    <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-100">On-The-Fly</span>
+                  </span>
+                  <span className="block text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
+                    Abre el asistente de subcontratación pre-cargado con las {conflicto.deficit} unidades en déficit para vincular proveedor en el acto.
+                  </span>
+                </div>
+              </button>
+            )}
           </div>
         </div>
 

@@ -10,3 +10,5 @@
 // Nuevos componentes arquitectónicos (Hito 7)
 export { SubcontratacionesInteractiveIsland } from './SubcontratacionesInteractiveIsland';
 export { SubcontratacionesSkeleton } from './SubcontratacionesSkeleton';
+export { CrearSubcontratacionModal, type ItemFormRow, type CrearSubcontratacionModalProps } from './CrearSubcontratacionModal';
+export { CrearProveedorModal } from './CrearProveedorModal';

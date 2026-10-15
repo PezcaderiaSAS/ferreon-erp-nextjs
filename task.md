@@ -240,3 +240,18 @@
 - [x] Crear test de integración/unitario en `tests/unit/devolucion-avanzada-fk-integridad.test.ts` que valide el flujo completo de devolución, Split-Line y Kardex (5/5 tests pasando).
 - [x] Ejecutar `npm run test` asegurando 100% de suites en verde (64/64 suites pasadas, 386/386 tests en verde).
 - [x] Ejecutar `npx tsc --noEmit` asegurando cero errores de compilación de TypeScript.
+
+---
+
+# Speckit Tasks: Subcontratación Asistida On-The-Fly ante Déficit / Overbooking (SPEC-2026-SUBCONTRATACION-ON-THE-FLY-001)
+
+## Tarea 36: Flujo On-The-Fly en Formalización y Wizard de Alquileres [✅ COMPLETADA]
+- [x] Extender `src/components/subcontrataciones/CrearSubcontratacionModal.tsx` para aceptar `initialItems`, `cotizacionIdPreseleccionada`, `initialFechaRecepcion` y `observacionesPredefinidas`.
+- [x] Exportar componentes y tipos necesarios desde `src/components/subcontrataciones/index.ts`.
+- [x] Conectar en `src/components/forms/cotizaciones/ConvertirCotizacionModal.tsx` el botón de acción rápida **"⚡ Subcontratar On-The-Fly (1-Clic)"** ante error de stock (`esErrorStock`), eliminando la redirección de URL.
+- [x] Actualizar `analisisStock` dinámicamente con `subcontratadosEnSesion` para liberar el Poka-Yoke de bodega local tras confirmar la subcontratación sin recargar la página.
+- [x] Conectar `onSubcontratarDirecto` en `src/components/forms/alquiler/ModalResolucionOverbooking.tsx` y `StepEquiposLogistica.tsx`.
+- [x] Crear suite de pruebas unitarias `tests/unit/subcontratacion-on-the-fly.test.ts` (7/7 pruebas aprobadas al 100%).
+- [x] Actualizar `tests/components/ConvertirCotizacionModal.test.tsx` (7/7 pruebas aprobadas al 100%).
+- [x] Verificar que `tsc --noEmit` pase con 0 errores.
+

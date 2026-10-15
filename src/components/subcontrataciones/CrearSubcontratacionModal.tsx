@@ -11,52 +11,89 @@ import { CrearProveedorModal } from './CrearProveedorModal';
 import { crearSubcontratacionAction } from '@/app/actions/subcontrataciones';
 import { formatearMonedaCOP } from '@/core/utils/numero-a-letras';
 
-interface ItemFormRow {
+export interface ItemFormRow {
   descripcionItem: string;
   cantidad: number;
   diasPactados: number;
   costoDiarioUnitario: number;
   tarifaDiariaCliente: number;
+  equipoId?: string | number;
 }
 
-interface CrearSubcontratacionModalProps {
+export interface CrearSubcontratacionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (subcontratacion: any) => void;
   alquilerIdPreseleccionado?: string | number;
+  cotizacionIdPreseleccionada?: string | number;
+  initialItems?: ItemFormRow[];
+  initialFechaRecepcion?: string;
+  initialFechaDevolucion?: string;
+  observacionesPredefinidas?: string;
 }
 
 export function CrearSubcontratacionModal({
   isOpen,
   onClose,
   onSuccess,
-  alquilerIdPreseleccionado
+  alquilerIdPreseleccionado,
+  cotizacionIdPreseleccionada,
+  initialItems,
+  initialFechaRecepcion,
+  initialFechaDevolucion,
+  observacionesPredefinidas
 }: CrearSubcontratacionModalProps) {
   const { proveedores } = useProveedorStore();
   const { alquileres } = useAlquilerStore();
 
   const [proveedorId, setProveedorId] = useState('');
   const [alquilerId, setAlquilerId] = useState<string>(alquilerIdPreseleccionado ? String(alquilerIdPreseleccionado) : '');
-  const [fechaRecepcion, setFechaRecepcion] = useState(new Date().toISOString().split('T')[0]);
+  const [fechaRecepcion, setFechaRecepcion] = useState(initialFechaRecepcion || new Date().toISOString().split('T')[0]);
   const [fechaDevolucion, setFechaDevolucion] = useState(
-    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    initialFechaDevolucion || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
   const [depositoGarantia, setDepositoGarantia] = useState<number>(0);
-  const [observaciones, setObservaciones] = useState('');
+  const [observaciones, setObservaciones] = useState(observacionesPredefinidas || '');
 
-  const [items, setItems] = useState<ItemFormRow[]>([
-    {
-      descripcionItem: '',
-      cantidad: 1,
-      diasPactados: 7,
-      costoDiarioUnitario: 0,
-      tarifaDiariaCliente: 0
+  const [items, setItems] = useState<ItemFormRow[]>(() => {
+    if (initialItems && initialItems.length > 0) {
+      return initialItems;
     }
-  ]);
+    return [
+      {
+        descripcionItem: '',
+        cantidad: 1,
+        diasPactados: 7,
+        costoDiarioUnitario: 0,
+        tarifaDiariaCliente: 0
+      }
+    ];
+  });
 
   const [showCrearProveedor, setShowCrearProveedor] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Sincronizar props cuando el modal se abre con datos pre-cargados
+  useEffect(() => {
+    if (isOpen) {
+      if (initialItems && initialItems.length > 0) {
+        setItems(initialItems);
+      }
+      if (initialFechaRecepcion) {
+        setFechaRecepcion(initialFechaRecepcion);
+      }
+      if (initialFechaDevolucion) {
+        setFechaDevolucion(initialFechaDevolucion);
+      }
+      if (observacionesPredefinidas) {
+        setObservaciones(observacionesPredefinidas);
+      }
+      if (alquilerIdPreseleccionado) {
+        setAlquilerId(String(alquilerIdPreseleccionado));
+      }
+    }
+  }, [isOpen, initialItems, initialFechaRecepcion, initialFechaDevolucion, observacionesPredefinidas, alquilerIdPreseleccionado]);
 
   // Auto-llenar días cuando cambian fechas
   useEffect(() => {
@@ -129,6 +166,7 @@ export function CrearSubcontratacionModal({
         depositoGarantiaProveedor: Number(depositoGarantia) || 0,
         observaciones,
         items: items.map(it => ({
+          equipoId: it.equipoId,
           descripcionItem: it.descripcionItem,
           cantidad: Number(it.cantidad) || 1,
           diasPactados: Number(it.diasPactados) || 1,
