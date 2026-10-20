@@ -155,7 +155,7 @@ export async function emitirCuentaCobroPeriodicaAction(input: EmitirCuentaCobroI
     });
 
     try {
-      await invalidateTenantCache(user.id, ['facturas', 'alquileres']);
+      await invalidateTenantCache(empresaId, ['facturas', 'alquileres']);
     } catch (cErr) {
       console.warn('Cache warning:', cErr);
     }

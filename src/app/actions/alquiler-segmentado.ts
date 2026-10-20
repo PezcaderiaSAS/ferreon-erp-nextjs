@@ -151,23 +151,28 @@ export async function crearAlquilerSegmentadoAction(rawInput: unknown): Promise<
     if (rpcError) {
       const msg = rpcError.message || '';
       let code = 'ERR_POSTGREST_RPC';
+      let userFriendlyMessage = msg;
 
       if (msg.includes('ERR_OVERBOOKING_CONCURRENTE')) {
         code = 'ERR_OVERBOOKING_CONCURRENTE';
+        userFriendlyMessage = 'Disponibilidad insuficiente: uno o más equipos fueron reservados en las mismas fechas por otra transacción simultánea.';
       } else if (msg.includes('ERR_FECHAS_INVALIDAS')) {
         code = 'ERR_FECHAS_INVALIDAS';
+        userFriendlyMessage = 'Las fechas especificadas en las líneas de alquiler son inválidas.';
       } else if (msg.includes('ERR_ITEM_NOT_FOUND')) {
         code = 'ERR_ITEM_NOT_FOUND';
+        userFriendlyMessage = 'Uno o más equipos seleccionados no existen en el inventario de su empresa o fueron modificados por otro usuario.';
       } else if (msg.includes('ERR_TENANT_NOT_FOUND')) {
         code = 'ERR_TENANT_NOT_FOUND';
+        userFriendlyMessage = 'La empresa activa no fue encontrada o no está autorizada.';
       }
 
       return {
         success: false,
         error: code,
-        message: msg,
+        message: userFriendlyMessage,
         path: `${ACTION_FILE}:145#PostgrestRpcExecution`,
-        details: { rpcCode: rpcError.code, hint: rpcError.hint, details: rpcError.details }
+        details: { rpcCode: rpcError.code, hint: rpcError.hint, details: rpcError.details, rawMessage: msg }
       };
     }
 

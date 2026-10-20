@@ -33,6 +33,7 @@ export function equipoToEquipoUI(equipo: any): EquipoUI {
     stock_en_obra: equipo.stockEnObra ?? equipo.stock_en_obra ?? 0,
     estado: (['Disponible', 'En Alquiler', 'Mantenimiento'].includes(equipo.estado as string) ? equipo.estado : 'Disponible') as Equipo['estado'],
     created_at: equipo.creado_en ?? equipo.created_at ? new Date(equipo.creado_en ?? equipo.created_at).toISOString() : undefined,
+    empresaId: equipo.empresa_id ?? equipo.empresaId ?? null,
     // Retrocompatibilidad camelCase
     sku: equipo.sku ?? equipo.codigo,
     tarifaDiaria: equipo.tarifaDiaria ?? equipo.tarifa_diaria ?? 0,

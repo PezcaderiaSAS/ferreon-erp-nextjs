@@ -509,15 +509,29 @@ export function useAlquilerForm({
     setErrorMsg(null);
   };
 
+  const equiposActivos = useMemo(() => {
+    return equipos.filter(e => {
+      if (e.estado === 'Inactivo') return false;
+      // Blindaje Multi-Tenant: Si el equipo tiene empresaId y empresaConfig tiene id, deben coincidir
+      if (empresaConfig?.id && e.empresaId && e.empresaId !== empresaConfig.id) {
+        return false;
+      }
+      return true;
+    });
+  }, [equipos, empresaConfig?.id]);
+
   // Detección reactiva de stock y gestión de Subcontratación (Re-Rent)
   const verificarStockItem = useCallback((itemId: string, cantidad: number) => {
-    if (!itemId) return { disponible: 0, stockInsuficiente: false, faltante: 0, equipo: null };
-    const eq = equipos.find(e => String(e.id) === String(itemId));
+    if (!itemId) return { disponible: 0, stockInsuficiente: false, faltante: 0, equipo: null, noExisteEnTenant: false };
+    const eq = equiposActivos.find(e => String(e.id) === String(itemId));
+    if (!eq) {
+      return { disponible: 0, stockInsuficiente: true, faltante: cantidad, equipo: null, noExisteEnTenant: true };
+    }
     const disponible = Number(eq?.stock_disponible ?? eq?.stockDisponible ?? 0);
     const stockInsuficiente = cantidad > disponible;
     const faltante = stockInsuficiente ? cantidad - disponible : 0;
-    return { disponible, stockInsuficiente, faltante, equipo: eq };
-  }, [equipos]);
+    return { disponible, stockInsuficiente, faltante, equipo: eq, noExisteEnTenant: false };
+  }, [equiposActivos]);
 
   const toggleSubcontratacionItem = (index: number, enable: boolean) => {
     setItems(prev => prev.map((item, i) => {
@@ -549,10 +563,6 @@ export function useAlquilerForm({
       return nombre.includes(term) || nit.includes(term) || tel.includes(term);
     });
   }, [clientes, clientSearchTerm]);
-
-  const equiposActivos = useMemo(() => {
-    return equipos.filter(e => e.estado !== 'Inactivo');
-  }, [equipos]);
 
   const selectedCliente = useMemo(() => {
     return clientes.find(c => String(c.id) === String(clienteId));
@@ -849,6 +859,21 @@ export function useAlquilerForm({
           setErrorMsg(msg);
           return false;
         }
+
+        // POKA-YOKE: Validación de aislamiento Multi-Tenant de Catálogo
+        if (!it.esSubcontratado && it.itemId) {
+          const equipoValido = equiposActivos.find(e => String(e.id) === String(it.itemId));
+          if (!equipoValido) {
+            const msg = `Paso 2 (Fila #${numLinea}): El equipo seleccionado no pertenece al catálogo de su empresa o fue dado de baja.`;
+            setFormErrors(prev => ({
+              ...prev,
+              items: msg,
+              [`item_${it.id}`]: 'Equipo no válido para su empresa'
+            }));
+            setErrorMsg(msg);
+            return false;
+          }
+        }
       }
     }
     return true;
@@ -1095,6 +1120,18 @@ export function useAlquilerForm({
       setFormErrors(errMap);
       setErrorMsg('Por favor verifique los campos requeridos en el formulario.');
       return false;
+    }
+
+    // Validar aislamiento de catálogo en tenant para items no subcontratados
+    for (const it of items) {
+      if (!it.esSubcontratado && it.itemId) {
+        const st = verificarStockItem(it.itemId, Number(it.cantidad) || 1);
+        if (st.noExisteEnTenant) {
+          setErrorMsg(`Uno o más equipos seleccionados no pertenecen al inventario de su empresa o fueron modificados.`);
+          setCurrentStep(2);
+          return false;
+        }
+      }
     }
 
     // Reglas estrictas exclusivas para CONTRATOS (Formalización)

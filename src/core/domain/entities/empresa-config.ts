@@ -10,6 +10,7 @@ export type ColorPalettePDF = 'SALMON' | 'TEAL' | 'AZUL';
 export type TemaColorCorporativo = 'salmon-pastel' | 'cyber-cyan' | 'monochrome';
 
 export interface EmpresaConfig {
+  id?: string;
   razonSocial: string;
   nombre?: string;
   nit: string;

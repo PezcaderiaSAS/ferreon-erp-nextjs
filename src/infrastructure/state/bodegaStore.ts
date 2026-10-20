@@ -14,6 +14,7 @@ export interface EquipoUI {
   valor_reposicion?: number;
   estado: string; // 'Activo' | 'Inactivo' | 'Disponible' | 'En Alquiler' | 'Mantenimiento'
   created_at?: string;
+  empresaId?: string | null;
   // Campos por retrocompatibilidad
   sku?: string;
   tarifaDiaria?: number;
@@ -28,6 +29,7 @@ interface BodegaState {
   equipos: EquipoUI[];
   idempotencyKeys: string[];
   setEquipos: (equipos: EquipoUI[]) => void;
+  resetStore: () => void;
   generarSiguienteSKU: () => string;
   agregarEquipo: (equipo: EquipoUI, idempotencyKey?: string) => boolean;
   updateEquipo: (equipo: EquipoUI, idempotencyKey?: string) => boolean;
@@ -51,6 +53,7 @@ export const useBodegaStore = create<BodegaState>()(
       idempotencyKeys: [],
 
       setEquipos: (equipos) => set({ equipos }),
+      resetStore: () => set({ equipos: [], idempotencyKeys: [] }),
 
       generarSiguienteSKU: () => {
         const state = get();

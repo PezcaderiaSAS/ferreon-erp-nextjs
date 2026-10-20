@@ -103,7 +103,7 @@ export async function crearEquipoAction(input: CrearEquipoInput) {
   }
 
   // Invalida caché multi-tenant y legacy
-  await invalidateTenantCache(user.id, ['equipos']);
+  await invalidateTenantCache(empresaId, ['equipos', 'equipos_v2']);
 
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({
@@ -205,7 +205,7 @@ export async function crearEquiposMasivoAction(inputs: CrearEquipoInput[]) {
     }
   }
 
-  await invalidateTenantCache(user.id, ['equipos']);
+  await invalidateTenantCache(empresaId, ['equipos', 'equipos_v2']);
 
   AuditLogger.logAsync({
     modulo: 'BODEGA',
@@ -270,7 +270,7 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
   }
 
   // Invalida caché multi-tenant y legacy
-  await invalidateTenantCache(user.id, ['equipos'], numericId);
+  await invalidateTenantCache(empresaId, ['equipos', 'equipos_v2'], numericId);
 
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({
@@ -422,7 +422,7 @@ export async function liberarMantenimientoAction(
     }
 
     // Invalida caché y registra auditoría
-    await invalidateTenantCache(user.id, ['equipos'], equipoId);
+    await invalidateTenantCache(empresaId, ['equipos', 'equipos_v2'], equipoId);
 
     AuditLogger.logAsync({
       modulo: 'BODEGA',

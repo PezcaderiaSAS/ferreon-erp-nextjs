@@ -81,7 +81,7 @@ export async function crearClienteAction(input: CrearClienteInput) {
   }
 
   // Invalida caché multi-tenant y legacy
-  await invalidateTenantCache(user.id, ['clientes']);
+  await invalidateTenantCache(empresaId, ['clientes']);
 
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({
@@ -171,7 +171,7 @@ export async function editarClienteAction(input: EditarClienteInput) {
   }
 
   // Invalida caché multi-tenant y legacy
-  await invalidateTenantCache(user.id, ['clientes'], targetId);
+  await invalidateTenantCache(empresaId, ['clientes'], targetId);
 
   // Registrar Evento de Auditoría
   AuditLogger.logAsync({
