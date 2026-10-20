@@ -1,27 +1,21 @@
 # Memoria de Sesión Persistente — Alquileres System
 
 ## Estado actual
-- Plataforma: Alquileres System (Next.js 14 en Vercel + Supabase Postgres RLS).
-- Accesibilidad & Focus-Trap LIFO (Speckit SDD - SPEC-2026-UI-REMEDIATION-WCAG-001):
-  - Creado `src/hooks/useModalAccessibility.ts` con control de teclado WCAG 2.1 AA (2.1.1, 2.1.2), supresión por Server Actions (`isBlocked`) y delegación LIFO para modales anidados (`isNestedOpen`).
-  - Integrado en `ConvertirCotizacionModal.tsx`, `Modal.tsx` y `CrearSubcontratacionModal.tsx` con recuperación poka-yoke para cotizaciones vacías.
-  - Inyectados atributos `aria-label` descriptivos y feedback táctil (`active:scale-[0.98]`, min 44px) en tablas de cotizaciones y devoluciones.
-- Blindaje de Fechas & Motor de Generación PDF (Speckit Workflow):
-  - Neutralizado el desfase UTC-5 en la carga de datos para PDFs, mappers de base de datos e interfaces operativas.
-  - Estandarizado el uso de `formatearFechaLocal`, `formatearFechaISO`, `calcularDiasEntreFechas` y `resolverFechaYHoraDocumento`.
-  - Módulos auditados y blindados: `mappers.ts`, `AlquileresInteractiveIsland.tsx`, `ContratoAlquilerPDF.tsx`, `EnterprisePDFService`, `facturacion-transaccional.service.ts`, `devoluciones-transaccional.service.ts`, `OrdenSubcontratacionPDFModal.tsx`, `ReciboCajaMixtoPDFModal.tsx`, `ComprobanteDevolucionPDFModal.tsx` y `CotizacionRapidaModal.tsx`.
-- Calidad y Cobertura:
-  - 87/87 suites Vitest (500/500 tests aprobados al 100%).
-  - 0 errores TypeScript (`tsc --noEmit`) y 14/14 checks de tokens W3C DTCG en verde (`audit:tokens`).
-  - Suites especializadas: `modal-accessibility.test.ts` (6/6), `fechas-congruencia-bloqueo.test.ts` (6/6) y `pdf-fechas-carga.test.ts` (9/9).
+- **Aislamiento Multi-Tenant Certificado (SPEC-009)**: 21 Server Actions y Servicios blindados con Dual-Layer Defense. 7/7 pruebas adversariales aprobadas en Vitest. 0 errores en `tsc --noEmit`. Desplegado a producción (`d479f52c`).
+- **Plan Maestro Empresarial Especificado (SPEC-010)**: Formalizado en `specs/010-core-operativo-alquileres-pos/` (`spec.md`, `plan.md`, `tasks.md`). Arquitectura de 5 fases y 20 tareas atómicas TDD centrada en Modo Mostrador POS (<30s), cotizaciones 1-clic, adendas versionadas (`v1.0 -> v1.1`) e inspección con semáforo paramétrico.
 
 ## Decisiones (y por qué)
-- **Eliminación Total de `new Date(str).toISOString()` no anclado**: Previene que cadenas de fecha pura se interpreten a las 00:00:00 UTC y retrocedan 5 horas (19:00:00 del día anterior) en Colombia, alterando los PDFs.
-- **Normalización de Renglones de Maquinaria**: Todo renglón garantiza cálculo exacto de días $\ge 1$, formato `DD/MM/YYYY` ordenado cronológicamente y subtotales coherentes.
+- **Prioridad Operativa de Mostrador (Fase 1 de SPEC-010)**: Se priorizó el despacho y recepción ultra-rápida (< 30s) en mostrador con atajos de teclado (F2-F9) y lector de código de barras/QR frente al autoservicio web.
+- **Adendas Versionadas In-Place**: Las modificaciones a contratos activos generan adendas (`alquiler_adendas`) preservando el historial y recalculando inventario y saldos sin romper el contrato original.
+- **Checklist Visual con Costos Paramétricos**: En devoluciones, las averías o limpiezas se tasan con `catalogo_averias_equipos` y se cruzan automáticamente contra el depósito en caja.
 
 ## Aprendizajes y errores a evitar
-- Nunca usar `toLocaleDateString` sin fijar la zona horaria o el anclaje a mediodía local para evitar divergencias entre servidor Node (UTC) y cliente (UTC-5).
-- Mantener siempre `MEMORY.md` en $\le 50$ líneas consolidando contexto histórico en `docs/memory-bank/`.
+- Siempre versionar las especificaciones SDD dentro de `ferreon-erp-nextjs/specs/` para asegurar su rastreo y distribución en Git.
+- Respetar el flujo TDD: escribir primero las pruebas unitarias de las Server Actions y RPCs antes de tocar la interfaz visual.
 
 ## Próximos pasos
-- Monitoreo de observabilidad y feedback operativo en producción sobre contratos y PDFs emitidos.
+- Al iniciar la próxima sesión (tras `git pull`), ejecutar de inmediato la **Fase 1 de SPEC-010**:
+  - `TASK-010-01`: RPC PostgreSQL `alquiler_crear_pos_rapido_v1`.
+  - `TASK-010-02`: Server Action `crearAlquilerRapidoPosAction` con Zod.
+  - `TASK-010-03`: Componente `MostradorPosModal` con atajos F2-F9.
+  - `TASK-010-04`: Suite de pruebas unitarias `tests/unit/pos-alquiler-rapido.test.ts`.

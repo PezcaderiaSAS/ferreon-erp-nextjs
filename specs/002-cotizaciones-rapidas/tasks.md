@@ -1,0 +1,22 @@
+# Desglose de Tareas Atómicas: SPEC-002 Módulo de Cotizaciones Rápidas
+
+- [x] **Tarea 1 (TDD - Suite de Pruebas)**: Crear `tests/unit/cotizaciones-rapidas.service.test.ts` para verificar cálculo tributario (IVA 19%, Retención, ReteICA, Flete, Depósito), validación de esquema Zod y lógica de negocio. (9/9 tests pasando al 100%).
+- [x] **Tarea 2 (Sidebar & Navegación)**: Actualizar `src/components/ui/Sidebar.tsx` para exponer la ruta `/cotizaciones` como enlace de primer nivel con icono distintivo (`FileSpreadsheet`), respetando el modo colapsado y móvil.
+- [x] **Tarea 3 (Server Component Principal)**: Implementar `src/app/cotizaciones/page.tsx` con carga concurrente (`Promise.allSettled`), streaming `<Suspense>` y skeleton shimmer.
+- [x] **Tarea 4 (Isla Interactiva de Cotizaciones)**: Construir `src/components/cotizaciones/CotizacionesInteractiveIsland.tsx` con:
+  - KPIs comerciales en la parte superior (Total Cotizado, Tasa de Conversión, Pendientes).
+  - Píldoras de filtrado rápido por estado.
+  - Tabla interactiva Desktop con `tabular-nums` y vista líquida en Tarjetas Móviles.
+  - Acciones contextuales por fila (Ver Detalle, PDF, Compartir WhatsApp, Convertir en 1-Clic).
+- [x] **Tarea 5 (Modal / Drawer Cotización Rápida Express)**: Desarrollar `src/components/cotizaciones/CotizacionRapidaModal.tsx` con soporte para:
+  - Creación rápida de prospecto "On-The-Fly" (Nombre y Teléfono).
+  - Búsqueda de maquinaria con stock en tiempo real y alerta de disponibilidad.
+  - Cálculo instantáneo con Integer Math y selector simplificado de impuestos.
+- [x] **Tarea 6 (Integración Poka-Yoke & WhatsApp)**:
+  - Conectar la conversión atómica de 1-clic con la Server Action existente y el modal Poka-Yoke de overbooking.
+  - Implementar generador de mensaje enriquecido para WhatsApp (`wa.me`).
+- [x] **Tarea 7 (Verificación Integral & Cierre)**:
+  - Ejecutar suite de pruebas Vitest (`npm test`: 428/428 tests aprobados al 100%).
+  - Ejecutar verificación de tipos `npx tsc --noEmit` (0 errores).
+  - Finalizar `npm run build` de producción (33 rutas compiladas en verde, `/cotizaciones` 95.5 kB First Load JS).
+  - Actualizar `MEMORY.md` y banco de memoria canónico.

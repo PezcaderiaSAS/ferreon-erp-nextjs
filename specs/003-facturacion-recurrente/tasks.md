@@ -1,0 +1,21 @@
+# Desglose de Tareas Atómicas: SPEC-003 Facturación Recurrente y Cuentas de Cobro
+
+- [x] **Tarea 1 (TDD - Suite de Pruebas)**: Crear `tests/unit/facturacion-recurrente.service.test.ts` con cobertura para cálculo de días pro-rata, intersección de rangos de fechas, exclusión de días no vigentes y cálculos tributarios exactos.
+- [x] **Tarea 2 (Servicio de Dominio)**: Implementar `src/core/services/facturacion-recurrente.service.ts` con:
+  - `calcularDiasFacturablesEnPeriodo`
+  - `calcularCortePeriodicoAlquiler`
+  - `previsualizarLoteCortesPeriodicos`
+  - `construirMensajeWhatsAppCuentaCobro`
+- [x] **Tarea 3 (Server Action)**: Implementar `src/app/actions/facturacion-recurrente.ts` para persistir la emisión de Cuentas de Cobro periódicas, asociar el consecutivo `CC-PER-XXXX` o `FAC-REC-XXXX` y registrar auditoría inmutable.
+- [x] **Tarea 4 (Modal de Emisión de Cuenta de Cobro)**: Crear `src/components/facturacion/EmitirCuentaCobroModal.tsx` con opciones de documento (*Cuenta de Cobro* vs *Factura con IVA*), desglose de equipos, días en obra y envío inmediato por WhatsApp.
+- [x] **Tarea 5 (Panel de Cortes Periódicos)**: Construir `src/components/facturacion/CortesPeriodicosPanel.tsx` con:
+  - Selector de rangos predefinidos (Quincena 1-15, Quincena 16-30, Mes Completo).
+  - KPIs de corte del periodo (Monto proyectado, Contratos en corte, Días de maquinaria).
+  - Tabla interactiva con checkboxes para selección múltiple y emisión en lote.
+- [x] **Tarea 6 (Integración en `/facturacion`)**:
+  - Incorporar la pestaña `Cortes & Cuentas de Cobro Periódicas` en `src/components/facturacion/FacturacionInteractiveIsland.tsx`.
+- [x] **Tarea 7 (Verificación Integral & Cierre)**:
+  - Ejecutar suite de pruebas Vitest (`npm test`).
+  - Ejecutar verificación de tipos `npx tsc --noEmit`.
+  - Ejecutar `npm run build` de producción para garantizar cero regresiones y 33 rutas en verde.
+  - Actualizar `MEMORY.md` y banco de memoria canónico.
