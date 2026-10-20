@@ -18,6 +18,7 @@ vi.mock('@/lib/security/audit-logger', () => ({
 let rpcMock: any;
 
 vi.mock('../../src/infrastructure/persistence/supabase/server', () => ({
+  resolveEmpresaId: async () => 'ac8719ea-f16a-4538-b308-40d9511a14cb',
   createServerSupabaseClient: async () => ({
     auth: {
       getUser: async () => ({

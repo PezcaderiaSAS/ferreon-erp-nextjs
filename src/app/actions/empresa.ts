@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerSupabaseClient } from '../../infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient, resolveEmpresaId } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { invalidateTenantCache, getTenantCache, setTenantCache } from '../../lib/redis';
 import { EmpresaConfig, DEFAULT_EMPRESA_CONFIG } from '../../core/domain/entities/empresa-config';
@@ -18,11 +18,18 @@ export async function obtenerConfiguracionEmpresaAction(): Promise<{
   try {
     const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: true, config: DEFAULT_EMPRESA_CONFIG, data: DEFAULT_EMPRESA_CONFIG };
+    }
 
-    // 1. Intentar caché multi-tenant si hay usuario autenticado
-    const tenantId = user?.id || 'default';
+    const empresaId = await resolveEmpresaId(user.id);
+    if (!empresaId) {
+      return { success: true, config: DEFAULT_EMPRESA_CONFIG, data: DEFAULT_EMPRESA_CONFIG };
+    }
+
+    // 1. Intentar caché multi-tenant particionada por empresaId
     try {
-      const cached = await getTenantCache<EmpresaConfig>(tenantId, 'empresa');
+      const cached = await getTenantCache<EmpresaConfig>(empresaId, 'empresa');
       if (cached) {
         return { success: true, config: cached, data: cached };
       }
@@ -30,35 +37,14 @@ export async function obtenerConfiguracionEmpresaAction(): Promise<{
       console.warn('[obtenerConfiguracionEmpresaAction] Error leyendo caché:', cErr);
     }
 
-    // 2. Localizar la empresa activa
-    let empresaData: any = null;
+    // 2. Localizar la empresa activa del usuario (estrictamente por su empresaId)
+    const { data: empresaData, error: empErr } = await supabase
+      .from('empresas')
+      .select('*')
+      .eq('id', empresaId)
+      .maybeSingle();
 
-    if (user) {
-      const { data: membership } = await supabase
-        .from('empresa_usuarios')
-        .select('empresa_id, empresas (*)')
-        .eq('user_id', user.id)
-        .eq('es_empresa_activa', true)
-        .maybeSingle();
-
-      if (membership && membership.empresas) {
-        empresaData = membership.empresas;
-      }
-    }
-
-    // Fallback al tenant principal si no hay membership directa
-    if (!empresaData) {
-      const { data: principal } = await supabase
-        .from('empresas')
-        .select('*')
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      empresaData = principal;
-    }
-
-    if (!empresaData) {
+    if (empErr || !empresaData) {
       return { success: true, config: DEFAULT_EMPRESA_CONFIG, data: DEFAULT_EMPRESA_CONFIG };
     }
 
@@ -74,9 +60,9 @@ export async function obtenerConfiguracionEmpresaAction(): Promise<{
       nit: empresaData.nit || configJson.nit || DEFAULT_EMPRESA_CONFIG.nit,
     };
 
-    // 4. Almacenar en caché temporal (300 segundos = 5 minutos)
+    // 4. Almacenar en caché temporal particionada por empresaId (300 segundos = 5 minutos)
     try {
-      await setTenantCache(tenantId, 'empresa', configFinal, 300);
+      await setTenantCache(empresaId, 'empresa', configFinal, 300);
     } catch (cErr) {
       console.warn('[obtenerConfiguracionEmpresaAction] Error escribiendo caché:', cErr);
     }
@@ -102,38 +88,13 @@ export async function guardarConfiguracionEmpresaAction(
   try {
     const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
-
-    // 1. Identificar ID de la empresa
-    let empresaId: string | null = null;
-
-    if (user) {
-      const { data: membership } = await supabase
-        .from('empresa_usuarios')
-        .select('empresa_id')
-        .eq('user_id', user.id)
-        .eq('es_empresa_activa', true)
-        .maybeSingle();
-
-      if (membership) {
-        empresaId = membership.empresa_id;
-      }
+    if (!user) {
+      return { success: false, error: 'No autorizado. Debe iniciar sesión.' };
     }
 
+    const empresaId = await resolveEmpresaId(user.id);
     if (!empresaId) {
-      const { data: principal } = await supabase
-        .from('empresas')
-        .select('id')
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (principal) {
-        empresaId = principal.id;
-      }
-    }
-
-    if (!empresaId) {
-      return { success: false, error: 'No se encontró una empresa activa para actualizar' };
+      return { success: false, error: 'No se encontró una empresa activa vinculada al usuario' };
     }
 
     // 2. Obtener configuración previa para merge inmutable
@@ -176,10 +137,9 @@ export async function guardarConfiguracionEmpresaAction(
       return { success: false, error: `Error en BD: ${updateError.message}` };
     }
 
-    // 4. Invalidar Caché de Tenant
-    const tenantId = user?.id || 'default';
+    // 4. Invalidar Caché de Tenant de forma atómica
     try {
-      await invalidateTenantCache(tenantId, ['empresa', 'alquileres']);
+      await invalidateTenantCache(empresaId, ['empresa', 'alquileres']);
     } catch (cErr) {
       console.warn('[guardarConfiguracionEmpresaAction] Error limpiando caché:', cErr);
     }

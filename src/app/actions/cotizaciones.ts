@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerSupabaseClient, createAdminSupabaseClient } from '../../infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient, createAdminSupabaseClient, resolveEmpresaId } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { invalidateTenantCache } from '../../lib/redis';
 import { z } from 'zod';
@@ -96,11 +96,17 @@ const CrearCotizacionZodSchema = z.object({
 /**
  * Genera un código consecutivo amigable y correlativo único (ej: COT-1001)
  */
-async function generarConsecutivoCotizacion(supabase: any): Promise<string> {
+async function generarConsecutivoCotizacion(supabase: any, empresaId?: string | null): Promise<string> {
   try {
-    const { count, error } = await supabase
+    let query = supabase
       .from('cotizaciones')
       .select('*', { count: 'exact', head: true });
+
+    if (empresaId) {
+      query = query.eq('empresa_id', empresaId);
+    }
+
+    const { count, error } = await query;
 
     if (error) throw error;
     const siguiente = (count || 0) + 1;
@@ -123,6 +129,10 @@ export async function crearCotizacionAction(input: CrearCotizacionInput) {
 
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para crear cotizaciones.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
 
   // 1. Cálculo Riguroso de Subtotales por Línea
   let subtotal = 0;
@@ -159,13 +169,15 @@ export async function crearCotizacionAction(input: CrearCotizacionInput) {
   // Total Neto = Subtotal + Transporte + IVA - Retenciones
   const total = subtotal + valorTransporte + valorIva - valorRetefuente - valorReteica;
 
-  const consecutivo = await generarConsecutivoCotizacion(supabase);
+  const consecutivo = await generarConsecutivoCotizacion(supabase, empresaId);
   const numericClienteId = cleanInput.clienteId ? (typeof cleanInput.clienteId === 'string' ? parseInt(cleanInput.clienteId, 10) : cleanInput.clienteId) : null;
 
   // 3. Inserción en Tabla `cotizaciones`
   const { data: cotizacion, error: cotErr } = await supabase
     .from('cotizaciones')
     .insert([{
+      empresa_id: empresaId,
+      tenant_id: empresaId,
       consecutivo,
       cliente_id: numericClienteId,
       cliente_nombre: cleanInput.clienteNombre.trim(),
@@ -249,7 +261,7 @@ export async function crearCotizacionAction(input: CrearCotizacionInput) {
 
   // 6. Invalidación de Caché y Revalidación
   try {
-    await invalidateTenantCache(user?.id, ['cotizaciones', 'alquileres']);
+    await invalidateTenantCache(empresaId, ['cotizaciones', 'alquileres']);
   } catch (cErr) {
     console.warn('[crearCotizacionAction] Cache clear warning:', cErr);
   }
@@ -265,6 +277,12 @@ export async function crearCotizacionAction(input: CrearCotizacionInput) {
 export async function obtenerCotizacionesAction(filtros?: { estado?: string; clienteId?: string | number }) {
   try {
     const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: 'No autorizado. Sesión no válida.', data: [] };
+    }
+    const empresaId = await resolveEmpresaId(user.id);
+
     let query = supabase
       .from('cotizaciones')
       .select(`
@@ -285,6 +303,7 @@ export async function obtenerCotizacionesAction(filtros?: { estado?: string; cli
           )
         )
       `)
+      .eq('empresa_id', empresaId)
       .order('created_at', { ascending: false });
 
     if (filtros?.estado && filtros.estado !== 'TODOS') {
@@ -316,6 +335,12 @@ export async function obtenerCotizacionesAction(filtros?: { estado?: string; cli
 export async function obtenerCotizacionPorIdAction(id: string) {
   try {
     const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: 'No autorizado. Sesión no válida.' };
+    }
+    const empresaId = await resolveEmpresaId(user.id);
+
     const { data, error } = await supabase
       .from('cotizaciones')
       .select(`
@@ -338,6 +363,7 @@ export async function obtenerCotizacionPorIdAction(id: string) {
         )
       `)
       .eq('id', id)
+      .eq('empresa_id', empresaId)
       .single();
 
     if (error || !data) {
@@ -357,6 +383,10 @@ export async function actualizarEstadoCotizacionAction(id: string, nuevoEstado: 
   try {
     const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: 'No autorizado. Debe iniciar sesión.' };
+    }
+    const empresaId = await resolveEmpresaId(user.id);
 
     const { data, error } = await supabase
       .from('cotizaciones')
@@ -365,6 +395,7 @@ export async function actualizarEstadoCotizacionAction(id: string, nuevoEstado: 
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
+      .eq('empresa_id', empresaId)
       .select()
       .single();
 
@@ -409,6 +440,10 @@ export async function convertirCotizacionAContratoAction(input: ConvertirCotizac
 
     const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: 'No autorizado. Debe iniciar sesión para formalizar contratos.' };
+    }
+    const empresaId = await resolveEmpresaId(user.id);
     const idempotencyKey = input.idempotencyKey || `conv_cot_${rawIdStr}_${Date.now()}`;
 
     let rpcRes: any = null;
@@ -422,7 +457,8 @@ export async function convertirCotizacionAContratoAction(input: ConvertirCotizac
           nueva_fecha_inicio: input.nuevaFechaInicio || null,
           detalles_logistica: input.detallesLogistica || '',
           idempotency_key: idempotencyKey,
-          usuario_id: user?.id
+          usuario_id: user?.id,
+          empresa_id: empresaId
         }
       });
       rpcRes = data;
@@ -435,7 +471,8 @@ export async function convertirCotizacionAContratoAction(input: ConvertirCotizac
           nueva_fecha_inicio: input.nuevaFechaInicio || null,
           idempotency_key: idempotencyKey,
           usuario_id: user?.id,
-          detalles_logistica: input.detallesLogistica || ''
+          detalles_logistica: input.detallesLogistica || '',
+          empresa_id: empresaId
         }
       });
       rpcRes = data;
@@ -487,7 +524,7 @@ export async function convertirCotizacionAContratoAction(input: ConvertirCotizac
 
     // 3. Limpieza de Caché y Revalidación Reactiva de Rutas
     try {
-      await invalidateTenantCache(user?.id, ['cotizaciones', 'alquileres', 'equipos']);
+      await invalidateTenantCache(empresaId, ['cotizaciones', 'alquileres', 'equipos']);
     } catch (cErr) {
       console.warn('[convertirCotizacionAContratoAction] Cache clear warning:', cErr);
     }

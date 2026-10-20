@@ -257,6 +257,7 @@ export class ComprasTransaccionalService {
           .from('compras')
           .insert([{
             id: compraId,
+            empresa_id: params.tenantId || null,
             tenant_id: params.tenantId || null,
             numero_orden: numeroOrden,
             proveedor_id: params.proveedorId || null,

@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerSupabaseClient, createAdminSupabaseClient } from '../../infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient, createAdminSupabaseClient, resolveEmpresaId } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { validateActionInput } from '@/lib/security/validation';
@@ -42,6 +42,10 @@ export async function registrarPagoAction(input: RegistrarPagoInput) {
 
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para registrar pagos.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
   const userIdentifier = user?.email || user?.id || 'SISTEMA_OPERADOR';
 
   const numericAlquilerId = typeof cleanInput.alquilerId === 'string' 
@@ -56,20 +60,19 @@ export async function registrarPagoAction(input: RegistrarPagoInput) {
     return { success: false, error: 'El monto del abono debe ser mayor a cero.' };
   }
 
-  // Si no nos pasan clienteId, lo consultamos del contrato
-  let numericClienteId: number | null = cleanInput.clienteId ? (typeof cleanInput.clienteId === 'string' ? parseInt(cleanInput.clienteId, 10) : cleanInput.clienteId) : null;
-  if (!numericClienteId) {
-    const { data: alq, error: alqErr } = await supabase
-      .from('alquileres')
-      .select('cliente_id')
-      .eq('id', numericAlquilerId)
-      .single();
+  // Validar pertenencia del contrato a la empresa y obtener cliente si no viene en el input
+  const { data: alq, error: alqErr } = await supabase
+    .from('alquileres')
+    .select('cliente_id, empresa_id')
+    .eq('id', numericAlquilerId)
+    .eq('empresa_id', empresaId)
+    .single();
 
-    if (alqErr || !alq) {
-      return { success: false, error: 'No se encontró el contrato de alquiler asociado para registrar el pago.' };
-    }
-    numericClienteId = alq.cliente_id;
+  if (alqErr || !alq) {
+    return { success: false, error: 'No se encontró el contrato de alquiler asociado o no pertenece a su empresa.' };
   }
+
+  let numericClienteId: number | null = cleanInput.clienteId ? (typeof cleanInput.clienteId === 'string' ? parseInt(cleanInput.clienteId, 10) : cleanInput.clienteId) : alq.cliente_id;
 
   // POKA-YOKE: Si el método es efectivo, verificar que exista una caja abierta
   const validMetodos = ['TRANSFERENCIA', 'EFECTIVO', 'NEQUI', 'DAVIPLATA', 'CHEQUE'];
@@ -83,6 +86,7 @@ export async function registrarPagoAction(input: RegistrarPagoInput) {
       .select('id, estado')
       .eq('estado', 'ABIERTA')
       .eq('usuario_id', user?.id || '')
+      .eq('empresa_id', empresaId)
       .maybeSingle();
 
     if (errCaja || !sesionCaja) {
@@ -100,6 +104,7 @@ export async function registrarPagoAction(input: RegistrarPagoInput) {
       .from('alquileres')
       .select('id, consecutivo, total, total_pagado, saldo_pendiente, cliente_id, clientes (nombre, documento, telefono)')
       .eq('id', numericAlquilerId)
+      .eq('empresa_id', empresaId)
       .single();
     alqActual = alq;
   } catch (e) {
@@ -113,6 +118,7 @@ export async function registrarPagoAction(input: RegistrarPagoInput) {
   const { data, error } = await supabase
     .from('pagos')
     .insert([{
+      empresa_id: empresaId,
       alquiler_id: numericAlquilerId,
       cliente_id: numericClienteId,
       monto: cleanInput.monto,
@@ -245,9 +251,26 @@ export async function registrarPagoAction(input: RegistrarPagoInput) {
 
 export async function obtenerPagosPorAlquilerAction(alquilerId: string | number) {
   const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado.', data: [] };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
   const numericAlquilerId = typeof alquilerId === 'string' 
     ? (parseInt(alquilerId.replace(/\D/g, ''), 10) || parseInt(alquilerId, 10))
     : alquilerId;
+
+  // Validar pertenencia del contrato al tenant
+  const { data: alqCheck } = await supabase
+    .from('alquileres')
+    .select('id')
+    .eq('id', numericAlquilerId)
+    .eq('empresa_id', empresaId)
+    .maybeSingle();
+
+  if (!alqCheck) {
+    return { success: false, error: 'Contrato de alquiler no encontrado o no pertenece a su empresa.', data: [] };
+  }
 
   const { data, error } = await supabase
     .from('pagos')
@@ -309,6 +332,10 @@ export async function registrarPagoMixtoAction(input: RegistrarPagoMixtoInput) {
   const supabase = await createServerSupabaseClient();
   const supabaseAdmin = createAdminSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
   const userIdentifier = user?.email || user?.id || 'SISTEMA_OPERADOR';
 
   const numericAlquilerId = typeof cleanInput.alquilerId === 'string'
@@ -319,17 +346,18 @@ export async function registrarPagoMixtoAction(input: RegistrarPagoMixtoInput) {
     return { success: false, error: 'ID de contrato de alquiler inválido.' };
   }
 
-  // 1. Consultar Contrato y Cliente Asociado
+  // 1. Consultar Contrato y Cliente Asociado con validación de tenant
   let alqActual: any = null;
   try {
     const { data: alq, error: alqErr } = await supabaseAdmin
       .from('alquileres')
       .select('id, consecutivo, total, total_pagado, saldo_pendiente, cliente_id, clientes (id, nombre, documento, telefono, saldo_a_favor)')
       .eq('id', numericAlquilerId)
+      .eq('empresa_id', empresaId)
       .single();
 
     if (alqErr || !alq) {
-      return { success: false, error: 'No se encontró el contrato de alquiler para imputar el abono.' };
+      return { success: false, error: 'No se encontró el contrato de alquiler para imputar el abono o no pertenece a su empresa.' };
     }
     alqActual = alq;
   } catch (e) {
@@ -352,6 +380,7 @@ export async function registrarPagoMixtoAction(input: RegistrarPagoMixtoInput) {
       .select('id, estado')
       .eq('estado', 'ABIERTA')
       .eq('usuario_id', user?.id || '')
+      .eq('empresa_id', empresaId)
       .maybeSingle();
 
     if (errCaja || !sesionCaja) {
@@ -403,6 +432,7 @@ export async function registrarPagoMixtoAction(input: RegistrarPagoMixtoInput) {
   const { data: pagoCreado, error: errPago } = await supabaseAdmin
     .from('pagos')
     .insert([{
+      empresa_id: empresaId,
       alquiler_id: numericAlquilerId,
       cliente_id: numericClienteId,
       monto: cleanInput.totalAbonar,

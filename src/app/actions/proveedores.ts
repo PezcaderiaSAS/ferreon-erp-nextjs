@@ -93,28 +93,35 @@ export async function obtenerProveedoresAction(): Promise<{ success: boolean; da
   try {
     const supabaseAuth = await createServerSupabaseClient();
     const { data: { user } } = await supabaseAuth.auth.getUser();
-    const tenantId = user?.id || 'default';
+    if (!user) {
+      return { success: false, data: [], error: 'No autorizado.' };
+    }
+    const empresaId = await resolveEmpresaId(user.id);
+    if (!empresaId) {
+      return { success: true, data: [] };
+    }
 
     // 1. Revisar caché multi-tenant
-    const cached = await getTenantCache<ProveedorUI[]>(tenantId, 'proveedores');
+    const cached = await getTenantCache<ProveedorUI[]>(empresaId, 'proveedores');
     if (cached && Array.isArray(cached) && cached.length > 0) {
       return { success: true, data: cached };
     }
 
-    // 2. Consulta Base de Datos Supabase (Admin para asegurar lectura consistente)
+    // 2. Consulta Base de Datos Supabase (filtrada por empresa del tenant)
     const supabaseAdmin = createAdminSupabaseClient();
     const { data, error } = await supabaseAdmin
       .from('proveedores')
       .select('*')
+      .or(`empresa_id.eq.${empresaId},tenant_id.eq.${empresaId}`)
       .order('nombre', { ascending: true });
 
     if (!error && data && data.length > 0) {
-      await setTenantCache(tenantId, 'proveedores', data, 1800);
+      await setTenantCache(empresaId, 'proveedores', data, 1800);
       return { success: true, data: data as ProveedorUI[] };
     }
 
-    // 3. Si la base de datos está vacía, devolver semillas
-    return { success: true, data: PROVEEDORES_INICIALES };
+    // 3. Si la base de datos está vacía para esta empresa, devolver vacío (nunca datos ajenos)
+    return { success: true, data: [] };
   } catch (error: any) {
     console.error('[obtenerProveedoresAction Error]:', error);
     return { success: true, data: PROVEEDORES_INICIALES, error: error.message };
@@ -175,7 +182,7 @@ export async function crearProveedorAction(input: CrearProveedorInput): Promise<
     const proveedorFinal: ProveedorUI = data as ProveedorUI;
 
     // Invalidar caché
-    await invalidateTenantCache(userId, ['proveedores']);
+    await invalidateTenantCache(empresaId, ['proveedores']);
 
     // Registrar en logs de auditoría
     AuditLogger.logAsync({
@@ -217,49 +224,51 @@ export async function actualizarProveedorAction(
 
     const supabaseAuth = await createServerSupabaseClient();
     const { data: { user } } = await supabaseAuth.auth.getUser();
-    const userId = user?.id;
+    if (!user) {
+      return { success: false, error: 'No autorizado. Debe iniciar sesión.' };
+    }
+    const userId = user.id;
+    const empresaId = await resolveEmpresaId(userId);
 
     const supabaseAdmin = createAdminSupabaseClient();
-    let tenantId: string | null = null;
-    if (userId) {
-      const { data: empUser } = await supabaseAdmin
-        .from('empresa_usuarios')
-        .select('empresa_id')
-        .eq('user_id', userId)
-        .eq('estado', 'ACTIVO')
-        .maybeSingle();
-      tenantId = empUser?.empresa_id || null;
+
+    // 1. Validar que el proveedor existe y pertenece a la empresa del usuario
+    const { data: provExistente, error: checkErr } = await supabaseAdmin
+      .from('proveedores')
+      .select('id')
+      .eq('id', id)
+      .or(`empresa_id.eq.${empresaId},tenant_id.eq.${empresaId}`)
+      .maybeSingle();
+
+    if (checkErr || !provExistente) {
+      return { success: false, error: 'El proveedor no existe o no pertenece a su empresa.' };
     }
 
-    // Actualizar en Supabase
-    try {
-      await supabaseAdmin
-        .from('proveedores')
-        .update({
-          ...(clean.nombre && { nombre: clean.nombre.trim() }),
-          ...(clean.nit && { nit: clean.nit.trim() }),
-          ...(clean.contacto !== undefined && { contacto: clean.contacto?.trim() || null }),
-          ...(clean.telefono !== undefined && { telefono: clean.telefono?.trim() || null }),
-          ...(clean.email !== undefined && { email: clean.email?.trim() || null }),
-          ...(clean.direccion !== undefined && { direccion: clean.direccion?.trim() || null }),
-          ...(clean.ciudad !== undefined && { ciudad: clean.ciudad?.trim() || null }),
-          ...(clean.diasCredito !== undefined && { dias_credito: clean.diasCredito }),
-          ...(clean.estado && { estado: clean.estado }),
-          ...(clean.observaciones !== undefined && { observaciones: clean.observaciones?.trim() || null }),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id);
-    } catch (dbErr) {
-      console.warn('[actualizarProveedorAction] Error actualizando BD:', dbErr);
+    // 2. Actualizar en Supabase con filtro estricto de empresa
+    const { error: updateErr } = await supabaseAdmin
+      .from('proveedores')
+      .update({
+        ...(clean.nombre && { nombre: clean.nombre.trim() }),
+        ...(clean.nit && { nit: clean.nit.trim() }),
+        ...(clean.contacto !== undefined && { contacto: clean.contacto?.trim() || null }),
+        ...(clean.telefono !== undefined && { telefono: clean.telefono?.trim() || null }),
+        ...(clean.email !== undefined && { email: clean.email?.trim() || null }),
+        ...(clean.direccion !== undefined && { direccion: clean.direccion?.trim() || null }),
+        ...(clean.ciudad !== undefined && { ciudad: clean.ciudad?.trim() || null }),
+        ...(clean.diasCredito !== undefined && { dias_credito: clean.diasCredito }),
+        ...(clean.estado && { estado: clean.estado }),
+        ...(clean.observaciones !== undefined && { observaciones: clean.observaciones?.trim() || null }),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .or(`empresa_id.eq.${empresaId},tenant_id.eq.${empresaId}`);
+
+    if (updateErr) {
+      return { success: false, error: updateErr.message || 'Error al actualizar el proveedor en base de datos.' };
     }
 
     // Invalidar caché
-    const cacheKey = `proveedores:${tenantId || 'global'}`;
-    if (redis) {
-      try {
-        await redis.del(cacheKey);
-      } catch {}
-    }
+    await invalidateTenantCache(empresaId, ['proveedores']);
 
     // Auditoría
     AuditLogger.logAsync({

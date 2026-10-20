@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerSupabaseClient } from '../../infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient, resolveEmpresaId } from '../../infrastructure/persistence/supabase/server';
 
 export interface KardexItemUI {
   id: string | number;
@@ -20,12 +20,18 @@ export interface KardexItemUI {
 export async function obtenerKardexEquipoAction(equipoId: string | number, limite = 50) {
   try {
     const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: 'No autorizado.', data: [] };
+    }
+    const empresaId = await resolveEmpresaId(user.id);
     const numericEquipoId = typeof equipoId === 'string' ? parseInt(equipoId, 10) : equipoId;
 
     const { data, error } = await supabase
       .from('kardex_inventario')
       .select('*')
       .eq('equipo_id', numericEquipoId)
+      .or(`empresa_id.eq.${empresaId},tenant_id.eq.${empresaId}`)
       .order('created_at', { ascending: false })
       .limit(limite);
 

@@ -129,7 +129,7 @@ describe('Pruebas Unitarias: Integridad y Flujo de Devolución Avanzada (SPEC-20
     });
 
     const mockSingleSesion = vi.fn().mockResolvedValue({
-      data: { id: 'a0000000-0000-0000-0000-000000000001', estado: 'ABIERTA', empresa_id: 'emp-123', usuario_id: 'usr-1' },
+      data: { id: 'a0000000-0000-0000-0000-000000000001', estado: 'ABIERTA', empresa_id: 'empresa-dev-uuid', usuario_id: 'usr-1' },
       error: null,
     });
 

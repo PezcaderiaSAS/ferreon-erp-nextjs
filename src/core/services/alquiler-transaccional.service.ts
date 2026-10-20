@@ -445,7 +445,8 @@ export class AlquilerTransaccionalService {
           obra_direccion: params.detallesLogistica || '',
           updated_at: new Date().toISOString(),
         })
-        .eq('id', cotId);
+        .eq('id', cotId)
+        .eq('empresa_id', params.empresaId);
 
       if (cotErr) {
         return { success: false, error: `Error al editar cotización: ${cotErr.message}` };

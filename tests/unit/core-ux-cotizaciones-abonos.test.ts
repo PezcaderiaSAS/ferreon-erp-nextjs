@@ -19,6 +19,7 @@ let mockDb: {
 };
 
 vi.mock('../../src/infrastructure/persistence/supabase/server', () => ({
+  resolveEmpresaId: async () => 'ac8719ea-f16a-4538-b308-40d9511a14cb',
   createServerSupabaseClient: async () => ({
     auth: {
       getUser: async () => ({ data: { user: { id: 'usr-test-1', email: 'test@ferreon.com' } } }),
@@ -36,47 +37,66 @@ vi.mock('../../src/infrastructure/persistence/supabase/server', () => ({
       }
       return { error: null, data: 'mocked-transaction-id' };
     }),
-    from: (table: string) => ({
-      select: (fields?: string) => ({
-        eq: (field: string, value: any) => ({
-          single: async () => {
-            if (table === 'alquileres') {
-              const alq = mockDb.alquileres[value];
-              return alq ? { data: alq, error: null } : { data: null, error: { message: 'Not found' } };
-            }
-            if (table === 'equipos') {
-              const eq = mockDb.equipos[value];
-              return eq ? { data: eq, error: null } : { data: null, error: { message: 'Not found' } };
-            }
-            return { data: null, error: null };
-          },
-          then: (resolve: any) => {
-            if (table === 'alquiler_detalles') {
-              const det = mockDb.alquiler_detalles[value] || [];
-              return resolve({ data: det, error: null });
-            }
-            return resolve({ data: [], error: null });
-          },
-        }),
-      }),
-      update: (updatePayload: any) => ({
+    from: (table: string) => {
+      let currentId: any = null;
+      const selectBuilder: any = {
         eq: (field: string, value: any) => {
+          if (field === 'id' || field === 'alquiler_id') currentId = value;
+          return selectBuilder;
+        },
+        single: async () => {
           if (table === 'alquileres') {
-            mockDb.updateAlquileresFn(updatePayload, value);
-            if (mockDb.alquileres[value]) {
-              Object.assign(mockDb.alquileres[value], updatePayload);
-            }
+            const alq = mockDb.alquileres[currentId];
+            return alq ? { data: alq, error: null } : { data: null, error: { message: 'Not found' } };
           }
           if (table === 'equipos') {
-            mockDb.updateEquiposFn(updatePayload, value);
-            if (mockDb.equipos[value]) {
-              Object.assign(mockDb.equipos[value], updatePayload);
-            }
+            const eq = mockDb.equipos[currentId];
+            return eq ? { data: eq, error: null } : { data: null, error: { message: 'Not found' } };
           }
-          return Promise.resolve({ data: { id: value, ...updatePayload }, error: null });
+          return { data: null, error: null };
         },
-      }),
-    }),
+        then: (resolve: any) => {
+          if (table === 'alquiler_detalles') {
+            const det = mockDb.alquiler_detalles[currentId] || [];
+            return resolve({ data: det, error: null });
+          }
+          return resolve({ data: [], error: null });
+        }
+      };
+
+      const updateBuilder: any = (updatePayload: any) => {
+        let updateId: any = null;
+        const b: any = {
+          eq: (field: string, value: any) => {
+            if (field === 'id') {
+              updateId = value;
+              if (table === 'alquileres') {
+                mockDb.updateAlquileresFn(updatePayload, value);
+                if (mockDb.alquileres[value]) {
+                  Object.assign(mockDb.alquileres[value], updatePayload);
+                }
+              }
+              if (table === 'equipos') {
+                mockDb.updateEquiposFn(updatePayload, value);
+                if (mockDb.equipos[value]) {
+                  Object.assign(mockDb.equipos[value], updatePayload);
+                }
+              }
+            }
+            return b;
+          },
+          then: (resolve: any) => {
+            resolve({ data: { id: updateId, ...updatePayload }, error: null });
+          }
+        };
+        return b;
+      };
+
+      return {
+        select: (fields?: string) => selectBuilder,
+        update: updateBuilder,
+      };
+    },
   }),
 }));
 

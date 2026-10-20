@@ -63,6 +63,7 @@ export class CajaTransaccionalService {
       .from('sesiones_caja')
       .select('*')
       .eq('usuario_id', userId)
+      .eq('empresa_id', empresaId)
       .eq('estado', 'ABIERTA')
       .maybeSingle();
 
@@ -135,18 +136,19 @@ export class CajaTransaccionalService {
    * Abre una nueva sesión de caja previa validación Poka-Yoke (solo una sesión abierta por cajero).
    */
   public static async abrirSesion(admin: any, params: AbrirSesionCajaParams) {
-    // POKA-YOKE: Verificar que el usuario no tenga ya una caja abierta
+    // POKA-YOKE: Verificar que el usuario no tenga ya una caja abierta en esta empresa
     const { data: existente } = await admin
       .from('sesiones_caja')
       .select('id, fecha_apertura')
       .eq('usuario_id', params.userId)
+      .eq('empresa_id', params.empresaId)
       .eq('estado', 'ABIERTA')
       .maybeSingle();
 
     if (existente) {
       return {
         success: false,
-        error: 'Poka-Yoke: Ya tienes una sesión de caja ABIERTA actualmente. Debes realizar el cierre antes de iniciar una nueva.',
+        error: 'Poka-Yoke: Ya tienes una sesión de caja ABIERTA actualmente en esta empresa. Debes realizar el cierre antes de iniciar una nueva.',
       };
     }
 
@@ -155,7 +157,7 @@ export class CajaTransaccionalService {
     const { data: nuevaSesion, error: insertError } = await admin
       .from('sesiones_caja')
       .insert([{
-        tenant_id: params.userId,
+        tenant_id: params.empresaId,
         empresa_id: params.empresaId,
         usuario_id: params.userId,
         estado: 'ABIERTA',
@@ -191,10 +193,11 @@ export class CajaTransaccionalService {
       .from('sesiones_caja')
       .select('*')
       .eq('id', params.sesionCajaId)
+      .eq('empresa_id', params.empresaId)
       .single();
 
     if (sesionError || !sesion) {
-      return { success: false, error: 'No se encontró la sesión de caja especificada.' };
+      return { success: false, error: 'No se encontró la sesión de caja especificada o no pertenece a su empresa.' };
     }
 
     if (sesion.estado !== 'ABIERTA') {
@@ -321,10 +324,11 @@ export class CajaTransaccionalService {
       .from('sesiones_caja')
       .select('*')
       .eq('id', params.sesionCajaId)
+      .eq('empresa_id', params.empresaId)
       .single();
 
     if (sErr || !sesion) {
-      return { success: false, error: 'No se encontró la sesión de caja para cerrar.' };
+      return { success: false, error: 'No se encontró la sesión de caja para cerrar o no pertenece a su empresa.' };
     }
 
     if (sesion.estado === 'CERRADA') {

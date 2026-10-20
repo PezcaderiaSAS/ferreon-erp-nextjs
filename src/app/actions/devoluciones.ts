@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerSupabaseClient } from '../../infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient, resolveEmpresaId } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { validateActionInput } from '@/lib/security/validation';
@@ -80,15 +80,21 @@ export async function procesarDevolucionAvanzadaAction(input: ProcesarDevolucion
 
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
   const userIdentifier = user?.email || user?.id || 'OPERADOR_SISTEMA';
 
   const numericAlquilerId = typeof cleanInput.alquilerId === 'string'
     ? parseInt(cleanInput.alquilerId, 10)
     : cleanInput.alquilerId;
 
+
   // 1. Preparar payload para la función RPC atómica en PostgreSQL
   const payloadRPC = {
     alquiler_id: numericAlquilerId,
+    empresa_id: empresaId,
     idempotency_key: cleanInput.idempotencyKey || null,
     recibido_por: userIdentifier,
     observaciones: cleanInput.observaciones || null,
@@ -136,7 +142,7 @@ export async function procesarDevolucionAvanzadaAction(input: ProcesarDevolucion
         .eq('id', cleanInput.sesionCajaId)
         .single();
 
-      if (sesionActiva && sesionActiva.estado === 'ABIERTA') {
+      if (sesionActiva && (!sesionActiva.empresa_id || sesionActiva.empresa_id === empresaId) && sesionActiva.estado === 'ABIERTA') {
         const esReembolso = tipoResolucion === 'REEMBOLSO_CLIENTE';
         const tipoMov = esReembolso ? 'EGRESO' : 'INGRESO';
         const montoMov = Math.abs(saldoNeto);
@@ -147,8 +153,8 @@ export async function procesarDevolucionAvanzadaAction(input: ProcesarDevolucion
         const { data: nuevoMov } = await supabase
           .from('movimientos_caja')
           .insert({
-            tenant_id: user?.id || null,
-            empresa_id: sesionActiva.empresa_id,
+            tenant_id: empresaId,
+            empresa_id: empresaId,
             sesion_caja_id: cleanInput.sesionCajaId,
             usuario_id: user?.id || sesionActiva.usuario_id,
             tipo: tipoMov,
@@ -192,7 +198,7 @@ export async function procesarDevolucionAvanzadaAction(input: ProcesarDevolucion
   });
 
   // 5. Invalidar Caché Distribuida
-  await invalidarCacheDevoluciones(user?.id);
+  await invalidarCacheDevoluciones(empresaId);
 
   // 6. Revalidar rutas en Next.js
   revalidatePath('/devoluciones');
@@ -212,6 +218,11 @@ export async function procesarDevolucionAvanzadaAction(input: ProcesarDevolucion
  */
 export async function obtenerHistorialDevolucionesAction(alquilerId?: number | string) {
   const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, data: [], error: 'No autorizado.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
   
   let query = supabase
     .from('devoluciones')
@@ -244,6 +255,7 @@ export async function obtenerHistorialDevolucionesAction(alquilerId?: number | s
       ),
       alquileres (consecutivo, clientes (nombre, nit_cedula))
     `)
+    .eq('empresa_id', empresaId)
     .order('fecha_devolucion', { ascending: false });
 
   if (alquilerId) {

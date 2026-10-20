@@ -155,7 +155,7 @@ export async function crearAlquilerSegmentadoAction(rawInput: unknown): Promise<
 
       if (msg.includes('ERR_OVERBOOKING_CONCURRENTE')) {
         code = 'ERR_OVERBOOKING_CONCURRENTE';
-        userFriendlyMessage = 'Disponibilidad insuficiente: uno o más equipos fueron reservados en las mismas fechas por otra transacción simultánea.';
+        userFriendlyMessage = `Disponibilidad insuficiente: uno o más equipos fueron reservados en las mismas fechas por otra transacción simultánea. (${msg})`;
       } else if (msg.includes('ERR_FECHAS_INVALIDAS')) {
         code = 'ERR_FECHAS_INVALIDAS';
         userFriendlyMessage = 'Las fechas especificadas en las líneas de alquiler son inválidas.';

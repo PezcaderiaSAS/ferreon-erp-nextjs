@@ -234,7 +234,7 @@ export async function crearAlquilerAction(input: CrearAlquilerInput) {
 
   // Invalidación de Caché y Revalidación de Rutas
   try {
-    await invalidateTenantCache(user?.id, ['alquileres', 'equipos', 'subcontrataciones']);
+    await invalidateTenantCache(empresaId, ['alquileres', 'equipos', 'subcontrataciones']);
   } catch (cacheErr) {
     console.warn('[crearAlquilerAction] Cache clear error:', cacheErr);
   }
@@ -294,7 +294,7 @@ export async function editarAlquilerAction(input: EditarAlquilerInput) {
   });
 
   try {
-    await invalidateTenantCache(user?.id, ['alquileres', 'equipos', 'subcontrataciones']);
+    await invalidateTenantCache(empresaId, ['alquileres', 'equipos', 'subcontrataciones']);
   } catch (cErr) {
     console.warn('[editarAlquilerAction] Cache clear error:', cErr);
   }
@@ -345,7 +345,7 @@ export async function procesarDevolucionAction(input: ProcesarDevolucionInput) {
   });
 
   try {
-    await invalidateTenantCache(user?.id, ['alquileres', 'equipos']);
+    await invalidateTenantCache(empresaId, ['alquileres', 'equipos']);
   } catch (cErr) {
     console.warn('[procesarDevolucionAction] Cache clear error:', cErr);
   }
@@ -360,9 +360,26 @@ export async function procesarDevolucionAction(input: ProcesarDevolucionInput) {
  */
 export async function aprobarCotizacionAction(input: AprobarCotizacionInput) {
   const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para aprobar cotizaciones.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
   const numericAlquilerId = typeof input.alquilerId === 'string' ? parseInt(input.alquilerId, 10) : input.alquilerId;
 
-  // 1. Obtener detalles
+  // 1. Obtener contrato verificando pertenencia estricta al tenant
+  const { data: alqActual, error: alqErr } = await supabase
+    .from('alquileres')
+    .select('subtotal_equipos, flete_entrega, flete_recogida, deposito, total')
+    .eq('id', numericAlquilerId)
+    .eq('empresa_id', empresaId)
+    .single();
+
+  if (alqErr || !alqActual) {
+    return { success: false, error: 'Cotización no encontrada o no autorizada para su empresa.' };
+  }
+
+  // 2. Obtener detalles
   const { data: detalles, error: detErr } = await supabase
     .from('alquiler_detalles')
     .select('equipo_id, cantidad, es_subcontratado')
@@ -371,7 +388,7 @@ export async function aprobarCotizacionAction(input: AprobarCotizacionInput) {
   if (detErr) return { success: false, error: 'Error al consultar detalles de cotización.' };
   if (!detalles || detalles.length === 0) return { success: false, error: 'La cotización no tiene equipos asociados.' };
 
-  // 2. Validación y Bloqueo Pesimista por ítem
+  // 3. Validación y Bloqueo Pesimista por ítem
   for (const det of detalles) {
     if (det.es_subcontratado) continue;
 
@@ -388,13 +405,7 @@ export async function aprobarCotizacionAction(input: AprobarCotizacionInput) {
     }
   }
 
-  // 3. Activar contrato
-  const { data: alqActual } = await supabase
-    .from('alquileres')
-    .select('subtotal_equipos, flete_entrega, flete_recogida, deposito, total')
-    .eq('id', numericAlquilerId)
-    .single();
-
+  // 4. Activar contrato
   const fleteEntregaFinal = input.fleteEntrega !== undefined ? Number(input.fleteEntrega) : Number(alqActual?.flete_entrega || 0);
   const fleteRecogidaFinal = input.fleteRecogida !== undefined ? Number(input.fleteRecogida) : Number(alqActual?.flete_recogida || 0);
   const subtotalEquipos = Number(alqActual?.subtotal_equipos || 0);
@@ -415,13 +426,13 @@ export async function aprobarCotizacionAction(input: AprobarCotizacionInput) {
       saldo_pendiente: saldoPendienteFinal,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', numericAlquilerId);
+    .eq('id', numericAlquilerId)
+    .eq('empresa_id', empresaId);
 
   if (updErr) return { success: false, error: `Error al activar contrato: ${updErr.message}` };
 
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    await invalidateTenantCache(user?.id, ['alquileres', 'equipos', 'subcontrataciones']);
+    await invalidateTenantCache(empresaId, ['alquileres', 'equipos', 'subcontrataciones']);
   } catch (cErr) {
     console.warn('[aprobarCotizacionAction] Cache clear error:', cErr);
   }
@@ -437,16 +448,22 @@ export async function aprobarCotizacionAction(input: AprobarCotizacionInput) {
  */
 export async function registrarAbonoAction(input: RegistrarAbonoInput) {
   const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'No autorizado. Debe iniciar sesión para registrar abonos.' };
+  }
+  const empresaId = await resolveEmpresaId(user.id);
   const numericAlquilerId = typeof input.alquilerId === 'string' ? parseInt(input.alquilerId, 10) : input.alquilerId;
 
   const { data: alq, error: alqErr } = await supabase
     .from('alquileres')
     .select('id, deposito, total, saldo_pendiente')
     .eq('id', numericAlquilerId)
+    .eq('empresa_id', empresaId)
     .single();
 
   if (alqErr || !alq) {
-    return { success: false, error: 'Error al consultar el contrato para el abono.' };
+    return { success: false, error: 'Error al consultar el contrato para el abono o no pertenece a su empresa.' };
   }
 
   const monto = Number(input.montoAbono);
@@ -464,15 +481,15 @@ export async function registrarAbonoAction(input: RegistrarAbonoInput) {
       saldo_pendiente: nuevoSaldoPendiente,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', numericAlquilerId);
+    .eq('id', numericAlquilerId)
+    .eq('empresa_id', empresaId);
 
   if (updErr) {
     return { success: false, error: 'Error al actualizar el saldo en base de datos.' };
   }
 
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    await invalidateTenantCache(user?.id, ['alquileres']);
+    await invalidateTenantCache(empresaId, ['alquileres']);
   } catch (cErr) {
     console.warn('[registrarAbonoAction] Cache clear error:', cErr);
   }
@@ -560,7 +577,7 @@ export async function updateRentalClientAction(input: UpdateRentalClientInput) {
   }).catch(e => console.warn('[updateRentalClientAction] PDF regeneracion fallida en background:', e));
 
   try {
-    await invalidateTenantCache(user?.id, ['alquileres']);
+    await invalidateTenantCache(empresaId, ['alquileres']);
   } catch (cErr) {
     console.warn('[updateRentalClientAction] Cache clear error:', cErr);
   }

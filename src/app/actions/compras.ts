@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerSupabaseClient, createAdminSupabaseClient } from '../../infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient, createAdminSupabaseClient, resolveEmpresaId } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redis } from '@/lib/redis';
 import { z } from 'zod';
@@ -161,16 +161,7 @@ export async function crearCompraAction(input: CrearCompraInput) {
     const userEmail = user?.email;
 
     const supabaseAdmin = createAdminSupabaseClient();
-    let tenantId: string | null = null;
-    if (userId) {
-      const { data: empUser } = await supabaseAdmin
-        .from('empresa_usuarios')
-        .select('empresa_id')
-        .eq('user_id', userId)
-        .eq('estado', 'ACTIVO')
-        .maybeSingle();
-      tenantId = empUser?.empresa_id || null;
-    }
+    const tenantId = await resolveEmpresaId(userId);
 
     // Delegación al servicio de dominio puro
     const result = await ComprasTransaccionalService.registrarCompra(supabaseAdmin, {
@@ -263,9 +254,25 @@ export async function recibirMercanciaEnBodegaAction(input: RecibirMercanciaInpu
 
     const supabaseAuth = await createServerSupabaseClient();
     const { data: { user } } = await supabaseAuth.auth.getUser();
-    const userId = user?.id;
+    if (!user) {
+      return { success: false, error: 'No autorizado. Debe iniciar sesión.' };
+    }
+    const userId = user.id;
+    const empresaId = await resolveEmpresaId(userId);
 
     const supabaseAdmin = createAdminSupabaseClient();
+
+    // Verificación de pertenencia estricta al tenant
+    const { data: compraVerif } = await supabaseAdmin
+      .from('compras')
+      .select('id')
+      .eq('id', clean.compraId)
+      .or(`empresa_id.eq.${empresaId},tenant_id.eq.${empresaId}`)
+      .maybeSingle();
+
+    if (!compraVerif) {
+      return { success: false, error: 'La orden de compra no existe o no pertenece a su empresa.' };
+    }
 
     // Delegación al servicio de dominio puro
     const result = await ComprasTransaccionalService.recibirMercancia(supabaseAdmin, {
@@ -324,21 +331,17 @@ export async function obtenerComprasAction(limite = 50): Promise<{ success: bool
   try {
     const supabaseAuth = await createServerSupabaseClient();
     const { data: { user } } = await supabaseAuth.auth.getUser();
-    const userId = user?.id;
-
-    const supabaseAdmin = createAdminSupabaseClient();
-    let tenantId: string | null = null;
-    if (userId) {
-      const { data: empUser } = await supabaseAdmin
-        .from('empresa_usuarios')
-        .select('empresa_id')
-        .eq('user_id', userId)
-        .eq('estado', 'ACTIVO')
-        .maybeSingle();
-      tenantId = empUser?.empresa_id || null;
+    if (!user) {
+      return { success: false, data: [], error: 'No autorizado.' };
+    }
+    const userId = user.id;
+    const empresaId = await resolveEmpresaId(userId);
+    if (!empresaId) {
+      return { success: true, data: [] };
     }
 
-    const cacheKeyCompras = `compras:${tenantId || 'global'}`;
+    const cacheKeyCompras = `compras:${empresaId}`;
+    const supabaseAdmin = createAdminSupabaseClient();
 
     // 1. Intentar consultar base de datos
     try {
@@ -359,6 +362,7 @@ export async function obtenerComprasAction(limite = 50): Promise<{ success: bool
             )
           )
         `)
+        .or(`empresa_id.eq.${empresaId},tenant_id.eq.${empresaId}`)
         .order('created_at', { ascending: false })
         .limit(limite);
 

@@ -87,6 +87,10 @@ export async function obtenerCuentasPorPagarAction(filtros?: {
     const supabaseAdmin = createAdminSupabaseClient();
     const empresaId = await resolveEmpresaId(userId);
 
+    if (!empresaId) {
+      return { success: true, data: [] };
+    }
+
     let query = supabaseAdmin
       .from('proveedor_cuentas_pagar')
       .select(`
@@ -105,11 +109,8 @@ export async function obtenerCuentasPorPagarAction(filtros?: {
           proveedor_nit
         )
       `)
+      .or(`empresa_id.eq.${empresaId},tenant_id.eq.${empresaId}`)
       .order('fecha_vencimiento', { ascending: true });
-
-    if (empresaId) {
-      query = query.or(`empresa_id.eq.${empresaId},tenant_id.eq.${empresaId}`);
-    }
 
     if (filtros?.estado && filtros.estado !== 'TODOS') {
       query = query.eq('estado', filtros.estado);
@@ -191,7 +192,11 @@ export async function registrarAbonoProveedorAction(input: RegistrarAbonoInput):
     const supabaseAdmin = createAdminSupabaseClient();
     const empresaId = await resolveEmpresaId(userId);
 
-    // 1. Consultar la cuenta por pagar
+    // 1. Consultar la cuenta por pagar con validación estricta de tenant
+    if (!empresaId) {
+      return { success: false, error: 'No autorizado. No se pudo resolver la empresa del usuario.' };
+    }
+
     const { data: cxp, error: cxpErr } = await supabaseAdmin
       .from('proveedor_cuentas_pagar')
       .select(`
@@ -199,10 +204,11 @@ export async function registrarAbonoProveedorAction(input: RegistrarAbonoInput):
         proveedores (nombre, nit)
       `)
       .eq('id', clean.cuentaPagarId)
+      .or(`empresa_id.eq.${empresaId},tenant_id.eq.${empresaId}`)
       .single();
 
     if (cxpErr || !cxp) {
-      return { success: false, error: 'La cuenta por pagar no existe o fue eliminada' };
+      return { success: false, error: 'La cuenta por pagar no existe, no pertenece a su empresa o fue eliminada.' };
     }
 
     if (cxp.estado === 'PAGADA') {
@@ -226,13 +232,14 @@ export async function registrarAbonoProveedorAction(input: RegistrarAbonoInput):
       return { success: false, error: domainErr.message };
     }
 
-    // 3. Si el método es EFECTIVO, validar sesión de caja activa
+    // 3. Si el método es EFECTIVO, validar sesión de caja activa de la empresa
     let sesionCajaId: string | null = null;
     if (clean.metodoPago === 'EFECTIVO') {
       const { data: sesionCaja } = await supabaseAdmin
         .from('sesiones_caja')
         .select('id, monto_apertura')
         .eq('estado', 'ABIERTA')
+        .or(`empresa_id.eq.${empresaId},tenant_id.eq.${empresaId}`)
         .order('fecha_apertura', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -308,7 +315,8 @@ export async function registrarAbonoProveedorAction(input: RegistrarAbonoInput):
         estado: calculoAbono.nuevoEstado,
         updated_at: new Date().toISOString()
       })
-      .eq('id', clean.cuentaPagarId);
+      .eq('id', clean.cuentaPagarId)
+      .or(`empresa_id.eq.${empresaId},tenant_id.eq.${empresaId}`);
 
     if (updateErr) {
       console.error('[registrarAbonoProveedorAction] Error actualizando cuenta por pagar:', updateErr);
@@ -404,7 +412,25 @@ export async function obtenerHistorialAbonosAction(
   cuentaPagarId: string
 ): Promise<{ success: boolean; data?: AbonoProveedorUI[]; error?: string }> {
   try {
+    const supabaseAuth = await createServerSupabaseClient();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+    if (!user) {
+      return { success: false, data: [], error: 'No autorizado.' };
+    }
+    const empresaId = await resolveEmpresaId(user.id);
     const supabaseAdmin = createAdminSupabaseClient();
+
+    // Validar que la cuenta por pagar pertenezca al tenant del usuario
+    const { data: cxpCheck } = await supabaseAdmin
+      .from('proveedor_cuentas_pagar')
+      .select('id')
+      .eq('id', cuentaPagarId)
+      .or(`empresa_id.eq.${empresaId},tenant_id.eq.${empresaId}`)
+      .maybeSingle();
+
+    if (!cxpCheck) {
+      return { success: false, data: [], error: 'Cuenta por pagar no encontrada o no pertenece a su empresa.' };
+    }
 
     const { data, error } = await supabaseAdmin
       .from('proveedor_abonos_cxp')

@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerSupabaseClient } from '../../infrastructure/persistence/supabase/server';
+import { createServerSupabaseClient, resolveEmpresaId } from '../../infrastructure/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { AuditLogger } from '@/lib/security/audit-logger';
 import { invalidateTenantCache } from '@/lib/redis';
@@ -22,17 +22,22 @@ export async function emitirFacturaLedgerAction(input: EmitirFacturaLedgerInput)
   try {
     const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: 'No autorizado. Debe iniciar sesión.' };
+    }
+    const empresaId = await resolveEmpresaId(user.id);
     const numericAlquilerId = typeof input.alquilerId === 'string' ? parseInt(input.alquilerId, 10) : input.alquilerId;
 
-    // 1. Consultar el contrato de alquiler y sus parámetros tributarios
+    // 1. Consultar el contrato de alquiler validando pertenencia estricta al tenant
     const { data: alq, error: alqErr } = await supabase
       .from('alquileres')
       .select('*')
       .eq('id', numericAlquilerId)
+      .eq('empresa_id', empresaId)
       .single();
 
     if (alqErr || !alq) {
-      return { success: false, error: 'Contrato de alquiler no encontrado para emisión de factura.' };
+      return { success: false, error: 'Contrato de alquiler no encontrado o no pertenece a su empresa.' };
     }
 
     const subtotal = Number(alq.subtotal_general || alq.subtotal_equipos || alq.total || 0);
@@ -93,7 +98,7 @@ export async function emitirFacturaLedgerAction(input: EmitirFacturaLedgerInput)
     });
 
     try {
-      await invalidateTenantCache(user?.id, ['facturas', 'alquileres']);
+      await invalidateTenantCache(empresaId, ['facturas', 'alquileres']);
     } catch (cErr) {
       console.warn('Cache warning:', cErr);
     }
