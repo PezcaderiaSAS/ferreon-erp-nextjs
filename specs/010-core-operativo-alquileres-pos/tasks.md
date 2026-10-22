@@ -7,11 +7,11 @@
 - [x] **TASK-010-03 (UI Component)**: Construir la vista y modal `MostradorPosModal` con barra de búsqueda rápida por Código de Barras / SKU (`EQ-xxx`), selector instantáneo de cliente y atajos de teclado (`F2: Cliente`, `F4: Equipos`, `F9: Cobrar`).
 - [x] **TASK-010-04 (TDD)**: Escribir suite de pruebas unitarias `tests/unit/pos-alquiler-rapido.test.ts` validando respuesta en < 200ms y atomicidad de caja.
 
-## Fase 2: Flujo Comercial de Cotizaciones & Conversión 1-Clic POS [ ]
-- [ ] **TASK-010-05 (Backend/RPC)**: Diseñar y desplegar la RPC `cotizacion_convertir_pos_1clic` que valide stock concurrente, cambie estado a `CONVERTIDA`, genere contrato y registre el depósito en caja en una sola transacción.
-- [ ] **TASK-010-06 (Server Action)**: Implementar `convertirCotizacionAContratoPosAction` en `src/app/actions/cotizaciones.ts` blindada con `empresa_id` estricto e invalidación de caché por tenant.
-- [ ] **TASK-010-07 (UI)**: Diseñar el modal compacto `QuickConvertModal` en el listado de cotizaciones con preview de disponibilidad de equipos y selector de método de pago del depósito en 1 clic.
-- [ ] **TASK-010-08 (TDD)**: Crear suite `tests/unit/cotizaciones-conversion-pos.test.ts` probando prevención de overbooking y generación simultánea de contrato + comprobante.
+## Fase 2: Flujo Comercial de Cotizaciones & Conversión 1-Clic POS [x]
+- [x] **TASK-010-05 (Backend/RPC)**: Diseñar y desplegar la RPC `cotizacion_convertir_pos_1clic` que valide stock concurrente, cambie estado a `CONVERTIDA`, genere contrato y registre el depósito en caja en una sola transacción.
+- [x] **TASK-010-06 (Server Action)**: Implementar `convertirCotizacionAContratoPosAction` en `src/app/actions/cotizaciones.ts` blindada con `empresa_id` estricto e invalidación de caché por tenant.
+- [x] **TASK-010-07 (UI)**: Diseñar el modal compacto `QuickConvertModal` en el listado de cotizaciones con preview de disponibilidad de equipos y selector de método de pago del depósito en 1 clic.
+- [x] **TASK-010-08 (TDD)**: Crear suite `tests/unit/cotizaciones-conversion-pos.test.ts` probando prevención de overbooking y generación simultánea de contrato + comprobante.
 
 ## Fase 3: Ediciones In-Place y Control de Adendas Versionadas [ ]
 - [ ] **TASK-010-09 (Migración BD)**: Crear tabla `alquiler_adendas` y función RPC `alquiler_generar_adenda_transaccional_v1` para registrar prórrogas y adición/retiro de equipos sin romper el contrato original.

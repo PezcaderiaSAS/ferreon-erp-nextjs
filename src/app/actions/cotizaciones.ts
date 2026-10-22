@@ -7,6 +7,17 @@ import { z } from 'zod';
 import { validateActionInput } from '@/lib/security/validation';
 import { AuditLogger } from '@/lib/security/audit-logger';
 
+/**
+ * Revalidación segura compatible con Server Actions y tests unitarios
+ */
+function safeRevalidatePath(path: string) {
+  try {
+    revalidatePath(path);
+  } catch {
+    // Ignorado en entorno de pruebas unitarias sin RequestStore de Next.js
+  }
+}
+
 export interface CotizacionItemInput {
   equipoId: string | number;
   nombre?: string;
@@ -47,6 +58,15 @@ export interface ConvertirCotizacionInput {
   nuevaFechaInicio?: string;
 }
 
+export interface ConvertirCotizacionPosInput {
+  cotizacionId: string | number;
+  montoDeposito?: number;
+  metodoPago?: string;
+  nuevaFechaInicio?: string;
+  detallesLogistica?: string;
+  idempotencyKey?: string;
+}
+
 export interface ConvertirCotizacionResultado {
   success: boolean;
   esErrorStock?: boolean;
@@ -60,6 +80,35 @@ export interface ConvertirCotizacionResultado {
     idempotent?: boolean;
   };
 }
+
+export interface ConvertirCotizacionPosResultado {
+  success: boolean;
+  esErrorStock?: boolean;
+  codigoError?: string;
+  error?: string;
+  data?: {
+    alquilerId?: any;
+    consecutivo?: any;
+    cotizacionConsecutivo?: any;
+    clienteNombre?: string;
+    total?: number;
+    deposito?: number;
+    saldoPendiente?: number;
+    movimientoCajaId?: string | null;
+    sesionCajaId?: string | null;
+    idempotent?: boolean;
+    mensaje?: string;
+  };
+}
+
+export const ConvertirCotizacionPosZodSchema = z.object({
+  cotizacionId: z.union([z.string(), z.number()]).refine((val) => Boolean(val), 'ID de cotización requerido'),
+  montoDeposito: z.coerce.number().min(0, 'El depósito debe ser mayor o igual a 0').optional().default(0),
+  metodoPago: z.string().optional().default('EFECTIVO'),
+  nuevaFechaInicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato YYYY-MM-DD inválido').optional().nullable(),
+  detallesLogistica: z.string().optional().nullable(),
+  idempotencyKey: z.string().optional().nullable(),
+});
 
 const CotizacionItemZodSchema = z.object({
   equipoId: z.union([z.string(), z.number()]),
@@ -547,6 +596,126 @@ export async function convertirCotizacionAContratoAction(input: ConvertirCotizac
     return {
       success: false,
       error: err.message || 'Error inesperado durante la formalización del contrato'
+    };
+  }
+}
+
+/**
+ * Server Action: CONVERSIÓN POS 1-CLIC DE COTIZACIÓN A CONTRATO CON DEPÓSITO EN CAJA
+ * (SPEC-010 Fase 2: TASK-010-06)
+ * Valida concurrencia con SELECT ... FOR UPDATE, descuenta stock de bodega, actualiza
+ * estado a CONVERTIDA, crea contrato y registra el depósito en la sesión de caja activa.
+ */
+export async function convertirCotizacionAContratoPosAction(
+  rawInput: ConvertirCotizacionPosInput
+): Promise<ConvertirCotizacionPosResultado> {
+  try {
+    const validation = validateActionInput(rawInput, ConvertirCotizacionPosZodSchema);
+    if (!validation.success) {
+      return { success: false, error: validation.error || 'Datos de conversión POS inválidos' };
+    }
+    const valid = validation.data;
+
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: 'No autorizado. Debe iniciar sesión.' };
+    }
+    const empresaId = await resolveEmpresaId(user.id);
+    const rawIdStr = String(valid.cotizacionId).trim();
+    const idempotencyKey = valid.idempotencyKey || `conv_pos_${rawIdStr}_${Date.now()}`;
+
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc('cotizacion_convertir_pos_1clic', {
+      p_payload: {
+        cotizacion_id: rawIdStr,
+        monto_deposito: valid.montoDeposito ?? 0,
+        metodo_pago: valid.metodoPago || 'EFECTIVO',
+        nueva_fecha_inicio: valid.nuevaFechaInicio || null,
+        detalles_logistica: valid.detallesLogistica || '',
+        idempotency_key: idempotencyKey,
+        usuario_id: user.id,
+        empresa_id: empresaId,
+        creado_por: user.email || 'OPERADOR_POS'
+      }
+    });
+
+    if (rpcErr) {
+      console.error('[convertirCotizacionAContratoPosAction] Error RPC Supabase:', rpcErr);
+      const errMsg = rpcErr.message || '';
+
+      if (errMsg.includes('ERR_OVERBOOKING_CONCURRENTE') || errMsg.includes('STOCK_INSUFICIENTE') || errMsg.includes('INSUFFICIENT_STOCK')) {
+        return {
+          success: false,
+          esErrorStock: true,
+          codigoError: 'ERR_OVERBOOKING_CONCURRENTE',
+          error: `[POKA-YOKE INVENTARIO POS] ${errMsg.replace('ERR_OVERBOOKING_CONCURRENTE:', '').trim()}`
+        };
+      }
+
+      return {
+        success: false,
+        error: `Error al convertir cotización en POS: ${errMsg}`
+      };
+    }
+
+    const nuevoAlquilerId = rpcRes?.alquiler_id;
+    const consecutivoAlquiler = rpcRes?.consecutivo;
+    const consecutivoCotizacion = rpcRes?.cotizacion_consecutivo || consecutivoAlquiler;
+
+    // Auditoría inmutable
+    AuditLogger.logAsync({
+      modulo: 'ALQUILERES',
+      accion: 'CONVERTIR_COTIZACION_A_CONTRATO',
+      descripcion: `Cotización #${consecutivoCotizacion} convertida a Contrato POS #${consecutivoAlquiler}. Depósito: $${rpcRes?.deposito ?? 0}`,
+      entidadId: String(nuevoAlquilerId),
+      detalles: {
+        cotizacionId: rawIdStr,
+        alquilerId: nuevoAlquilerId,
+        consecutivoAlquiler,
+        consecutivoCotizacion,
+        deposito: rpcRes?.deposito,
+        movimientoCajaId: rpcRes?.movimiento_caja_id,
+        sesionCajaId: rpcRes?.sesion_caja_id,
+        idempotente: !!rpcRes?.idempotent,
+      },
+      userId: user.id,
+      userEmail: user.email,
+    });
+
+    // Limpieza de caché y revalidación reactiva de rutas
+    try {
+      await invalidateTenantCache(empresaId, ['cotizaciones', 'alquileres', 'caja', 'equipos']);
+    } catch (cErr) {
+      console.warn('[convertirCotizacionAContratoPosAction] Cache clear warning:', cErr);
+    }
+
+    safeRevalidatePath('/cotizaciones');
+    safeRevalidatePath('/alquileres');
+    safeRevalidatePath('/caja');
+    safeRevalidatePath('/bodega');
+    safeRevalidatePath('/dashboard');
+
+    return {
+      success: true,
+      data: {
+        alquilerId: nuevoAlquilerId,
+        consecutivo: consecutivoAlquiler,
+        cotizacionConsecutivo: consecutivoCotizacion,
+        clienteNombre: rpcRes?.cliente_nombre,
+        total: rpcRes?.total,
+        deposito: rpcRes?.deposito,
+        saldoPendiente: rpcRes?.saldo_pendiente,
+        movimientoCajaId: rpcRes?.movimiento_caja_id,
+        sesionCajaId: rpcRes?.sesion_caja_id,
+        idempotent: !!rpcRes?.idempotent,
+        mensaje: rpcRes?.mensaje,
+      }
+    };
+  } catch (err: any) {
+    console.error('Excepción crítica en convertirCotizacionAContratoPosAction:', err);
+    return {
+      success: false,
+      error: err.message || 'Error inesperado durante la conversión POS de la cotización'
     };
   }
 }

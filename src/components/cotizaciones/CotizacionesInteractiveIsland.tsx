@@ -4,7 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import {
   FileSpreadsheet, Plus, Search, Filter, Phone, MessageSquare,
   ArrowRight, CheckCircle2, Clock, AlertTriangle, FileText,
-  Calendar, Building2, User, RefreshCw, ChevronRight, Check
+  Calendar, Building2, User, RefreshCw, ChevronRight, Check, Zap
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import {
@@ -25,6 +25,11 @@ const CotizacionRapidaModal = dynamic(
 const ConvertirCotizacionModal = dynamic(
   () => import('@/components/forms/cotizaciones/ConvertirCotizacionModal').then((m) => m.ConvertirCotizacionModal),
   { ssr: false, loading: () => <ModalSkeleton message="Verificando disponibilidad de bodega..." /> }
+);
+
+const QuickConvertModal = dynamic(
+  () => import('./QuickConvertModal').then((m) => m.QuickConvertModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Preparando mostrador de conversión..." /> }
 );
 
 interface CotizacionesInteractiveIslandProps {
@@ -48,6 +53,8 @@ export function CotizacionesInteractiveIsland({
   const [isModalCrearOpen, setIsModalCrearOpen] = useState(false);
   const [cotizacionParaConvertir, setCotizacionParaConvertir] = useState<any | null>(null);
   const [isConvertirOpen, setIsConvertirOpen] = useState(false);
+  const [isQuickConvertOpen, setIsQuickConvertOpen] = useState(false);
+  const [quickCotizacion, setQuickCotizacion] = useState<any | null>(null);
   const [convertiendoId, setConvertiendoId] = useState<string | null>(null);
   const [alertaExito, setAlertaExito] = useState<string | null>(null);
   const [alertaError, setAlertaError] = useState<string | null>(null);
@@ -99,6 +106,29 @@ export function CotizacionesInteractiveIsland({
         )
       );
     }
+    setTimeout(() => setAlertaExito(null), 8000);
+  };
+
+  const handleIniciarQuickConvert = (cot: RawCotizacionComercial) => {
+    setQuickCotizacion(cot);
+    setIsQuickConvertOpen(true);
+  };
+
+  const handleQuickConvertExitoso = (resultado: any) => {
+    setIsQuickConvertOpen(false);
+    setQuickCotizacion(null);
+    setAlertaExito(
+      `¡Cotización formalizada en 1-Clic! Contrato #${resultado?.consecutivo || resultado?.alquilerId} generado con éxito.${
+        resultado?.movimientoCajaId ? ' Depósito abonado en caja.' : ''
+      }`
+    );
+    setCotizaciones((prev) =>
+      prev.map((c) =>
+        c.id === quickCotizacion?.id || String(c.id) === String(resultado?.alquilerId)
+          ? { ...c, estado: 'CONVERTIDA', alquiler_id: resultado?.alquilerId }
+          : c
+      )
+    );
     setTimeout(() => setAlertaExito(null), 8000);
   };
 
@@ -370,15 +400,30 @@ export function CotizacionesInteractiveIsland({
                               <MessageSquare className="w-4 h-4" />
                             </button>
 
-                            {/* Botón Convertir en 1-Clic */}
+                            {/* Botón Convertir en 1-Clic POS Express */}
+                            {!esConvertida && (
+                              <button
+                                type="button"
+                                onClick={() => handleIniciarQuickConvert(cot)}
+                                aria-label={`Formalizar en 1-Clic cotización #${cot.consecutivo || cot.id} con depósito POS`}
+                                className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 dark:bg-amber-500 dark:hover:bg-amber-400 text-slate-950 font-bold text-[11px] inline-flex items-center gap-1 transition-all active:scale-[0.98] shadow-xs cursor-pointer"
+                                title="Formalización Express 1-Clic con cobro en caja"
+                              >
+                                <Zap className="w-3 h-3 fill-slate-950" />
+                                <span>1-Clic</span>
+                              </button>
+                            )}
+
+                            {/* Botón Convertir Detallado */}
                             {!esConvertida && (
                               <button
                                 type="button"
                                 onClick={() => handleIniciarConversion(cot)}
                                 aria-label={`Formalizar cotización #${cot.consecutivo || cot.id} a contrato de alquiler`}
-                                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-semibold text-[11px] inline-flex items-center gap-1 transition-all active:scale-[0.98] shadow-xs cursor-pointer"
+                                className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-[11px] inline-flex items-center gap-1 transition-all active:scale-[0.98] cursor-pointer"
+                                title="Conversión detallada con subcontratación"
                               >
-                                <span>Convertir</span>
+                                <span>Detalles</span>
                                 <ArrowRight className="w-3 h-3" />
                               </button>
                             )}
@@ -447,15 +492,26 @@ export function CotizacionesInteractiveIsland({
                       </button>
 
                       {!esConvertida ? (
-                        <button
-                          type="button"
-                          onClick={() => handleIniciarConversion(cot)}
-                          aria-label={`Formalizar cotización #${cot.consecutivo || cot.id} a contrato de alquiler`}
-                          className="py-2.5 px-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs active:scale-[0.98] transition-all min-h-[44px] cursor-pointer"
-                        >
-                          <span>Convertir</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleIniciarQuickConvert(cot)}
+                            aria-label={`Formalizar en 1-Clic cotización #${cot.consecutivo || cot.id} con depósito POS`}
+                            className="flex-1 py-2.5 px-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-1 shadow-xs active:scale-[0.98] transition-all min-h-[44px] cursor-pointer"
+                          >
+                            <Zap className="w-3.5 h-3.5 fill-slate-950" />
+                            <span>1-Clic</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleIniciarConversion(cot)}
+                            aria-label={`Formalizar cotización #${cot.consecutivo || cot.id} a contrato de alquiler`}
+                            className="py-2.5 px-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs flex items-center justify-center active:scale-[0.98] transition-all min-h-[44px] cursor-pointer"
+                            title="Detalles"
+                          >
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       ) : (
                         <div className="py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 text-xs text-center font-medium">
                           Formalizada ✓
@@ -487,6 +543,15 @@ export function CotizacionesInteractiveIsland({
           onClose={() => setIsConvertirOpen(false)}
           cotizacion={cotizacionParaConvertir}
           onSuccess={handleConversionExitosa}
+        />
+      )}
+
+      {isQuickConvertOpen && quickCotizacion && (
+        <QuickConvertModal
+          isOpen={isQuickConvertOpen}
+          onClose={() => setIsQuickConvertOpen(false)}
+          cotizacion={quickCotizacion}
+          onSuccess={handleQuickConvertExitoso}
         />
       )}
     </div>
