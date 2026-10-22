@@ -25,8 +25,8 @@
 - [x] **TASK-010-15 (UI Component)**: Construir `DevolucionPosChecklistView` con semáforo táctil por ítem (Verde: Bueno, Amarillo: Sucio, Naranja: Dañado, Rojo: Pérdida) y cálculo instantáneo de saldo a favor o en contra del cliente.
 - [x] **TASK-010-16 (TDD)**: Implementar `tests/unit/devolucion-pos-inspeccion.test.ts` validando cálculos de retención de garantía y movimientos de egreso/ingreso en caja.
 
-## Fase 5: QA Integral, Chrome DevTools y Certificación de Producción [ ]
+## Fase 5: QA Integral, Chrome DevTools y Certificación de Producción [x]
 - [x] **TASK-010-17 (QA Laptop & Móvil)**: Inspección visual y operativa en vivo con Chrome DevTools MCP en resoluciones 1366x768 (mostrador) y 375px (móvil bodega) garantizando 0 errores y 0 desbordamientos.
 - [x] **TASK-010-18 (TypeScript & E2E)**: Ejecutar `npx tsc --noEmit` y suite global de Vitest asegurando 100% de tests aprobados (29/29 tests aprobados en 84ms, 0 errores TS).
 - [x] **TASK-010-19 (Gobernanza & Memoria)**: Actualizar Hindsight MCP y `MEMORY.md` respetando el límite $\le 50$ líneas.
-- [ ] **TASK-010-20 (Despliegue)**: Commit formal y push a producción en Vercel y Supabase previa confirmación del usuario.
+- [x] **TASK-010-20 (Despliegue)**: Commit formal y push a producción en Vercel y Supabase previa confirmación del usuario.
