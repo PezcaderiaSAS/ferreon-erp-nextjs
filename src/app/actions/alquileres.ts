@@ -235,6 +235,90 @@ export const CrearAlquilerRapidoPosZodSchema = z.object({
   path: ['clienteId'],
 });
 
+export interface ItemAdendaInput {
+  equipoId: string | number;
+  nombreItem?: string;
+  cantidad: number;
+  tarifaAplicada: number;
+  diasCobro: number;
+  subtotalLinea?: number;
+  fechaInicio?: string;
+  fechaFinEstimada?: string;
+  esSubcontratado?: boolean | null;
+}
+
+export interface GenerarAdendaContratoInput {
+  alquilerId: string | number;
+  motivo?: 'PRORROGA' | 'ADICION_EQUIPOS' | 'RETIRO_EQUIPOS' | 'AJUSTE_TARIFA' | 'MODIFICACION_MIXTA' | string;
+  diasAdicionales?: number;
+  montoDepositoAdicional?: number;
+  metodoPago?: 'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'NEQUI' | 'DAVIPLATA' | string;
+  observaciones?: string;
+  items: ItemAdendaInput[];
+}
+
+export const ItemAdendaSchema = z.object({
+  equipoId: z.union([z.string(), z.number()]).transform((val) => Number(val)),
+  nombreItem: z.string().optional(),
+  cantidad: z.coerce.number().int().positive('La cantidad debe ser mayor a 0'),
+  tarifaAplicada: z.coerce.number().min(0, 'La tarifa no puede ser negativa'),
+  diasCobro: z.coerce.number().int().positive('Los días deben ser al menos 1'),
+  subtotalLinea: z.coerce.number().min(0).optional(),
+  fechaInicio: z.string().optional().nullable(),
+  fechaFinEstimada: z.string().optional().nullable(),
+  esSubcontratado: z.boolean().nullable().optional().default(false),
+});
+
+export const GenerarAdendaContratoZodSchema = z.object({
+  alquilerId: z.union([z.string(), z.number()]).transform((val) => Number(val)),
+  motivo: z.string().min(2).default('MODIFICACION_MIXTA'),
+  diasAdicionales: z.coerce.number().int().min(0).default(0),
+  montoDepositoAdicional: z.coerce.number().min(0).default(0),
+  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA']).default('EFECTIVO'),
+  observaciones: z.string().optional().nullable().default(''),
+  items: z.array(ItemAdendaSchema).min(1, 'La adenda debe incluir al menos una línea de equipo'),
+});
+
+export interface ItemDevolucionPosInput {
+  detalleId: string | number;
+  cantidadDevuelta: number;
+  semaforo?: 'VERDE_BUENO' | 'AMARILLO_SUCIO' | 'NARANJA_DANADO' | 'ROJO_PERDIDA' | string;
+  costoLimpieza?: number;
+  costoReparacion?: number;
+  valorReposicion?: number;
+  descripcionDano?: string;
+  desgloseAverias?: any[];
+}
+
+export interface ProcesarDevolucionPosInput {
+  alquilerId: string | number;
+  metodoPago?: 'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'NEQUI' | 'DAVIPLATA' | string;
+  sesionCajaId?: string | null;
+  observaciones?: string;
+  items: ItemDevolucionPosInput[];
+}
+
+export const ItemDevolucionPosZodSchema = z.object({
+  detalleId: z.union([z.string(), z.number()]).transform((val) => Number(val)),
+  cantidadDevuelta: z.coerce.number().int().positive('La cantidad a devolver debe ser mayor a 0'),
+  semaforo: z.enum(['VERDE_BUENO', 'AMARILLO_SUCIO', 'NARANJA_DANADO', 'ROJO_PERDIDA']).default('VERDE_BUENO'),
+  costoLimpieza: z.coerce.number().min(0).default(0),
+  costoReparacion: z.coerce.number().min(0).default(0),
+  valorReposicion: z.coerce.number().min(0).default(0),
+  descripcionDano: z.string().optional().nullable().default(''),
+  desgloseAverias: z.array(z.any()).optional().default([]),
+});
+
+export const ProcesarDevolucionPosZodSchema = z.object({
+  alquilerId: z.union([z.string(), z.number()]).transform((val) => Number(val)),
+  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'NEQUI', 'DAVIPLATA']).default('EFECTIVO'),
+  sesionCajaId: z.string().uuid().optional().nullable(),
+  observaciones: z.string().optional().nullable().default('Inspección de Devolución POS'),
+  items: z.array(ItemDevolucionPosZodSchema).min(1, 'Debe incluir al menos un equipo para procesar devolución'),
+});
+
+
+
 // ----------------------------------------------------------------------------
 // Controladores Server Actions Delgados
 // ----------------------------------------------------------------------------
@@ -809,3 +893,221 @@ export async function crearAlquilerRapidoPosAction(
     data: resultData,
   };
 }
+
+/**
+ * Server Action: Generar Adenda y Modificación In-Place de Contrato (v1.0 -> v1.1)
+ * Tarea: TASK-010-10 (SPEC-010)
+ * Invoca la RPC transaccional alquiler_generar_adenda_transaccional_v1 con bloqueo FOR UPDATE,
+ * reversión y re-reserva pesimista de stock, snapshot inmutable de datos_previos y datos_nuevos,
+ * y registro de depósito adicional en caja si aplica.
+ */
+export async function generarAdendaContratoAction(
+  input: GenerarAdendaContratoInput
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  const validation = validateActionInput(input, GenerarAdendaContratoZodSchema);
+  if (!validation.success) {
+    return { success: false, error: validation.error || 'Datos de adenda inválidos' };
+  }
+  const cleanInput = validation.data;
+
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const userIdentifier = user?.email || user?.id || 'OPERADOR_POS';
+  const empresaId = await resolveEmpresaId(user?.id);
+
+  const payload = {
+    empresa_id: empresaId,
+    usuario_id: user?.id || null,
+    alquiler_id: cleanInput.alquilerId,
+    motivo: cleanInput.motivo,
+    dias_adicionales: cleanInput.diasAdicionales,
+    monto_deposito_adicional: Math.round(Number(cleanInput.montoDepositoAdicional || 0)),
+    metodo_pago: cleanInput.metodoPago,
+    observaciones: cleanInput.observaciones || '',
+    creado_por: userIdentifier,
+    items: cleanInput.items.map((it) => {
+      const subtotalLinea = it.subtotalLinea !== undefined && it.subtotalLinea !== null
+        ? Math.round(Number(it.subtotalLinea))
+        : Math.round(Number(it.cantidad) * Number(it.tarifaAplicada) * Number(it.diasCobro || 1));
+
+      return {
+        equipo_id: it.equipoId,
+        cantidad: it.cantidad,
+        tarifa_aplicada: it.tarifaAplicada,
+        dias_contratados: it.diasCobro,
+        subtotal_linea: subtotalLinea,
+        fecha_inicio: it.fechaInicio || null,
+        fecha_fin: it.fechaFinEstimada || null,
+        es_subcontratado: Boolean(it.esSubcontratado),
+      };
+    }),
+  };
+
+  // 1. Invocar RPC Transaccional
+  const rpcResponse = await supabase.rpc('alquiler_generar_adenda_transaccional_v1', {
+    p_payload: payload,
+  });
+
+  if (rpcResponse.error) {
+    const errMsg = rpcResponse.error.message || 'Error al generar adenda versionada';
+    return { success: false, error: errMsg };
+  }
+
+  const resultData = rpcResponse.data;
+
+  // 2. Registrar Auditoría Inmutable
+  AuditLogger.logAsync({
+    modulo: 'ALQUILERES',
+    accion: 'GENERAR_ADENDA_ALQUILER',
+    descripcion: `Adenda ${resultData?.numero_version || 'versionada'} formalizada para contrato #${resultData?.consecutivo || cleanInput.alquilerId}. Motivo: ${cleanInput.motivo}.`,
+    entidadId: String(cleanInput.alquilerId),
+    detalles: {
+      alquilerId: cleanInput.alquilerId,
+      consecutivo: resultData?.consecutivo,
+      numeroVersion: resultData?.numero_version,
+      adendaId: resultData?.adenda_id,
+      motivo: cleanInput.motivo,
+      montoAdicional: resultData?.monto_adicional,
+      nuevoTotal: resultData?.nuevo_total,
+      movimientoCajaId: resultData?.movimiento_caja_id,
+    },
+    userId: user?.id,
+    userEmail: user?.email,
+  });
+
+  // 3. Invalidar Caché Redis
+  try {
+    await invalidateTenantCache(empresaId, ['alquileres', 'equipos', 'caja']);
+  } catch (cErr) {
+    console.warn('[generarAdendaContratoAction] Error invalidando caché Redis:', cErr);
+  }
+
+  // 4. Revalidación segura de rutas Next.js
+  safeRevalidatePath('/alquileres');
+  safeRevalidatePath(`/alquileres/${cleanInput.alquilerId}`);
+  safeRevalidatePath('/inventario');
+  safeRevalidatePath('/caja');
+
+  return {
+    success: true,
+    data: resultData,
+  };
+}
+
+/**
+ * Server Action: Devolución POS con Checklist de Averías & Liquidación de Garantía
+ * Tarea: TASK-010-14 (SPEC-010)
+ * Procesa inspección semafórica táctil, cruza cargos de averías contra el depósito en garantía,
+ * y genera automáticamente el movimiento correspondiente en caja (EGRESO por reembolso o INGRESO por cobro).
+ */
+export async function procesarDevolucionPosAction(
+  input: ProcesarDevolucionPosInput
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  const validation = validateActionInput(input, ProcesarDevolucionPosZodSchema);
+  if (!validation.success) {
+    return { success: false, error: validation.error || 'Datos de devolución POS inválidos' };
+  }
+  const cleanInput = validation.data;
+
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const userIdentifier = user?.email || user?.id || 'OPERADOR_POS';
+  const empresaId = await resolveEmpresaId(user?.id);
+
+  const payload = {
+    empresa_id: empresaId,
+    usuario_id: user?.id || null,
+    alquiler_id: cleanInput.alquilerId,
+    metodo_pago: cleanInput.metodoPago,
+    sesion_caja_id: cleanInput.sesionCajaId || null,
+    observaciones: cleanInput.observaciones || 'Inspección de Devolución POS',
+    recibido_por: userIdentifier,
+    items: cleanInput.items.map((it) => ({
+      detalle_id: it.detalleId,
+      cantidad_devuelta: it.cantidadDevuelta,
+      semaforo: it.semaforo,
+      costo_limpieza: Math.round(Number(it.costoLimpieza || 0)),
+      costo_reparacion: Math.round(Number(it.costoReparacion || 0)),
+      valor_reposicion: Math.round(Number(it.valorReposicion || 0)),
+      descripcion_dano: it.descripcionDano || '',
+      desglose_averias: it.desgloseAverias || [],
+    })),
+  };
+
+  const rpcResponse = await supabase.rpc('devolucion_pos_inspeccion_rapida_v1', {
+    p_payload: payload,
+  });
+
+  if (rpcResponse.error) {
+    const errMsg = rpcResponse.error.message || 'Error al procesar devolución POS';
+    return { success: false, error: errMsg };
+  }
+
+  const resultData = rpcResponse.data;
+
+  // Auditoría Inmutable
+  AuditLogger.logAsync({
+    modulo: 'DEVOLUCIONES',
+    accion: 'PROCESAR_DEVOLUCION_AVANZADA',
+    descripcion: `Devolución POS ${resultData?.consecutivo} formalizada para contrato #${cleanInput.alquilerId}. Resolución: ${resultData?.tipo_resolucion}.`,
+    entidadId: String(cleanInput.alquilerId),
+    detalles: {
+      alquilerId: cleanInput.alquilerId,
+      consecutivo: resultData?.consecutivo,
+      tipoResolucion: resultData?.tipo_resolucion,
+      saldoNeto: resultData?.saldo_neto,
+      totalDanos: resultData?.total_danos,
+      totalReposiciones: resultData?.total_reposiciones,
+      movimientoCajaId: resultData?.movimiento_caja_id,
+      contratoCerrado: resultData?.contrato_cerrado,
+    },
+    userId: user?.id,
+    userEmail: user?.email,
+  });
+
+  // Invalidación de Caché
+  try {
+    await invalidateTenantCache(empresaId, ['alquileres', 'equipos', 'caja']);
+  } catch (cErr) {
+    console.warn('[procesarDevolucionPosAction] Error invalidando caché Redis:', cErr);
+  }
+
+  safeRevalidatePath('/alquileres');
+  safeRevalidatePath(`/alquileres/${cleanInput.alquilerId}`);
+  safeRevalidatePath('/bodega');
+  safeRevalidatePath('/inventario');
+  safeRevalidatePath('/caja');
+
+  return {
+    success: true,
+    data: resultData,
+  };
+}
+
+/**
+ * Server Action: Obtener Catálogo de Averías y Tarifas Estándar por Tenant
+ */
+export async function obtenerCatalogoAveriasAction(): Promise<{ success: boolean; data?: any[]; error?: string }> {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const empresaId = await resolveEmpresaId(user?.id);
+
+    const { data, error } = await supabase
+      .from('catalogo_averias_equipos')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .eq('activo', true)
+      .order('categoria', { ascending: true });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data || [] };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+

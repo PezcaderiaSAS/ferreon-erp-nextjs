@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   Plus, Search, MoreVertical, FileSpreadsheet, FileText,
   Printer, CheckCircle, HardHat, History,
-  CheckCircle2, DollarSign, HelpCircle, ArrowLeftRight, Loader2, Zap
+  CheckCircle2, DollarSign, HelpCircle, ArrowLeftRight, Loader2, Zap, FileEdit
 } from "lucide-react";
 import dynamic from 'next/dynamic';
 
@@ -115,6 +115,16 @@ const MostradorPosModal = dynamic(
   { ssr: false }
 );
 
+const EditarContratoAdendaModal = dynamic(
+  () => import('@/components/alquileres/EditarContratoAdendaModal').then((m) => m.EditarContratoAdendaModal),
+  { ssr: false }
+);
+
+const DevolucionPosChecklistView = dynamic(
+  () => import('@/components/pos/DevolucionPosChecklistView').then((m) => m.DevolucionPosChecklistView),
+  { ssr: false }
+);
+
 import { CicloVidaAlquilerBanner } from '@/app/components/alquileres/CicloVidaAlquilerBanner';
 import { GuiaBotonesModal } from '@/app/components/alquileres/GuiaBotonesModal';
 
@@ -161,7 +171,10 @@ export function AlquileresInteractiveIsland({
   const [showAbonoModal, setShowAbonoModal] = useState<boolean>(false);
   const [showAprobarCotizacionModal, setShowAprobarCotizacionModal] = useState<boolean>(false);
   const [showHistorialPagosModal, setShowHistorialPagosModal] = useState<boolean>(false);
+  const [showAdendaModal, setShowAdendaModal] = useState<boolean>(false);
+  const [showDevolucionPosModal, setShowDevolucionPosModal] = useState<boolean>(false);
   const [contratoActivo, setContratoActivo] = useState<any | null>(null);
+  const [contratoParaAdenda, setContratoParaAdenda] = useState<any | null>(null);
   const [ticketReciente, setTicketReciente] = useState<any | null>(null);
 
   // Estados de datos
@@ -798,7 +811,8 @@ export function AlquileresInteractiveIsland({
       case 'ABONO': setShowAbonoModal(true); break;
       case 'PAGO': setShowPagoModal(true); break;
       case 'HISTORIAL_PAGOS': setShowHistorialPagosModal(true); break;
-      case 'DEVOLUCION': setShowDevolucionModal(true); break;
+      case 'DEVOLUCION': setShowDevolucionPosModal(true); break;
+      case 'INSPECCION_DETALLADA': setShowDevolucionModal(true); break;
       case 'HISTORIAL_DEVOLUCIONES': setShowHistorialDevolucionesModal(true); break;
       case 'PDF': handleGenerarPDF(contrato); break;
     }
@@ -1336,6 +1350,21 @@ export function AlquileresInteractiveIsland({
                           </button>
                         )}
 
+                        {alq.estado === 'ACTIVO' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setContratoParaAdenda(alq);
+                              setShowAdendaModal(true);
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                            title="Generar Adenda o Prórroga Versionada (v1.1)"
+                          >
+                            <FileEdit className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            <span className="hidden xl:inline">Adenda</span>
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => openAction(alq, 'PDF')}
@@ -1368,6 +1397,22 @@ export function AlquileresInteractiveIsland({
                             {puedeEditar && (
                               <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'EDITAR'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 text-left w-full cursor-pointer">Editar Contrato</button>
                             )}
+                            {alq.estado === 'ACTIVO' && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setContratoParaAdenda(alq);
+                                  setShowAdendaModal(true);
+                                  setActiveDropdown(null);
+                                }}
+                                className="px-4 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 text-left w-full cursor-pointer flex items-center justify-between"
+                              >
+                                <span>Adenda / Prórroga</span>
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-800 font-bold">v1.1</span>
+                              </button>
+                            )}
+                            <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'INSPECCION_DETALLADA'); }} className="px-4 py-2 text-xs font-semibold text-teal-700 hover:bg-teal-50 text-left w-full cursor-pointer">Inspección Técnica Avanzada</button>
                             <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'HISTORIAL_PAGOS'); }} className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full cursor-pointer">Historial Pagos</button>
                             <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'HISTORIAL_DEVOLUCIONES'); }} className="px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 text-left w-full border-b border-slate-100 cursor-pointer">Historial Devoluciones</button>
                             
@@ -1611,6 +1656,38 @@ export function AlquileresInteractiveIsland({
           );
         }}
       />
+
+      {/* Modal Adenda & Modificación Versionada (v1.0 -> v1.1) */}
+      {showAdendaModal && contratoParaAdenda && (
+        <EditarContratoAdendaModal
+          isOpen={showAdendaModal}
+          onClose={() => {
+            setShowAdendaModal(false);
+            setContratoParaAdenda(null);
+          }}
+          alquiler={contratoParaAdenda}
+          onSuccess={() => {
+            fetchAllData();
+          }}
+        />
+      )}
+
+      {/* Modal Devolución POS con Checklist de Averías & Semáforo */}
+      {showDevolucionPosModal && contratoActivo && (
+        <DevolucionPosChecklistView
+          isOpen={showDevolucionPosModal}
+          onClose={() => {
+            setShowDevolucionPosModal(false);
+            setContratoActivo(null);
+          }}
+          alquiler={contratoActivo}
+          onSuccess={() => {
+            fetchAllData();
+            setShowDevolucionPosModal(false);
+            setContratoActivo(null);
+          }}
+        />
+      )}
 
       {/* Tour Módulo Alquileres */}
       <AutoTourTrigger tourId="alquileres-core" delay={1000} forceMode={true} />
