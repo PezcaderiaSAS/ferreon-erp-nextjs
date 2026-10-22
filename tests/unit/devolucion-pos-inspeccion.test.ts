@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   procesarDevolucionPosAction,
-  ProcesarDevolucionPosZodSchema,
   ProcesarDevolucionPosInput,
 } from '../../src/app/actions/alquileres';
+import { ProcesarDevolucionPosZodSchema } from '@/core/domain/schemas/posSchemas';
 import { AuditLogger } from '@/lib/security/audit-logger';
 
 // Mock de resultado RPC

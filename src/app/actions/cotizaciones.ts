@@ -100,15 +100,7 @@ export interface ConvertirCotizacionPosResultado {
     mensaje?: string;
   };
 }
-
-export const ConvertirCotizacionPosZodSchema = z.object({
-  cotizacionId: z.union([z.string(), z.number()]).refine((val) => Boolean(val), 'ID de cotización requerido'),
-  montoDeposito: z.coerce.number().min(0, 'El depósito debe ser mayor o igual a 0').optional().default(0),
-  metodoPago: z.string().optional().default('EFECTIVO'),
-  nuevaFechaInicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato YYYY-MM-DD inválido').optional().nullable(),
-  detallesLogistica: z.string().optional().nullable(),
-  idempotencyKey: z.string().optional().nullable(),
-});
+import { ConvertirCotizacionPosZodSchema } from '@/core/domain/schemas/posSchemas';
 
 const CotizacionItemZodSchema = z.object({
   equipoId: z.union([z.string(), z.number()]),

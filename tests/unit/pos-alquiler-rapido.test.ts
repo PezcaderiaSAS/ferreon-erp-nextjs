@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   crearAlquilerRapidoPosAction,
-  CrearAlquilerRapidoPosZodSchema,
   CrearAlquilerRapidoPosInput,
 } from '../../src/app/actions/alquileres';
+import { CrearAlquilerRapidoPosZodSchema } from '@/core/domain/schemas/posSchemas';
 import { AuditLogger } from '@/lib/security/audit-logger';
 import * as redisModule from '../../src/lib/redis';
 

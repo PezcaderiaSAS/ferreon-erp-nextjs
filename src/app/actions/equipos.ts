@@ -45,14 +45,7 @@ export interface AjustarStockEquipoInput {
   tipoMovimiento?: string;
   idempotencyKey?: string;
 }
-
-export const AjustarStockEquipoZodSchema = z.object({
-  equipoId: z.union([z.string(), z.number()]),
-  delta: z.coerce.number().refine((val) => val !== 0, 'El ajuste de stock (delta) no puede ser cero.'),
-  motivo: z.string().min(1, 'El motivo del ajuste es obligatorio para auditoría y trazabilidad en Kardex.').default('Ajuste Manual'),
-  tipoMovimiento: z.string().default('AJUSTE_AUDITORIA'),
-  idempotencyKey: z.string().optional().nullable(),
-}).passthrough();
+import { AjustarStockEquipoZodSchema } from '@/core/domain/schemas/posSchemas';
 
 export async function crearEquipoAction(input: CrearEquipoInput) {
   const validation = validateActionInput(input, CrearEquipoZodSchema);

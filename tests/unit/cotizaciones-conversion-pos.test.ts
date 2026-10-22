@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   convertirCotizacionAContratoPosAction,
-  ConvertirCotizacionPosZodSchema,
   ConvertirCotizacionPosInput,
 } from '../../src/app/actions/cotizaciones';
+import { ConvertirCotizacionPosZodSchema } from '@/core/domain/schemas/posSchemas';
 import { AuditLogger } from '@/lib/security/audit-logger';
 
 // Mock de resultado RPC
