@@ -1,25 +1,28 @@
 # Memoria de Sesión Persistente — Alquileres System
 
 ## Estado actual
-- **SPEC-010 Desplegado en Producción (100% Completado)**:
-  - **Fase 1 (Mostrador POS <30s)**: RPC `alquiler_crear_pos_rapido_v1`, `MostradorPosModal` con escaneo de código/SKU (7/7 tests).
-  - **Fase 2 (Cotizaciones 1-Clic POS)**: RPC `cotizacion_convertir_pos_1clic`, `QuickConvertModal` con `Ctrl+Enter` (7/7 tests).
-  - **Fase 3 (Adendas Versionadas v1.0 -> v1.1)**: Tabla `alquiler_adendas`, RPC `alquiler_generar_adenda_transaccional_v1`, `EditarContratoAdendaModal` (7/7 tests).
-  - **Fase 4 (Devoluciones & Averías)**: Tabla `catalogo_averias_equipos`, RPC `devolucion_pos_inspeccion_rapida_v1`, `DevolucionPosChecklistView` con semáforo táctil y cruce de garantía (8/8 tests).
-  - **Fase 5 (QA & Despliegue)**: Inspección DevTools 1366x768 y 375px certificada, 29/29 tests unitarios aprobados, commit `e3ee4b5` y `git push origin main` exitoso.
-- **Framework harness2**: Inicializado localmente en Python 3.12 (`uv venv`), 5/5 tests pytest aprobados.
-- **Seguridad y Tipado**: 0 errores en `tsc --noEmit`, PostgreSQL RLS y auditoría inmutable en `AuditLogger`.
+- **SPEC-010 POS Desplegado en Producción (100% Completado)**:
+  - Fases 1 a 4: POS rápido, Cotizaciones 1-Clic, Adendas v1.0->v1.1, Devoluciones y Averías (29/29 tests Vitest). Desplegado en `main` (commit `8a58a7c`).
+- **SPEC-011 Auditoría 360° & Remediación de Datos / DBRE**:
+  - **Scorecard Global**: **94.5 / 100 (Grado Enterprise A)** en 4 frentes.
+  - **Data Engineering Review**: [`specs/011-auditoria-calidad-total/data-engineering-review.md`](file:///c:/Users/USUARIO/Documents/Aplicaciones/FerreOn/Alquileres_erp/specs/011-auditoria-calidad-total/data-engineering-review.md).
+  - **HAL-DB-01 (Resuelto)**: Migración `20261022_dbre_deadlock_prevention_and_indexes.sql` con pre-bloqueo `ORDER BY id ASC FOR UPDATE` e índices multi-tenant compuestos.
+  - **HAL-ARC-01 & 02 (Resueltos)**: Zod en `ajustarStockEquipoAction` y tipos estrictos `AlquilerDetalleItemUI` en `alquilerStore.ts` y `mappers.ts`.
+  - **Certificación**: 0 errores en `tsc --noEmit`, 29/29 tests POS vitest pasando, 5/5 pytest en Harness2.
 
 ## Decisiones (y por qué)
-- **Adendas In-Place con Snapshots JSONB**: Preserva el histórico contractual sin fragmentar el consecutivo del contrato padre.
-- **Semáforo Táctil de Recepción**: Permite liquidar devoluciones en < 1 minuto cruzando averías directamente contra el depósito en garantía y caja (reembolso o cobro).
-- **Bloqueo Pesimista en Equipos**: `SELECT ... FOR UPDATE` a nivel de fila asegura tolerancia cero a sobreventa concurrente.
+- **Deadlock Prevention Determinista**: Adquisición monótona ascendente (`ORDER BY id ASC FOR UPDATE`) en PostgreSQL eliminando interbloqueos `40P01` entre cajeros.
+- **Índices Compuestos Parciales**: `(empresa_id, created_at DESC) WHERE deleted_at IS NULL` para evitar ordenamientos costosos en memoria.
+- **Harness2 PlatformLock**: Secuencialización estricta (`k=1`, `max_tasks=1`) para evitar errores 429 de cuota con Google GenAI.
 
 ## Aprendizajes y errores a evitar
-- En `useToastStore`, usar `addToast({ title, message, type })` o los métodos tipados `showSuccessToast/showErrorToast`.
-- Proteger siempre aserciones de test con optional chaining (`response.data?.id`).
+- Siempre ordenar por PK ascendente antes de bloquear múltiples filas en transacciones PostgreSQL.
+- Mantener tipado estricto en stores Zustand y mappers de dominio evitando `any[]`.
 - Mantener siempre `MEMORY.md` en $\le 50$ líneas.
 
 ## Próximos pasos
-- Monitorear el despliegue automático en Vercel y verificar logs en producción.
-- Proceder con los siguientes requerimientos o módulos según prioridades del usuario.
+- Migración canónica `20261022221833_pos_core_suite_and_dbre_optimizations` registrada y activa en Supabase remoto.
+- Tipos TypeScript sincronizados en `database.types.ts` (0 errores tsc, 29/29 tests POS vitest).
+- Realizar commit y sincronización git en `main`.
+
+

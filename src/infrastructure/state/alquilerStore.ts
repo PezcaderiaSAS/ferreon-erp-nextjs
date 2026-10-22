@@ -1,5 +1,60 @@
 import { create, persist } from '../../lib/zustand';
 
+// Interfaces fuertemente tipadas para Alquileres System
+export interface AlquilerClienteRefUI {
+  id?: string | number;
+  nombre?: string;
+  nit_cedula?: string;
+  nit?: string;
+  telefono?: string;
+  direccion?: string;
+  email?: string;
+}
+
+export interface AlquilerDetalleItemUI {
+  id?: string | number;
+  itemId?: string;
+  equipoId?: string;
+  equipo_id?: string | number;
+  nombre?: string;
+  nombreItem?: string;
+  codigo?: string;
+  cantidad: number;
+  tarifaDiaria?: number;
+  tarifaAplicada?: number;
+  tarifa_aplicada?: number;
+  valor_unitario?: number;
+  dias?: number;
+  diasContratados?: number;
+  dias_contratados?: number;
+  fechaInicio?: string;
+  fechaFin?: string;
+  fechaFinEstimada?: string;
+  fecha_inicio?: string;
+  fecha_fin?: string;
+  subtotal?: number;
+  subtotalLineaEstimado?: number;
+  subtotal_linea?: number;
+  devuelto?: boolean;
+  cantidadDevuelta?: number;
+  cantidad_devuelta?: number;
+  costoDano?: number;
+  costo_dano?: number;
+  esSubcontratado?: boolean;
+  es_subcontratado?: boolean;
+  proveedorSubcontratadoId?: string;
+  proveedor_id?: string;
+  costoDiarioProveedor?: number;
+  costo_subcontratacion_diario?: number;
+  equipos?: {
+    id?: string | number;
+    nombre?: string;
+    codigo?: string;
+    sku?: string;
+    tarifa_diaria?: number;
+  };
+}
+
 // Compatibilidad con DB y Front
 export interface AlquilerUI {
   id: string | number;
@@ -11,7 +66,7 @@ export interface AlquilerUI {
   clienteTelefono?: string;
   clienteDireccion?: string;
   clienteEmail?: string;
-  clientes?: any;
+  clientes?: AlquilerClienteRefUI | Record<string, unknown>;
   tipo?: 'COTIZACION' | 'CONTRATO' | string;
   tipoDocumento?: 'COTIZACION' | 'CONTRATO';
   estado: string;
@@ -37,8 +92,8 @@ export interface AlquilerUI {
   observaciones?: string;
   detalles_logistica?: string;
   detallesLogistica?: string;
-  detalles: any[];
-  items?: any[];
+  detalles: AlquilerDetalleItemUI[];
+  items?: AlquilerDetalleItemUI[];
   fecha_inicio_contrato?: string;
   fecha_fin_estimada?: string;
   total_pagado?: number;

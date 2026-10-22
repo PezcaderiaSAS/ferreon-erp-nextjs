@@ -7,7 +7,7 @@
 
 import { Equipo } from '../core/domain/entities/equipo';
 import { Cliente } from '../core/domain/entities/cliente';
-import { AlquilerEntity } from '../core/domain/entities/alquiler';
+import { AlquilerEntity, ItemAlquilerDetalle } from '../core/domain/entities/alquiler';
 import { EquipoUI } from '../infrastructure/state/bodegaStore';
 import { ClienteUI } from '../infrastructure/state/clienteStore';
 import { AlquilerUI } from '../infrastructure/state/alquilerStore';
@@ -230,6 +230,20 @@ export function alquilerUIToAlquilerEntity(ui: AlquilerUI): AlquilerEntity {
   const garantiaMonto = ui.garantia_monto ?? ui.garantiaMonto ?? 0;
   const garantiaTipo = ui.garantia_tipo ?? ui.garantiaTipo ?? 'Efectivo';
 
+  const itemsDetalle: ItemAlquilerDetalle[] = (ui.detalles ?? ui.items ?? []).map((d) => ({
+    id: d.id ? String(d.id) : undefined,
+    itemId: String(d.itemId || d.equipoId || d.equipo_id || ''),
+    nombreItem: d.nombreItem || d.nombre,
+    cantidad: d.cantidad,
+    tarifaAplicada: d.tarifaAplicada ?? d.tarifa_aplicada ?? d.tarifaDiaria ?? 0,
+    fechaInicio: d.fechaInicio ? new Date(d.fechaInicio) : (d.fecha_inicio ? new Date(d.fecha_inicio) : new Date()),
+    fechaFinEstimada: d.fechaFinEstimada ? new Date(d.fechaFinEstimada) : (d.fechaFin ? new Date(d.fechaFin) : (d.fecha_fin ? new Date(d.fecha_fin) : new Date())),
+    subtotalLineaEstimado: d.subtotalLineaEstimado ?? d.subtotal_linea ?? d.subtotal ?? 0,
+    costoDano: d.costoDano ?? d.costo_dano ?? 0,
+    devuelto: d.devuelto ?? false,
+    cantidadDevuelta: d.cantidadDevuelta ?? d.cantidad_devuelta ?? 0,
+  }));
+
   return new AlquilerEntity(
     ui.id,
     ui.consecutivo,
@@ -248,7 +262,7 @@ export function alquilerUIToAlquilerEntity(ui: AlquilerUI): AlquilerEntity {
     ui.observaciones,
     ui.detalles_logistica,
     undefined,
-    ui.detalles ?? ui.items ?? [],
+    itemsDetalle,
     undefined, // totalReal
     undefined, // subtotalEquiposReal
     undefined, // subtotalGeneralReal

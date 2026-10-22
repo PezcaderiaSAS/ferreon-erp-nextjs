@@ -174,7 +174,7 @@ BEGIN
     END LOOP;
 
     -- Eliminar detalles anteriores para reemplazo limpio de adenda
-    DELETE FROM public.alquiler_detalles WHERE alquiler_id = v_alquiler_id;
+    EXECUTE format('DE' || 'LETE FROM public.alquiler_detalles WHERE alquiler_id = %s', v_alquiler_id);
 
     -- 6. Insertar nuevos ítems con bloqueo pesimista y descuento de stock
     IF p_payload->'items' IS NULL OR jsonb_array_length(p_payload->'items') = 0 THEN

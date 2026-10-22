@@ -38,6 +38,22 @@ const EditarEquipoZodSchema = z.object({
   idempotency_key: z.string().optional().nullable(),
 }).passthrough();
 
+export interface AjustarStockEquipoInput {
+  equipoId: string | number;
+  delta: number;
+  motivo?: string;
+  tipoMovimiento?: string;
+  idempotencyKey?: string;
+}
+
+export const AjustarStockEquipoZodSchema = z.object({
+  equipoId: z.union([z.string(), z.number()]),
+  delta: z.coerce.number().refine((val) => val !== 0, 'El ajuste de stock (delta) no puede ser cero.'),
+  motivo: z.string().min(1, 'El motivo del ajuste es obligatorio para auditoría y trazabilidad en Kardex.').default('Ajuste Manual'),
+  tipoMovimiento: z.string().default('AJUSTE_AUDITORIA'),
+  idempotencyKey: z.string().optional().nullable(),
+}).passthrough();
+
 export async function crearEquipoAction(input: CrearEquipoInput) {
   const validation = validateActionInput(input, CrearEquipoZodSchema);
   if (!validation.success) {
@@ -293,13 +309,29 @@ export async function editarEquipoAction(input: EditarEquipoInput) {
   return { success: true, data };
 }
 
-export async function ajustarStockEquipoAction(equipoId: string | number, delta: number, motivo: string = 'Ajuste Manual', tipoMovimiento: string = 'AJUSTE_AUDITORIA', idempotencyKey?: string) {
-  if (delta === 0) {
-    return { success: false, error: 'El ajuste de stock (delta) no puede ser cero.' };
+export async function ajustarStockEquipoAction(
+  arg1: AjustarStockEquipoInput | string | number,
+  delta?: number,
+  motivo: string = 'Ajuste Manual',
+  tipoMovimiento: string = 'AJUSTE_AUDITORIA',
+  idempotencyKey?: string
+) {
+  // Normalizar entrada sea por objeto tipado o argumentos posicionales
+  const rawInput: AjustarStockEquipoInput = typeof arg1 === 'object' && arg1 !== null
+    ? (arg1 as AjustarStockEquipoInput)
+    : {
+        equipoId: arg1 as (string | number),
+        delta: delta ?? 0,
+        motivo,
+        tipoMovimiento,
+        idempotencyKey,
+      };
+
+  const validation = validateActionInput(rawInput, AjustarStockEquipoZodSchema);
+  if (!validation.success) {
+    return { success: false, error: validation.error || 'Parámetros de ajuste de stock inválidos' };
   }
-  if (!motivo || !motivo.trim()) {
-    return { success: false, error: 'El motivo del ajuste es obligatorio para auditoría y trazabilidad en Kardex.' };
-  }
+  const cleanInput = validation.data;
 
   const supabaseAuth = await createServerSupabaseClient();
   const { data: { user } } = await supabaseAuth.auth.getUser();
@@ -309,20 +341,20 @@ export async function ajustarStockEquipoAction(equipoId: string | number, delta:
   const empresaId = await resolveEmpresaId(user.id);
 
   const supabaseAdmin = createAdminSupabaseClient();
-  const numericEquipoId = typeof equipoId === 'string' ? parseInt(equipoId, 10) : equipoId;
+  const numericEquipoId = typeof cleanInput.equipoId === 'string' ? parseInt(cleanInput.equipoId, 10) : cleanInput.equipoId;
 
   // 1. Validar Idempotencia Fuerte si existe la llave
-  if (idempotencyKey) {
+  if (cleanInput.idempotencyKey) {
     const { error: idempError } = await supabaseAdmin
       .from('idempotency_logs')
       .insert([{
-        idempotency_key: idempotencyKey,
+        idempotency_key: cleanInput.idempotencyKey,
         action_type: 'ajuste_stock'
       }]);
     
     // Si la llave ya existe (violación única), abortar silenciosamente
     if (idempError && idempError.code === '23505') {
-      console.log(`[Idempotency] Duplicado interceptado para llave: ${idempotencyKey}`);
+      console.log(`[Idempotency] Duplicado interceptado para llave: ${cleanInput.idempotencyKey}`);
       return { success: false, error: 'La acción de ajuste ya fue procesada anteriormente.' };
     }
   }
@@ -330,7 +362,7 @@ export async function ajustarStockEquipoAction(equipoId: string | number, delta:
   // 2. Ejecutar el RPC Atómico en Supabase
   const { data, error } = await supabaseAdmin.rpc('ajustar_stock_equipo', {
     p_equipo_id: numericEquipoId,
-    p_delta: delta
+    p_delta: cleanInput.delta
   });
 
   if (error) {
@@ -349,23 +381,18 @@ export async function ajustarStockEquipoAction(equipoId: string | number, delta:
       equipo_id: numericEquipoId,
       empresa_id: eqAct?.empresa_id || empresaId || null,
       tenant_id: eqAct?.empresa_id || empresaId || null,
-      tipo_movimiento: tipoMovimiento,
-      cantidad_delta: delta,
+      tipo_movimiento: cleanInput.tipoMovimiento,
+      cantidad_delta: cleanInput.delta,
       stock_resultante: eqAct?.stock_disponible || 0,
-      motivo: motivo,
+      motivo: cleanInput.motivo,
       usuario_id: user.id || empresaId || null
     }]);
   } catch (kardexErr) {
     console.error('Error insertando en Kardex (pero el stock fue ajustado):', kardexErr);
   }
 
-  if (redis) {
-    try {
-      await redis.del('cache:equipos');
-    } catch (e) {
-      console.warn('Error invalidando caché de equipos en Redis:', e);
-    }
-  }
+  // Invalidación de caché multi-tenant y redis
+  await invalidateTenantCache(empresaId, ['equipos', 'equipos_v2'], numericEquipoId);
 
   revalidatePath('/bodega');
   return { success: true, data };
