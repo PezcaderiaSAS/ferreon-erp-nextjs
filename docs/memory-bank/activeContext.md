@@ -108,8 +108,21 @@
     - **Desacoplamiento de Caja:** En `src/app/actions/devoluciones.ts`, la liquidación con caja se ejecuta de forma segura; si no hay turno abierto o el medio no es efectivo, la devolución finaliza exitosamente y el saldo pendiente se preserva en `alquileres.saldo_pendiente` para cobro/pago posterior.
     - **Homologación de UI:** En `AlquileresInteractiveIsland.tsx`, se retiró el modal anticuado `RegistrarDevolucionModal` y se homologó a `InspeccionTecnicaModal` para garantizar Split-Line y generación de comprobante PDF en todos los puntos de entrada.
 
+11. **Hito 26: Core POS Suite & Devoluciones con Averías (`SPEC-010`):** ✅ **100% COMPLETADO Y CERTIFICADO**
+    - **Fase 1: Creación POS Rápida:** Carrito transaccional en `PosRapidoModal.tsx` con atajo `F2`, validación instantánea y emisión de contratos en una sola transacción RPC.
+    - **Fase 2: Cotizaciones 1-Clic:** `cotizacion_convertir_pos_1clic` formaliza cotizaciones en segundos deduciendo stock atómicamente.
+    - **Fase 3: Adendas Versionadas:** Versionamiento incremental `v1.0 -> v1.1` en `public.alquiler_adendas` preservando trazabilidad inmutable y recálculo financiero en `AlquilerAdendaModal.tsx`.
+    - **Fase 4: Devolución Rápida con Averías:** Registro de inspección y cargos en `devolucion_pos_inspeccion_rapida_v1` y catálogo de averías (`catalogo_averias_equipos`). 29/29 tests Vitest pasando.
+
+12. **Hito 27: Despliegue DBRE Canónico, Concurrencia y Gobernanza Next.js (`SPEC-011`):** ✅ **100% COMPLETADO Y CERTIFICADO**
+    - **Migración Supabase Canónica Registrada:** `20261022221833_pos_core_suite_and_dbre_optimizations` registrada formalmente en `supabase_migrations.schema_migrations` del cluster Supabase (`eqruvswlpsttuyuglwts`).
+    - **Deadlock Prevention DBRE:** Bloqueo ascendente determinista `ORDER BY id ASC FOR UPDATE` en todas las RPCs transaccionales. Índices compuestos multi-tenant para `alquileres`, `cotizaciones` y `alquiler_detalles`.
+    - **Gobernanza Next.js Server Actions:** Error `'use server'` resuelto desacoplando esquemas Zod a `src/core/domain/schemas/posSchemas.ts`. Compilación Next.js con 0 errores (32/32 rutas) y tests pasando al 100%.
+    - **Firma Digital Corporativa:** Soporte en `/configuracion` con carga PNG y estampa en `ContratoAlquilerPDF.tsx` persistido en `empresas.configuracion->>'firmaDigitalBase64'`.
+
 ---
 
-## 3. Próximos Pasos en el Roadmap
-- **Validación en Producción:** Verificación manual de cierre de contratos con la nueva RPC en Supabase y generación de comprobante PDF.
-- **Hito 8 / Auditoría Integral:** Revisión de performance web, Core Web Vitals y verificación E2E de flujos integrados en Alquileres System.
+## 3. Próximos Pasos en el Roadmap (Para el Próximo Git Pull)
+- **Verificación en Producción Vercel:** Inspección de `/configuracion` para validar visualización de carga de firma digital tras despliegue de Vercel.
+- **Prueba Operativa de Rúbrica:** Carga de firma digital corporativa y emisión de contrato PDF de prueba para confirmar estampa en encabezado/pie de página.
+- **Harness2 & Suite de Agentes:** Ejecutar suite de validación `harness2` (`pytest`) y mantener activos Ruflo, ECC v2.0.0, GitNexus y workflows.

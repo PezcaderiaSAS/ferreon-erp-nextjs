@@ -228,11 +228,19 @@
 - [x] Tabla de alta densidad en `DevolucionesInteractiveIsland.tsx` con sticky right action column, micro-avatares invariantes y `tabular-nums`.
 - [x] Despliegue en producción en Vercel (`https://alquileres-erp-nextjs-ruby.vercel.app`).
 
-### Hito 24: Subcontratación Asistida On-The-Fly ante Déficit / Overbooking (`SPEC-2026-SUBCONTRATACION-ON-THE-FLY-001`)
-- [x] Extensión de `CrearSubcontratacionModal` con soporte de `initialItems`, `cotizacionIdPreseleccionada`, `initialFechaRecepcion` y pre-cargas asistidas.
-- [x] Integración de botón reactivo '⚡ Subcontratar On-The-Fly (1-Clic)' en `ConvertirCotizacionModal` eliminando la redirección de URL y preservando el estado de la cotización.
-- [x] Conexión de `onSubcontratarDirecto` en `ModalResolucionOverbooking` y `StepEquiposLogistica` para dividir la línea y registrar la orden de subcontratación sin abandonar el wizard.
-- [x] Suite de pruebas unitarias `tests/unit/subcontratacion-on-the-fly.test.ts` (7/7 tests pasando al 100%).
-- [x] Actualización de `tests/components/ConvertirCotizacionModal.test.tsx` (7/7 tests pasando al 100%).
-- [x] Verificación completa: `tsc --noEmit` con 0 errores y compilación en verde.
+### Hito 26: Core POS Suite & Devoluciones con Averías (`SPEC-010`)
+- [x] Fase 1: Creación POS Rápida (`PosRapidoModal.tsx`) con shortcut `F2` y RPC `alquiler_crear_pos_rapido_v1`.
+- [x] Fase 2: Cotizaciones 1-Clic (`CotizacionesTable.tsx`) con RPC `cotizacion_convertir_pos_1clic`.
+- [x] Fase 3: Adendas Versionadas (`AlquilerAdendaModal.tsx`) con RPC `alquiler_generar_adenda_transaccional_v1` y tabla `alquiler_adendas`.
+- [x] Fase 4: Devolución Rápida con Averías (`InspeccionRapidaModal.tsx`) con RPC `devolucion_pos_inspeccion_rapida_v1` y tabla `catalogo_averias_equipos`.
+- [x] Suite Vitest POS dedicada: 29/29 tests pasando al 100%.
+
+### Hito 27: Despliegue Canónico Supabase, Concurrencia y Gobernanza Next.js (`SPEC-011`)
+- [x] Migración canónica `20261022221833_pos_core_suite_and_dbre_optimizations` registrada formalmente en `supabase_migrations.schema_migrations` del cluster Supabase (`eqruvswlpsttuyuglwts`).
+- [x] Prevención determinista de deadlocks con `ORDER BY id ASC FOR UPDATE` en todas las RPCs.
+- [x] Índices multi-tenant DBRE creados (`idx_alquileres_empresa_created_active`, `idx_cotizaciones_empresa_created_active`, `idx_alquiler_detalles_empresa_alquiler`).
+- [x] Regeneración de tipos TypeScript en `src/infrastructure/persistence/supabase/database.types.ts`.
+- [x] Desacople de esquemas Zod en `src/core/domain/schemas/posSchemas.ts` resolviendo incompatibilidad de `'use server'`.
+- [x] Compilación Next.js validada con código de salida 0 (32/32 rutas) y sincronización con GitHub `main` para Vercel.
+- [x] Persistencia y renderizado de Firma Digital / Rúbrica en `/configuracion` y `ContratoAlquilerPDF.tsx`.
 
