@@ -130,6 +130,7 @@ export default function ConfiguracionPage() {
   const { config, actualizarConfig } = useEmpresaStore();
   const { setTourOpen } = useLayoutStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const firmaInputRef = useRef<HTMLInputElement>(null);
   
   const [activeTab, setActiveTab] = useState<'empresa' | 'usuarios' | 'auditoria'>('empresa');
   const [formData, setFormData] = useState(config);
@@ -242,6 +243,41 @@ export default function ConfiguracionPage() {
   const handleRemoveLogo = () => {
     setFormData(prev => ({ ...prev, logoBase64: '' }));
     if (fileInputRef.current) fileInputRef.current.value = "";
+    setIsSaved(false);
+    setErrorMessage(null);
+  };
+
+  const handleFirmaFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert("Por favor seleccione un archivo de imagen válido (PNG, JPG, WEBP).");
+      if (firmaInputRef.current) firmaInputRef.current.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("La imagen de firma es demasiado pesada. El límite máximo es 5MB.");
+      if (firmaInputRef.current) firmaInputRef.current.value = "";
+      return;
+    }
+
+    try {
+      // Dimensiones máximas ideales para una rúbrica en el PDF (160x60 px)
+      const compressedBase64 = await resizeImageToBase64(file, 320, 100);
+      setFormData(prev => ({ ...prev, firmaDigitalBase64: compressedBase64 }));
+      setIsSaved(false);
+      setErrorMessage(null);
+    } catch (err) {
+      console.error("Error al procesar la imagen de firma:", err);
+      alert("Ocurrió un error al procesar la imagen de firma.");
+    }
+  };
+
+  const handleRemoveFirma = () => {
+    setFormData(prev => ({ ...prev, firmaDigitalBase64: '' }));
+    if (firmaInputRef.current) firmaInputRef.current.value = "";
     setIsSaved(false);
     setErrorMessage(null);
   };
@@ -361,6 +397,54 @@ export default function ConfiguracionPage() {
                 <Link href="/dmca" target="_blank" className="text-orange-600 underline font-semibold hover:text-orange-700">
                   Política de Retiro DMCA (17 U.S.C. § 512)
                 </Link>.
+              </p>
+            </div>
+          </div>
+
+          {/* Firma / Rúbrica del Emisor */}
+          <div className="flex flex-col md:flex-row gap-6 items-start border-b border-slate-100 pb-6">
+            <div className="flex flex-col gap-2 w-full md:w-1/3">
+              <label className="text-sm font-semibold text-slate-800">Firma / Rúbrica del Emisor</label>
+              <p className="text-xs text-slate-500">Se estampará en las cuentas de cobro y contratos generados en PDF. (Recomendado: PNG con fondo transparente)</p>
+            </div>
+            <div className="flex-1 flex flex-col items-start gap-4">
+              <div className="w-48 h-24 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden">
+                {formData.firmaDigitalBase64 ? (
+                  <img src={formData.firmaDigitalBase64} alt="Firma" className="w-full h-full object-contain p-2" />
+                ) : (
+                  <span className="text-slate-400 text-sm font-medium">Sin Firma</span>
+                )}
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                ref={firmaInputRef}
+                onChange={handleFirmaFileChange}
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => firmaInputRef.current?.click()}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
+                >
+                  <Upload className="w-4 h-4 text-slate-500" />
+                  {formData.firmaDigitalBase64 ? 'Cambiar Firma' : 'Subir Firma'}
+                </button>
+                {formData.firmaDigitalBase64 && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveFirma}
+                    className="px-3 py-2 bg-rose-50 text-rose-600 rounded-lg text-sm font-medium hover:bg-rose-100 transition-colors flex items-center gap-1.5"
+                    title="Quitar firma"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Quitar
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 max-w-sm leading-normal">
+                La firma registrada se aplicará automáticamente al emitir documentos. Asegúrese de contar con la autorización del firmante para digitalizarla.
               </p>
             </div>
           </div>

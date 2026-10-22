@@ -20,6 +20,8 @@ export interface EmpresaConfig {
   ciudad: string;
   moneda: MonedaConfig;
   logoBase64?: string;
+  /** Imagen de la firma o rúbrica del emisor (Data URI Base64) usada en cuentas de cobro y contratos */
+  firmaDigitalBase64?: string;
   notasFacturaPDF?: string;
   cuentaBancariaInfo?: string;
   diasMinimosAlquiler?: number;
@@ -79,6 +81,7 @@ export const DEFAULT_EMPRESA_CONFIG: EmpresaConfig = {
     simbolo: "$"
   },
   logoBase64: "",
+  firmaDigitalBase64: "",
   notasFacturaPDF: "Horario de corte de facturación: 5:00 PM (hora de Bogotá). Los equipos deben ser devueltos limpios y en las mismas condiciones técnicas de entrega.",
   cuentaBancariaInfo: "Pagos y Transferencias: Cuenta de Ahorros Bancolombia No. 123-456789-01 a nombre de ALQUILERES SYSTEM (NIT 900.854.123-9) o Nequi/Daviplata al 3109876543.",
   diasMinimosAlquiler: 1,

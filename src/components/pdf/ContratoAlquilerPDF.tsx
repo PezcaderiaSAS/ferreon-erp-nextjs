@@ -277,6 +277,12 @@ const getStyles = (pageSize: 'LETTER' | 'A5', tokens: ThemeTokens) => {
       color: colors.textMuted,
       marginTop: 1,
     },
+    sigImage: {
+      height: isA5 ? 22 : 28,
+      maxWidth: isA5 ? 90 : 110,
+      objectFit: 'contain',
+      marginBottom: 4,
+    },
     footer: {
       position: 'absolute',
       bottom: isA5 ? 10 : 16,
@@ -461,6 +467,14 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
     typeof config.logoBase64 === 'string' && 
     config.logoBase64.startsWith('data:image/') && 
     config.logoBase64.length > 50
+  );
+
+  // Guarda defensiva para la firma del emisor (mismo patrón que logo)
+  const tieneFirmaValida = Boolean(
+    config?.firmaDigitalBase64 &&
+    typeof config.firmaDigitalBase64 === 'string' &&
+    config.firmaDigitalBase64.startsWith('data:image/') &&
+    config.firmaDigitalBase64.length > 50
   );
 
   const formatearCOP = (valor: number) => {
@@ -684,6 +698,10 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
             <Text style={styles.sigSub}>C.C. / NIT: {clienteNit}</Text>
           </View>
           <View style={styles.sigBox}>
+            {tieneFirmaValida && (
+              /* eslint-disable-next-line jsx-a11y/alt-text */
+              <Image src={config!.firmaDigitalBase64!} style={styles.sigImage} />
+            )}
             <Text style={styles.sigLabel}>Acreedor / Emisor</Text>
             <Text style={styles.sigSub}>{config?.razonSocial || 'Alquileres System'}</Text>
             <Text style={styles.sigSub}>Firma Autorizada y Sello</Text>

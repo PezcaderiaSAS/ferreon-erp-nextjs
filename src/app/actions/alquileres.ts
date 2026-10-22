@@ -103,6 +103,38 @@ export interface UpdateRentalClientInput {
   idempotencyKey?: string;
 }
 
+export interface ClienteNuevoPosInput {
+  nit_cedula?: string;
+  nombre: string;
+  telefono?: string;
+  email?: string;
+  direccion?: string;
+}
+
+export interface ItemPosInput {
+  equipoId: string | number;
+  cantidad: number;
+  tarifaAplicada: number;
+  diasCobro?: number;
+  subtotalLinea?: number;
+  fechaInicio?: string;
+  fechaFinEstimada?: string;
+}
+
+export interface CrearAlquilerRapidoPosInput {
+  clienteId?: string | number | null;
+  clienteNuevo?: ClienteNuevoPosInput | null;
+  items: ItemPosInput[];
+  deposito?: number;
+  fleteEntrega?: number;
+  fleteRecogida?: number;
+  garantiaMonto?: number;
+  garantiaTipo?: string;
+  observaciones?: string;
+  detallesLogistica?: string;
+  idempotencyKey?: string;
+}
+
 // ----------------------------------------------------------------------------
 // Esquemas de Validación Zod
 // ----------------------------------------------------------------------------
@@ -167,6 +199,41 @@ const UpdateRentalClientZodSchema = z.object({
   clienteId: z.union([z.string(), z.number()]),
   idempotencyKey: z.string().optional().nullable(),
 }).passthrough();
+
+const ClienteNuevoPosZodSchema = z.object({
+  nit_cedula: z.string().optional().nullable(),
+  nombre: z.string().min(2, 'El nombre del cliente debe tener al menos 2 caracteres'),
+  telefono: z.string().optional().nullable(),
+  email: z.string().email('Email inválido').optional().nullable().or(z.literal('')),
+  direccion: z.string().optional().nullable(),
+});
+
+const ItemPosZodSchema = z.object({
+  equipoId: z.union([z.string(), z.number()]),
+  cantidad: z.coerce.number().int().min(1, 'La cantidad debe ser al menos 1'),
+  tarifaAplicada: z.coerce.number().min(0, 'La tarifa debe ser mayor o igual a cero'),
+  diasCobro: z.coerce.number().int().min(1).default(1),
+  subtotalLinea: z.coerce.number().min(0).optional(),
+  fechaInicio: z.string().optional().nullable(),
+  fechaFinEstimada: z.string().optional().nullable(),
+});
+
+export const CrearAlquilerRapidoPosZodSchema = z.object({
+  clienteId: z.union([z.string(), z.number()]).optional().nullable(),
+  clienteNuevo: ClienteNuevoPosZodSchema.optional().nullable(),
+  items: z.array(ItemPosZodSchema).min(1, 'Debe incluir al menos un equipo en el alquiler POS'),
+  deposito: z.coerce.number().min(0).default(0),
+  fleteEntrega: z.coerce.number().min(0).default(0),
+  fleteRecogida: z.coerce.number().min(0).default(0),
+  garantiaMonto: z.coerce.number().min(0).default(0),
+  garantiaTipo: z.string().default('Efectivo'),
+  observaciones: z.string().optional().nullable(),
+  detallesLogistica: z.string().optional().nullable(),
+  idempotencyKey: z.string().optional().nullable(),
+}).refine((data) => data.clienteId || data.clienteNuevo, {
+  message: 'Debe especificar un cliente existente o los datos del cliente nuevo',
+  path: ['clienteId'],
+});
 
 // ----------------------------------------------------------------------------
 // Controladores Server Actions Delgados
@@ -586,4 +653,159 @@ export async function updateRentalClientAction(input: UpdateRentalClientInput) {
   safeRevalidatePath(`/alquileres/${numericAlquilerId}`);
   
   return { success: true };
+}
+
+/**
+ * Server Action: Despacho Rápido en Modo Mostrador POS (<30 segundos)
+ * Tarea: TASK-010-02 (SPEC-010)
+ * Ejecuta validación Zod ultra-rápida, resolución atómica de cliente On-The-Fly,
+ * reserva pesimista de stock y registro del depósito en caja.
+ */
+export async function crearAlquilerRapidoPosAction(
+  input: CrearAlquilerRapidoPosInput
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  const validation = validateActionInput(input, CrearAlquilerRapidoPosZodSchema);
+  if (!validation.success) {
+    return { success: false, error: validation.error || 'Datos de despacho POS inválidos' };
+  }
+  const cleanInput = validation.data;
+
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const userIdentifier = user?.email || user?.id || 'OPERADOR_POS';
+  const empresaId = await resolveEmpresaId(user?.id);
+
+  // Calcular subtotales con precisión matemática en enteros COP
+  const subtotalEquipos = cleanInput.items.reduce((acc, it) => {
+    const sub = it.subtotalLinea !== undefined && it.subtotalLinea !== null
+      ? Math.round(Number(it.subtotalLinea))
+      : Math.round(Number(it.cantidad) * Number(it.tarifaAplicada) * Number(it.diasCobro || 1));
+    return acc + sub;
+  }, 0);
+
+  const fleteEntrega = Math.round(Number(cleanInput.fleteEntrega || 0));
+  const fleteRecogida = Math.round(Number(cleanInput.fleteRecogida || 0));
+  const subtotalGeneral = subtotalEquipos + fleteEntrega + fleteRecogida;
+  const total = subtotalGeneral;
+  const deposito = Math.round(Number(cleanInput.deposito || 0));
+  const garantiaMonto = Math.round(Number(cleanInput.garantiaMonto || 0));
+
+  const payload = {
+    empresa_id: empresaId,
+    usuario_id: user?.id || null,
+    idempotency_key: cleanInput.idempotencyKey || null,
+    cliente_id: cleanInput.clienteId ? Number(cleanInput.clienteId) : null,
+    cliente_nuevo: cleanInput.clienteNuevo || null,
+    subtotal_equipos: subtotalEquipos,
+    flete_entrega: fleteEntrega,
+    flete_recogida: fleteRecogida,
+    subtotal_general: subtotalGeneral,
+    total: total,
+    deposito: deposito,
+    garantia_monto: garantiaMonto,
+    garantia_tipo: cleanInput.garantiaTipo || 'Efectivo',
+    observaciones: cleanInput.observaciones || 'Despacho Rápido Mostrador POS (<30s)',
+    detalles_logistica: cleanInput.detallesLogistica || 'Entrega Inmediata en Mostrador',
+    creado_por: userIdentifier,
+    items: cleanInput.items.map((it) => {
+      const cant = Math.max(1, Number(it.cantidad || 1));
+      const tarifa = Math.max(0, Number(it.tarifaAplicada || 0));
+      const dias = Math.max(1, Number(it.diasCobro || 1));
+      const subtotal = it.subtotalLinea !== undefined && it.subtotalLinea !== null
+        ? Math.round(Number(it.subtotalLinea))
+        : Math.round(cant * tarifa * dias);
+
+      const rawId = String(it.equipoId).replace(/\D/g, '');
+      const equipoId = parseInt(rawId, 10) || Number(it.equipoId) || 0;
+
+      return {
+        equipo_id: equipoId,
+        cantidad: cant,
+        tarifa_aplicada: tarifa,
+        dias_contratados: dias,
+        subtotal_linea: subtotal,
+        fecha_inicio: it.fechaInicio || new Date().toISOString().split('T')[0],
+        fecha_fin: it.fechaFinEstimada || new Date(Date.now() + dias * 86400000).toISOString().split('T')[0],
+      };
+    }),
+  };
+
+  // Invocar la RPC de alto rendimiento en PostgreSQL
+  let rpcResponse: { data: any; error: any } = await supabase.rpc('alquiler_crear_pos_rapido_v1', { p_payload: payload });
+
+  // Fallback si la migración no está desplegada en el entorno de desarrollo actual
+  if (rpcResponse.error && rpcResponse.error.code === '42883') {
+    const fallbackItems = payload.items.map(it => ({
+      itemId: it.equipo_id,
+      cantidad: it.cantidad,
+      tarifaAplicada: it.tarifa_aplicada,
+      fechaInicio: it.fecha_inicio,
+      fechaFinEstimada: it.fecha_fin,
+    }));
+
+    const fbResult = await AlquilerTransaccionalService.despacharContrato(supabase, {
+      clienteId: payload.cliente_id || 1,
+      fleteEntrega: payload.flete_entrega,
+      fleteRecogida: payload.flete_recogida,
+      deposito: payload.deposito,
+      garantiaMonto: payload.garantia_monto,
+      garantiaTipo: payload.garantia_tipo,
+      observaciones: payload.observaciones,
+      detallesLogistica: payload.detalles_logistica,
+      items: fallbackItems,
+      empresaId,
+      userIdentifier,
+      idempotencyKey: payload.idempotency_key,
+    });
+
+    if (!fbResult.success) {
+      return fbResult;
+    }
+
+    rpcResponse = { data: fbResult.data, error: null };
+  }
+
+  if (rpcResponse.error) {
+    const errMsg = rpcResponse.error.message || 'Error desconocido al registrar alquiler POS';
+    return { success: false, error: errMsg };
+  }
+
+  const resultData = rpcResponse.data;
+
+  // Registrar Auditoría Inmutable
+  AuditLogger.logAsync({
+    modulo: 'ALQUILERES',
+    accion: 'CREAR_ALQUILER',
+    descripcion: `Despacho POS <30s formalizado con éxito. Consecutivo: #${resultData?.consecutivo || resultData?.id}. Total: $${total}.`,
+    entidadId: String(resultData?.id || ''),
+    detalles: {
+      consecutivo: resultData?.consecutivo,
+      clienteId: resultData?.cliente_id,
+      total,
+      deposito,
+      itemsCount: payload.items.length,
+      movimientoCajaId: resultData?.movimiento_caja_id,
+      modalidad: 'MOSTRADOR_POS_RAPIDO',
+    },
+    userId: user?.id,
+    userEmail: user?.email,
+  });
+
+  // Invalidación de Caché Multi-Tenant
+  try {
+    await invalidateTenantCache(empresaId, ['alquileres', 'equipos', 'caja']);
+  } catch (cErr) {
+    console.warn('[crearAlquilerRapidoPosAction] Error invalidando caché Redis:', cErr);
+  }
+
+  // Revalidación segura de rutas Next.js
+  safeRevalidatePath('/alquileres');
+  safeRevalidatePath('/pos');
+  safeRevalidatePath('/inventario');
+  safeRevalidatePath('/caja');
+
+  return {
+    success: true,
+    data: resultData,
+  };
 }

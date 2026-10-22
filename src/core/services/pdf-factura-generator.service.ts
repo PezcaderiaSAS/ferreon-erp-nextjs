@@ -20,6 +20,7 @@ export type FormatoPapelPDF = "LETTER" | "A5";
 
 export interface DocumentoPDFPayload {
   tipo: "COTIZACION" | "CONTRATO" | "CUENTA_COBRO" | "FACTURA";
+  incluirFirmaEmisor?: boolean;
   consecutivo: number | string;
   fechaEmision: string;
   horaEmision?: string;
@@ -176,6 +177,8 @@ export class EnterprisePDFService {
         ? "COTIZACIÓN COMERCIAL DE OBRA"
         : payload.tipo === "FACTURA"
         ? "FACTURA COMERCIAL DE VENTA"
+        : payload.tipo === "CONTRATO"
+        ? "CONTRATO DE ALQUILER"
         : "CUENTA DE COBRO";
 
     const badgePrefijo =
@@ -183,6 +186,8 @@ export class EnterprisePDFService {
         ? "COT"
         : payload.tipo === "FACTURA"
         ? "FAC"
+        : payload.tipo === "CONTRATO"
+        ? "CTR"
         : "CC";
 
     const themeTokens = resolveCompanyTheme(emp);
@@ -657,6 +662,9 @@ export class EnterprisePDFService {
       </div>
       <div class="sig-line">
         ${emp.razonSocial}<br/>
+        ${(payload.incluirFirmaEmisor !== false && emp.firmaDigitalBase64 && typeof emp.firmaDigitalBase64 === 'string' && emp.firmaDigitalBase64.startsWith('data:image/') && emp.firmaDigitalBase64.length > 50)
+          ? `<img src="${emp.firmaDigitalBase64}" alt="Firma del emisor" style="height:36px; max-width:140px; object-fit:contain; display:block; margin: 4px auto 2px;" />`
+          : ''}
         <span class="sig-sub">Firma Autorizada y Sello</span>
       </div>
     </div>

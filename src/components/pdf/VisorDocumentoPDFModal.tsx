@@ -18,6 +18,9 @@ export function VisorDocumentoPDFModal({
 }: VisorDocumentoPDFModalProps) {
   const { config: empresaConfig } = useEmpresaStore();
   const [formato, setFormato] = useState<FormatoPapelPDF>('LETTER');
+  const [incluirFirma, setIncluirFirma] = useState<boolean>(
+    documento.incluirFirmaEmisor !== undefined ? documento.incluirFirmaEmisor : true
+  );
   const [copiado, setCopiado] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -25,6 +28,7 @@ export function VisorDocumentoPDFModal({
     ...documento,
     empresa: documento.empresa || empresaConfig,
     formatoPapel: formato,
+    incluirFirmaEmisor: incluirFirma,
   };
 
   const htmlContent = EnterprisePDFService.generarHTMLDocumento(payloadCompleto);
@@ -134,6 +138,26 @@ export function VisorDocumentoPDFModal({
               </button>
             </div>
 
+            {/* Toggle Firma del Emisor */}
+            {empresaConfig?.firmaDigitalBase64 ? (
+              <label
+                className="inline-flex items-center gap-2 cursor-pointer bg-slate-800 hover:bg-slate-700/80 px-2.5 py-1.5 rounded-lg border border-slate-700 select-none text-xs text-slate-300 hover:text-white transition-colors"
+                title="Alternar estampado de la firma digital del emisor en el documento"
+              >
+                <input
+                  type="checkbox"
+                  checked={incluirFirma}
+                  onChange={(e) => setIncluirFirma(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 bg-slate-900 border-slate-600 cursor-pointer"
+                />
+                <span className="hidden md:inline font-medium">Firma Emisor</span>
+                <span className="md:hidden font-medium">Firma</span>
+                {incluirFirma && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                )}
+              </label>
+            ) : null}
+
             {/* Imprimir */}
             <button
               type="button"
@@ -184,7 +208,7 @@ export function VisorDocumentoPDFModal({
             <span>Documento generado con certificación de integridad y desglose tributario</span>
           </div>
           <div className="flex items-center gap-3">
-            <span>{documento.empresa?.razonSocial || 'FerreOn S.A.S.'}</span>
+            <span>{documento.empresa?.razonSocial || 'Alquileres System'}</span>
             <span>•</span>
             <button
               type="button"

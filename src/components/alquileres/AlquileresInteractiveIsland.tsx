@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   Plus, Search, MoreVertical, FileSpreadsheet, FileText,
   Printer, CheckCircle, HardHat, History,
-  CheckCircle2, DollarSign, HelpCircle, ArrowLeftRight, Loader2
+  CheckCircle2, DollarSign, HelpCircle, ArrowLeftRight, Loader2, Zap
 } from "lucide-react";
 import dynamic from 'next/dynamic';
 
@@ -110,6 +110,11 @@ const CrearCotizacionModal = dynamic(
   { ssr: false }
 );
 
+const MostradorPosModal = dynamic(
+  () => import('@/components/pos/MostradorPosModal').then((m) => m.MostradorPosModal),
+  { ssr: false }
+);
+
 import { CicloVidaAlquilerBanner } from '@/app/components/alquileres/CicloVidaAlquilerBanner';
 import { GuiaBotonesModal } from '@/app/components/alquileres/GuiaBotonesModal';
 
@@ -129,6 +134,7 @@ export function AlquileresInteractiveIsland({
   const setGuiaBotonesOpen = useLayoutStore((state) => state.setGuiaBotonesOpen);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPosModalOpen, setIsPosModalOpen] = useState(false);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [selectedAlquilerForDetalle, setSelectedAlquilerForDetalle] = useState<any | null>(null);
 
@@ -921,6 +927,16 @@ export function AlquileresInteractiveIsland({
         <div className="flex items-center gap-2.5 w-full sm:w-auto">
           <button 
             type="button"
+            onClick={() => setIsPosModalOpen(true)}
+            className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm shadow-amber-600/20 cursor-pointer active:scale-98 hover:shadow-md"
+            title="Abrir Mostrador POS Rápido (<30s) con atajos F2-F9"
+          >
+            <Zap className="w-4 h-4 text-amber-200 fill-amber-300" />
+            <span>Mostrador POS (&lt;30s)</span>
+          </button>
+
+          <button 
+            type="button"
             onClick={() => setGuiaBotonesOpen(true)}
             className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/90 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-2xs cursor-pointer active:scale-98"
             title="Ver glosario de botones y qué hace cada acción"
@@ -1582,6 +1598,19 @@ export function AlquileresInteractiveIsland({
           documento={documentoParaPDF}
         />
       )}
+
+      {/* Modal Mostrador POS Rápido (<30s) */}
+      <MostradorPosModal
+        isOpen={isPosModalOpen}
+        onClose={() => setIsPosModalOpen(false)}
+        onDespachoExitoso={(nuevoAlq) => {
+          fetchAllData();
+          handleTabChange('contratos');
+          useToastStore.getState().showSuccessToast(
+            `¡Despacho POS #${nuevoAlq?.consecutivo || nuevoAlq?.id} creado exitosamente en menos de 30s!`
+          );
+        }}
+      />
 
       {/* Tour Módulo Alquileres */}
       <AutoTourTrigger tourId="alquileres-core" delay={1000} forceMode={true} />

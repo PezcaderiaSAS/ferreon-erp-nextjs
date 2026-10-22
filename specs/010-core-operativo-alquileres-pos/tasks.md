@@ -1,11 +1,11 @@
 # Tareas de Implementación Atómica (TDD): SPEC-010
 ## Plan Maestro Empresarial: Core Operativo de Alquileres de Inicio a Fin (Modo POS)
 
-## Fase 1: Motor Mostrador POS & Captura Rápida (< 30 Segundos) [ ]
-- [ ] **TASK-010-01 (Backend/RPC)**: Crear función RPC `alquiler_crear_pos_rapido_v1` en Supabase con inserción atómica de cliente On-The-Fly, líneas de equipos con descuento inmediato de stock y movimiento de depósito en sesión de caja abierta.
-- [ ] **TASK-010-02 (Server Action & Zod)**: Implementar `crearAlquilerRapidoPosAction` en `src/app/actions/alquileres.ts` con validación Zod ultra-rápida, caché Redis y auditoría `AuditLogger`.
-- [ ] **TASK-010-03 (UI Component)**: Construir la vista y modal `MostradorPosModal` con barra de búsqueda rápida por Código de Barras / SKU (`EQ-xxx`), selector instantáneo de cliente y atajos de teclado (`F2: Cliente`, `F4: Equipos`, `F9: Cobrar`).
-- [ ] **TASK-010-04 (TDD)**: Escribir suite de pruebas unitarias `tests/unit/pos-alquiler-rapido.test.ts` validando respuesta en < 200ms y atomicidad de caja.
+## Fase 1: Motor Mostrador POS & Captura Rápida (< 30 Segundos) [x]
+- [x] **TASK-010-01 (Backend/RPC)**: Crear función RPC `alquiler_crear_pos_rapido_v1` en Supabase con inserción atómica de cliente On-The-Fly, líneas de equipos con descuento inmediato de stock y movimiento de depósito en sesión de caja abierta.
+- [x] **TASK-010-02 (Server Action & Zod)**: Implementar `crearAlquilerRapidoPosAction` en `src/app/actions/alquileres.ts` con validación Zod ultra-rápida, caché Redis y auditoría `AuditLogger`.
+- [x] **TASK-010-03 (UI Component)**: Construir la vista y modal `MostradorPosModal` con barra de búsqueda rápida por Código de Barras / SKU (`EQ-xxx`), selector instantáneo de cliente y atajos de teclado (`F2: Cliente`, `F4: Equipos`, `F9: Cobrar`).
+- [x] **TASK-010-04 (TDD)**: Escribir suite de pruebas unitarias `tests/unit/pos-alquiler-rapido.test.ts` validando respuesta en < 200ms y atomicidad de caja.
 
 ## Fase 2: Flujo Comercial de Cotizaciones & Conversión 1-Clic POS [ ]
 - [ ] **TASK-010-05 (Backend/RPC)**: Diseñar y desplegar la RPC `cotizacion_convertir_pos_1clic` que valide stock concurrente, cambie estado a `CONVERTIDA`, genere contrato y registre el depósito en caja en una sola transacción.

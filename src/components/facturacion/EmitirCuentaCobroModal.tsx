@@ -11,6 +11,7 @@ import {
   construirMensajeWhatsAppCuentaCobro
 } from '@/core/services/facturacion-recurrente.service';
 import { emitirCuentaCobroPeriodicaAction } from '@/app/actions/facturacion-recurrente';
+import { useEmpresaStore } from '@/infrastructure/state/empresaStore';
 
 export interface EmitirCuentaCobroModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export function EmitirCuentaCobroModal({
   liquidacion,
   onEmitidoExitoso,
 }: EmitirCuentaCobroModalProps) {
+  const { config: empresaConfig } = useEmpresaStore();
   const [tipoDocumento, setTipoDocumento] = useState<'CUENTA_COBRO' | 'FACTURA_VENTA'>('CUENTA_COBRO');
   const [aplicaIva, setAplicaIva] = useState<boolean>(false);
   const [aplicaRetenciones, setAplicaRetenciones] = useState<boolean>(false);
@@ -266,6 +268,28 @@ export function EmitirCuentaCobroModal({
             </span>
           </div>
         </div>
+
+        {/* 3.1 Certificación de Autenticidad con Firma Electrónica */}
+        {empresaConfig?.firmaDigitalBase64 && (
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/20">
+            <div className="flex items-center gap-2.5">
+              <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <ShieldCheck className="w-4 h-4" />
+              </span>
+              <div>
+                <span className="text-xs font-semibold text-slate-900 dark:text-white block">
+                  Firma Electrónica del Emisor Vinculada
+                </span>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  El documento oficial se estampará con la rúbrica registrada de {empresaConfig.razonSocial || 'la empresa'}
+                </p>
+              </div>
+            </div>
+            <span className="px-2 py-0.5 text-[10px] font-bold tracking-wide rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              ACTIVA
+            </span>
+          </div>
+        )}
 
         {/* 4. Botones de Acción */}
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-2">
