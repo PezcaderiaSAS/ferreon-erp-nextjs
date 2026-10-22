@@ -13,6 +13,7 @@
 # Variables de Entorno y Secretos (NUNCA subir a GitHub)
 .env
 .env*
+!.env.example
 .env*.local
 .env.production
 .env.staging
