@@ -4,15 +4,14 @@ import { CajaTransaccionalService } from '@/core/services/caja-transaccional.ser
 describe('Blindaje CAJA-001: Poka-Yoke y Manejo de Concurrencia (Código 23505 en PostgreSQL)', () => {
   it('debe rechazar la apertura si PostgreSQL arroja error 23505 (violación de índice único condicional)', async () => {
     // Simular que la validación preliminar en aplicación pasó, pero al insertar en BD ocurre una colisión concurrente (código 23505)
+    const queryBuilder = {
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+
     const adminMock = {
       from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }), // Pasa verificación inicial
-            }),
-          }),
-        }),
+        select: vi.fn().mockReturnValue(queryBuilder),
         insert: vi.fn().mockReturnValue({
           select: vi.fn().mockReturnValue({
             single: vi.fn().mockResolvedValue({
@@ -48,15 +47,14 @@ describe('Blindaje CAJA-001: Poka-Yoke y Manejo de Concurrencia (Código 23505 e
       estado: 'ABIERTA',
     };
 
+    const queryBuilder = {
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+
     const adminMock = {
       from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-            }),
-          }),
-        }),
+        select: vi.fn().mockReturnValue(queryBuilder),
         insert: vi.fn().mockReturnValue({
           select: vi.fn().mockReturnValue({
             single: vi.fn().mockResolvedValue({

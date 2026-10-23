@@ -104,7 +104,7 @@ describe('Verificación de Carga y Confirmación de Datos Reales de Clientes en 
 
   it('debe generar y regenerar el documento con el título CUENTA DE COBRO, prefijo CC y leyenda legal Art. 616-1 del E.T.', () => {
     const payloadContrato: DocumentoPDFPayload = {
-      tipo: 'CONTRATO',
+      tipo: 'CUENTA_COBRO',
       consecutivo: '1052',
       fechaEmision: '2026-09-10T10:00:00.000Z',
       clienteNombre: 'CONSTRUCTORA BOLÍVAR S.A.',
