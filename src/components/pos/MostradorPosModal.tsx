@@ -20,6 +20,10 @@ import {
   RotateCcw,
   Wrench,
   PenTool,
+  Briefcase,
+  Building2,
+  Info,
+  Eye,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Modal } from '@/components/ui/Modal';
@@ -27,7 +31,13 @@ import { useBodegaStore, EquipoUI } from '@/infrastructure/state/bodegaStore';
 import { useClienteStore, ClienteUI } from '@/infrastructure/state/clienteStore';
 import { crearAlquilerRapidoPosAction, CrearAlquilerRapidoPosInput } from '@/app/actions/alquileres';
 import { guardarFirmaClienteAlquilerAction } from '@/app/actions/firma-cliente';
+import {
+  CalendarioLaboralService,
+  ModoCobroDias,
+  DesgloseDiasAlquiler,
+} from '@/core/services/calendario-laboral.service';
 import { MantenimientoPreventivoService } from '@/core/services/mantenimiento-preventivo.service';
+import { obtenerFechaHoyISO } from '@/core/utils/fechas';
 
 const FirmaTouchPadModal = dynamic(
   () => import('@/components/common/FirmaTouchPadModal').then((m) => m.FirmaTouchPadModal),
@@ -81,12 +91,57 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
   const [garantiaTipo, setGarantiaTipo] = useState<string>('Efectivo');
   const [observaciones, setObservaciones] = useState<string>('');
 
+  // Estados de calendario laboral y tarifas dinámicas (SPEC-014)
+  const hoyISO = useMemo(() => obtenerFechaHoyISO(), []);
+  const [fechaInicio, setFechaInicio] = useState<string>(hoyISO);
+  const [fechaFin, setFechaFin] = useState<string>(() => {
+    try {
+      const d = new Date();
+      d.setDate(d.getDate() + 2);
+      return d.toISOString().split('T')[0];
+    } catch {
+      return hoyISO;
+    }
+  });
+  const [modoCobroDias, setModoCobroDias] = useState<ModoCobroDias>('CALENDARIO');
+  const [mostrarModalDesglose, setMostrarModalDesglose] = useState(false);
+
   // Estados operativos y feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [despachoExitoso, setDespachoExitoso] = useState<any | null>(null);
   const [isFirmaModalOpen, setIsFirmaModalOpen] = useState(false);
   const [firmaClienteBase64, setFirmaClienteBase64] = useState<string | null>(null);
+
+  // Desglose reactivo de días hábiles y festivos bajo Ley Emiliani (SPEC-014)
+  const desgloseDias: DesgloseDiasAlquiler = useMemo(() => {
+    try {
+      if (fechaFin >= fechaInicio) {
+        return CalendarioLaboralService.desglosarDiasPeriodo(fechaInicio, fechaFin, modoCobroDias);
+      }
+    } catch (e) {
+      console.warn('[MostradorPos] Error calculando desglose:', e);
+    }
+    return {
+      totalDiasCalendario: 1,
+      diasCobrables: 1,
+      diasExcluidos: 0,
+      modoCobro: modoCobroDias,
+      detalles: [],
+    };
+  }, [fechaInicio, fechaFin, modoCobroDias]);
+
+  // Actualizar días en el carrito automáticamente al cambiar el período o la modalidad
+  useEffect(() => {
+    const diasCalculados = Math.max(1, desgloseDias.diasCobrables);
+    setCart((prev) =>
+      prev.map((it) => ({
+        ...it,
+        diasCobro: diasCalculados,
+        subtotal: it.cantidad * it.tarifaDiaria * diasCalculados,
+      }))
+    );
+  }, [desgloseDias.diasCobrables]);
 
   // Formateador de moneda en pesos colombianos (COP)
   const formatearCOP = (val: number) => {
@@ -186,6 +241,8 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
     setObservaciones('');
     setErrorMsg(null);
     setDespachoExitoso(null);
+    setModoCobroDias('CALENDARIO');
+    setMostrarModalDesglose(false);
   };
 
   // Agregar equipo al carrito (si ya existe, incrementa cantidad hasta el stock disponible)
@@ -194,6 +251,7 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
     const eqId = parseInt(rawId, 10) || Number(eq.id);
     const stockMax = eq.stock_disponible ?? eq.stockDisponible ?? 0;
     const tarifa = eq.tarifa_diaria ?? eq.tarifaDiaria ?? 0;
+    const diasIniciales = Math.max(1, desgloseDias.diasCobrables);
 
     setCart((prev) => {
       const idx = prev.findIndex((item) => item.equipoId === eqId);
@@ -216,8 +274,8 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
           tarifaDiaria: tarifa,
           stockDisponible: stockMax,
           cantidad: 1,
-          diasCobro: 1,
-          subtotal: tarifa * 1 * 1,
+          diasCobro: diasIniciales,
+          subtotal: tarifa * 1 * diasIniciales,
         };
         return [...prev, nuevoItem];
       }
@@ -300,7 +358,11 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
           tarifaAplicada: it.tarifaDiaria,
           diasCobro: it.diasCobro,
           subtotalLinea: it.subtotal,
+          fechaInicio,
+          fechaFinEstimada: fechaFin,
         })),
+        modoCobroDias,
+        diasCobrables: desgloseDias.diasCobrables,
         deposito: Number(deposito) || 0,
         fleteEntrega: Number(fleteEntrega) || 0,
         garantiaMonto: Number(garantiaMonto) || 0,
@@ -537,12 +599,123 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
                 )}
               </div>
 
-              {/* Sección 2: Búsqueda Rápida de Equipos por SKU/Código */}
+              {/* Sección 2: Modalidad de Cobro y Fechas (Tarifas Dinámicas Ley Emiliani - SPEC-014) */}
+              <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 space-y-3">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-blue-500" />
+                    2. Modalidad de Cobro y Fechas (Ley Emiliani)
+                  </span>
+                  <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                    {desgloseDias.diasCobrables} día{desgloseDias.diasCobrables === 1 ? '' : 's'} a liquidar
+                  </span>
+                </label>
+
+                {/* Fechas de Alquiler */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] font-medium text-gray-500 block mb-1">Fecha Entrega / Inicio:</label>
+                    <input
+                      type="date"
+                      value={fechaInicio}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFechaInicio(val);
+                        if (fechaFin < val) setFechaFin(val);
+                      }}
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-medium text-gray-500 block mb-1">Fecha Retorno Estimada:</label>
+                    <input
+                      type="date"
+                      min={fechaInicio}
+                      value={fechaFin}
+                      onChange={(e) => setFechaFin(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Selector Segmentado de Modalidad de Cobro */}
+                <div className="grid grid-cols-3 gap-1.5 p-1 bg-gray-200/70 dark:bg-gray-800/80 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setModoCobroDias('CALENDARIO')}
+                    className={`px-2 py-1.5 rounded-md text-xs font-semibold flex flex-col items-center justify-center gap-0.5 transition ${
+                      modoCobroDias === 'CALENDARIO'
+                        ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Calendario</span>
+                    </div>
+                    <span className="text-[10px] font-normal opacity-75">Corridos</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModoCobroDias('HABILES_LUNES_VIERNES')}
+                    className={`px-2 py-1.5 rounded-md text-xs font-semibold flex flex-col items-center justify-center gap-0.5 transition ${
+                      modoCobroDias === 'HABILES_LUNES_VIERNES'
+                        ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <Briefcase className="w-3.5 h-3.5" />
+                      <span>Hábiles L-V</span>
+                    </div>
+                    <span className="text-[10px] font-normal opacity-75">Excl. Festivos</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModoCobroDias('HABILES_LUNES_SABADO')}
+                    className={`px-2 py-1.5 rounded-md text-xs font-semibold flex flex-col items-center justify-center gap-0.5 transition ${
+                      modoCobroDias === 'HABILES_LUNES_SABADO'
+                        ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <Building2 className="w-3.5 h-3.5" />
+                      <span>Hábiles L-S</span>
+                    </div>
+                    <span className="text-[10px] font-normal opacity-75">Obra Civil</span>
+                  </button>
+                </div>
+
+                {/* Banner Informativo y Detalle de Festivos Excluidos */}
+                <div className="flex flex-wrap items-center justify-between text-xs px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                  <span className="text-gray-600 dark:text-gray-300">
+                    Total: <strong className="font-semibold text-gray-900 dark:text-white">{desgloseDias.totalDiasCalendario}</strong> d. cal. • A liquidar:{' '}
+                    <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{desgloseDias.diasCobrables}</strong> día{desgloseDias.diasCobrables === 1 ? '' : 's'}
+                  </span>
+                  {desgloseDias.diasExcluidos > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setMostrarModalDesglose(true)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                    >
+                      <Eye className="w-3 h-3" />
+                      -{desgloseDias.diasExcluidos} festivos/descansos excluidos
+                    </button>
+                  ) : (
+                    <span className="text-[11px] text-gray-400 font-mono">Sin días descontados</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Sección 3: Búsqueda Rápida de Equipos por SKU/Código */}
               <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 space-y-3">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Barcode className="w-4 h-4 text-emerald-500" />
-                    2. Búsqueda de Equipos / Lector Código de Barras
+                    3. Búsqueda de Equipos / Lector Código de Barras
                   </span>
                   <span className="text-xs text-gray-400 font-mono font-normal">Atajo: F4</span>
                 </label>
@@ -690,8 +863,10 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
                             />
                           </div>
 
-                          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                            <span className="text-[10px] text-gray-500">Días:</span>
+                          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded" title="Días cobrables según la modalidad de calendario seleccionada">
+                            <span className="text-[10px] text-gray-500 font-mono">
+                              Días ({modoCobroDias === 'CALENDARIO' ? 'Cal' : modoCobroDias === 'HABILES_LUNES_VIERNES' ? 'L-V' : 'L-S'}):
+                            </span>
                             <input
                               type="number"
                               min="1"
@@ -828,6 +1003,85 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
         clienteNit={selectedCliente?.nit_cedula || nuevoClienteDoc || ''}
         onFirmaConfirmada={(b64) => setFirmaClienteBase64(b64)}
       />
+
+      {/* Modal Desglose Calendario Laboral y Festivos Colombia (SPEC-014) */}
+      <Modal
+        isOpen={mostrarModalDesglose}
+        onClose={() => setMostrarModalDesglose(false)}
+        title="Auditoría de Calendario Laboral (Ley Emiliani)"
+        maxWidth="lg"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300">
+            <p className="font-semibold mb-1">
+              Modalidad seleccionada:{' '}
+              {modoCobroDias === 'CALENDARIO'
+                ? 'Días Calendario Corridos'
+                : modoCobroDias === 'HABILES_LUNES_VIERNES'
+                ? 'Días Hábiles Lunes a Viernes'
+                : 'Días Hábiles Lunes a Sábado (Estándar Obras)'}
+            </p>
+            <p className="text-[11px] opacity-90">
+              Período del {fechaInicio} al {fechaFin}: {desgloseDias.totalDiasCalendario} días calendario,{' '}
+              <strong className="font-bold">{desgloseDias.diasCobrables} cobrables</strong> y{' '}
+              <strong className="font-bold">{desgloseDias.diasExcluidos} descontados</strong> de la tarifa.
+            </p>
+          </div>
+
+          <div className="max-h-64 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+            {desgloseDias.detalles.map((d) => (
+              <div
+                key={d.fecha}
+                className={`p-2.5 flex items-center justify-between ${
+                  d.esCobrable
+                    ? 'bg-white dark:bg-gray-800/80'
+                    : 'bg-gray-50/90 dark:bg-gray-900/60'
+                }`}
+              >
+                <div className="space-y-0.5">
+                  <div className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
+                    <span>{d.fecha}</span>
+                    <span className="text-gray-400">•</span>
+                    <span className="text-gray-600 dark:text-gray-300 font-semibold">{d.nombreDia}</span>
+                    {d.esFestivo && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 font-bold">
+                        Festivo: {d.nombreFestivo}
+                      </span>
+                    )}
+                  </div>
+                  {d.motivoExclusion && (
+                    <div className="text-[11px] text-amber-600 dark:text-amber-400 font-mono">
+                      Motivo de no cobro: {d.motivoExclusion}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  {d.esCobrable ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                      Cobrable ✓
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                      Excluido ✕
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="button"
+              onClick={() => setMostrarModalDesglose(false)}
+              className="px-4 py-2 rounded-lg text-xs font-semibold bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white transition cursor-pointer"
+            >
+              Cerrar Auditoría
+            </button>
+          </div>
+        </div>
+      </Modal>
     </Modal>
   );
 }

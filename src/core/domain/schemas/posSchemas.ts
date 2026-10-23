@@ -34,6 +34,12 @@ export const ClienteNuevoPosZodSchema = z.object({
   direccion: z.string().optional().nullable(),
 });
 
+export const ModoCobroDiasZodSchema = z.enum([
+  'CALENDARIO',
+  'HABILES_LUNES_VIERNES',
+  'HABILES_LUNES_SABADO',
+]);
+
 export const ItemPosZodSchema = z.object({
   equipoId: z.union([z.string(), z.number()]),
   cantidad: z.coerce.number().int().min(1, 'La cantidad debe ser al menos 1'),
@@ -48,6 +54,8 @@ export const CrearAlquilerRapidoPosZodSchema = z.object({
   clienteId: z.union([z.string(), z.number()]).optional().nullable(),
   clienteNuevo: ClienteNuevoPosZodSchema.optional().nullable(),
   items: z.array(ItemPosZodSchema).min(1, 'Debe incluir al menos un equipo en el alquiler POS'),
+  modoCobroDias: ModoCobroDiasZodSchema.default('CALENDARIO').optional(),
+  diasCobrables: z.coerce.number().int().min(0).optional(),
   deposito: z.coerce.number().min(0).default(0),
   fleteEntrega: z.coerce.number().min(0).default(0),
   fleteRecogida: z.coerce.number().min(0).default(0),

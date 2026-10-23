@@ -597,6 +597,18 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
               <Text style={styles.infoLabel}>Garantía ({garantiaTipo}):</Text>
               <Text style={styles.infoValue}>{formatearCOP(garantiaMonto)}</Text>
             </View>
+            {Boolean(data.modo_cobro_dias || data.modoCobroDias) && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Modalidad Cobro:</Text>
+                <Text style={styles.infoValue}>
+                  {data.modo_cobro_dias === 'HABILES_LUNES_VIERNES' || data.modoCobroDias === 'HABILES_LUNES_VIERNES'
+                    ? 'Días Hábiles L-V (Excl. Festivos)'
+                    : data.modo_cobro_dias === 'HABILES_LUNES_SABADO' || data.modoCobroDias === 'HABILES_LUNES_SABADO'
+                    ? 'Días Hábiles L-S (Estándar Obra)'
+                    : 'Días Calendario Corridos'}
+                </Text>
+              </View>
+            )}
             {data.observaciones && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Observación:</Text>

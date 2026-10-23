@@ -125,6 +125,8 @@ export interface CrearAlquilerRapidoPosInput {
   clienteId?: string | number | null;
   clienteNuevo?: ClienteNuevoPosInput | null;
   items: ItemPosInput[];
+  modoCobroDias?: 'CALENDARIO' | 'HABILES_LUNES_VIERNES' | 'HABILES_LUNES_SABADO';
+  diasCobrables?: number;
   deposito?: number;
   fleteEntrega?: number;
   fleteRecogida?: number;
@@ -676,12 +678,23 @@ export async function crearAlquilerRapidoPosAction(
   const deposito = Math.round(Number(cleanInput.deposito || 0));
   const garantiaMonto = Math.round(Number(cleanInput.garantiaMonto || 0));
 
+  const modoCobro = cleanInput.modoCobroDias || 'CALENDARIO';
+  const modoEtiqueta = modoCobro === 'HABILES_LUNES_VIERNES'
+    ? ' [Modalidad: Días Hábiles L-V | Excluye festivos colombianos]'
+    : modoCobro === 'HABILES_LUNES_SABADO'
+    ? ' [Modalidad: Días Hábiles L-S | Estándar Obra | Excluye festivos colombianos]'
+    : '';
+
+  const observacionesFinales = (cleanInput.observaciones || 'Despacho Rápido Mostrador POS (<30s)') + modoEtiqueta;
+
   const payload = {
     empresa_id: empresaId,
     usuario_id: user?.id || null,
     idempotency_key: cleanInput.idempotencyKey || null,
     cliente_id: cleanInput.clienteId ? Number(cleanInput.clienteId) : null,
     cliente_nuevo: cleanInput.clienteNuevo || null,
+    modo_cobro_dias: modoCobro,
+    dias_cobrables: cleanInput.diasCobrables ?? null,
     subtotal_equipos: subtotalEquipos,
     flete_entrega: fleteEntrega,
     flete_recogida: fleteRecogida,
@@ -690,7 +703,7 @@ export async function crearAlquilerRapidoPosAction(
     deposito: deposito,
     garantia_monto: garantiaMonto,
     garantia_tipo: cleanInput.garantiaTipo || 'Efectivo',
-    observaciones: cleanInput.observaciones || 'Despacho Rápido Mostrador POS (<30s)',
+    observaciones: observacionesFinales,
     detalles_logistica: cleanInput.detallesLogistica || 'Entrega Inmediata en Mostrador',
     creado_por: userIdentifier,
     items: cleanInput.items.map((it) => {
