@@ -1,25 +1,22 @@
 # Memoria de Sesión Persistente — Alquileres System
 
 ## Estado actual
-- **Mantenimiento Menor de Tests Completado**:
-  - `tests/unit/caja-concurrencia-indice.test.ts` blindado con mock queryBuilder chainable.
-  - `tests/unit/contrato-pdf-cliente-real.test.ts` sincronizado con `tipo: 'CUENTA_COBRO'` (5/5 tests verdes).
-  - Commit `3ade3930` registrado en `main`.
-- **Tarea 1 & Producción Vercel Certificadas**:
-  - `https://alquileres-erp-nextjs-ruby.vercel.app/dashboard` verificado al 100% con Chrome DevTools.
-  - 0 Errores y 0 Warnings en consola. Layout 65/35 en Laptop (1366x768) y Móvil (375px) sin overflow.
-  - `/configuracion` con tarjeta "Firma / Rúbrica del Emisor" operativa y persistencia probada.
-- **Compilación Next.js**:
-  - `npm run build` en verde con 32/32 páginas generadas (código 0). 0 errores de TypeScript (`tsc --noEmit`).
+- **Tarea B1 Completada (SPEC-012 Mantenimiento Preventivo y Horómetros)**:
+  - `MantenimientoPreventivoService` con 12 tests unitarios pasando al 100% en Vitest (semáforos `OK`, `PROXIMO`, `VENCIDO`, porcentajes, liquidación de devoluciones y reseteo).
+  - Server Action `registrarMantenimientoPreventivoAction` con validación Zod desacoplada, traspaso atómico de `stock_mantenimiento` a `stock_disponible`, asiento inmutable en `kardex_inventario` (`MANTENIMIENTO_PREVENTIVO`), invalidación de caché y `AuditLogger`.
+  - Componentes UI: `BarraVidaUtilEquipo` y `RegistrarMantenimientoModal` con diseño responsive integrados en `BodegaInteractiveIsland` y Poka-Yoke en `MostradorPosModal`.
+  - Verificado con Chrome DevTools en Laptop (1366x768) y Móvil (375px) con 0 errores de consola.
+  - Compilación `tsc --noEmit` y `npm run build` en código 0. Commit `23d8968f` pusheado a `main`.
 
 ## Decisiones (y por qué)
-- **Mocks Chainables en Vitest**: Usar `vi.fn().mockReturnThis()` para constructores de consulta Supabase previene roturas cuando se incorporan filtros multi-tenant adicionales.
-- **Validación Dual Vercel + Local**: Verificar producción viva en Vercel junto al build local previene falsos positivos de caché de despliegue.
+- **Desacoplar Esquemas Zod de Actions**: Ubicar esquemas en `src/core/domain/schemas/` previene la restricción del compilador `'use server'` en Next.js.
+- **Asiento Inmutable de Mantenimiento en Kardex**: Registrar `MANTENIMIENTO_PREVENTIVO` en `kardex_inventario` garantiza auditoría WMS completa de la vida útil del activo.
+- **Semáforo Poka-Yoke en POS**: Advertir en el mostrador si un equipo tiene service vencido previene despachos de maquinaria con desgaste crítico.
 
 ## Aprendizajes y errores a evitar
-- `EnterprisePDFService` utiliza `tipo: 'CUENTA_COBRO'` para emitir el prefijo `CC-` y leyenda del Art. 616-1 del E.T.
-- En PowerShell de Windows, evitar operadores bash como `&&` para encadenar comandos; usar `;`.
+- Los scripts MSYS/sh de Git (pre-commit hooks) fallan con `NtCreateDirectoryObject: 0xC0000022` en el sandbox de Windows; siempre ejecutar `git commit` y `git push` con `BypassSandbox: true`.
+- Recordar añadir nuevos tipos de acción a `AuditActionType` en `src/core/domain/entities/audit-log.ts` para mantener coherencia de tipos estricta.
 
 ## Próximos pasos
-1. Proceder con la **Tarea 3**: Prueba de generación y renderizado de rúbrica en PDF (Carta y A5).
-2. Proceder con la **Tarea 4**: Validación de adendas versionadas (`v1.0 -> v1.1`) y devoluciones con averías.
+1. Proceder con la **Tarea B2**: Módulo de Firma Digital Touch en Pantalla para el Cliente en Alquileres y Mostrador POS.
+2. Proceder con la **Tarea B3**: Motor de Tarifas Dinámicas por Días Hábiles vs Calendario con Exclusión de Domingos/Festivos.
