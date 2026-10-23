@@ -19,12 +19,20 @@ import {
   Truck,
   RotateCcw,
   Wrench,
+  PenTool,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { Modal } from '@/components/ui/Modal';
 import { useBodegaStore, EquipoUI } from '@/infrastructure/state/bodegaStore';
 import { useClienteStore, ClienteUI } from '@/infrastructure/state/clienteStore';
 import { crearAlquilerRapidoPosAction, CrearAlquilerRapidoPosInput } from '@/app/actions/alquileres';
+import { guardarFirmaClienteAlquilerAction } from '@/app/actions/firma-cliente';
 import { MantenimientoPreventivoService } from '@/core/services/mantenimiento-preventivo.service';
+
+const FirmaTouchPadModal = dynamic(
+  () => import('@/components/common/FirmaTouchPadModal').then((m) => m.FirmaTouchPadModal),
+  { ssr: false }
+);
 
 interface CartItem {
   equipoId: number;
@@ -77,6 +85,8 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [despachoExitoso, setDespachoExitoso] = useState<any | null>(null);
+  const [isFirmaModalOpen, setIsFirmaModalOpen] = useState(false);
+  const [firmaClienteBase64, setFirmaClienteBase64] = useState<string | null>(null);
 
   // Formateador de moneda en pesos colombianos (COP)
   const formatearCOP = (val: number) => {
@@ -305,6 +315,21 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
         setErrorMsg(res.error || 'Ocurrió un error al despachar en mostrador.');
         setIsSubmitting(false);
         return;
+      }
+
+      // Si se capturó firma touch del cliente en mostrador, persistirla de inmediato
+      const nuevoAlquilerId = res.data.alquiler_id || res.data.id;
+      if (firmaClienteBase64 && nuevoAlquilerId) {
+        try {
+          await guardarFirmaClienteAlquilerAction({
+            alquilerId: nuevoAlquilerId,
+            firmaBase64: firmaClienteBase64,
+            clienteNombre: selectedCliente?.nombre || nuevoClienteNombre || 'Cliente',
+            clienteNit: selectedCliente?.nit_cedula || nuevoClienteDoc || '',
+          });
+        } catch (fErr) {
+          console.warn('[MostradorPos] Error guardando firma cliente:', fErr);
+        }
       }
 
       setDespachoExitoso(res.data);
@@ -749,6 +774,27 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
                   </div>
                 </div>
 
+                {/* Botón de Firma Touch del Cliente */}
+                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-2">
+                    <PenTool className="w-4 h-4 text-brand-salmon" />
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      {firmaClienteBase64 ? 'Firma del Cliente: Capturada ✓' : 'Firma Touch del Cliente:'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsFirmaModalOpen(true)}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                      firmaClienteBase64
+                        ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300'
+                        : 'bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
+                    }`}
+                  >
+                    {firmaClienteBase64 ? 'Modificar' : 'Firmar Touch'}
+                  </button>
+                </div>
+
                 <button
                   ref={submitButtonRef}
                   type="button"
@@ -773,6 +819,15 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
           </div>
         )}
       </div>
+
+      {/* Modal Pad de Firma Digital Touch del Cliente */}
+      <FirmaTouchPadModal
+        isOpen={isFirmaModalOpen}
+        onClose={() => setIsFirmaModalOpen(false)}
+        clienteNombre={selectedCliente?.nombre || nuevoClienteNombre || 'Cliente'}
+        clienteNit={selectedCliente?.nit_cedula || nuevoClienteDoc || ''}
+        onFirmaConfirmada={(b64) => setFirmaClienteBase64(b64)}
+      />
     </Modal>
   );
 }

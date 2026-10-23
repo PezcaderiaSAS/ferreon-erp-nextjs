@@ -477,6 +477,16 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
     config.firmaDigitalBase64.length > 50
   );
 
+  // Guarda defensiva para la firma digital touch del cliente
+  const rawFirmaCliente = (data as any).firma_cliente_base64 || (data as any).firmaClienteBase64;
+  const tieneFirmaClienteValida = Boolean(
+    rawFirmaCliente &&
+    typeof rawFirmaCliente === 'string' &&
+    rawFirmaCliente.startsWith('data:image/') &&
+    rawFirmaCliente.length > 50
+  );
+  const fechaFirmaCliente = (data as any).firma_cliente_fecha || (data as any).firmaClienteFecha;
+
   const formatearCOP = (valor: number) => {
     return new Intl.NumberFormat('es-CO', { 
       style: 'currency', 
@@ -693,9 +703,18 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
         {/* FIRMAS LEGALES */}
         <View style={styles.signatures} wrap={false}>
           <View style={styles.sigBox}>
+            {tieneFirmaClienteValida && (
+              /* eslint-disable-next-line jsx-a11y/alt-text */
+              <Image src={rawFirmaCliente} style={styles.sigImage} />
+            )}
             <Text style={styles.sigLabel}>Acepto y Recibí a Satisfacción</Text>
             <Text style={styles.sigSub}>Cliente / Deudor: {clienteNombre}</Text>
             <Text style={styles.sigSub}>C.C. / NIT: {clienteNit}</Text>
+            {fechaFirmaCliente && (
+              <Text style={[styles.sigSub, { fontSize: pageSize === 'A5' ? 4.5 : 5.5, color: '#64748b', marginTop: 1 }]}>
+                Firmado digitalmente: {fechaFirmaCliente}
+              </Text>
+            )}
           </View>
           <View style={styles.sigBox}>
             {tieneFirmaValida && (

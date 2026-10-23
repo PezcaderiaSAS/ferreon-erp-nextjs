@@ -70,6 +70,8 @@ export interface DocumentoPDFPayload {
   saldoPendiente?: number;
   pesoTotalKilos?: number;
   observaciones?: string;
+  firmaClienteBase64?: string;
+  firmaClienteFecha?: string;
   empresa?: EmpresaConfig;
   formatoPapel?: FormatoPapelPDF;
 }
@@ -657,8 +659,12 @@ export class EnterprisePDFService {
 
     <div class="signatures">
       <div class="sig-line">
+        ${(payload.firmaClienteBase64 && typeof payload.firmaClienteBase64 === 'string' && payload.firmaClienteBase64.startsWith('data:image/') && payload.firmaClienteBase64.length > 50)
+          ? `<img src="${payload.firmaClienteBase64}" alt="Firma del cliente" style="height:36px; max-width:140px; object-fit:contain; display:block; margin: 4px auto 2px;" />`
+          : ''}
         Firma Cliente / Receptor<br/>
         <span class="sig-sub">C.C. / NIT: ${payload.clienteNit || "____________________"}</span>
+        ${payload.firmaClienteFecha ? `<br/><span class="sig-sub" style="font-size:6pt; color:#64748b;">Firmado touch: ${payload.firmaClienteFecha}</span>` : ''}
       </div>
       <div class="sig-line">
         ${emp.razonSocial}<br/>
