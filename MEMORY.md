@@ -1,22 +1,24 @@
 # Memoria de Sesión Persistente — Alquileres System
 
 ## Estado actual
-- **Tarea B1 Completada (SPEC-012 Mantenimiento Preventivo y Horómetros)**:
-  - `MantenimientoPreventivoService` con 12 tests unitarios pasando al 100% en Vitest (semáforos `OK`, `PROXIMO`, `VENCIDO`, porcentajes, liquidación de devoluciones y reseteo).
-  - Server Action `registrarMantenimientoPreventivoAction` con validación Zod desacoplada, traspaso atómico de `stock_mantenimiento` a `stock_disponible`, asiento inmutable en `kardex_inventario` (`MANTENIMIENTO_PREVENTIVO`), invalidación de caché y `AuditLogger`.
-  - Componentes UI: `BarraVidaUtilEquipo` y `RegistrarMantenimientoModal` con diseño responsive integrados en `BodegaInteractiveIsland` y Poka-Yoke en `MostradorPosModal`.
-  - Verificado con Chrome DevTools en Laptop (1366x768) y Móvil (375px) con 0 errores de consola.
-  - Compilación `tsc --noEmit` y `npm run build` en código 0. Commit `23d8968f` pusheado a `main`.
+- **Tarea B1 Completada (SPEC-012 Mantenimiento y Horómetros)**:
+  - `MantenimientoPreventivoService` (12 tests Vitest verdes), Server Action `registrarMantenimientoPreventivoAction` con Kardex inmutable (`MANTENIMIENTO_PREVENTIVO`), componentes `BarraVidaUtilEquipo` y `RegistrarMantenimientoModal` en Bodega y POS.
+- **Tarea B2 Completada (SPEC-013 Firma Digital Touch del Cliente)**:
+  - `FirmaDigitalService` (9 tests Vitest verdes), Server Action `guardarFirmaClienteAlquilerAction` con estampa legal (Ley 527/1999).
+  - Componentes `FirmaTouchCanvas` (Retina DPR, PointerEvents, touch-action: none) y `FirmaTouchPadModal`.
+  - Estampado simétrico en `ContratoAlquilerPDF` y `EnterprisePDFService` (Cliente + Emisor), integrado en `MostradorPosModal`.
+  - Verificado en Chrome DevTools en Laptop (1366x768) y Móvil (375px), 0 errores en consola.
+  - Compilación `tsc --noEmit` y `npm run build` en código 0. Commits `23d8968f`, `3cb988d1` y `dc9236f0` enviados a `main`.
 
 ## Decisiones (y por qué)
-- **Desacoplar Esquemas Zod de Actions**: Ubicar esquemas en `src/core/domain/schemas/` previene la restricción del compilador `'use server'` en Next.js.
-- **Asiento Inmutable de Mantenimiento en Kardex**: Registrar `MANTENIMIENTO_PREVENTIVO` en `kardex_inventario` garantiza auditoría WMS completa de la vida útil del activo.
-- **Semáforo Poka-Yoke en POS**: Advertir en el mostrador si un equipo tiene service vencido previene despachos de maquinaria con desgaste crítico.
+- **Canvas con PointerEvents y Retina DPR**: Multiplicar por `window.devicePixelRatio` garantiza trazos ultra-nítidos en pantallas táctiles y móviles sin pixelación.
+- **Poka-Yoke de Canvas Vacío**: Deshabilitar el botón de confirmación hasta que exista un trazo válido previene firmas en blanco en contratos vinculantes.
+- **Estampado Dual en Contrato**: Renderizar tanto la rúbrica del emisor como la firma touch del cliente confiere validez jurídica plena bajo la legislación colombiana.
 
 ## Aprendizajes y errores a evitar
 - Los scripts MSYS/sh de Git (pre-commit hooks) fallan con `NtCreateDirectoryObject: 0xC0000022` en el sandbox de Windows; siempre ejecutar `git commit` y `git push` con `BypassSandbox: true`.
-- Recordar añadir nuevos tipos de acción a `AuditActionType` en `src/core/domain/entities/audit-log.ts` para mantener coherencia de tipos estricta.
+- Los tipos de `TenantResource` en `redis.ts` son estrictos; usar solo recursos admitidos (`'alquileres'`, `'equipos'`, etc.).
 
 ## Próximos pasos
-1. Proceder con la **Tarea B2**: Módulo de Firma Digital Touch en Pantalla para el Cliente en Alquileres y Mostrador POS.
-2. Proceder con la **Tarea B3**: Motor de Tarifas Dinámicas por Días Hábiles vs Calendario con Exclusión de Domingos/Festivos.
+1. Proceder con la **Tarea B3**: Motor de Tarifas Dinámicas por Días Hábiles vs Calendario con Exclusión de Domingos/Festivos.
+2. Proceder con la **Tarea B4**: Notificaciones automáticas de cobranza por WhatsApp/Email al cliente.
