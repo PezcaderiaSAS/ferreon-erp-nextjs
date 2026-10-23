@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ModalSkeleton } from '@/components/ui/ModalSkeleton';
 import { BodegaForm } from '@/components/forms/BodegaForm';
 import { BodegaMassForm } from '@/components/forms/BodegaMassForm';
+import { BarraVidaUtilEquipo } from '@/components/bodega/BarraVidaUtilEquipo';
 import { useBodegaStore, EquipoUI } from '@/infrastructure/state/bodegaStore';
 import { equipoToEquipoUI } from '@/lib/mappers';
 import { liberarMantenimientoAction, obtenerEquiposAction } from '@/app/actions/equipos';
@@ -19,6 +20,11 @@ const EditarEquipoModal = dynamic(
 const KardexEquipoModal = dynamic(
   () => import('@/components/bodega/KardexEquipoModal').then((m) => m.KardexEquipoModal),
   { ssr: false, loading: () => <ModalSkeleton message="Cargando historial de Kardex..." /> }
+);
+
+const RegistrarMantenimientoModal = dynamic(
+  () => import('@/components/bodega/RegistrarMantenimientoModal').then((m) => m.RegistrarMantenimientoModal),
+  { ssr: false, loading: () => <ModalSkeleton message="Cargando registro de mantenimiento..." /> }
 );
 
 /**
@@ -37,8 +43,10 @@ export function BodegaInteractiveIsland({ initialEquipos }: BodegaInteractiveIsl
   const [isMassCreateModalOpen, setIsMassCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isKardexModalOpen, setIsKardexModalOpen] = useState(false);
+  const [isMantenimientoModalOpen, setIsMantenimientoModalOpen] = useState(false);
   const [selectedEquipo, setSelectedEquipo] = useState<EquipoUI | null>(null);
   const [equipoKardex, setEquipoKardex] = useState<EquipoUI | null>(null);
+  const [equipoMantenimiento, setEquipoMantenimiento] = useState<EquipoUI | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [liberandoId, setLiberandoId] = useState<string | number | null>(null);
 
@@ -171,6 +179,11 @@ export function BodegaInteractiveIsland({ initialEquipos }: BodegaInteractiveIsl
   const handleOpenKardex = (equipo: EquipoUI) => {
     setEquipoKardex(equipo);
     setIsKardexModalOpen(true);
+  };
+
+  const handleOpenMantenimiento = (equipo: EquipoUI) => {
+    setEquipoMantenimiento(equipo);
+    setIsMantenimientoModalOpen(true);
   };
 
   const handleLiberarMantenimiento = async (equipo: EquipoUI) => {
@@ -383,6 +396,7 @@ export function BodegaInteractiveIsland({ initialEquipos }: BodegaInteractiveIsl
                 <th className="py-3.5 px-4 text-xs font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wider text-center">Mantenimiento</th>
                 <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider text-center">Total</th>
                 <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Tarifa / Día</th>
+                <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Vida Útil / Service</th>
                 <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Estado</th>
                 <th className="py-3.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider text-right">Acciones</th>
               </tr>
@@ -453,6 +467,9 @@ export function BodegaInteractiveIsland({ initialEquipos }: BodegaInteractiveIsl
                     <td className="py-4 px-4 font-semibold text-slate-900 dark:text-white">
                       ${(equipo.tarifaDiaria || 0).toLocaleString('es-CO')}
                     </td>
+                    <td className="py-4 px-4 min-w-[170px]" onClick={(e) => e.stopPropagation()}>
+                      <BarraVidaUtilEquipo equipo={equipo} compacto />
+                    </td>
                     <td className="py-4 px-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold ${
                         equipo.estado === 'Disponible' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' :
@@ -469,6 +486,20 @@ export function BodegaInteractiveIsland({ initialEquipos }: BodegaInteractiveIsl
                     </td>
                     <td className="py-4 px-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenMantenimiento(equipo);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-600 hover:text-white dark:bg-amber-950/50 dark:hover:bg-amber-600 text-amber-800 dark:text-amber-300 text-xs font-semibold rounded-lg transition-colors shadow-xs cursor-pointer border border-amber-200/60 dark:border-amber-800/60"
+                          title="Registrar mantenimiento preventivo y puesta a punto"
+                          aria-label={`Registrar mantenimiento para ${equipo.nombre}`}
+                        >
+                          <Wrench className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                          <span>Service</span>
+                        </button>
+
                         <button
                           type="button"
                           onClick={(e) => {
@@ -503,7 +534,7 @@ export function BodegaInteractiveIsland({ initialEquipos }: BodegaInteractiveIsl
               })}
               {equipos.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-slate-500">
+                  <td colSpan={11} className="py-12 text-center text-slate-500">
                     <Package className="w-10 h-10 text-slate-300 mb-2 block mx-auto" />
                     No hay equipos registrados en bodega.
                   </td>
@@ -511,7 +542,7 @@ export function BodegaInteractiveIsland({ initialEquipos }: BodegaInteractiveIsl
               )}
               {equipos.length > 0 && equiposFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-slate-500">
+                  <td colSpan={11} className="py-12 text-center text-slate-500">
                     <Search className="w-10 h-10 text-slate-300 mb-2 block mx-auto" />
                     <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No se encontraron equipos coincidentes</p>
                     <p className="text-xs text-slate-500 mt-1">Intenta con otro término o limpia los filtros activos.</p>
@@ -586,6 +617,21 @@ export function BodegaInteractiveIsland({ initialEquipos }: BodegaInteractiveIsl
           setEquipoKardex(null);
         }}
         equipo={equipoKardex}
+      />
+
+      {/* Modal para Registrar Mantenimiento Preventivo y Salida de Taller */}
+      <RegistrarMantenimientoModal
+        isOpen={isMantenimientoModalOpen}
+        onClose={() => {
+          setIsMantenimientoModalOpen(false);
+          setEquipoMantenimiento(null);
+        }}
+        onSuccess={() => {
+          refrescarInventario();
+          setIsMantenimientoModalOpen(false);
+          setEquipoMantenimiento(null);
+        }}
+        equipo={equipoMantenimiento}
       />
     </div>
   );

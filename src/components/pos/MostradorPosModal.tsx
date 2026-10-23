@@ -18,11 +18,13 @@ import {
   ShieldCheck,
   Truck,
   RotateCcw,
+  Wrench,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { useBodegaStore, EquipoUI } from '@/infrastructure/state/bodegaStore';
 import { useClienteStore, ClienteUI } from '@/infrastructure/state/clienteStore';
 import { crearAlquilerRapidoPosAction, CrearAlquilerRapidoPosInput } from '@/app/actions/alquileres';
+import { MantenimientoPreventivoService } from '@/core/services/mantenimiento-preventivo.service';
 
 interface CartItem {
   equipoId: number;
@@ -544,14 +546,35 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
                     {filteredEquipos.map((eq) => {
                       const stock = eq.stock_disponible ?? eq.stockDisponible ?? 0;
                       const tarifa = eq.tarifa_diaria ?? eq.tarifaDiaria ?? 0;
+                      const semaforo = MantenimientoPreventivoService.evaluarSemaforoMantenimiento({
+                        tieneHorometro: Number((eq as any).horas_limite_mantenimiento || 0) > 0,
+                        horasUsoAcumuladas: Number((eq as any).horas_uso_acumuladas || 0),
+                        horasLimiteMantenimiento: Number((eq as any).horas_limite_mantenimiento || 0),
+                        diasUsoAcumulados: Number((eq as any).dias_uso_acumulados || 0),
+                        diasLimiteMantenimiento: Number((eq as any).dias_limite_mantenimiento || 0),
+                        stockMantenimiento: Number((eq as any).stock_mantenimiento ?? eq.stockMantenimiento ?? 0),
+                        ultimoMantenimientoAt: (eq as any).ultimo_mantenimiento_at || null,
+                        ultimoMantenimientoObs: null,
+                      });
+
                       return (
                         <div
                           key={eq.id}
                           className="px-3 py-2 flex items-center justify-between hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition"
                         >
                           <div>
-                            <div className="font-semibold text-sm text-gray-900 dark:text-white">
-                              {eq.nombre}
+                            <div className="font-semibold text-sm text-gray-900 dark:text-white flex items-center gap-2">
+                              <span>{eq.nombre}</span>
+                              {semaforo === 'VENCIDO' && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300/60">
+                                  <Wrench className="w-2.5 h-2.5" /> Service Vencido
+                                </span>
+                              )}
+                              {semaforo === 'PROXIMO' && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/60">
+                                  <Wrench className="w-2.5 h-2.5" /> Service Próximo
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs text-gray-500 font-mono">
                               SKU: {eq.codigo || eq.sku} • Disp: <span className="text-emerald-600 font-bold">{stock}</span>
@@ -564,7 +587,7 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
                             <button
                               type="button"
                               onClick={() => handleAddEquipo(eq)}
-                              className="px-3 py-1 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium flex items-center gap-1 transition shadow-sm"
+                              className="px-3 py-1 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium flex items-center gap-1 transition shadow-sm cursor-pointer"
                             >
                               <Plus className="w-3.5 h-3.5" /> Agregar
                             </button>
