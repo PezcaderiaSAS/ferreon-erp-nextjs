@@ -948,10 +948,26 @@ export async function generarAdendaContratoAction(
 }
 
 /**
+ * Normaliza el semáforo táctil de mostrador a los estados canónicos admitidos
+ * por el CHECK constraint en PostgreSQL: ('BUENO', 'MANTENIMIENTO', 'PERDIDA_TOTAL')
+ */
+function normalizarSemaforoAEstadoInspeccion(semaforo?: string): 'BUENO' | 'MANTENIMIENTO' | 'PERDIDA_TOTAL' {
+  const sem = (semaforo || 'VERDE_BUENO').toUpperCase();
+  if (sem === 'ROJO_PERDIDA' || sem === 'PERDIDA_TOTAL' || sem === 'PERDIDA') {
+    return 'PERDIDA_TOTAL';
+  }
+  if (sem === 'NARANJA_DANADO' || sem === 'MANTENIMIENTO' || sem.includes('DANO')) {
+    return 'MANTENIMIENTO';
+  }
+  return 'BUENO';
+}
+
+/**
  * Server Action: Devolución POS con Checklist de Averías & Liquidación de Garantía
  * Tarea: TASK-010-14 (SPEC-010)
  * Procesa inspección semafórica táctil, cruza cargos de averías contra el depósito en garantía,
  * y genera automáticamente el movimiento correspondiente en caja (EGRESO por reembolso o INGRESO por cobro).
+ * Incluye resiliencia y fallback automático a 'procesar_devolucion_avanzada'.
  */
 export async function procesarDevolucionPosAction(
   input: ProcesarDevolucionPosInput
@@ -967,58 +983,201 @@ export async function procesarDevolucionPosAction(
   const userIdentifier = user?.email || user?.id || 'OPERADOR_POS';
   const empresaId = await resolveEmpresaId(user?.id);
 
+  const numericAlquilerId = typeof cleanInput.alquilerId === 'string'
+    ? parseInt(cleanInput.alquilerId, 10)
+    : cleanInput.alquilerId;
+
+  // 1. Preparar payload con todas las variantes de claves para máxima compatibilidad
   const payload = {
     empresa_id: empresaId,
     usuario_id: user?.id || null,
-    alquiler_id: cleanInput.alquilerId,
+    alquiler_id: numericAlquilerId,
     metodo_pago: cleanInput.metodoPago,
     sesion_caja_id: cleanInput.sesionCajaId || null,
     observaciones: cleanInput.observaciones || 'Inspección de Devolución POS',
     recibido_por: userIdentifier,
-    items: cleanInput.items.map((it) => ({
-      detalle_id: it.detalleId,
-      cantidad_devuelta: it.cantidadDevuelta,
-      semaforo: it.semaforo,
-      costo_limpieza: Math.round(Number(it.costoLimpieza || 0)),
-      costo_reparacion: Math.round(Number(it.costoReparacion || 0)),
-      valor_reposicion: Math.round(Number(it.valorReposicion || 0)),
-      descripcion_dano: it.descripcionDano || '',
-      desglose_averias: it.desgloseAverias || [],
-    })),
+    items: cleanInput.items.map((it) => {
+      const estadoCanonico = normalizarSemaforoAEstadoInspeccion(it.semaforo);
+      const costoReparacionTotal = Math.round(Number(it.costoReparacion || 0)) + Math.round(Number(it.costoLimpieza || 0));
+      return {
+        detalle_id: Number(it.detalleId),
+        detalleId: Number(it.detalleId),
+        alquiler_detalle_id: Number(it.detalleId),
+        id: Number(it.detalleId),
+        cantidad_devuelta: it.cantidadDevuelta,
+        cantidadDevuelta: it.cantidadDevuelta,
+        semaforo: it.semaforo || 'VERDE_BUENO',
+        estado_inspeccion: estadoCanonico,
+        estadoInspeccion: estadoCanonico,
+        costo_limpieza: Math.round(Number(it.costoLimpieza || 0)),
+        costoLimpieza: Math.round(Number(it.costoLimpieza || 0)),
+        costo_reparacion: costoReparacionTotal,
+        costoReparacion: costoReparacionTotal,
+        valor_reposicion: Math.round(Number(it.valorReposicion || 0)),
+        valorReposicion: Math.round(Number(it.valorReposicion || 0)),
+        descripcion_dano: it.descripcionDano || '',
+        descripcionDano: it.descripcionDano || '',
+        desglose_averias: it.desgloseAverias || [],
+        desgloseAverias: it.desgloseAverias || [],
+      };
+    }),
   };
 
-  const rpcResponse = await supabase.rpc('devolucion_pos_inspeccion_rapida_v1', {
+  let resultData: any = null;
+  let rpcResponse = await supabase.rpc('devolucion_pos_inspeccion_rapida_v1', {
     p_payload: payload,
   });
 
+  // 2. Si la RPC rápida falla por desalineación de esquema o no existe en Postgres,
+  // activar fallback automático a la RPC transaccional procesar_devolucion_avanzada
   if (rpcResponse.error) {
-    const errMsg = rpcResponse.error.message || 'Error al procesar devolución POS';
-    return { success: false, error: errMsg };
+    const errCode = rpcResponse.error.code;
+    const errMsg = rpcResponse.error.message || '';
+    const esErrorEsquema = errCode === '42703' || errCode === '42883' || errCode === 'P0005' || errMsg.includes('desglose_averias') || errMsg.includes('dias_reales') || errMsg.includes('check constraint');
+
+    if (esErrorEsquema) {
+      console.warn('[procesarDevolucionPosAction] RPC devolucion_pos_inspeccion_rapida_v1 arrojó ' + errCode + ': ' + errMsg + '. Activando fallback a procesar_devolucion_avanzada...');
+      const fallbackPayload = {
+        alquiler_id: numericAlquilerId,
+        empresa_id: empresaId,
+        idempotency_key: null,
+        recibido_por: userIdentifier,
+        observaciones: cleanInput.observaciones || 'Inspección de Devolución POS',
+        sesion_caja_id: cleanInput.sesionCajaId || null,
+        metodo_pago: cleanInput.metodoPago || 'EFECTIVO',
+        items: cleanInput.items.map((it) => ({
+          detalle_id: Number(it.detalleId),
+          cantidad_devuelta: it.cantidadDevuelta,
+          estado_inspeccion: normalizarSemaforoAEstadoInspeccion(it.semaforo),
+          costo_reparacion: Math.round(Number(it.costoReparacion || 0)) + Math.round(Number(it.costoLimpieza || 0)),
+          valor_reposicion: Math.round(Number(it.valorReposicion || 0)),
+          descripcion_dano: it.descripcionDano || null,
+        })),
+      };
+
+      const fallbackRes = await supabase.rpc('procesar_devolucion_avanzada', {
+        p_payload: fallbackPayload,
+      });
+
+      if (fallbackRes.error) {
+        return { success: false, error: fallbackRes.error.message || 'Error al procesar devolución en base de datos' };
+      }
+      resultData = fallbackRes.data;
+
+      // Persistir desglose_averias en la devolución si aplica
+      if (resultData?.devolucion_id) {
+        try {
+          const averiasConsolidadas = cleanInput.items.flatMap((i) => i.desgloseAverias || []);
+          if (averiasConsolidadas.length > 0) {
+            await supabase
+              .from('devoluciones')
+              .update({ desglose_averias: averiasConsolidadas })
+              .eq('id', resultData.devolucion_id);
+          }
+        } catch (averiasErr) {
+          console.warn('[procesarDevolucionPosAction] No se pudo guardar desglose_averias en cabecera:', averiasErr);
+        }
+      }
+    } else {
+      return { success: false, error: errMsg || 'Error al procesar devolución POS' };
+    }
+  } else {
+    resultData = rpcResponse.data;
   }
 
-  const resultData = rpcResponse.data;
+  // 3. Impacto en Caja (Sesión activa) si aplica resolución de saldo en efectivo
+  const saldoNeto = Number(resultData?.saldo_neto) || 0;
+  const tipoResolucion = resultData?.tipo_resolucion;
+  let movimientoCajaId = resultData?.movimiento_caja_id || null;
 
-  // Auditoría Inmutable
+  if (cleanInput.sesionCajaId && cleanInput.metodoPago === 'EFECTIVO' && saldoNeto !== 0 && !movimientoCajaId) {
+    try {
+      const { data: sesionActiva } = await supabase
+        .from('sesiones_caja')
+        .select('id, estado, empresa_id, usuario_id')
+        .eq('id', cleanInput.sesionCajaId)
+        .maybeSingle();
+
+      if (sesionActiva && (!sesionActiva.empresa_id || sesionActiva.empresa_id === empresaId) && sesionActiva.estado === 'ABIERTA') {
+        const esReembolso = tipoResolucion === 'REEMBOLSO_CLIENTE';
+        const tipoMov = esReembolso ? 'EGRESO' : 'INGRESO';
+        const montoMov = Math.abs(saldoNeto);
+        const motivoMov = esReembolso
+          ? 'Reembolso garantía por devolución contrato #' + numericAlquilerId + ' (' + resultData.consecutivo + ')'
+          : 'Cobro excedente alquiler/daños por devolución contrato #' + numericAlquilerId + ' (' + resultData.consecutivo + ')';
+
+        const { data: nuevoMov } = await supabase
+          .from('movimientos_caja')
+          .insert({
+            tenant_id: empresaId,
+            empresa_id: empresaId,
+            sesion_caja_id: cleanInput.sesionCajaId,
+            usuario_id: user?.id || sesionActiva.usuario_id,
+            tipo: tipoMov,
+            monto: montoMov,
+            concepto: motivoMov,
+            beneficiario: 'CLIENTE',
+            comprobante: resultData.consecutivo || 'DEV_GARANTIA',
+          })
+          .select('id')
+          .maybeSingle();
+
+        if (nuevoMov?.id) {
+          movimientoCajaId = nuevoMov.id;
+          if (resultData?.devolucion_id) {
+            await supabase
+              .from('devoluciones')
+              .update({ movimiento_caja_id: nuevoMov.id })
+              .eq('id', resultData.devolucion_id);
+          }
+        }
+      }
+    } catch (cajaErr) {
+      console.warn('[procesarDevolucionPosAction] Advertencia registrando movimiento en caja:', cajaErr);
+    }
+  }
+
+  // 4. Normalizar respuesta para consumo uniforme en UI (DevolucionPosChecklistView)
+  const contratoCerrado = Boolean(resultData?.finalizado || resultData?.contrato_cerrado);
+  const normalizedData = {
+    ...resultData,
+    contrato_cerrado: contratoCerrado,
+    contratoCerrado: contratoCerrado,
+    saldo_neto: resultData?.saldo_neto ?? 0,
+    saldoNeto: resultData?.saldo_neto ?? 0,
+    total_danos: resultData?.total_danos ?? 0,
+    totalDanos: resultData?.total_danos ?? 0,
+    total_reposiciones: resultData?.total_reposiciones ?? 0,
+    totalReposiciones: resultData?.total_reposiciones ?? 0,
+    tipo_resolucion: tipoResolucion || 'SIN_SALDO',
+    tipoResolucion: tipoResolucion || 'SIN_SALDO',
+    consecutivo: resultData?.consecutivo,
+    devolucion_id: resultData?.devolucion_id,
+    devolucionId: resultData?.devolucion_id,
+    movimiento_caja_id: movimientoCajaId,
+  };
+
+  // 5. Auditoría Inmutable
   AuditLogger.logAsync({
     modulo: 'DEVOLUCIONES',
     accion: 'PROCESAR_DEVOLUCION_AVANZADA',
-    descripcion: `Devolución POS ${resultData?.consecutivo} formalizada para contrato #${cleanInput.alquilerId}. Resolución: ${resultData?.tipo_resolucion}.`,
-    entidadId: String(cleanInput.alquilerId),
+    descripcion: 'Devolución POS ' + normalizedData?.consecutivo + ' formalizada para contrato #' + numericAlquilerId + '. Resolución: ' + normalizedData?.tipo_resolucion + '.',
+    entidadId: String(numericAlquilerId),
     detalles: {
-      alquilerId: cleanInput.alquilerId,
-      consecutivo: resultData?.consecutivo,
-      tipoResolucion: resultData?.tipo_resolucion,
-      saldoNeto: resultData?.saldo_neto,
-      totalDanos: resultData?.total_danos,
-      totalReposiciones: resultData?.total_reposiciones,
-      movimientoCajaId: resultData?.movimiento_caja_id,
-      contratoCerrado: resultData?.contrato_cerrado,
+      alquilerId: numericAlquilerId,
+      consecutivo: normalizedData?.consecutivo,
+      tipoResolucion: normalizedData?.tipo_resolucion,
+      saldoNeto: normalizedData?.saldo_neto,
+      totalDanos: normalizedData?.total_danos,
+      totalReposiciones: normalizedData?.total_reposiciones,
+      movimientoCajaId: movimientoCajaId,
+      contratoCerrado: contratoCerrado,
     },
     userId: user?.id,
     userEmail: user?.email,
   });
 
-  // Invalidación de Caché
+  // 6. Invalidación de Caché Distribuida
   try {
     await invalidateTenantCache(empresaId, ['alquileres', 'equipos', 'caja']);
   } catch (cErr) {
@@ -1026,14 +1185,14 @@ export async function procesarDevolucionPosAction(
   }
 
   safeRevalidatePath('/alquileres');
-  safeRevalidatePath(`/alquileres/${cleanInput.alquilerId}`);
+  safeRevalidatePath('/alquileres/' + numericAlquilerId);
   safeRevalidatePath('/bodega');
-  safeRevalidatePath('/inventario');
+  safeRevalidatePath('/devoluciones');
   safeRevalidatePath('/caja');
 
   return {
     success: true,
-    data: resultData,
+    data: normalizedData,
   };
 }
 

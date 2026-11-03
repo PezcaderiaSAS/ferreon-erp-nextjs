@@ -730,7 +730,7 @@ export function AlquileresInteractiveIsland({
       const subtotal = Number(d.subtotal_linea ?? d.subtotalLinea ?? d.subtotal ?? (tarifa * cant));
       return {
         ...d,
-        id: d.id || `det_${idx}_${Date.now()}`,
+        id: (typeof d.id === 'number' || (typeof d.id === 'string' && !isNaN(Number(d.id)) && !d.id.startsWith('det_'))) ? Number(d.id) : (d.id || `det_${idx}_${Date.now()}`),
         itemId: equipoId,
         equipoId: equipoId,
         equipo_id: equipoId,

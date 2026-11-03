@@ -106,7 +106,7 @@ export function DevolucionPosChecklistView({
           const pendiente = Math.max(0, totalCant - devuelta);
 
           return {
-            detalleId: Number(d.id || d.detalleId || 0),
+            detalleId: Number((typeof d.id === 'number' || (typeof d.id === 'string' && !isNaN(Number(d.id)) && !d.id.startsWith('det_'))) ? d.id : (d.detalleId || d.alquiler_detalle_id || 0)),
             equipoId: Number(d.equipo_id || d.equipoId || d.itemId || 0),
             nombreItem: d.nombre_item || d.nombreItem || d.equipo?.nombre || `Equipo #${d.equipo_id || d.equipoId}`,
             cantidadTotal: totalCant,
@@ -279,7 +279,7 @@ export function DevolucionPosChecklistView({
           return;
         }
 
-        const msgExito = res.data?.contrato_cerrado
+        const msgExito = (res.data?.contrato_cerrado || res.data?.finalizado)
           ? `Devolución ${res.data?.consecutivo} formalizada. Contrato cerrado exitosamente.`
           : `Devolución parcial ${res.data?.consecutivo} formalizada.`;
 

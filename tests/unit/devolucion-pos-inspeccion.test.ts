@@ -28,12 +28,28 @@ let mockRpcResult: { data: any; error: any } = {
 
 let mockCurrentUser: any = { id: 'usr-bodeguero-pos', email: 'bodega@ferreon.com' };
 
+const createMockQueryBuilder = (resultData: any = {}) => {
+  const builder: any = {
+    select: vi.fn(() => builder),
+    insert: vi.fn(() => builder),
+    update: vi.fn(() => builder),
+    delete: vi.fn(() => builder),
+    eq: vi.fn(() => builder),
+    order: vi.fn(() => builder),
+    limit: vi.fn(() => builder),
+    single: vi.fn(async () => ({ data: resultData, error: null })),
+    maybeSingle: vi.fn(async () => ({ data: resultData, error: null })),
+  };
+  return builder;
+};
+
 const mockSupabaseClient = {
   auth: {
     getUser: vi.fn(async () => ({
       data: { user: mockCurrentUser },
     })),
   },
+  from: vi.fn((table: string) => createMockQueryBuilder({ id: 'dummy-row-id', estado: 'ABIERTA', empresa_id: 'tenant-devoluciones-123' })),
   rpc: vi.fn(async (fnName: string, args: any) => mockRpcResult),
 };
 
@@ -296,6 +312,106 @@ describe('Suite TDD: TASK-010-16 — Devolución POS con Checklist de Averías &
 
       expect(resp.success).toBe(false);
       expect(resp.error).toContain('ERR_DETALLE_NOT_FOUND');
+    });
+  });
+
+  describe('4. Resiliencia, Normalización de Semáforos & Fallback Automático', () => {
+    it('debe ejecutar fallback a procesar_devolucion_avanzada si devolucion_pos_inspeccion_rapida_v1 falla con error de columna inexistente (42703)', async () => {
+      // Simular fallo en RPC rápida por desalineación de columnas en Postgres
+      mockSupabaseClient.rpc.mockImplementation(async (fnName: string, args: any) => {
+        if (fnName === 'devolucion_pos_inspeccion_rapida_v1') {
+          return {
+            data: null,
+            error: {
+              code: '42703',
+              message: 'column "desglose_averias" of relation "alquiler_detalles" does not exist',
+            },
+          };
+        }
+        if (fnName === 'procesar_devolucion_avanzada') {
+          return {
+            data: {
+              success: true,
+              finalizado: true,
+              consecutivo: 'DEV-20261103-9999',
+              saldo_neto: 50000,
+              tipo_resolucion: 'REEMBOLSO_CLIENTE',
+              total_danos: 15000,
+              devolucion_id: 'dev-fallback-uuid-001',
+            },
+            error: null,
+          };
+        }
+        return { data: null, error: new Error('Unknown RPC') };
+      });
+
+      const input: ProcesarDevolucionPosInput = {
+        alquilerId: 53,
+        metodoPago: 'EFECTIVO',
+        items: [
+          {
+            detalleId: 1205,
+            cantidadDevuelta: 3,
+            semaforo: 'AMARILLO_SUCIO',
+            costoLimpieza: 15000,
+          },
+        ],
+      };
+
+      const resp = await procesarDevolucionPosAction(input);
+
+      expect(resp.success).toBe(true);
+      expect(resp.data?.consecutivo).toBe('DEV-20261103-9999');
+      expect(resp.data?.contrato_cerrado).toBe(true);
+      expect(mockSupabaseClient.rpc).toHaveBeenCalledWith('procesar_devolucion_avanzada', expect.any(Object));
+    });
+
+    it('debe normalizar semáforos táctiles a estados canónicos de dominio compatibles con el CHECK constraint', async () => {
+      let capturedPayload: any = null;
+      mockSupabaseClient.rpc.mockImplementation(async (fnName: string, args: any) => {
+        if (fnName === 'procesar_devolucion_avanzada') {
+          capturedPayload = args.p_payload;
+          return {
+            data: {
+              success: true,
+              finalizado: false,
+              consecutivo: 'DEV-20261103-8888',
+              saldo_neto: 0,
+              tipo_resolucion: 'SIN_SALDO',
+              devolucion_id: 'dev-uuid-norm-01',
+            },
+            error: null,
+          };
+        }
+        // Simular que RPC rápida no está disponible
+        return {
+          data: null,
+          error: { code: '42703', message: 'column error' },
+        };
+      });
+
+      const input: ProcesarDevolucionPosInput = {
+        alquilerId: 63,
+        items: [
+          { detalleId: 1128, cantidadDevuelta: 1, semaforo: 'VERDE_BUENO', costoLimpieza: 0 },
+          { detalleId: 1130, cantidadDevuelta: 2, semaforo: 'AMARILLO_SUCIO', costoLimpieza: 20000 },
+          { detalleId: 1132, cantidadDevuelta: 1, semaforo: 'NARANJA_DANADO', costoReparacion: 45000 },
+          { detalleId: 1134, cantidadDevuelta: 1, semaforo: 'ROJO_PERDIDA', valorReposicion: 180000 },
+        ],
+      };
+
+      const resp = await procesarDevolucionPosAction(input);
+
+      expect(resp.success).toBe(true);
+      expect(capturedPayload).not.toBeNull();
+      // Verificar mapeo canónico
+      expect(capturedPayload.items[0].estado_inspeccion).toBe('BUENO');
+      expect(capturedPayload.items[1].estado_inspeccion).toBe('BUENO');
+      expect(capturedPayload.items[1].costo_reparacion).toBe(20000); // limpieza sumada a reparación
+      expect(capturedPayload.items[2].estado_inspeccion).toBe('MANTENIMIENTO');
+      expect(capturedPayload.items[2].costo_reparacion).toBe(45000);
+      expect(capturedPayload.items[3].estado_inspeccion).toBe('PERDIDA_TOTAL');
+      expect(capturedPayload.items[3].valor_reposicion).toBe(180000);
     });
   });
 });
