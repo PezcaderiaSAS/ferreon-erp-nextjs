@@ -660,6 +660,7 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
                     : data.modo_cobro_dias === 'HABILES_LUNES_SABADO' || data.modoCobroDias === 'HABILES_LUNES_SABADO'
                     ? 'Días Hábiles L-S (Estándar Obra)'
                     : 'Días Calendario Corridos'}
+                  {Boolean(data.dias_cobrables || data.diasCobrables) ? ` • ${data.dias_cobrables || data.diasCobrables} días facturables` : ''}
                 </Text>
               </View>
             )}

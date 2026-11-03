@@ -74,6 +74,10 @@ export interface DocumentoPDFPayload {
   firmaClienteFecha?: string;
   empresa?: EmpresaConfig;
   formatoPapel?: FormatoPapelPDF;
+  modoCobroDias?: 'CALENDARIO' | 'HABILES_LUNES_VIERNES' | 'HABILES_LUNES_SABADO' | string;
+  modo_cobro_dias?: string;
+  diasCobrables?: number;
+  dias_cobrables?: number;
 }
 
 export class EnterprisePDFService {
@@ -148,6 +152,15 @@ export class EnterprisePDFService {
     const deposito = Number(payload.depositoAplicado ?? (payload as any).deposito ?? (payload as any).deposito_garantia ?? (payload as any).depositoGarantia ?? (payload as any).totalPagado ?? 0);
     const garantiaMonto = Number(payload.garantiaMonto ?? (payload as any).garantia_monto ?? (payload as any).garantia ?? 0);
     const garantiaTipo = payload.garantiaTipo || (payload as any).garantia_tipo || 'Efectivo';
+    const rawModoCobro = payload.modoCobroDias || (payload as any).modo_cobro_dias;
+    const diasCobrables = payload.diasCobrables ?? (payload as any).dias_cobrables;
+    const modoCobroTexto = rawModoCobro === 'HABILES_LUNES_VIERNES'
+      ? `Días Hábiles L-V (Excluye festivos colombianos)${diasCobrables ? ` • ${diasCobrables} días facturables` : ''}`
+      : rawModoCobro === 'HABILES_LUNES_SABADO'
+      ? `Días Hábiles L-S (Estándar Obras)${diasCobrables ? ` • ${diasCobrables} días facturables` : ''}`
+      : rawModoCobro === 'CALENDARIO'
+      ? `Días Calendario Corridos${diasCobrables ? ` • ${diasCobrables} días facturables` : ''}`
+      : '';
     const valorIva = payload.valorIva !== undefined ? payload.valorIva : (payload.aplicaIva ? Math.round(subtotalEquipos * ((payload.tasaIva || 19) / 100)) : 0);
     const valorRetefuente = payload.valorRetefuente !== undefined ? payload.valorRetefuente : (payload.aplicaRetefuente ? Math.round(subtotalEquipos * ((payload.tasaRetefuente || 2.5) / 100)) : 0);
     const valorReteica = payload.valorReteica !== undefined ? payload.valorReteica : (payload.aplicaReteica ? Math.round(subtotalEquipos * ((payload.tasaReteica || 0.966) / 100)) : 0);
@@ -616,6 +629,7 @@ export class EnterprisePDFService {
         <p><strong>Destino / Obra:</strong> ${payload.detallesLogistica || (payload as any).detalles_logistica || (payload as any).obraDireccion || (payload as any).obra_direccion || clienteDireccion || "Entrega en obra / bodega"}</p>
         <p><strong>Depósito / Anticipo:</strong> ${formatearMonedaCOP(deposito)}</p>
         <p><strong>Garantía (${garantiaTipo}):</strong> ${formatearMonedaCOP(garantiaMonto)}</p>
+        ${modoCobroTexto ? `<p><strong>Modalidad Cobro:</strong> ${modoCobroTexto}</p>` : ''}
         ${payload.observaciones ? `<p><strong>Obs:</strong> ${payload.observaciones}</p>` : ""}
       </div>
     </div>

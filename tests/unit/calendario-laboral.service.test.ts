@@ -4,36 +4,50 @@ import {
   ModoCobroDias,
 } from '@/core/services/calendario-laboral.service';
 
-describe('CalendarioLaboralService (TDD Dominio Puro)', () => {
-  describe('calcularPascua (Computus Gregoriano)', () => {
-    it('debe calcular la fecha exacta de Domingo de Resurrección para 2026', () => {
-      // En 2026, Pascua es el 5 de Abril
-      const pascua2026 = CalendarioLaboralService.calcularPascua(2026);
-      expect(pascua2026.getUTCFullYear()).toBe(2026);
-      expect(pascua2026.getUTCMonth()).toBe(3); // 3 = Abril (0-indexed)
-      expect(pascua2026.getUTCDate()).toBe(5);
-    });
-
-    it('debe calcular la fecha exacta de Pascua para 2027 y 2028', () => {
-      // En 2027, Pascua es el 28 de Marzo
-      const pascua2027 = CalendarioLaboralService.calcularPascua(2027);
-      expect(pascua2027.getUTCMonth()).toBe(2); // 2 = Marzo
-      expect(pascua2027.getUTCDate()).toBe(28);
-
-      // En 2028, Pascua es el 16 de Abril
-      const pascua2028 = CalendarioLaboralService.calcularPascua(2028);
-      expect(pascua2028.getUTCMonth()).toBe(3);
-      expect(pascua2028.getUTCDate()).toBe(16);
+describe('CalendarioLaboralService — Suite TDD SPEC-014', () => {
+  describe('1. Algoritmo de Computus (Domingo de Pascua)', () => {
+    it('debe calcular con precisión matemática el Domingo de Pascua para múltiples años de referencia', () => {
+      // 2024: 31 de Marzo
+      expect(
+        CalendarioLaboralService.formatearFechaISO(
+          CalendarioLaboralService.calcularPascua(2024)
+        )
+      ).toBe('2024-03-31');
+      // 2025: 20 de Abril
+      expect(
+        CalendarioLaboralService.formatearFechaISO(
+          CalendarioLaboralService.calcularPascua(2025)
+        )
+      ).toBe('2025-04-20');
+      // 2026: 5 de Abril
+      expect(
+        CalendarioLaboralService.formatearFechaISO(
+          CalendarioLaboralService.calcularPascua(2026)
+        )
+      ).toBe('2026-04-05');
+      // 2027: 28 de Marzo
+      expect(
+        CalendarioLaboralService.formatearFechaISO(
+          CalendarioLaboralService.calcularPascua(2027)
+        )
+      ).toBe('2027-03-28');
     });
   });
 
-  describe('obtenerFestivosColombia (Ley 51 de 1983 - Emiliani)', () => {
-    it('debe retornar exactamente 18 festivos para el año 2026', () => {
-      const festivos = CalendarioLaboralService.obtenerFestivosColombia(2026);
-      expect(festivos.length).toBe(18);
+  describe('2. Festivos Oficiales de Colombia (Ley 51 de 1983 - Emiliani)', () => {
+    it('debe generar exactamente 18 festivos oficiales para el año 2026 en Colombia', () => {
+      const festivos2026 = CalendarioLaboralService.obtenerFestivosColombia(2026);
+      expect(festivos2026).toHaveLength(18);
+
+      // Verificar que todos los festivos tengan fecha ISO válida YYYY-MM-DD
+      festivos2026.forEach((f) => {
+        expect(f.fecha).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(f.nombre).toBeDefined();
+        expect(['FIJO', 'EMILIANI', 'PASCUA']).toContain(f.tipo);
+      });
     });
 
-    it('debe incluir festivos fijos no trasladables', () => {
+    it('debe respetar festivos inamovibles (Fijos) en sus fechas exactas de calendario', () => {
       const festivos = CalendarioLaboralService.obtenerFestivosColombia(2026);
       const fechas = festivos.map((f) => f.fecha);
 
@@ -45,25 +59,20 @@ describe('CalendarioLaboralService (TDD Dominio Puro)', () => {
       expect(fechas).toContain('2026-12-25'); // Navidad
     });
 
-    it('debe trasladar festivos de la Ley Emiliani al lunes siguiente', () => {
+    it('debe trasladar festivos de la Ley Emiliani al lunes siguiente cuando caen en otros días', () => {
       const festivos = CalendarioLaboralService.obtenerFestivosColombia(2026);
       const fechas = festivos.map((f) => f.fecha);
 
-      // Reyes Magos (6 de enero cae martes -> lunes 12 de enero)
-      expect(fechas).toContain('2026-01-12');
-      expect(fechas).not.toContain('2026-01-06');
-
-      // San José (19 de marzo cae jueves -> lunes 23 de marzo)
-      expect(fechas).toContain('2026-03-23');
-
-      // Asunción de la Virgen (15 de agosto cae sábado -> lunes 17 de agosto)
-      expect(fechas).toContain('2026-08-17');
-
-      // Independencia de Cartagena (11 de nov cae miércoles -> lunes 16 de nov)
-      expect(fechas).toContain('2026-11-16');
+      expect(fechas).toContain('2026-01-12'); // Reyes Magos
+      expect(fechas).toContain('2026-03-23'); // San José
+      expect(fechas).toContain('2026-06-29'); // San Pedro y San Pablo
+      expect(fechas).toContain('2026-08-17'); // Asunción de la Virgen
+      expect(fechas).toContain('2026-10-12'); // Día de la Raza
+      expect(fechas).toContain('2026-11-02'); // Todos los Santos
+      expect(fechas).toContain('2026-11-16'); // Independencia de Cartagena
     });
 
-    it('debe calcular correctamente los festivos dependientes de Pascua', () => {
+    it('debe calcular con precisión los festivos móviles derivados de la Pascua 2026', () => {
       const festivos = CalendarioLaboralService.obtenerFestivosColombia(2026);
       const fechas = festivos.map((f) => f.fecha);
 
@@ -71,104 +80,177 @@ describe('CalendarioLaboralService (TDD Dominio Puro)', () => {
       expect(fechas).toContain('2026-04-03'); // Viernes Santo
       expect(fechas).toContain('2026-05-18'); // Ascensión del Señor
       expect(fechas).toContain('2026-06-08'); // Corpus Christi
-      expect(fechas).toContain('2026-06-15'); // Sagrado Corazón
+      expect(fechas).toContain('2026-06-15'); // Sagrado Corazón de Jesús
     });
   });
 
-  describe('esFestivo', () => {
-    it('debe detectar correctamente si una fecha es festivo en Colombia', () => {
-      expect(CalendarioLaboralService.esFestivo('2026-05-01').esFestivo).toBe(true);
-      expect(CalendarioLaboralService.esFestivo('2026-05-01').nombre).toBe('Día del Trabajo');
+  describe('3. Identificación de Día Festivo y Hábil', () => {
+    it('debe detectar correctamente si una fecha dada es festivo en Colombia', () => {
+      expect(CalendarioLaboralService.esFestivo('2026-01-01').esFestivo).toBe(true); // Año nuevo
+      expect(CalendarioLaboralService.esFestivo('2026-01-02').esFestivo).toBe(false); // Viernes hábil
+      expect(CalendarioLaboralService.esFestivo('2026-01-12').esFestivo).toBe(true); // Reyes Magos trasladado
+      expect(CalendarioLaboralService.esFestivo('2026-05-01').esFestivo).toBe(true); // Día del trabajo
+      expect(CalendarioLaboralService.esFestivo('2026-05-02').esFestivo).toBe(false); // Sábado no festivo
+    });
 
-      expect(CalendarioLaboralService.esFestivo('2026-05-02').esFestivo).toBe(false);
-      expect(CalendarioLaboralService.esFestivo('2026-04-03').esFestivo).toBe(true); // Viernes Santo
+    it('debe evaluar correctamente esDiaHabil según la modalidad pactada', () => {
+      // 2026-05-01 (Viernes festivo - Día del Trabajo)
+      expect(CalendarioLaboralService.esDiaHabil('2026-05-01', 'CALENDARIO')).toBe(true);
+      expect(CalendarioLaboralService.esDiaHabil('2026-05-01', 'HABILES_LUNES_VIERNES')).toBe(false);
+      expect(CalendarioLaboralService.esDiaHabil('2026-05-01', 'HABILES_LUNES_SABADO')).toBe(false);
+
+      // 2026-05-02 (Sábado normal)
+      expect(CalendarioLaboralService.esDiaHabil('2026-05-02', 'CALENDARIO')).toBe(true);
+      expect(CalendarioLaboralService.esDiaHabil('2026-05-02', 'HABILES_LUNES_VIERNES')).toBe(false);
+      expect(CalendarioLaboralService.esDiaHabil('2026-05-02', 'HABILES_LUNES_SABADO')).toBe(true);
+
+      // 2026-05-03 (Domingo normal)
+      expect(CalendarioLaboralService.esDiaHabil('2026-05-03', 'CALENDARIO')).toBe(true);
+      expect(CalendarioLaboralService.esDiaHabil('2026-05-03', 'HABILES_LUNES_VIERNES')).toBe(false);
+      expect(CalendarioLaboralService.esDiaHabil('2026-05-03', 'HABILES_LUNES_SABADO')).toBe(false);
+
+      // 2026-05-04 (Lunes hábil normal)
+      expect(CalendarioLaboralService.esDiaHabil('2026-05-04', 'CALENDARIO')).toBe(true);
+      expect(CalendarioLaboralService.esDiaHabil('2026-05-04', 'HABILES_LUNES_VIERNES')).toBe(true);
+      expect(CalendarioLaboralService.esDiaHabil('2026-05-04', 'HABILES_LUNES_SABADO')).toBe(true);
     });
   });
 
-  describe('esDiaHabil', () => {
-    it('en CALENDARIO cualquier día es considerado válido para cobro', () => {
-      expect(CalendarioLaboralService.esDiaHabil('2026-05-01', 'CALENDARIO')).toBe(true); // Festivo
-      expect(CalendarioLaboralService.esDiaHabil('2026-05-03', 'CALENDARIO')).toBe(true); // Domingo
-      expect(CalendarioLaboralService.esDiaHabil('2026-05-05', 'CALENDARIO')).toBe(true); // Martes
-    });
-
-    it('en HABILES_LUNES_VIERNES excluye sábados, domingos y festivos', () => {
-      expect(CalendarioLaboralService.esDiaHabil('2026-05-01', 'HABILES_LUNES_VIERNES')).toBe(false); // Festivo (Viernes)
-      expect(CalendarioLaboralService.esDiaHabil('2026-05-02', 'HABILES_LUNES_VIERNES')).toBe(false); // Sábado
-      expect(CalendarioLaboralService.esDiaHabil('2026-05-03', 'HABILES_LUNES_VIERNES')).toBe(false); // Domingo
-      expect(CalendarioLaboralService.esDiaHabil('2026-05-04', 'HABILES_LUNES_VIERNES')).toBe(true);  // Lunes no festivo
-      expect(CalendarioLaboralService.esDiaHabil('2026-05-05', 'HABILES_LUNES_VIERNES')).toBe(true);  // Martes
-    });
-
-    it('en HABILES_LUNES_SABADO incluye sábados pero excluye domingos y festivos', () => {
-      expect(CalendarioLaboralService.esDiaHabil('2026-05-01', 'HABILES_LUNES_SABADO')).toBe(false); // Festivo
-      expect(CalendarioLaboralService.esDiaHabil('2026-05-02', 'HABILES_LUNES_SABADO')).toBe(true);  // Sábado (Cobrado)
-      expect(CalendarioLaboralService.esDiaHabil('2026-05-03', 'HABILES_LUNES_SABADO')).toBe(false); // Domingo (Excluido)
-      expect(CalendarioLaboralService.esDiaHabil('2026-05-04', 'HABILES_LUNES_SABADO')).toBe(true);  // Lunes
-    });
-  });
-
-  describe('calcularDiasCobrables y desglosarDiasPeriodo', () => {
-    // Del 1 al 10 de Mayo de 2026 (10 días calendario en total):
-    // 01-May (Vie): Festivo (Día del Trabajo)
-    // 02-May (Sáb): Sábado
-    // 03-May (Dom): Domingo
-    // 04-May (Lun): Habil
-    // 05-May (Mar): Habil
-    // 06-May (Mié): Habil
-    // 07-May (Jue): Habil
-    // 08-May (Vie): Habil
-    // 09-May (Sáb): Sábado
-    // 10-May (Dom): Domingo
-
-    it('debe calcular correctamente en modo CALENDARIO', () => {
-      const dias = CalendarioLaboralService.calcularDiasCobrables('2026-05-01', '2026-05-10', 'CALENDARIO');
-      expect(dias).toBe(10);
-
-      const desglose = CalendarioLaboralService.desglosarDiasPeriodo('2026-05-01', '2026-05-10', 'CALENDARIO');
-      expect(desglose.totalDiasCalendario).toBe(10);
-      expect(desglose.diasCobrables).toBe(10);
-      expect(desglose.diasExcluidos).toBe(0);
-    });
-
-    it('debe calcular correctamente en modo HABILES_LUNES_VIERNES', () => {
-      // Excluye: 01 (Festivo), 02 (Sáb), 03 (Dom), 09 (Sáb), 10 (Dom) -> 5 días excluidos.
-      // Quedan: 04, 05, 06, 07, 08 -> 5 días cobrables.
-      const dias = CalendarioLaboralService.calcularDiasCobrables('2026-05-01', '2026-05-10', 'HABILES_LUNES_VIERNES');
-      expect(dias).toBe(5);
-
-      const desglose = CalendarioLaboralService.desglosarDiasPeriodo('2026-05-01', '2026-05-10', 'HABILES_LUNES_VIERNES');
-      expect(desglose.totalDiasCalendario).toBe(10);
-      expect(desglose.diasCobrables).toBe(5);
-      expect(desglose.diasExcluidos).toBe(5);
-    });
-
-    it('debe calcular correctamente en modo HABILES_LUNES_SABADO', () => {
-      // Excluye: 01 (Festivo), 03 (Dom), 10 (Dom) -> 3 días excluidos.
-      // Cobra: 02 (Sáb), 04, 05, 06, 07, 08, 09 (Sáb) -> 7 días cobrables.
-      const dias = CalendarioLaboralService.calcularDiasCobrables('2026-05-01', '2026-05-10', 'HABILES_LUNES_SABADO');
+  describe('4. Cálculo de Días Cobrables en Rango (calcularDiasCobrables)', () => {
+    it('debe cobrar todos los días continuos en modalidad CALENDARIO', () => {
+      // Del lunes 2026-05-04 al domingo 2026-05-10: 7 días calendario
+      const dias = CalendarioLaboralService.calcularDiasCobrables(
+        '2026-05-04',
+        '2026-05-10',
+        'CALENDARIO'
+      );
       expect(dias).toBe(7);
-
-      const desglose = CalendarioLaboralService.desglosarDiasPeriodo('2026-05-01', '2026-05-10', 'HABILES_LUNES_SABADO');
-      expect(desglose.totalDiasCalendario).toBe(10);
-      expect(desglose.diasCobrables).toBe(7);
-      expect(desglose.diasExcluidos).toBe(3);
     });
 
-    it('debe lanzar error o retornar 0 si fecha fin es anterior a fecha inicio', () => {
-      expect(() =>
-        CalendarioLaboralService.calcularDiasCobrables('2026-05-10', '2026-05-01', 'CALENDARIO')
-      ).toThrowError('La fecha final debe ser posterior o igual a la fecha de inicio');
+    it('debe cobrar 5 días (L-V) excluyendo fin de semana en semana ordinaria para HABILES_LUNES_VIERNES', () => {
+      // Del lunes 2026-05-04 al domingo 2026-05-10 (sin festivos): 5 hábiles
+      const dias = CalendarioLaboralService.calcularDiasCobrables(
+        '2026-05-04',
+        '2026-05-10',
+        'HABILES_LUNES_VIERNES'
+      );
+      expect(dias).toBe(5);
     });
 
-    it('debe manejar alquiler de 1 solo día cobrable correctamente', () => {
-      const dias = CalendarioLaboralService.calcularDiasCobrables('2026-05-04', '2026-05-04', 'HABILES_LUNES_VIERNES');
-      expect(dias).toBe(1);
+    it('debe cobrar 6 días (L-S) excluyendo solo domingo en semana ordinaria para HABILES_LUNES_SABADO', () => {
+      // Del lunes 2026-05-04 al domingo 2026-05-10: 6 días (lunes a sábado)
+      const dias = CalendarioLaboralService.calcularDiasCobrables(
+        '2026-05-04',
+        '2026-05-10',
+        'HABILES_LUNES_SABADO'
+      );
+      expect(dias).toBe(6);
     });
 
-    it('debe manejar alquiler de 1 día que cae en festivo (retornando 0 días cobrables)', () => {
-      const dias = CalendarioLaboralService.calcularDiasCobrables('2026-05-01', '2026-05-01', 'HABILES_LUNES_VIERNES');
-      expect(dias).toBe(0);
+    it('debe descontar festivos en HABILES_LUNES_VIERNES y HABILES_LUNES_SABADO', () => {
+      // Semana de la Ascensión: del Lunes 2026-05-18 (Festivo) al Domingo 2026-05-24
+      // Total días calendario: 7
+      // HABILES_LUNES_VIERNES: normalmente 5, pero lunes es festivo -> 4 días
+      // HABILES_LUNES_SABADO: normalmente 6, pero lunes es festivo -> 5 días
+      expect(
+        CalendarioLaboralService.calcularDiasCobrables(
+          '2026-05-18',
+          '2026-05-24',
+          'CALENDARIO'
+        )
+      ).toBe(7);
+
+      expect(
+        CalendarioLaboralService.calcularDiasCobrables(
+          '2026-05-18',
+          '2026-05-24',
+          'HABILES_LUNES_VIERNES'
+        )
+      ).toBe(4);
+
+      expect(
+        CalendarioLaboralService.calcularDiasCobrables(
+          '2026-05-18',
+          '2026-05-24',
+          'HABILES_LUNES_SABADO'
+        )
+      ).toBe(5);
+    });
+
+    it('debe arrojar error si fechaFin es estrictamente anterior a fechaInicio', () => {
+      expect(() => {
+        CalendarioLaboralService.calcularDiasCobrables(
+          '2026-05-10',
+          '2026-05-04',
+          'CALENDARIO'
+        );
+      }).toThrowError(/fecha final/i);
+    });
+
+    it('debe cobrar 1 día si fechaInicio y fechaFin son el mismo día hábil', () => {
+      expect(
+        CalendarioLaboralService.calcularDiasCobrables(
+          '2026-05-04',
+          '2026-05-04',
+          'HABILES_LUNES_VIERNES'
+        )
+      ).toBe(1);
+    });
+
+    it('debe cobrar 0 días si fechaInicio y fechaFin caen en un festivo no hábil', () => {
+      expect(
+        CalendarioLaboralService.calcularDiasCobrables(
+          '2026-05-01',
+          '2026-05-01',
+          'HABILES_LUNES_VIERNES'
+        )
+      ).toBe(0);
+    });
+  });
+
+  describe('5. Desglose Detallado del Período (desglosarDiasPeriodo)', () => {
+    it('debe retornar resumen completo y detalle día a día con motivos de exclusión', () => {
+      // Del Viernes 2026-05-01 (Festivo) al Domingo 2026-05-03: 3 días calendario
+      const resultado = CalendarioLaboralService.desglosarDiasPeriodo(
+        '2026-05-01',
+        '2026-05-03',
+        'HABILES_LUNES_VIERNES'
+      );
+
+      expect(resultado.totalDiasCalendario).toBe(3);
+      expect(resultado.diasCobrables).toBe(0); // Viernes festivo, Sábado no hábil, Domingo no hábil
+      expect(resultado.diasExcluidos).toBe(3);
+      expect(resultado.modoCobro).toBe('HABILES_LUNES_VIERNES');
+      expect(resultado.detalles).toHaveLength(3);
+
+      // Día 1: 2026-05-01
+      expect(resultado.detalles[0].fecha).toBe('2026-05-01');
+      expect(resultado.detalles[0].esFestivo).toBe(true);
+      expect(resultado.detalles[0].esCobrable).toBe(false);
+      expect(resultado.detalles[0].motivoExclusion).toContain('Festivo (Día del Trabajo)');
+
+      // Día 2: 2026-05-02
+      expect(resultado.detalles[1].fecha).toBe('2026-05-02');
+      expect(resultado.detalles[1].esCobrable).toBe(false);
+      expect(resultado.detalles[1].motivoExclusion).toContain('Sábado');
+
+      // Día 3: 2026-05-03
+      expect(resultado.detalles[2].fecha).toBe('2026-05-03');
+      expect(resultado.detalles[2].esCobrable).toBe(false);
+      expect(resultado.detalles[2].motivoExclusion).toContain('Domingo');
+    });
+
+    it('debe soportar cruces de año con festivos correspondientes', () => {
+      // Del 2025-12-30 al 2026-01-04 (6 días calendario)
+      const res = CalendarioLaboralService.desglosarDiasPeriodo(
+        '2025-12-30',
+        '2026-01-04',
+        'HABILES_LUNES_VIERNES'
+      );
+
+      expect(res.totalDiasCalendario).toBe(6);
+      expect(res.diasCobrables).toBe(3); // 30 Dic, 31 Dic, 2 Ene
+      expect(res.diasExcluidos).toBe(3); // 1 Ene (Festivo), 3 Ene (Sábado), 4 Ene (Domingo)
     });
   });
 });
