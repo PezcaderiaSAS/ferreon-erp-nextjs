@@ -9,7 +9,6 @@ import { useLayoutStore } from '../../infrastructure/state/layoutStore';
 import { useTenantStore } from '../../infrastructure/state/tenantStore';
 import { ShieldAlert } from 'lucide-react';
 import {
-  AcademiaIsland,
   AcademiaModal,
   GuiaBotonesFlujosModal,
   CelebracionConfetti,
@@ -68,13 +67,12 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         )}
         <TopNav />
-        <main className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-y-auto overflow-x-hidden safe-area-pb custom-scrollbar pb-24 sm:pb-28">
+        <main className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-y-auto overflow-x-hidden safe-area-pb custom-scrollbar pb-6 sm:pb-8 md:pb-10">
           {children}
         </main>
       </div>
 
-      {/* Academia Alquileres System: Widget flotante, modales y confeti accesible globalmente */}
-      <AcademiaIsland />
+      {/* Academia Alquileres System: Modales y confeti accesible globalmente bajo demanda */}
       <AcademiaModal />
       <GuiaBotonesFlujosModal />
       <CelebracionConfetti />

@@ -441,19 +441,64 @@ export class EnterprisePDFService {
       gap: 30px; 
       margin-top: ${isA5 ? "16px" : "24px"}; 
       padding-top: 6px; 
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
-    .sig-line { 
-      border-top: 1px solid #475569; 
-      text-align: center; 
-      padding-top: 3px; 
-      font-size: ${isA5 ? "7pt" : "8pt"}; 
-      font-weight: bold; 
-      color: #334155; 
+    .sig-column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .sig-image-box {
+      height: ${isA5 ? "36px" : "48px"};
+      width: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      margin-bottom: 0px;
+    }
+    .sig-img {
+      max-height: ${isA5 ? "36px" : "48px"};
+      max-width: ${isA5 ? "120px" : "150px"};
+      object-fit: contain;
+      display: block;
+    }
+    .sig-line-rule {
+      width: 100%;
+      max-width: 240px;
+      border-top: 1px solid #334155;
+      margin: 2px auto 5px auto;
+    }
+    .sig-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: ${isA5 ? "7pt" : "8pt"};
+      line-height: 1.35;
+      color: #334155;
+    }
+    .sig-entity-name {
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .sig-role-title {
+      font-size: ${isA5 ? "6.8pt" : "7.5pt"};
+      color: #475569;
+      font-weight: 600;
     }
     .sig-sub {
       font-size: ${isA5 ? "6.5pt" : "7pt"};
       color: #64748b;
       font-weight: normal;
+    }
+    .sig-sub-date {
+      font-size: ${isA5 ? "5.8pt" : "6.5pt"};
+      color: #64748b;
+      font-style: italic;
+    }
+    .sig-line {
+      text-align: center;
     }
     .footer { 
       margin-top: 14px; 
@@ -503,8 +548,12 @@ export class EnterprisePDFService {
     body.a5-active .letras-box { font-size: 7pt; }
     body.a5-active .bank-box { font-size: 6.8pt; }
     body.a5-active .signatures { margin-top: 16px; }
-    body.a5-active .sig-line { font-size: 7pt; }
+    body.a5-active .sig-image-box { height: 36px; }
+    body.a5-active .sig-img { max-height: 36px; max-width: 120px; }
+    body.a5-active .sig-meta { font-size: 7pt; }
+    body.a5-active .sig-role-title { font-size: 6.8pt; }
     body.a5-active .sig-sub { font-size: 6.5pt; }
+    body.a5-active .sig-sub-date { font-size: 5.8pt; }
     body.a5-active .footer { font-size: 6pt; }
   </style>
   <script>
@@ -658,20 +707,32 @@ export class EnterprisePDFService {
     </div>
 
     <div class="signatures">
-      <div class="sig-line">
-        ${(payload.firmaClienteBase64 && typeof payload.firmaClienteBase64 === 'string' && payload.firmaClienteBase64.startsWith('data:image/') && payload.firmaClienteBase64.length > 50)
-          ? `<img src="${payload.firmaClienteBase64}" alt="Firma del cliente" style="height:36px; max-width:140px; object-fit:contain; display:block; margin: 4px auto 2px;" />`
-          : ''}
-        Firma Cliente / Receptor<br/>
-        <span class="sig-sub">C.C. / NIT: ${payload.clienteNit || "____________________"}</span>
-        ${payload.firmaClienteFecha ? `<br/><span class="sig-sub" style="font-size:6pt; color:#64748b;">Firmado touch: ${payload.firmaClienteFecha}</span>` : ''}
+      <div class="sig-column">
+        <div class="sig-image-box">
+          ${(payload.firmaClienteBase64 && typeof payload.firmaClienteBase64 === 'string' && payload.firmaClienteBase64.startsWith('data:image/') && payload.firmaClienteBase64.length > 50)
+            ? `<img src="${payload.firmaClienteBase64}" alt="Firma del cliente" class="sig-img" />`
+            : ''}
+        </div>
+        <div class="sig-line-rule"></div>
+        <div class="sig-meta">
+          <span class="sig-entity-name">Acepto y Recibí a Satisfacción</span>
+          <span class="sig-sub">Cliente / Deudor: ${clienteNombre}</span>
+          <span class="sig-sub">C.C. / NIT: ${(payload.clienteNit && payload.clienteNit !== 'Sin Registrar' && payload.clienteNit !== 'Sin NIT') ? payload.clienteNit : (clienteNit !== 'Sin Registrar' && clienteNit !== 'Sin NIT' ? clienteNit : '____________________')}</span>
+          ${payload.firmaClienteFecha ? `<span class="sig-sub-date">Firmado digitalmente: ${payload.firmaClienteFecha}</span>` : ''}
+        </div>
       </div>
-      <div class="sig-line">
-        ${emp.razonSocial}<br/>
-        ${(payload.incluirFirmaEmisor !== false && emp.firmaDigitalBase64 && typeof emp.firmaDigitalBase64 === 'string' && emp.firmaDigitalBase64.startsWith('data:image/') && emp.firmaDigitalBase64.length > 50)
-          ? `<img src="${emp.firmaDigitalBase64}" alt="Firma del emisor" style="height:36px; max-width:140px; object-fit:contain; display:block; margin: 4px auto 2px;" />`
-          : ''}
-        <span class="sig-sub">Firma Autorizada y Sello</span>
+      <div class="sig-column">
+        <div class="sig-image-box">
+          ${(payload.incluirFirmaEmisor !== false && emp.firmaDigitalBase64 && typeof emp.firmaDigitalBase64 === 'string' && emp.firmaDigitalBase64.startsWith('data:image/') && emp.firmaDigitalBase64.length > 50)
+            ? `<img src="${emp.firmaDigitalBase64}" alt="Firma del emisor" class="sig-img" />`
+            : ''}
+        </div>
+        <div class="sig-line-rule"></div>
+        <div class="sig-meta">
+          <span class="sig-entity-name">${emp.razonSocial}</span>
+          <span class="sig-sub">NIT: ${emp.nit}</span>
+          <span class="sig-role-title">Firma Autorizada y Sello</span>
+        </div>
       </div>
     </div>
 

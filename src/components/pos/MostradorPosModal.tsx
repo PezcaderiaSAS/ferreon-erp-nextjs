@@ -24,11 +24,15 @@ import {
   Building2,
   Info,
   Eye,
+  Clock,
+  Minus,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Modal } from '@/components/ui/Modal';
 import { useBodegaStore, EquipoUI } from '@/infrastructure/state/bodegaStore';
 import { useClienteStore, ClienteUI } from '@/infrastructure/state/clienteStore';
+import { useEmpresaStore } from '@/infrastructure/state/empresaStore';
+import { AlquilerHorasService } from '@/core/services/alquiler-horas.service';
 import { crearAlquilerRapidoPosAction, CrearAlquilerRapidoPosInput } from '@/app/actions/alquileres';
 import { guardarFirmaClienteAlquilerAction } from '@/app/actions/firma-cliente';
 import {
@@ -49,9 +53,11 @@ interface CartItem {
   codigo: string;
   nombre: string;
   tarifaDiaria: number;
+  tarifaHoraria?: number;
   stockDisponible: number;
   cantidad: number;
   diasCobro: number;
+  horasCobro?: number;
   subtotal: number;
 }
 
@@ -64,6 +70,11 @@ export interface MostradorPosModalProps {
 export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: MostradorPosModalProps) {
   const { equipos } = useBodegaStore();
   const { clientes, agregarCliente } = useClienteStore();
+  const { config } = useEmpresaStore();
+
+  const alquilerHorasHabilitado = config?.alquilerHorasHabilitado ?? true;
+  const maxEquiposExpress = config?.maxEquiposAlquilerHoras ?? 5;
+  const recargoHorasPorcentaje = config?.recargoHorasPorcentaje ?? 20;
 
   // Referencias a inputs para atajos de teclado
   const searchEquipoInputRef = useRef<HTMLInputElement>(null);
@@ -83,6 +94,32 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
 
   // Carrito de mostrador
   const [cart, setCart] = useState<CartItem[]>([]);
+
+  // Modalidad de alquiler: 'DIAS' vs 'HORAS' (SPEC-015)
+  const [unidadTiempo, setUnidadTiempo] = useState<'DIAS' | 'HORAS'>('DIAS');
+  const [horasAlquiler, setHorasAlquiler] = useState<number>(4);
+  const [horaSalida, setHoraSalida] = useState<string>(() => AlquilerHorasService.obtenerHoraActualHHMM());
+
+  // Proyección reactiva de horarios en tiempo real
+  const horaRetornoEstimada = useMemo(() => {
+    return AlquilerHorasService.proyectarHoraRetorno(horaSalida, horasAlquiler, '12h');
+  }, [horaSalida, horasAlquiler]);
+
+  const horaRetorno24 = useMemo(() => {
+    return AlquilerHorasService.proyectarHoraRetorno(horaSalida, horasAlquiler, '24h');
+  }, [horaSalida, horasAlquiler]);
+
+  const sobrepasaHorarioLaboral = useMemo(() => {
+    return AlquilerHorasService.esSobrepasoHorarioLaboral(horaRetorno24);
+  }, [horaRetorno24]);
+
+  const totalUnidadesEnCarrito = useMemo(() => {
+    return cart.reduce((acc, it) => acc + it.cantidad, 0);
+  }, [cart]);
+
+  const topeEquiposAlcanzado = useMemo(() => {
+    return unidadTiempo === 'HORAS' && totalUnidadesEnCarrito >= maxEquiposExpress;
+  }, [unidadTiempo, totalUnidadesEnCarrito, maxEquiposExpress]);
 
   // Parámetros financieros
   const [deposito, setDeposito] = useState<number>(0);
@@ -131,17 +168,31 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
     };
   }, [fechaInicio, fechaFin, modoCobroDias]);
 
-  // Actualizar días en el carrito automáticamente al cambiar el período o la modalidad
+  // Actualizar días y subtotales en el carrito reactivamente en 0 ms
   useEffect(() => {
-    const diasCalculados = Math.max(1, desgloseDias.diasCobrables);
-    setCart((prev) =>
-      prev.map((it) => ({
-        ...it,
-        diasCobro: diasCalculados,
-        subtotal: it.cantidad * it.tarifaDiaria * diasCalculados,
-      }))
-    );
-  }, [desgloseDias.diasCobrables]);
+    if (unidadTiempo === 'HORAS') {
+      setCart((prev) =>
+        prev.map((it) => {
+          const tarifaHora = AlquilerHorasService.calcularTarifaHora(it.tarifaDiaria, recargoHorasPorcentaje);
+          return {
+            ...it,
+            tarifaHoraria: tarifaHora,
+            horasCobro: horasAlquiler,
+            subtotal: it.cantidad * tarifaHora * horasAlquiler,
+          };
+        })
+      );
+    } else {
+      const diasCalculados = Math.max(1, desgloseDias.diasCobrables);
+      setCart((prev) =>
+        prev.map((it) => ({
+          ...it,
+          diasCobro: diasCalculados,
+          subtotal: it.cantidad * it.tarifaDiaria * diasCalculados,
+        }))
+      );
+    }
+  }, [unidadTiempo, horasAlquiler, recargoHorasPorcentaje, desgloseDias.diasCobrables]);
 
   // Formateador de moneda en pesos colombianos (COP)
   const formatearCOP = (val: number) => {
@@ -243,15 +294,24 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
     setDespachoExitoso(null);
     setModoCobroDias('CALENDARIO');
     setMostrarModalDesglose(false);
+    setUnidadTiempo('DIAS');
+    setHorasAlquiler(4);
+    setHoraSalida(AlquilerHorasService.obtenerHoraActualHHMM());
   };
 
-  // Agregar equipo al carrito (si ya existe, incrementa cantidad hasta el stock disponible)
+  // Agregar equipo al carrito (con validación Poka-Yoke de tope en horas express)
   const handleAddEquipo = (eq: EquipoUI) => {
+    if (unidadTiempo === 'HORAS' && totalUnidadesEnCarrito >= maxEquiposExpress) {
+      setErrorMsg(`Tope de equipos alcanzado para alquiler express (máx. ${maxEquiposExpress}). Pase a modalidad Por Días para mayor volumen.`);
+      return;
+    }
+
     const rawId = String(eq.id).replace(/\D/g, '');
     const eqId = parseInt(rawId, 10) || Number(eq.id);
     const stockMax = eq.stock_disponible ?? eq.stockDisponible ?? 0;
     const tarifa = eq.tarifa_diaria ?? eq.tarifaDiaria ?? 0;
     const diasIniciales = Math.max(1, desgloseDias.diasCobrables);
+    const tarifaHora = AlquilerHorasService.calcularTarifaHora(tarifa, recargoHorasPorcentaje);
 
     setCart((prev) => {
       const idx = prev.findIndex((item) => item.equipoId === eqId);
@@ -261,21 +321,40 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
           setErrorMsg(`Stock máximo alcanzado para ${eq.nombre} (${stockMax} disponibles).`);
           return prev;
         }
+        if (unidadTiempo === 'HORAS' && totalUnidadesEnCarrito >= maxEquiposExpress) {
+          setErrorMsg(`Tope de equipos alcanzado para alquiler express (máx. ${maxEquiposExpress}).`);
+          return prev;
+        }
         const nuevaCant = itemExistente.cantidad + 1;
-        const nuevoSubtotal = nuevaCant * itemExistente.tarifaDiaria * itemExistente.diasCobro;
+        const nuevoSubtotal = unidadTiempo === 'HORAS'
+          ? nuevaCant * tarifaHora * horasAlquiler
+          : nuevaCant * itemExistente.tarifaDiaria * itemExistente.diasCobro;
+
         const copy = [...prev];
-        copy[idx] = { ...itemExistente, cantidad: nuevaCant, subtotal: nuevoSubtotal };
+        copy[idx] = {
+          ...itemExistente,
+          cantidad: nuevaCant,
+          tarifaHoraria: tarifaHora,
+          horasCobro: horasAlquiler,
+          subtotal: nuevoSubtotal,
+        };
         return copy;
       } else {
+        const subtotalInicial = unidadTiempo === 'HORAS'
+          ? 1 * tarifaHora * horasAlquiler
+          : tarifa * 1 * diasIniciales;
+
         const nuevoItem: CartItem = {
           equipoId: eqId,
           codigo: eq.codigo || eq.sku || `EQ-${eqId}`,
           nombre: eq.nombre,
           tarifaDiaria: tarifa,
+          tarifaHoraria: tarifaHora,
           stockDisponible: stockMax,
           cantidad: 1,
           diasCobro: diasIniciales,
-          subtotal: tarifa * 1 * diasIniciales,
+          horasCobro: horasAlquiler,
+          subtotal: subtotalInicial,
         };
         return [...prev, nuevoItem];
       }
@@ -289,11 +368,25 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
     setCart((prev) =>
       prev.map((it) => {
         if (it.equipoId === equipoId) {
-          const validCant = Math.min(Math.max(1, cant), it.stockDisponible);
+          let validCant = Math.min(Math.max(1, cant), it.stockDisponible);
+          if (unidadTiempo === 'HORAS') {
+            const otrasCantidades = prev
+              .filter((x) => x.equipoId !== equipoId)
+              .reduce((acc, x) => acc + x.cantidad, 0);
+            if (otrasCantidades + validCant > maxEquiposExpress) {
+              validCant = Math.max(1, maxEquiposExpress - otrasCantidades);
+              setErrorMsg(`Tope de ${maxEquiposExpress} equipos para alquiler express alcanzado.`);
+            }
+          }
+          const tarifaHora = it.tarifaHoraria || AlquilerHorasService.calcularTarifaHora(it.tarifaDiaria, recargoHorasPorcentaje);
+          const subtotalCalculado = unidadTiempo === 'HORAS'
+            ? validCant * tarifaHora * horasAlquiler
+            : validCant * it.tarifaDiaria * it.diasCobro;
+
           return {
             ...it,
             cantidad: validCant,
-            subtotal: validCant * it.tarifaDiaria * it.diasCobro,
+            subtotal: subtotalCalculado,
           };
         }
         return it;
@@ -352,23 +445,33 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
               telefono: nuevoClienteTelefono.trim() || undefined,
             }
           : null,
+        unidadTiempo,
+        horasContratadas: unidadTiempo === 'HORAS' ? horasAlquiler : undefined,
+        horaEntrega: unidadTiempo === 'HORAS' ? horaSalida : undefined,
+        horaDevolucionEstimada: unidadTiempo === 'HORAS' ? horaRetorno24 : undefined,
         items: cart.map((it) => ({
           equipoId: it.equipoId,
           cantidad: it.cantidad,
-          tarifaAplicada: it.tarifaDiaria,
+          tarifaAplicada: unidadTiempo === 'HORAS'
+            ? (it.tarifaHoraria || AlquilerHorasService.calcularTarifaHora(it.tarifaDiaria, recargoHorasPorcentaje))
+            : it.tarifaDiaria,
+          unidadTiempo,
+          duracion: unidadTiempo === 'HORAS' ? horasAlquiler : it.diasCobro,
           diasCobro: it.diasCobro,
+          horaEntrega: unidadTiempo === 'HORAS' ? horaSalida : undefined,
+          horaDevolucionEstimada: unidadTiempo === 'HORAS' ? horaRetorno24 : undefined,
           subtotalLinea: it.subtotal,
           fechaInicio,
-          fechaFinEstimada: fechaFin,
+          fechaFinEstimada: unidadTiempo === 'HORAS' ? fechaInicio : fechaFin,
         })),
         modoCobroDias,
-        diasCobrables: desgloseDias.diasCobrables,
+        diasCobrables: unidadTiempo === 'HORAS' ? 1 : desgloseDias.diasCobrables,
         deposito: Number(deposito) || 0,
         fleteEntrega: Number(fleteEntrega) || 0,
         garantiaMonto: Number(garantiaMonto) || 0,
         garantiaTipo,
-        observaciones: observaciones || 'Despacho Rápido Mostrador POS (<30s)',
-        detallesLogistica: 'Entrega Inmediata en Mostrador',
+        observaciones: observaciones || (unidadTiempo === 'HORAS' ? 'Alquiler Express por Horas en Mostrador POS' : 'Despacho Rápido Mostrador POS (<30s)'),
+        detallesLogistica: unidadTiempo === 'HORAS' ? `Entrega Express en Mostrador (${horasAlquiler}h)` : 'Entrega Inmediata en Mostrador',
       };
 
       const res = await crearAlquilerRapidoPosAction(payload);
@@ -394,9 +497,17 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
         }
       }
 
-      setDespachoExitoso(res.data);
+      const enrichedDespacho = {
+        ...res.data,
+        unidadTiempo,
+        horasAlquiler: unidadTiempo === 'HORAS' ? horasAlquiler : undefined,
+        horaEntrega: unidadTiempo === 'HORAS' ? horaSalida : undefined,
+        horaDevolucionEstimada: unidadTiempo === 'HORAS' ? horaRetornoEstimada : undefined,
+      };
+
+      setDespachoExitoso(enrichedDespacho);
       if (onDespachoExitoso) {
-        onDespachoExitoso(res.data);
+        onDespachoExitoso(enrichedDespacho);
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Error de red o comunicación con el servidor.');
@@ -454,6 +565,16 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
             </div>
 
             <div className="max-w-md mx-auto p-4 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 text-left space-y-2 text-sm">
+              {despachoExitoso.unidadTiempo === 'HORAS' && (
+                <div className="p-2.5 bg-amber-100/70 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-lg text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between">
+                  <span className="font-bold flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-amber-600" /> Express ({despachoExitoso.horasAlquiler}h)
+                  </span>
+                  <span className="font-mono font-bold">
+                    Salida: {despachoExitoso.horaEntrega} ➔ Retorno: {despachoExitoso.horaDevolucionEstimada}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-gray-500">Total Liquidado:</span>
                 <span className="font-bold text-gray-900 dark:text-white">
@@ -599,115 +720,272 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
                 )}
               </div>
 
-              {/* Sección 2: Modalidad de Cobro y Fechas (Tarifas Dinámicas Ley Emiliani - SPEC-014) */}
+              {/* Sección 2: Modalidad de Alquiler y Tiempos (Por Días vs Por Horas Express - SPEC-015) */}
               <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 space-y-3">
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-blue-500" />
-                    2. Modalidad de Cobro y Fechas (Ley Emiliani)
-                  </span>
-                  <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                    {desgloseDias.diasCobrables} día{desgloseDias.diasCobrables === 1 ? '' : 's'} a liquidar
-                  </span>
-                </label>
+                {/* Selector Segmentado de Nivel Superior: Días vs Horas */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+                    {unidadTiempo === 'HORAS' ? (
+                      <Clock className="w-4 h-4 text-amber-500" />
+                    ) : (
+                      <Calendar className="w-4 h-4 text-blue-500" />
+                    )}
+                    2. Modalidad de Alquiler y Tiempos
+                  </label>
 
-                {/* Fechas de Alquiler */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[11px] font-medium text-gray-500 block mb-1">Fecha Entrega / Inicio:</label>
-                    <input
-                      type="date"
-                      value={fechaInicio}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setFechaInicio(val);
-                        if (fechaFin < val) setFechaFin(val);
-                      }}
-                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-medium text-gray-500 block mb-1">Fecha Retorno Estimada:</label>
-                    <input
-                      type="date"
-                      min={fechaInicio}
-                      value={fechaFin}
-                      onChange={(e) => setFechaFin(e.target.value)}
-                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
-                    />
-                  </div>
-                </div>
-
-                {/* Selector Segmentado de Modalidad de Cobro */}
-                <div className="grid grid-cols-3 gap-1.5 p-1 bg-gray-200/70 dark:bg-gray-800/80 rounded-lg">
-                  <button
-                    type="button"
-                    onClick={() => setModoCobroDias('CALENDARIO')}
-                    className={`px-2 py-1.5 rounded-md text-xs font-semibold flex flex-col items-center justify-center gap-0.5 transition ${
-                      modoCobroDias === 'CALENDARIO'
-                        ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>Calendario</span>
-                    </div>
-                    <span className="text-[10px] font-normal opacity-75">Corridos</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setModoCobroDias('HABILES_LUNES_VIERNES')}
-                    className={`px-2 py-1.5 rounded-md text-xs font-semibold flex flex-col items-center justify-center gap-0.5 transition ${
-                      modoCobroDias === 'HABILES_LUNES_VIERNES'
-                        ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1">
-                      <Briefcase className="w-3.5 h-3.5" />
-                      <span>Hábiles L-V</span>
-                    </div>
-                    <span className="text-[10px] font-normal opacity-75">Excl. Festivos</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setModoCobroDias('HABILES_LUNES_SABADO')}
-                    className={`px-2 py-1.5 rounded-md text-xs font-semibold flex flex-col items-center justify-center gap-0.5 transition ${
-                      modoCobroDias === 'HABILES_LUNES_SABADO'
-                        ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1">
-                      <Building2 className="w-3.5 h-3.5" />
-                      <span>Hábiles L-S</span>
-                    </div>
-                    <span className="text-[10px] font-normal opacity-75">Obra Civil</span>
-                  </button>
-                </div>
-
-                {/* Banner Informativo y Detalle de Festivos Excluidos */}
-                <div className="flex flex-wrap items-center justify-between text-xs px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                  <span className="text-gray-600 dark:text-gray-300">
-                    Total: <strong className="font-semibold text-gray-900 dark:text-white">{desgloseDias.totalDiasCalendario}</strong> d. cal. • A liquidar:{' '}
-                    <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{desgloseDias.diasCobrables}</strong> día{desgloseDias.diasCobrables === 1 ? '' : 's'}
-                  </span>
-                  {desgloseDias.diasExcluidos > 0 ? (
+                  <div className="grid grid-cols-2 gap-1 p-1 bg-gray-200/80 dark:bg-gray-800 rounded-xl">
                     <button
                       type="button"
-                      onClick={() => setMostrarModalDesglose(true)}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                      onClick={() => setUnidadTiempo('DIAS')}
+                      className={`py-1.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        unidadTiempo === 'DIAS'
+                          ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-gray-300 dark:ring-gray-600'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                      }`}
                     >
-                      <Eye className="w-3 h-3" />
-                      -{desgloseDias.diasExcluidos} festivos/descansos excluidos
+                      <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                      <span>📅 Por Días</span>
                     </button>
-                  ) : (
-                    <span className="text-[11px] text-gray-400 font-mono">Sin días descontados</span>
-                  )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!alquilerHorasHabilitado) {
+                          setErrorMsg('El alquiler por horas está inactivo en Configuración.');
+                          return;
+                        }
+                        setUnidadTiempo('HORAS');
+                        setHoraSalida(AlquilerHorasService.obtenerHoraActualHHMM());
+                      }}
+                      className={`py-1.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        unidadTiempo === 'HORAS'
+                          ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20 ring-2 ring-amber-400'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5 text-amber-100" />
+                      <span>⏱️ Por Horas (Express)</span>
+                    </button>
+                  </div>
                 </div>
+
+                {/* Si estamos en MODO HORAS: Tarjeta de Reloj Táctil Ultra-Simple */}
+                {unidadTiempo === 'HORAS' ? (
+                  <div className="p-3.5 rounded-xl bg-gradient-to-br from-amber-50/90 to-orange-50/90 dark:from-amber-950/30 dark:to-orange-950/20 border-2 border-amber-300 dark:border-amber-700/60 shadow-sm space-y-3">
+                    {/* Fila Horarios Salida / Retorno */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-gray-800 p-3 rounded-xl border border-amber-200 dark:border-amber-800">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm font-bold">
+                          🟢
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">
+                            Hora Salida (Despacho):
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="time"
+                              value={horaSalida}
+                              onChange={(e) => setHoraSalida(e.target.value)}
+                              className="font-mono font-bold text-xs px-2 py-1 rounded bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white"
+                            />
+                            <span className="text-xs text-gray-500 font-medium">
+                              ({AlquilerHorasService.formatearHora12(horaSalida)})
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-amber-500 font-bold hidden sm:block text-base">➔</div>
+
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center text-sm font-bold">
+                          🏁
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">
+                            Hora Límite de Devolución:
+                          </span>
+                          <span className="font-mono font-extrabold text-sm text-amber-600 dark:text-amber-400">
+                            {horaRetornoEstimada}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Botones Rápidos (1h, 2h, 4h, 8h) + Stepper Grande [-] [+] */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+                      <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                        Duración pactada:
+                      </span>
+
+                      <div className="flex items-center gap-1.5">
+                        {[1, 2, 4, 8].map((h) => (
+                          <button
+                            key={h}
+                            type="button"
+                            onClick={() => setHorasAlquiler(h)}
+                            className={`min-w-[42px] min-h-[38px] px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                              horasAlquiler === h
+                                ? 'bg-amber-500 text-white shadow-md ring-2 ring-amber-300 scale-105'
+                                : 'bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-amber-100 dark:hover:bg-amber-950'
+                            }`}
+                          >
+                            {h}h
+                          </button>
+                        ))}
+
+                        {/* Stepper amigable para niño de 12 años */}
+                        <div className="flex items-center gap-1 ml-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => setHorasAlquiler(prev => Math.max(1, prev - 1))}
+                            className="w-8 h-8 rounded flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold active:scale-95 text-sm cursor-pointer"
+                            title="Menos 1 hora"
+                          >
+                            -
+                          </button>
+                          <span className="w-8 text-center font-black text-xs text-gray-900 dark:text-white font-mono">
+                            {horasAlquiler}h
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setHorasAlquiler(prev => Math.min(12, prev + 1))}
+                            className="w-8 h-8 rounded flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold active:scale-95 text-sm cursor-pointer"
+                            title="Más 1 hora"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Alerta de Cierre Laboral si sobrepasa 18:00 */}
+                    {sobrepasaHorarioLaboral && (
+                      <div className="flex items-center gap-2 p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                        <span>
+                          <strong>Atención:</strong> La devolución proyectada ({horaRetornoEstimada}) supera el horario de cierre (6:00 PM). Se recomienda pasar a <strong>Alquiler por Días</strong>.
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Badge Poka-Yoke Contador de Equipos Express */}
+                    <div className="flex items-center justify-between text-xs pt-1 px-1 text-gray-600 dark:text-gray-400">
+                      <span className="flex items-center gap-1 font-medium">
+                        <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                        Límite express: <strong>{maxEquiposExpress} equipos máx.</strong>
+                      </span>
+                      <span className={`font-bold px-2 py-0.5 rounded-full text-[11px] ${
+                        totalUnidadesEnCarrito >= maxEquiposExpress
+                          ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-300'
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-300'
+                      }`}>
+                        {totalUnidadesEnCarrito} / {maxEquiposExpress} unidades en mostrador
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  /* MODO DÍAS: Fechas y Selector Ley Emiliani */
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-medium text-gray-500 block mb-1">Fecha Entrega / Inicio:</label>
+                        <input
+                          type="date"
+                          value={fechaInicio}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFechaInicio(val);
+                            if (fechaFin < val) setFechaFin(val);
+                          }}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-medium text-gray-500 block mb-1">Fecha Retorno Estimada:</label>
+                        <input
+                          type="date"
+                          min={fechaInicio}
+                          value={fechaFin}
+                          onChange={(e) => setFechaFin(e.target.value)}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Selector Segmentado de Modalidad de Cobro */}
+                    <div className="grid grid-cols-3 gap-1.5 p-1 bg-gray-200/70 dark:bg-gray-800/80 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => setModoCobroDias('CALENDARIO')}
+                        className={`px-2 py-1.5 rounded-md text-xs font-semibold flex flex-col items-center justify-center gap-0.5 transition cursor-pointer ${
+                          modoCobroDias === 'CALENDARIO'
+                            ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>Calendario</span>
+                        </div>
+                        <span className="text-[10px] font-normal opacity-75">Corridos</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setModoCobroDias('HABILES_LUNES_VIERNES')}
+                        className={`px-2 py-1.5 rounded-md text-xs font-semibold flex flex-col items-center justify-center gap-0.5 transition cursor-pointer ${
+                          modoCobroDias === 'HABILES_LUNES_VIERNES'
+                            ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1">
+                          <Briefcase className="w-3.5 h-3.5" />
+                          <span>Hábiles L-V</span>
+                        </div>
+                        <span className="text-[10px] font-normal opacity-75">Excl. Festivos</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setModoCobroDias('HABILES_LUNES_SABADO')}
+                        className={`px-2 py-1.5 rounded-md text-xs font-semibold flex flex-col items-center justify-center gap-0.5 transition cursor-pointer ${
+                          modoCobroDias === 'HABILES_LUNES_SABADO'
+                            ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1">
+                          <Building2 className="w-3.5 h-3.5" />
+                          <span>Hábiles L-S</span>
+                        </div>
+                        <span className="text-[10px] font-normal opacity-75">Obra Civil</span>
+                      </button>
+                    </div>
+
+                    {/* Banner Informativo y Detalle de Festivos Excluidos */}
+                    <div className="flex flex-wrap items-center justify-between text-xs px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                      <span className="text-gray-600 dark:text-gray-300">
+                        Total: <strong className="font-semibold text-gray-900 dark:text-white">{desgloseDias.totalDiasCalendario}</strong> d. cal. • A liquidar:{' '}
+                        <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{desgloseDias.diasCobrables}</strong> día{desgloseDias.diasCobrables === 1 ? '' : 's'}
+                      </span>
+                      {desgloseDias.diasExcluidos > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setMostrarModalDesglose(true)}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                        >
+                          <Eye className="w-3 h-3" />
+                          -{desgloseDias.diasExcluidos} festivos/descansos excluidos
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-gray-400 font-mono">Sin días descontados</span>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Sección 3: Búsqueda Rápida de Equipos por SKU/Código */}
@@ -738,6 +1016,16 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
                   />
                 </div>
 
+                {/* Banner Poka-Yoke si el carrito en modo horas alcanza el tope */}
+                {topeEquiposAlcanzado && (
+                  <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 shrink-0 text-amber-600" />
+                    <span>
+                      <strong>Tope de equipos alcanzado para alquiler express (máx. {maxEquiposExpress}):</strong> Cambie a modalidad <strong>Por Días</strong> si requiere despachar más de {maxEquiposExpress} herramientas simultáneas.
+                    </span>
+                  </div>
+                )}
+
                 {/* Lista de equipos coincidentes */}
                 {filteredEquipos.length > 0 && (
                   <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
@@ -754,6 +1042,10 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
                         ultimoMantenimientoAt: (eq as any).ultimo_mantenimiento_at || null,
                         ultimoMantenimientoObs: null,
                       });
+
+                      const tarifaMostrada = unidadTiempo === 'HORAS'
+                        ? AlquilerHorasService.calcularTarifaHora(tarifa, recargoHorasPorcentaje)
+                        : tarifa;
 
                       return (
                         <div
@@ -780,14 +1072,19 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="font-bold text-sm text-gray-900 dark:text-white">
-                              {formatearCOP(tarifa)}/día
+                              {formatearCOP(tarifaMostrada)}{unidadTiempo === 'HORAS' ? '/h' : '/día'}
                             </span>
                             <button
                               type="button"
+                              disabled={topeEquiposAlcanzado}
                               onClick={() => handleAddEquipo(eq)}
-                              className="px-3 py-1 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium flex items-center gap-1 transition shadow-sm cursor-pointer"
+                              className={`px-3 py-1 text-xs rounded-lg font-medium flex items-center gap-1 transition shadow-sm ${
+                                topeEquiposAlcanzado
+                                  ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
+                                  : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                              }`}
                             >
-                              <Plus className="w-3.5 h-3.5" /> Agregar
+                              <Plus className="w-3.5 h-3.5" /> {topeEquiposAlcanzado ? 'Tope' : 'Agregar'}
                             </button>
                           </div>
                         </div>
@@ -844,7 +1141,9 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
                             {it.nombre}
                           </div>
                           <div className="text-gray-500 font-mono text-[11px]">
-                            {formatearCOP(it.tarifaDiaria)} x día
+                            {unidadTiempo === 'HORAS'
+                              ? `${formatearCOP(it.tarifaHoraria || AlquilerHorasService.calcularTarifaHora(it.tarifaDiaria, recargoHorasPorcentaje))} x hora (+20%)`
+                              : `${formatearCOP(it.tarifaDiaria)} x día`}
                           </div>
                         </div>
 
@@ -863,20 +1162,29 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
                             />
                           </div>
 
-                          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded" title="Días cobrables según la modalidad de calendario seleccionada">
-                            <span className="text-[10px] text-gray-500 font-mono">
-                              Días ({modoCobroDias === 'CALENDARIO' ? 'Cal' : modoCobroDias === 'HABILES_LUNES_VIERNES' ? 'L-V' : 'L-S'}):
-                            </span>
-                            <input
-                              type="number"
-                              min="1"
-                              value={it.diasCobro}
-                              onChange={(e) =>
-                                handleUpdateItemDias(it.equipoId, parseInt(e.target.value, 10) || 1)
-                              }
-                              className="w-10 bg-transparent text-center font-bold text-gray-900 dark:text-white outline-none"
-                            />
-                          </div>
+                          {unidadTiempo === 'HORAS' ? (
+                            <div className="flex items-center gap-1 bg-amber-100/70 dark:bg-amber-950/40 border border-amber-300/50 dark:border-amber-800 px-2 py-1 rounded" title="Horas express pactadas">
+                              <span className="text-[10px] text-amber-800 dark:text-amber-300 font-bold">Horas:</span>
+                              <span className="font-mono font-bold text-amber-900 dark:text-amber-100 text-xs">
+                                {horasAlquiler}h
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded" title="Días cobrables según la modalidad de calendario seleccionada">
+                              <span className="text-[10px] text-gray-500 font-mono">
+                                Días ({modoCobroDias === 'CALENDARIO' ? 'Cal' : modoCobroDias === 'HABILES_LUNES_VIERNES' ? 'L-V' : 'L-S'}):
+                              </span>
+                              <input
+                                type="number"
+                                min="1"
+                                value={it.diasCobro}
+                                onChange={(e) =>
+                                  handleUpdateItemDias(it.equipoId, parseInt(e.target.value, 10) || 1)
+                                }
+                                className="w-10 bg-transparent text-center font-bold text-gray-900 dark:text-white outline-none"
+                              />
+                            </div>
+                          )}
 
                           <span className="font-bold text-gray-900 dark:text-white w-20 text-right">
                             {formatearCOP(it.subtotal)}

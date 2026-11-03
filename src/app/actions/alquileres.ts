@@ -115,7 +115,11 @@ export interface ItemPosInput {
   equipoId: string | number;
   cantidad: number;
   tarifaAplicada: number;
+  unidadTiempo?: 'DIAS' | 'HORAS';
+  duracion?: number;
   diasCobro?: number;
+  horaEntrega?: string | null;
+  horaDevolucionEstimada?: string | null;
   subtotalLinea?: number;
   fechaInicio?: string;
   fechaFinEstimada?: string;
@@ -125,6 +129,10 @@ export interface CrearAlquilerRapidoPosInput {
   clienteId?: string | number | null;
   clienteNuevo?: ClienteNuevoPosInput | null;
   items: ItemPosInput[];
+  unidadTiempo?: 'DIAS' | 'HORAS';
+  horasContratadas?: number;
+  horaEntrega?: string | null;
+  horaDevolucionEstimada?: string | null;
   modoCobroDias?: 'CALENDARIO' | 'HABILES_LUNES_VIERNES' | 'HABILES_LUNES_SABADO';
   diasCobrables?: number;
   deposito?: number;
@@ -679,13 +687,16 @@ export async function crearAlquilerRapidoPosAction(
   const garantiaMonto = Math.round(Number(cleanInput.garantiaMonto || 0));
 
   const modoCobro = cleanInput.modoCobroDias || 'CALENDARIO';
-  const modoEtiqueta = modoCobro === 'HABILES_LUNES_VIERNES'
+  const esHoras = cleanInput.unidadTiempo === 'HORAS';
+  const modoEtiqueta = esHoras
+    ? ` [ALQUILER EXPRESS POR HORAS | ${cleanInput.horasContratadas || 1}h | Despacho: ${cleanInput.horaEntrega || 'Inmediato'} -> Retorno Estimado: ${cleanInput.horaDevolucionEstimada || 'Mismo día'}]`
+    : modoCobro === 'HABILES_LUNES_VIERNES'
     ? ' [Modalidad: Días Hábiles L-V | Excluye festivos colombianos]'
     : modoCobro === 'HABILES_LUNES_SABADO'
     ? ' [Modalidad: Días Hábiles L-S | Estándar Obra | Excluye festivos colombianos]'
     : '';
 
-  const observacionesFinales = (cleanInput.observaciones || 'Despacho Rápido Mostrador POS (<30s)') + modoEtiqueta;
+  const observacionesFinales = (cleanInput.observaciones || (esHoras ? 'Alquiler Express por Horas en Mostrador POS' : 'Despacho Rápido Mostrador POS (<30s)')) + modoEtiqueta;
 
   const payload = {
     empresa_id: empresaId,

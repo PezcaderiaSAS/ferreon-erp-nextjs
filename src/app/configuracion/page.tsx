@@ -7,7 +7,7 @@ import { useEmpresaStore, applyThemeToDOM } from '../../infrastructure/state/emp
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';
 import { MonedaConfig, TemaColorCorporativo, PAISES_LATAM_PRESETS } from '../../core/domain/entities/empresa-config';
 import { UsuariosTab } from './UsuariosTab';
-import { HelpCircle, Palette, Sparkles, Check, FileText, Eye, Loader2, Trash2, Upload, ShieldAlert, ChevronDown, ChevronUp } from 'lucide-react';
+import { HelpCircle, Palette, Sparkles, Check, FileText, Eye, Loader2, Trash2, Upload, ShieldAlert, ChevronDown, ChevronUp, Clock, Minus, Plus } from 'lucide-react';
 import { THEME_PRESETS, ThemePresetId, resolveCompanyTheme, isValidHex } from '../../core/domain/theme/theme-tokens';
 import { obtenerConfiguracionEmpresaAction, guardarConfiguracionEmpresaAction } from '../actions/empresa';
 import { supabaseClient } from '../../infrastructure/persistence/supabase/client';
@@ -902,6 +902,113 @@ export default function ConfiguracionPage() {
                     Si se desmarca, el switch de impuestos iniciará apagado y el operador podrá encenderlo con 1 clic cuando lo requiera.
                   </span>
                 </label>
+              </div>
+            </div>
+
+            {/* Módulo de Alquiler Express por Horas en Mostrador POS (SPEC-015) */}
+            <div className="flex flex-col gap-4 border-t border-slate-200/80 pt-5 mt-2">
+              <div>
+                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-brand-salmon" />
+                  Alquiler Express por Horas (Mostrador POS - SPEC-015)
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Ajuste la habilitación, el límite máximo de equipos simultáneos y el recargo porcentual para alquileres fraccionados en horas (1h, 2h, 4h, 8h).
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Switch de Habilitación */}
+                <div className="flex items-start gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                  <input
+                    type="checkbox"
+                    id="alquilerHorasHabilitado"
+                    checked={formData.alquilerHorasHabilitado ?? true}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, alquilerHorasHabilitado: e.target.checked }));
+                      setIsSaved(false);
+                    }}
+                    className="w-4 h-4 mt-0.5 text-brand-salmon rounded border-slate-300 focus:ring-brand-salmon cursor-pointer"
+                  />
+                  <label htmlFor="alquilerHorasHabilitado" className="text-xs font-semibold text-slate-800 cursor-pointer">
+                    Habilitar modo horas en POS
+                    <span className="block text-[11px] text-slate-500 font-normal mt-0.5">
+                      Permite al operador del mostrador alternar entre alquiler por días y horas express.
+                    </span>
+                  </label>
+                </div>
+
+                {/* Límite Máximo de Equipos (Stepper 1-20) */}
+                <div className="flex flex-col gap-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                  <label className="text-xs font-semibold text-slate-800">
+                    Límite Máximo de Equipos (Express)
+                  </label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cur = formData.maxEquiposAlquilerHoras ?? 5;
+                        const next = Math.max(1, cur - 1);
+                        setFormData(prev => ({ ...prev, maxEquiposAlquilerHoras: next }));
+                        setIsSaved(false);
+                      }}
+                      className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 hover:bg-slate-100 active:scale-95 transition"
+                      title="Disminuir límite"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={formData.maxEquiposAlquilerHoras ?? 5}
+                      onChange={(e) => {
+                        const val = Math.max(1, Math.min(20, Number(e.target.value) || 1));
+                        setFormData(prev => ({ ...prev, maxEquiposAlquilerHoras: val }));
+                        setIsSaved(false);
+                      }}
+                      className="w-16 px-2 py-1.5 text-center font-bold text-slate-900 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-salmon/50"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cur = formData.maxEquiposAlquilerHoras ?? 5;
+                        const next = Math.min(20, cur + 1);
+                        setFormData(prev => ({ ...prev, maxEquiposAlquilerHoras: next }));
+                        setIsSaved(false);
+                      }}
+                      className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 hover:bg-slate-100 active:scale-95 transition"
+                      title="Aumentar límite"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-xs text-slate-500 font-medium">equipos</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">Poka-Yoke: deshabilita agregar más ítems al llegar al tope.</p>
+                </div>
+
+                {/* Recargo Express % */}
+                <div className="flex flex-col gap-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                  <label className="text-xs font-semibold text-slate-800">
+                    Recargo Express por Hora (%)
+                  </label>
+                  <div className="relative mt-1">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={formData.recargoHorasPorcentaje ?? 20}
+                      onChange={(e) => {
+                        const val = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                        setFormData(prev => ({ ...prev, recargoHorasPorcentaje: val }));
+                        setIsSaved(false);
+                      }}
+                      className="w-full px-3 py-1.5 pr-8 text-right font-bold text-slate-900 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-salmon/50"
+                    />
+                    <span className="absolute right-3 top-2 text-xs text-slate-400 font-bold">%</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">Fórmula: (tarifaDia / 8) * (1 + % / 100).</p>
+                </div>
               </div>
             </div>
 

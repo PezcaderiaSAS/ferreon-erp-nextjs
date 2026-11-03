@@ -257,31 +257,55 @@ const getStyles = (pageSize: 'LETTER' | 'A5', tokens: ThemeTokens) => {
     signatures: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginTop: isA5 ? 16 : 28,
-      paddingHorizontal: 20,
+      marginTop: isA5 ? 16 : 24,
+      paddingHorizontal: isA5 ? 12 : 20,
     },
     sigBox: {
-      width: '42%',
+      width: '44%',
+      flexDirection: 'column',
+      alignItems: 'center',
+    },
+    sigImageBox: {
+      height: isA5 ? 36 : 48,
+      width: '100%',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      paddingBottom: 0,
+    },
+    sigImage: {
+      maxHeight: isA5 ? 36 : 48,
+      maxWidth: isA5 ? 100 : 130,
+      objectFit: 'contain',
+    },
+    sigLineRule: {
+      width: '100%',
       borderTopWidth: 1,
-      borderTopColor: colors.textDark,
-      paddingTop: 4,
+      borderTopColor: '#334155',
+      marginTop: 2,
+      marginBottom: 4,
+    },
+    sigMetaBox: {
+      width: '100%',
       alignItems: 'center',
     },
     sigLabel: {
       fontSize: isA5 ? 7.5 : 8.5,
       fontWeight: 'bold',
       color: colors.textDark,
+      textAlign: 'center',
     },
     sigSub: {
       fontSize: isA5 ? 6.5 : 7.5,
       color: colors.textMuted,
       marginTop: 1,
+      textAlign: 'center',
     },
-    sigImage: {
-      height: isA5 ? 22 : 28,
-      maxWidth: isA5 ? 90 : 110,
-      objectFit: 'contain',
-      marginBottom: 4,
+    sigRoleTitle: {
+      fontSize: isA5 ? 6.5 : 7.5,
+      fontWeight: 'bold',
+      color: colors.textDark,
+      marginTop: 1,
+      textAlign: 'center',
     },
     footer: {
       position: 'absolute',
@@ -470,7 +494,9 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
   );
 
   // Guarda defensiva para la firma del emisor (mismo patrón que logo)
+  const incluirFirma = (data as any)?.incluirFirmaEmisor !== false && (config as any)?.incluirFirmaEmisor !== false;
   const tieneFirmaValida = Boolean(
+    incluirFirma &&
     config?.firmaDigitalBase64 &&
     typeof config.firmaDigitalBase64 === 'string' &&
     config.firmaDigitalBase64.startsWith('data:image/') &&
@@ -531,6 +557,14 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
   const rawConsecutivo = String(data.consecutivo || '').replace(/^(CC|ALQ|COT|FAC)-?#?/i, '');
   const consecutivoFormatted = rawConsecutivo ? `CC-#${rawConsecutivo.padStart(5, '0')}` : 'BORRADOR';
 
+  const esPorHoras = Boolean(
+    data.unidad_tiempo === 'HORAS' ||
+    data.unidadTiempo === 'HORAS' ||
+    (typeof data.observaciones === 'string' && data.observaciones.includes('ALQUILER EXPRESS POR HORAS'))
+  );
+  const horaDespacho = data.hora_entrega || data.horaEntrega || null;
+  const horaDevolucion = data.hora_devolucion_estimada || data.horaDevolucionEstimada || data.hora_retorno_estimada || null;
+
   return (
     <Document>
       <Page size={pageSize === 'A5' ? 'A5' : 'LETTER'} style={styles.page}>
@@ -562,6 +596,11 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
           <View style={styles.metaBox}>
             <Text style={styles.metaText}>CUENTA DE COBRO</Text>
             <Text style={styles.consecutivoHighlight}>{consecutivoFormatted}</Text>
+            {esPorHoras && (
+              <Text style={[styles.metaBold, { color: '#d97706', fontSize: pageSize === 'A5' ? 6 : 7, marginTop: 1 }]}>
+                ⏱️ ALQUILER EXPRESS POR HORAS
+              </Text>
+            )}
             <Text style={styles.metaText}>Fecha: <Text style={styles.metaBold}>{fechaFormat}</Text></Text>
             <Text style={styles.metaText}>Estado: <Text style={styles.metaBold}>{data.estado || 'ACTIVO'}</Text></Text>
           </View>
@@ -593,11 +632,19 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
               <Text style={styles.infoLabel}>Lugar de Obra:</Text>
               <Text style={styles.infoValue}>{data.detalles_logistica || data.detallesLogistica || 'Entrega en bodega central'}</Text>
             </View>
+            {esPorHoras && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Horario Express:</Text>
+                <Text style={[styles.infoValue, { fontWeight: 'bold', color: '#b45309' }]}>
+                  Salida: {horaDespacho || 'Despacho Inmediato'} ➔ Retorno: {horaDevolucion || 'Mismo Día'}
+                </Text>
+              </View>
+            )}
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Garantía ({garantiaTipo}):</Text>
               <Text style={styles.infoValue}>{formatearCOP(garantiaMonto)}</Text>
             </View>
-            {Boolean(data.modo_cobro_dias || data.modoCobroDias) && (
+            {Boolean(data.modo_cobro_dias || data.modoCobroDias) && !esPorHoras && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Modalidad Cobro:</Text>
                 <Text style={styles.infoValue}>
@@ -619,15 +666,17 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
         </View>
 
         {/* TABLA DE EQUIPOS (7 COLUMNAS) */}
-        <Text style={styles.sectionTitle}>MAQUINARIA Y EQUIPOS CONTRATADOS</Text>
+        <Text style={styles.sectionTitle}>
+          {esPorHoras ? 'MAQUINARIA Y HERRAMIENTAS - ALQUILER EXPRESS POR HORAS' : 'MAQUINARIA Y EQUIPOS CONTRATADOS'}
+        </Text>
         <View style={styles.table}>
           <View style={styles.tableHeader}>
             <View style={styles.colItem}><Text style={styles.cellBold}>Equipo / Maquinaria</Text></View>
             <View style={styles.colCant}><Text style={styles.cellBold}>Cant.</Text></View>
             <View style={styles.colInicio}><Text style={styles.cellBold}>Desde</Text></View>
             <View style={styles.colFin}><Text style={styles.cellBold}>Hasta</Text></View>
-            <View style={styles.colDias}><Text style={styles.cellBold}>Días</Text></View>
-            <View style={styles.colTarifa}><Text style={styles.cellBold}>Tarifa / Día</Text></View>
+            <View style={styles.colDias}><Text style={styles.cellBold}>{esPorHoras ? 'Horas' : 'Días'}</Text></View>
+            <View style={styles.colTarifa}><Text style={styles.cellBold}>{esPorHoras ? 'Tarifa / H' : 'Tarifa / Día'}</Text></View>
             <View style={styles.colSubtotal}><Text style={styles.cellBold}>Subtotal Est.</Text></View>
           </View>
 
@@ -645,7 +694,7 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
               <View style={styles.colCant}><Text style={[styles.cellText, styles.cellBold]}>{item.cantidad}</Text></View>
               <View style={styles.colInicio}><Text style={styles.cellText}>{item.fechaInicio}</Text></View>
               <View style={styles.colFin}><Text style={styles.cellText}>{item.fechaFin}</Text></View>
-              <View style={styles.colDias}><Text style={[styles.cellText, styles.cellBold]}>{item.dias}</Text></View>
+              <View style={styles.colDias}><Text style={[styles.cellText, styles.cellBold]}>{item.dias}{esPorHoras ? 'h' : ''}</Text></View>
               <View style={styles.colTarifa}>
                 <Text style={styles.cellText}>
                   {formatearCOP(item.tarifaDiaria)}{item.tarifaPersonalizada ? '*' : ''}
@@ -714,28 +763,41 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
 
         {/* FIRMAS LEGALES */}
         <View style={styles.signatures} wrap={false}>
+          {/* Columna Cliente / Deudor */}
           <View style={styles.sigBox}>
-            {tieneFirmaClienteValida && (
-              /* eslint-disable-next-line jsx-a11y/alt-text */
-              <Image src={rawFirmaCliente} style={styles.sigImage} />
-            )}
-            <Text style={styles.sigLabel}>Acepto y Recibí a Satisfacción</Text>
-            <Text style={styles.sigSub}>Cliente / Deudor: {clienteNombre}</Text>
-            <Text style={styles.sigSub}>C.C. / NIT: {clienteNit}</Text>
-            {fechaFirmaCliente && (
-              <Text style={[styles.sigSub, { fontSize: pageSize === 'A5' ? 4.5 : 5.5, color: '#64748b', marginTop: 1 }]}>
-                Firmado digitalmente: {fechaFirmaCliente}
-              </Text>
-            )}
+            <View style={styles.sigImageBox}>
+              {tieneFirmaClienteValida && (
+                /* eslint-disable-next-line jsx-a11y/alt-text */
+                <Image src={rawFirmaCliente} style={styles.sigImage} />
+              )}
+            </View>
+            <View style={styles.sigLineRule} />
+            <View style={styles.sigMetaBox}>
+              <Text style={styles.sigLabel}>Acepto y Recibí a Satisfacción</Text>
+              <Text style={styles.sigSub}>Cliente / Deudor: {clienteNombre}</Text>
+              <Text style={styles.sigSub}>C.C. / NIT: {(clienteNit && clienteNit !== 'Sin Registrar' && clienteNit !== 'Sin NIT') ? clienteNit : '____________________'}</Text>
+              {fechaFirmaCliente && (
+                <Text style={[styles.sigSub, { fontSize: pageSize === 'A5' ? 4.5 : 5.5, color: '#64748b', marginTop: 1 }]}>
+                  Firmado digitalmente: {fechaFirmaCliente}
+                </Text>
+              )}
+            </View>
           </View>
+
+          {/* Columna Emisor / Acreedor */}
           <View style={styles.sigBox}>
-            {tieneFirmaValida && (
-              /* eslint-disable-next-line jsx-a11y/alt-text */
-              <Image src={config!.firmaDigitalBase64!} style={styles.sigImage} />
-            )}
-            <Text style={styles.sigLabel}>Acreedor / Emisor</Text>
-            <Text style={styles.sigSub}>{config?.razonSocial || 'Alquileres System'}</Text>
-            <Text style={styles.sigSub}>Firma Autorizada y Sello</Text>
+            <View style={styles.sigImageBox}>
+              {tieneFirmaValida && (
+                /* eslint-disable-next-line jsx-a11y/alt-text */
+                <Image src={config!.firmaDigitalBase64!} style={styles.sigImage} />
+              )}
+            </View>
+            <View style={styles.sigLineRule} />
+            <View style={styles.sigMetaBox}>
+              <Text style={styles.sigLabel}>{config?.razonSocial || 'Alquileres System'}</Text>
+              <Text style={styles.sigSub}>{config?.nit ? `NIT: ${config.nit}` : 'NIT: 900.854.123-9'}</Text>
+              <Text style={styles.sigRoleTitle}>Firma Autorizada y Sello</Text>
+            </View>
           </View>
         </View>
 

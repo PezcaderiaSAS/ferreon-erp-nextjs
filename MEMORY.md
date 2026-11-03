@@ -1,24 +1,23 @@
 # Memoria de Sesión Persistente — Alquileres System
 
 ## Estado actual
-- **Tarea B1 Completada (SPEC-012 Mantenimiento y Horómetros)**:
-  - `MantenimientoPreventivoService` (12 tests Vitest verdes), Server Action `registrarMantenimientoPreventivoAction` con Kardex inmutable (`MANTENIMIENTO_PREVENTIVO`), componentes `BarraVidaUtilEquipo` y `RegistrarMantenimientoModal` en Bodega y POS.
-- **Tarea B2 Completada (SPEC-013 Firma Digital Touch del Cliente)**:
-  - `FirmaDigitalService` (9 tests Vitest verdes), Server Action `guardarFirmaClienteAlquilerAction` con estampa legal (Ley 527/1999).
-  - Componentes `FirmaTouchCanvas` (Retina DPR, PointerEvents, touch-action: none) y `FirmaTouchPadModal`.
-  - Estampado simétrico en `ContratoAlquilerPDF` y `EnterprisePDFService` (Cliente + Emisor), integrado en `MostradorPosModal`.
-  - Verificado en Chrome DevTools en Laptop (1366x768) y Móvil (375px), 0 errores en consola.
-  - Compilación `tsc --noEmit` y `npm run build` en código 0. Commits `23d8968f`, `3cb988d1` y `dc9236f0` enviados a `main`.
+- **SPEC-015 Completada (Módulo de Alquiler Express por Horas en Mostrador POS & Control de Equipos)**:
+  - Servicio puro `AlquilerHorasService` con fórmula `((tarifaDia / 8) * 1.20)` redondeado a entero COP, proyección de horas, formato 12h/24h, alerta de horario de cierre (>18:00) y retrasos.
+  - Configuración multitenant `EmpresaConfig` con flags `alquilerHorasHabilitado`, `maxEquiposAlquilerHoras` (default 5) y `recargoHorasPorcentaje` (default 20%).
+  - Interfaz POS ultra-simple táctil con switch segmentado `[📅 Por Días]` vs `[⏱️ Por Horas (Express)]`, botones rápidos (`1h`, `2h`, `4h`, `8h`), stepper y Poka-Yoke visual que bloquea adición al llegar al tope de equipos.
+  - Documentos adaptados: `TicketAlquilerModal.tsx` y `ContratoAlquilerPDF.tsx` con badges express, hora de despacho, hora pactada y tarifas horarias.
+  - 21 pruebas en `alquiler-horas.service.test.ts`, 3 en `ticket-pdf-horas.test.ts`, `tsc --noEmit` en código 0 y 98 suites verdes.
+- **SPEC-016 Previamente Completada**: Firmas profesionales simétricas sin widget flotante invasivo.
 
 ## Decisiones (y por qué)
-- **Canvas con PointerEvents y Retina DPR**: Multiplicar por `window.devicePixelRatio` garantiza trazos ultra-nítidos en pantallas táctiles y móviles sin pixelación.
-- **Poka-Yoke de Canvas Vacío**: Deshabilitar el botón de confirmación hasta que exista un trazo válido previene firmas en blanco en contratos vinculantes.
-- **Estampado Dual en Contrato**: Renderizar tanto la rúbrica del emisor como la firma touch del cliente confiere validez jurídica plena bajo la legislación colombiana.
+- **Fórmula Base 8h con Recargo Express (+20%)**: Compensa el desgaste logístico y rotación rápida en mostrador para clientes que necesitan herramientas de forma inmediata por horas.
+- **Poka-Yoke Visual de Tope de Equipos**: Previene vaciado involuntario de inventario en mostrador bloqueando el botón de añadir si `totalUnidades >= maxEquiposAlquilerHoras`.
+- **Proyección Reactiva en 0 ms y Fallback en Observaciones**: Mantiene compatibilidad histórica con la tabla `alquileres` almacenando la metadata de horas en `observaciones` y en los contratos sin requerir migraciones destructivas de BD.
 
 ## Aprendizajes y errores a evitar
-- Los scripts MSYS/sh de Git (pre-commit hooks) fallan con `NtCreateDirectoryObject: 0xC0000022` en el sandbox de Windows; siempre ejecutar `git commit` y `git push` con `BypassSandbox: true`.
-- Los tipos de `TenantResource` en `redis.ts` son estrictos; usar solo recursos admitidos (`'alquileres'`, `'equipos'`, etc.).
+- Siempre validar la suma total de unidades en el carrito (`item.cantidad`) y no solo la longitud del array de ítems al aplicar el límite de equipos.
+- En `@react-pdf/renderer` y vistas de impresión, alternar dinámicamente las cabeceras de columnas (`Días/Tarifa Día` vs `Horas/Tarifa H`) según `esModoHoras` para evitar ambigüedades contractuales.
 
 ## Próximos pasos
-1. Proceder con la **Tarea B3**: Motor de Tarifas Dinámicas por Días Hábiles vs Calendario con Exclusión de Domingos/Festivos.
-2. Proceder con la **Tarea B4**: Notificaciones automáticas de cobranza por WhatsApp/Email al cliente.
+1. Proceder con la **Tarea B4**: Notificaciones automáticas de cobranza por WhatsApp/Email al cliente.
+2. Integrar recordatorios automáticos de entrega express vía webhook/WhatsApp antes de que expire la hora de entrega pactada.

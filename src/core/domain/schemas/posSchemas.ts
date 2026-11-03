@@ -40,11 +40,17 @@ export const ModoCobroDiasZodSchema = z.enum([
   'HABILES_LUNES_SABADO',
 ]);
 
+export const UnidadTiempoAlquilerZodSchema = z.enum(['DIAS', 'HORAS']).default('DIAS');
+
 export const ItemPosZodSchema = z.object({
   equipoId: z.union([z.string(), z.number()]),
   cantidad: z.coerce.number().int().min(1, 'La cantidad debe ser al menos 1'),
   tarifaAplicada: z.coerce.number().min(0, 'La tarifa debe ser mayor o igual a cero'),
+  unidadTiempo: UnidadTiempoAlquilerZodSchema.optional(),
+  duracion: z.coerce.number().int().min(1).optional(),
   diasCobro: z.coerce.number().int().min(1).default(1),
+  horaEntrega: z.string().optional().nullable(),
+  horaDevolucionEstimada: z.string().optional().nullable(),
   subtotalLinea: z.coerce.number().min(0).optional(),
   fechaInicio: z.string().optional().nullable(),
   fechaFinEstimada: z.string().optional().nullable(),
@@ -54,6 +60,10 @@ export const CrearAlquilerRapidoPosZodSchema = z.object({
   clienteId: z.union([z.string(), z.number()]).optional().nullable(),
   clienteNuevo: ClienteNuevoPosZodSchema.optional().nullable(),
   items: z.array(ItemPosZodSchema).min(1, 'Debe incluir al menos un equipo en el alquiler POS'),
+  unidadTiempo: UnidadTiempoAlquilerZodSchema.optional(),
+  horasContratadas: z.coerce.number().int().min(1).optional(),
+  horaEntrega: z.string().optional().nullable(),
+  horaDevolucionEstimada: z.string().optional().nullable(),
   modoCobroDias: ModoCobroDiasZodSchema.default('CALENDARIO').optional(),
   diasCobrables: z.coerce.number().int().min(0).optional(),
   deposito: z.coerce.number().min(0).default(0),

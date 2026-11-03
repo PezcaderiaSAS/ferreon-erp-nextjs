@@ -41,6 +41,12 @@ export interface EmpresaConfig {
   themeId?: ThemePresetId;
   /** Código HEX personalizado (ej: #FF5722) cuando themeId === 'custom' */
   customBrandHex?: string;
+  /** Habilitar modalidad de Alquiler Express por Horas en Mostrador POS (SPEC-015) */
+  alquilerHorasHabilitado?: boolean;
+  /** Límite máximo de equipos por transacción en alquiler express por horas (default: 5) */
+  maxEquiposAlquilerHoras?: number;
+  /** Porcentaje de recargo express para tarifa por hora (default: 20) */
+  recargoHorasPorcentaje?: number;
   /** Campos legados para retrocompatibilidad */
   paletaPDF?: ColorPalettePDF;
   themeApp?: 'salmon' | 'ocean' | 'slate';
@@ -75,6 +81,9 @@ export const DEFAULT_EMPRESA_CONFIG: EmpresaConfig = {
   tasaImpuestoDefecto: 19,
   nombreImpuesto: "IVA",
   aplicaImpuestoDefecto: false,
+  alquilerHorasHabilitado: true,
+  maxEquiposAlquilerHoras: 5,
+  recargoHorasPorcentaje: 20,
   moneda: {
     codigo: "COP",
     locale: "es-CO",

@@ -53,6 +53,15 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
   const clienteTelefonoFinal = clienteActualizado?.telefono || alquiler.clienteTelefono || "";
   const clienteDireccionFinal = clienteActualizado?.direccion || alquiler.clienteDireccion || "";
 
+  // Detección de Modalidad de Horas Express (SPEC-015)
+  const esPorHoras = Boolean(
+    alquiler.unidadTiempo === 'HORAS' ||
+    alquiler.unidad_tiempo === 'HORAS' ||
+    (typeof alquiler.observaciones === 'string' && alquiler.observaciones.includes('ALQUILER EXPRESS POR HORAS'))
+  );
+  const horaDespacho = alquiler.horaEntrega || alquiler.hora_entrega || null;
+  const horaDevolucion = alquiler.horaDevolucionEstimada || alquiler.hora_devolucion_estimada || null;
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Documento Soporte de Alquiler" maxWidth="3xl">
       <style>{`
@@ -107,12 +116,17 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
           </div>
           <div className="mt-4 sm:mt-0 text-left sm:text-right">
             <h2 className="text-3xl font-black text-slate-800">TICKET #{consecutivo}</h2>
+            {esPorHoras && (
+              <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-extrabold text-xs uppercase tracking-wider border border-amber-300">
+                ⏱️ ALQUILER EXPRESS POR HORAS
+              </span>
+            )}
             <p className="text-sm text-slate-500 mt-1 font-semibold">Fecha: {fechaStr}</p>
           </div>
         </div>
 
-        {/* Info del Cliente */}
-        <div className="mb-6 bg-slate-50 rounded-lg p-4 border border-slate-100">
+        {/* Info del Cliente y Horarios Express */}
+        <div className="mb-6 bg-slate-50 rounded-lg p-4 border border-slate-100 space-y-2.5">
           <h3 className="text-xs uppercase font-bold text-slate-400 tracking-wider mb-2">Datos del Cliente</h3>
           <p className="text-base font-bold text-slate-800">{clienteNombreFinal}</p>
           <div className="flex flex-wrap gap-4 mt-1">
@@ -121,6 +135,19 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
             {clienteDireccionFinal && <p className="text-sm text-slate-600">Dir: {clienteDireccionFinal}</p>}
             {(alquiler.clienteId || alquiler.cliente_id) && <p className="text-sm text-slate-400">ID Ref: {alquiler.clienteId || alquiler.cliente_id}</p>}
           </div>
+
+          {esPorHoras && (
+            <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs bg-amber-50/70 p-2.5 rounded-lg border border-amber-200">
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-amber-900">Hora de Despacho:</span>
+                <span className="font-mono font-bold text-slate-900">{horaDespacho || 'Inmediato en Mostrador'}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-amber-900">Hora Pactada de Retorno:</span>
+                <span className="font-mono font-black text-amber-700">{horaDevolucion || 'Mismo Día'}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Detalles de Equipos */}
@@ -130,8 +157,8 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
               <tr className="border-b-2 border-slate-300">
                 <th className="py-2 text-sm font-bold text-slate-700">Equipo</th>
                 <th className="py-2 text-sm font-bold text-slate-700 text-center">Cant.</th>
-                <th className="py-2 text-sm font-bold text-slate-700 text-right">Días Est.</th>
-                <th className="py-2 text-sm font-bold text-slate-700 text-right">Tarifa/Día</th>
+                <th className="py-2 text-sm font-bold text-slate-700 text-right">{esPorHoras ? 'Duración' : 'Días Est.'}</th>
+                <th className="py-2 text-sm font-bold text-slate-700 text-right">{esPorHoras ? 'Tarifa/Hora' : 'Tarifa/Día'}</th>
                 <th className="py-2 text-sm font-bold text-slate-700 text-right">Subtotal</th>
               </tr>
             </thead>
@@ -148,7 +175,7 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
                   <tr key={i}>
                     <td className="py-3 text-sm text-slate-800 font-semibold">{item.nombreItem || "Equipo"}</td>
                     <td className="py-3 text-sm text-slate-600 text-center">{item.cantidad}</td>
-                    <td className="py-3 text-sm text-slate-600 text-right">{dias}</td>
+                    <td className="py-3 text-sm text-slate-600 text-right">{esPorHoras ? `${item.duracion || item.horas || dias} h` : dias}</td>
                     <td className="py-3 text-sm text-slate-600 text-right">{formatearMoneda(item.tarifaAplicada || 0)}</td>
                     <td className="py-3 text-sm font-bold text-slate-800 text-right">{formatearMoneda(subtotalLinea)}</td>
                   </tr>
