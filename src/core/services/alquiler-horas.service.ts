@@ -15,6 +15,13 @@ export interface EvaluacionTopeEquipos {
   mensaje?: string;
 }
 
+export interface MetadataAlquilerExpress {
+  esExpress: boolean;
+  horas: number;
+  horaDespacho: string | null;
+  horaDevolucion: string | null;
+}
+
 export class AlquilerHorasService {
   /**
    * Horario estándar de corte / cierre operativo (6:00 PM)
@@ -158,16 +165,103 @@ export class AlquilerHorasService {
   }
 
   /**
+   * Extrae metadatos de alquiler express (horas, hora despacho, hora devolución)
+   * desde las propiedades directas del objeto o desde la etiqueta en observaciones.
+   */
+  public static extraerMetadataExpress(alquiler: any): MetadataAlquilerExpress {
+    if (!alquiler || typeof alquiler !== 'object') {
+      return { esExpress: false, horas: 1, horaDespacho: null, horaDevolucion: null };
+    }
+
+    const obs = typeof alquiler.observaciones === 'string' ? alquiler.observaciones : '';
+    const esExpress = Boolean(
+      alquiler.unidadTiempo === 'HORAS' ||
+      alquiler.unidad_tiempo === 'HORAS' ||
+      obs.includes('ALQUILER EXPRESS POR HORAS') ||
+      Boolean(alquiler.horasContratadas || alquiler.horas_contratadas || alquiler.horasAlquiler)
+    );
+
+    if (!esExpress) {
+      return { esExpress: false, horas: 1, horaDespacho: null, horaDevolucion: null };
+    }
+
+    // 1. Extraer horas contratadas
+    let horas = Number(
+      alquiler.horasAlquiler ||
+      alquiler.horasContratadas ||
+      alquiler.horas_contratadas ||
+      alquiler.duracion
+    );
+
+    if (!horas || isNaN(horas) || horas <= 0) {
+      const matchHoras = obs.match(/ALQUILER EXPRESS POR HORAS\s*\|\s*(\d+)h/i);
+      if (matchHoras) {
+        horas = parseInt(matchHoras[1], 10);
+      } else if (Array.isArray(alquiler.detalles) && alquiler.detalles.length > 0) {
+        const d0 = alquiler.detalles[0];
+        horas = Number(d0.duracion || d0.horas || d0.horasCobro || d0.horas_contratadas || 1);
+      } else {
+        horas = 4; // Predeterminado express
+      }
+    }
+
+    // 2. Extraer hora de despacho / salida
+    let horaDespacho: string | null = alquiler.horaEntrega || alquiler.hora_entrega || null;
+    if (!horaDespacho) {
+      const matchDespacho = obs.match(/Despacho:\s*([^\s->\]]+)/i);
+      if (matchDespacho) {
+        horaDespacho = matchDespacho[1].trim();
+      }
+    }
+
+    // 3. Extraer hora de retorno / devolución estimada
+    let horaDevolucion: string | null =
+      alquiler.horaDevolucionEstimada ||
+      alquiler.hora_devolucion_estimada ||
+      alquiler.hora_retorno_estimada ||
+      null;
+
+    if (!horaDevolucion) {
+      const matchRetorno = obs.match(/Retorno Estimado:\s*([^\]]+)/i);
+      if (matchRetorno) {
+        horaDevolucion = matchRetorno[1].trim();
+      } else if (horaDespacho && horas > 0) {
+        horaDevolucion = AlquilerHorasService.proyectarHoraRetorno(horaDespacho, horas, '12h');
+      }
+    }
+
+    return {
+      esExpress: true,
+      horas: AlquilerHorasService.normalizarHoras(horas),
+      horaDespacho,
+      horaDevolucion,
+    };
+  }
+
+  /**
    * Comprueba si la hora proyectada de retorno sobrepasa el horario laboral de cierre [W02].
+   * Maneja horas en formato 24h ('18:30') y 12h ('06:30 PM'), así como cruce de medianoche (madrugada).
    * 
-   * @param horaRetorno Hora estimada de retorno en formato 24h 'HH:mm'
+   * @param horaRetorno Hora estimada de retorno en formato 24h 'HH:mm' o 12h
    * @param horaCierre Hora de cierre del establecimiento (por defecto: '18:00')
+   * @param horaSalida Hora de salida opcional para detectar cruce nocturno al día siguiente
    */
   public static esSobrepasoHorarioLaboral(
     horaRetorno: string,
-    horaCierre: string = AlquilerHorasService.HORA_CIERRE_DEFECTO
+    horaCierre: string = AlquilerHorasService.HORA_CIERRE_DEFECTO,
+    horaSalida?: string
   ): boolean {
     const aMinutos = (hStr: string): number => {
+      if (!hStr) return 0;
+      const match12 = hStr.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+      if (match12) {
+        let h = parseInt(match12[1], 10);
+        const m = parseInt(match12[2], 10);
+        const meridiano = match12[3]?.toUpperCase();
+        if (meridiano === 'PM' && h < 12) h += 12;
+        if (meridiano === 'AM' && h === 12) h = 0;
+        return h * 60 + m;
+      }
       const match = hStr.match(/(\d{1,2}):(\d{2})/);
       if (!match) return 0;
       return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
@@ -175,6 +269,19 @@ export class AlquilerHorasService {
 
     const minRetorno = aMinutos(horaRetorno);
     const minCierre = aMinutos(horaCierre);
+
+    // Si se pasa hora de salida y el retorno es menor que la salida, cruzó la medianoche
+    if (horaSalida) {
+      const minSalida = aMinutos(horaSalida);
+      if (minRetorno < minSalida) {
+        return true;
+      }
+    }
+
+    // Cualquier retorno proyectado en la madrugada (00:01 a 06:59) está fuera del horario comercial
+    if (minRetorno < 7 * 60 && minRetorno > 0) {
+      return true;
+    }
 
     return minRetorno > minCierre;
   }

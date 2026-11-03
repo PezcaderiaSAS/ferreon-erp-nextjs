@@ -57,12 +57,21 @@ export const useEmpresaStore = create<EmpresaState>()(
   )
 );
 
-// Aplicar el tema inmediatamente en el primer tick de ejecución en cliente
+// Aplicar el tema e hidratar defaults faltantes en el primer tick de ejecución en cliente
 if (typeof window !== 'undefined') {
   try {
     const estadoActual = useEmpresaStore.getState();
     if (estadoActual?.config) {
-      applyThemeToDOM(estadoActual.config);
+      if (
+        estadoActual.config.alquilerHorasHabilitado === undefined ||
+        estadoActual.config.maxEquiposAlquilerHoras === undefined ||
+        estadoActual.config.recargoHorasPorcentaje === undefined
+      ) {
+        useEmpresaStore.setState({
+          config: { ...DEFAULT_EMPRESA_CONFIG, ...estadoActual.config }
+        });
+      }
+      applyThemeToDOM(useEmpresaStore.getState().config);
     }
   } catch {
     // Ignorar si el DOM no está listo todavía

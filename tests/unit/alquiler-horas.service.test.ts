@@ -102,6 +102,13 @@ describe('SPEC-015: AlquilerHorasService (Dominio Puro y Cálculos por Horas)', 
       expect(AlquilerHorasService.esSobrepasoHorarioLaboral('19:15', '18:00')).toBe(true);
     });
 
+    it('detecta cruce de medianoche o madrugada como sobrepaso de horario laboral', () => {
+      // 20:00 salida + 6h = 02:00 del día siguiente (cruzó medianoche)
+      expect(AlquilerHorasService.esSobrepasoHorarioLaboral('02:00', '18:00', '20:00')).toBe(true);
+      // 03:00 en la madrugada sin hora de salida explícita
+      expect(AlquilerHorasService.esSobrepasoHorarioLaboral('03:00', '18:00')).toBe(true);
+    });
+
     it('soporta horarios de cierre personalizados', () => {
       expect(AlquilerHorasService.esSobrepasoHorarioLaboral('16:30', '16:00')).toBe(true);
       expect(AlquilerHorasService.esSobrepasoHorarioLaboral('15:59', '16:00')).toBe(false);
@@ -162,6 +169,43 @@ describe('SPEC-015: AlquilerHorasService (Dominio Puro y Cálculos por Horas)', 
     it('calcula subtotal para 1 hora y 1 unidad', () => {
       const subtotal = AlquilerHorasService.calcularSubtotalItem(80000, 1, 1, 20);
       expect(subtotal).toBe(12000);
+    });
+  });
+
+  describe('8. Extracción Resiliente de Metadatos Express (Single Source of Truth)', () => {
+    it('extrae metadatos completos cuando están presentes como propiedades del objeto', () => {
+      const obj = {
+        unidadTiempo: 'HORAS',
+        horasContratadas: 4,
+        horaEntrega: '09:00',
+        horaDevolucionEstimada: '01:00 PM',
+      };
+      const meta = AlquilerHorasService.extraerMetadataExpress(obj);
+      expect(meta.esExpress).toBe(true);
+      expect(meta.horas).toBe(4);
+      expect(meta.horaDespacho).toBe('09:00');
+      expect(meta.horaDevolucion).toBe('01:00 PM');
+    });
+
+    it('extrae metadatos desde la cadena de observaciones cuando las propiedades no existen (fallback DB)', () => {
+      const obj = {
+        observaciones: 'Despacho POS [ALQUILER EXPRESS POR HORAS | 6h | Despacho: 10:15 -> Retorno Estimado: 04:15 PM]',
+      };
+      const meta = AlquilerHorasService.extraerMetadataExpress(obj);
+      expect(meta.esExpress).toBe(true);
+      expect(meta.horas).toBe(6);
+      expect(meta.horaDespacho).toBe('10:15');
+      expect(meta.horaDevolucion).toBe('04:15 PM');
+    });
+
+    it('retorna esExpress: false para contratos ordinarios por días', () => {
+      const obj = {
+        unidadTiempo: 'DIAS',
+        observaciones: 'Entrega en obra civil',
+      };
+      const meta = AlquilerHorasService.extraerMetadataExpress(obj);
+      expect(meta.esExpress).toBe(false);
+      expect(meta.horas).toBe(1);
     });
   });
 });

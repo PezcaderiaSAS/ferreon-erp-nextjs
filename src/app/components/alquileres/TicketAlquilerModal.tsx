@@ -9,6 +9,7 @@ import { EmpresaConfig } from '../../../core/domain/entities/empresa-config';
 import { AlquilerEntity } from '../../../core/domain/entities/alquiler';
 import { useClienteStore } from '../../../infrastructure/state/clienteStore';
 import { formatearFechaLocal, calcularDiasEntreFechas } from '../../../core/utils/fechas';
+import { AlquilerHorasService } from '../../../core/services/alquiler-horas.service';
 
 interface TicketAlquilerModalProps {
   isOpen: boolean;
@@ -54,13 +55,10 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
   const clienteDireccionFinal = clienteActualizado?.direccion || alquiler.clienteDireccion || "";
 
   // Detección de Modalidad de Horas Express (SPEC-015)
-  const esPorHoras = Boolean(
-    alquiler.unidadTiempo === 'HORAS' ||
-    alquiler.unidad_tiempo === 'HORAS' ||
-    (typeof alquiler.observaciones === 'string' && alquiler.observaciones.includes('ALQUILER EXPRESS POR HORAS'))
-  );
-  const horaDespacho = alquiler.horaEntrega || alquiler.hora_entrega || null;
-  const horaDevolucion = alquiler.horaDevolucionEstimada || alquiler.hora_devolucion_estimada || null;
+  const metaExpress = AlquilerHorasService.extraerMetadataExpress(alquiler);
+  const esPorHoras = metaExpress.esExpress;
+  const horaDespacho = metaExpress.horaDespacho;
+  const horaDevolucion = metaExpress.horaDevolucion;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Documento Soporte de Alquiler" maxWidth="3xl">
@@ -164,19 +162,38 @@ export function TicketAlquilerModal({ isOpen, alquiler, empresa, onClose, onNuev
             </thead>
             <tbody className="divide-y divide-slate-200">
               {alquiler.detalles?.map((item: any, i: number) => {
-                const subtotalLinea = item.subtotalLineaEstimado || (item.cantidad * (item.tarifaAplicada || 0)); // Respaldo pasivo
                 const start = item.fechaInicio || item.fecha_inicio;
                 const end = item.fechaFinEstimada || item.fecha_fin_estimada || item.fecha_fin;
                 const dias = item.dias && Number(item.dias) > 0 
                   ? Number(item.dias) 
-                  : calcularDiasEntreFechas(start, end);
+                  : (item.dias_contratados && Number(item.dias_contratados) > 0 
+                    ? Number(item.dias_contratados) 
+                    : calcularDiasEntreFechas(start, end));
+
+                const duracionHoras = Number(
+                  item.duracion ||
+                  item.horas ||
+                  item.horasCobro ||
+                  item.horas_contratadas ||
+                  metaExpress.horas ||
+                  1
+                );
+
+                const duracionFinal = esPorHoras ? duracionHoras : dias;
+                const tarifa = Number(item.tarifaAplicada ?? item.tarifa_aplicada ?? item.tarifaDiaria ?? 0);
+                const subtotalLinea = Number(
+                  item.subtotalLineaEstimado ??
+                  item.subtotal ??
+                  item.subtotal_linea ??
+                  (item.cantidad * tarifa * duracionFinal)
+                );
                 
                 return (
                   <tr key={i}>
-                    <td className="py-3 text-sm text-slate-800 font-semibold">{item.nombreItem || "Equipo"}</td>
+                    <td className="py-3 text-sm text-slate-800 font-semibold">{item.nombreItem || item.nombre || "Equipo"}</td>
                     <td className="py-3 text-sm text-slate-600 text-center">{item.cantidad}</td>
-                    <td className="py-3 text-sm text-slate-600 text-right">{esPorHoras ? `${item.duracion || item.horas || dias} h` : dias}</td>
-                    <td className="py-3 text-sm text-slate-600 text-right">{formatearMoneda(item.tarifaAplicada || 0)}</td>
+                    <td className="py-3 text-sm text-slate-600 text-right">{esPorHoras ? `${duracionFinal} h` : dias}</td>
+                    <td className="py-3 text-sm text-slate-600 text-right">{formatearMoneda(tarifa)}</td>
                     <td className="py-3 text-sm font-bold text-slate-800 text-right">{formatearMoneda(subtotalLinea)}</td>
                   </tr>
                 );

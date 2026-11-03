@@ -4,6 +4,7 @@ import { numeroALetras } from '../../core/utils/numero-a-letras';
 import { formatearFechaLocal, calcularDiasEntreFechas, parsearFechaLocal, obtenerFechaHoyISO } from '../../core/utils/fechas';
 import { resolveCompanyTheme, ThemeTokens } from '../../core/domain/theme/theme-tokens';
 import { EmpresaConfig } from '../../core/domain/entities/empresa-config';
+import { AlquilerHorasService } from '../../core/services/alquiler-horas.service';
 
 // Registrar fuentes para evitar fallos de renderizado
 Font.register({
@@ -364,9 +365,11 @@ export interface LineaAlquilerPDFProcesada {
  */
 export function sanitizarYOrdenarLineas(
   rawDetalles: any[], 
-  fechaDocFallback: string = obtenerFechaHoyISO()
+  fechaDocFallback: string = obtenerFechaHoyISO(),
+  opciones?: { esPorHoras?: boolean; horasPorDefecto?: number }
 ): LineaAlquilerPDFProcesada[] {
   const lista = Array.isArray(rawDetalles) ? rawDetalles : [];
+  const esHorasGlobal = Boolean(opciones?.esPorHoras);
 
   return lista.map((item: any, idx: number): LineaAlquilerPDFProcesada => {
     const lineaIdx = Number(item.lineaNumero || item.linea_numero || (idx + 1));
@@ -376,11 +379,15 @@ export function sanitizarYOrdenarLineas(
       const fInicio = item.fecha_inicio || item.fechaInicio || fechaDocFallback;
       const fFin = item.fecha_fin_estimada || item.fechaFinEstimada || item.fecha_fin || item.fechaFin || fInicio;
       
-      const dias = item.dias && Number(item.dias) > 0 
-        ? Number(item.dias) 
-        : (item.dias_contratados && Number(item.dias_contratados) > 0 
-          ? Number(item.dias_contratados) 
-          : calcularDiasEntreFechas(fInicio, fFin));
+      const itemEsHoras = esHorasGlobal || item.unidad_tiempo === 'HORAS' || item.unidadTiempo === 'HORAS';
+      
+      const dias = itemEsHoras
+        ? Number(item.duracion || item.horas || item.horasCobro || item.horas_contratadas || opciones?.horasPorDefecto || (item.dias && Number(item.dias) > 0 ? Number(item.dias) : 1))
+        : (item.dias && Number(item.dias) > 0 
+          ? Number(item.dias) 
+          : (item.dias_contratados && Number(item.dias_contratados) > 0 
+            ? Number(item.dias_contratados) 
+            : calcularDiasEntreFechas(fInicio, fFin)));
           
       const cantidad = Number(item.cantidad || 1);
       const tarifa = Number(
@@ -532,6 +539,11 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
   const rawTel = data.clienteTelefono || data.telefono || data.contacto || rawCliente?.telefono;
   const clienteTelefono = (rawTel && rawTel !== 'No registrado' && rawTel !== 'No especificado') ? rawTel : (rawTel || 'No registrado');
 
+  const metaExpress = AlquilerHorasService.extraerMetadataExpress(data);
+  const esPorHoras = metaExpress.esExpress;
+  const horaDespacho = metaExpress.horaDespacho;
+  const horaDevolucion = metaExpress.horaDevolucion;
+
   // Procesamiento y ordenamiento cronológico tolerante con aislamiento defensivo por línea
   const rawDetalles = (data.detalles && data.detalles.length > 0) 
     ? data.detalles 
@@ -539,7 +551,10 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
       ? data.alquiler_detalles 
       : (data.items || []));
 
-  const detallesProcesados = sanitizarYOrdenarLineas(rawDetalles, fechaDoc);
+  const detallesProcesados = sanitizarYOrdenarLineas(rawDetalles, fechaDoc, {
+    esPorHoras,
+    horasPorDefecto: metaExpress.horas,
+  });
 
   const subtotalEquipos = Number(data.subtotal_equipos || data.subtotalEquipos || data.subtotalEquiposEstimado || detallesProcesados.reduce((acc: number, it: any) => acc + it.subtotal, 0));
   const fleteEntrega = Number(data.flete_entrega ?? data.fleteEntrega ?? (data as any).valor_transporte ?? (data as any).valorTransporte ?? (data as any).costoEnvio ?? 0);
@@ -556,14 +571,6 @@ export const ContratoAlquilerPDF: React.FC<ContratoAlquilerPDFProps> = ({
 
   const rawConsecutivo = String(data.consecutivo || '').replace(/^(CC|ALQ|COT|FAC)-?#?/i, '');
   const consecutivoFormatted = rawConsecutivo ? `CC-#${rawConsecutivo.padStart(5, '0')}` : 'BORRADOR';
-
-  const esPorHoras = Boolean(
-    data.unidad_tiempo === 'HORAS' ||
-    data.unidadTiempo === 'HORAS' ||
-    (typeof data.observaciones === 'string' && data.observaciones.includes('ALQUILER EXPRESS POR HORAS'))
-  );
-  const horaDespacho = data.hora_entrega || data.horaEntrega || null;
-  const horaDevolucion = data.hora_devolucion_estimada || data.horaDevolucionEstimada || data.hora_retorno_estimada || null;
 
   return (
     <Document>

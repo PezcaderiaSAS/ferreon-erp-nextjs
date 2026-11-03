@@ -236,5 +236,62 @@ describe('Suite TDD: TASK-010-04 — Core Operativo de Alquileres en Modo Mostra
         })
       );
     });
+
+    it('2.4 Poka-Yoke: Debe rechazar alquiler express si la suma de equipos supera el tope de 5 equipos', async () => {
+      const input: CrearAlquilerRapidoPosInput = {
+        clienteId: 12,
+        unidadTiempo: 'HORAS',
+        horasContratadas: 4,
+        items: [
+          { equipoId: 101, cantidad: 4, tarifaAplicada: 12000, duracion: 4 },
+          { equipoId: 102, cantidad: 2, tarifaAplicada: 15000, duracion: 4 }, // Total = 6 equipos > 5
+        ],
+      };
+
+      const response = await crearAlquilerRapidoPosAction(input);
+
+      expect(response.success).toBe(false);
+      expect(response.error).toContain('no puede exceder el límite de 5 equipos');
+    });
+
+    it('2.5 Debe transmitir metadatos express (horas, horarios y duración) en el payload a la RPC', async () => {
+      mockRpcResult = {
+        data: {
+          id: 890,
+          consecutivo: 207,
+          total: 96000,
+          estado: 'ACTIVO',
+        },
+        error: null,
+      };
+
+      const input: CrearAlquilerRapidoPosInput = {
+        clienteId: 12,
+        unidadTiempo: 'HORAS',
+        horasContratadas: 4,
+        horaEntrega: '08:30',
+        horaDevolucionEstimada: '12:30',
+        items: [
+          { equipoId: 101, cantidad: 2, tarifaAplicada: 12000, duracion: 4, subtotalLinea: 96000 },
+        ],
+      };
+
+      const response = await crearAlquilerRapidoPosAction(input);
+
+      expect(response.success).toBe(true);
+      expect(response.data?.unidadTiempo).toBe('HORAS');
+      expect(response.data?.horasContratadas).toBe(4);
+      expect(mockSupabaseClient.rpc).toHaveBeenCalledWith(
+        'alquiler_crear_pos_rapido_v1',
+        expect.objectContaining({
+          p_payload: expect.objectContaining({
+            unidad_tiempo: 'HORAS',
+            horas_contratadas: 4,
+            hora_entrega: '08:30',
+            hora_devolucion_estimada: '12:30',
+          }),
+        })
+      );
+    });
   });
 });

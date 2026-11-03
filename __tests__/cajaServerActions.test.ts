@@ -38,22 +38,9 @@ vi.mock('../src/infrastructure/persistence/supabase/server', () => ({
   }),
   createAdminSupabaseClient: () => ({
     from: (table: string) => ({
-      select: (_cols?: string) => ({
-        eq: (col: string, val: any) => ({
-          eq: (_col2: string, _val2: any) => ({
-            maybeSingle: async () => {
-              if (table === 'sesiones_caja') {
-                return { data: mockSesionAbiertaEnBD, error: null };
-              }
-              return { data: null, error: null };
-            },
-            single: async () => {
-              if (table === 'sesiones_caja') {
-                return { data: mockSesionAbiertaEnBD, error: null };
-              }
-              return { data: null, error: null };
-            }
-          }),
+      select: (_cols?: string) => {
+        const createQueryBuilder = (): any => ({
+          eq: (_col: string, _val: any) => createQueryBuilder(),
           maybeSingle: async () => {
             if (table === 'sesiones_caja') {
               return { data: mockSesionAbiertaEnBD, error: null };
@@ -67,15 +54,16 @@ vi.mock('../src/infrastructure/persistence/supabase/server', () => ({
             return { data: null, error: null };
           },
           order: () => Promise.resolve({ data: mockMovimientosEnBD, error: null }),
+          limit: () => Promise.resolve({ data: [], error: null }),
           then: (resolve: any) => {
             if (table === 'pagos') return resolve({ data: mockPagosEnBD, error: null });
             if (table === 'movimientos_caja') return resolve({ data: mockMovimientosEnBD, error: null });
+            if (table === 'sesiones_caja') return resolve({ data: mockSesionAbiertaEnBD ? [mockSesionAbiertaEnBD] : [], error: null });
             return resolve({ data: [], error: null });
           }
-        }),
-        order: () => Promise.resolve({ data: mockSesionAbiertaEnBD ? [mockSesionAbiertaEnBD] : [], error: null }),
-        limit: () => Promise.resolve({ data: [], error: null })
-      }),
+        });
+        return createQueryBuilder();
+      },
       insert: (rows: any[]) => ({
         select: () => ({
           single: async () => {

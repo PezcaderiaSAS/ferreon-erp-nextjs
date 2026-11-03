@@ -110,8 +110,8 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
   }, [horaSalida, horasAlquiler]);
 
   const sobrepasaHorarioLaboral = useMemo(() => {
-    return AlquilerHorasService.esSobrepasoHorarioLaboral(horaRetorno24);
-  }, [horaRetorno24]);
+    return AlquilerHorasService.esSobrepasoHorarioLaboral(horaRetorno24, AlquilerHorasService.HORA_CIERRE_DEFECTO, horaSalida);
+  }, [horaRetorno24, horaSalida]);
 
   const totalUnidadesEnCarrito = useMemo(() => {
     return cart.reduce((acc, it) => acc + it.cantidad, 0);
@@ -421,6 +421,17 @@ export function MostradorPosModal({ isOpen, onClose, onDespachoExitoso }: Mostra
     if (cart.length === 0) {
       setErrorMsg('Debe agregar al menos un equipo al mostrador.');
       return;
+    }
+
+    if (unidadTiempo === 'HORAS') {
+      if (!alquilerHorasHabilitado) {
+        setErrorMsg('La modalidad de alquiler por horas está deshabilitada en la configuración de la empresa.');
+        return;
+      }
+      if (totalUnidadesEnCarrito > maxEquiposExpress) {
+        setErrorMsg(`Tope de equipos alcanzado para alquiler express (máx. ${maxEquiposExpress}). Reduzca la cantidad en mostrador o cambie a modalidad Por Días.`);
+        return;
+      }
     }
 
     if (!selectedCliente && !clienteModoNuevo) {

@@ -688,6 +688,18 @@ export async function crearAlquilerRapidoPosAction(
 
   const modoCobro = cleanInput.modoCobroDias || 'CALENDARIO';
   const esHoras = cleanInput.unidadTiempo === 'HORAS';
+
+  if (esHoras) {
+    const totalEquiposSolicitados = cleanInput.items.reduce((acc, it) => acc + Number(it.cantidad || 1), 0);
+    const MAX_EQUIPOS_HORAS = 5;
+    if (totalEquiposSolicitados > MAX_EQUIPOS_HORAS) {
+      return {
+        success: false,
+        error: `El alquiler express por horas no puede exceder el límite de ${MAX_EQUIPOS_HORAS} equipos en mostrador.`
+      };
+    }
+  }
+
   const modoEtiqueta = esHoras
     ? ` [ALQUILER EXPRESS POR HORAS | ${cleanInput.horasContratadas || 1}h | Despacho: ${cleanInput.horaEntrega || 'Inmediato'} -> Retorno Estimado: ${cleanInput.horaDevolucionEstimada || 'Mismo día'}]`
     : modoCobro === 'HABILES_LUNES_VIERNES'
@@ -706,6 +718,10 @@ export async function crearAlquilerRapidoPosAction(
     cliente_nuevo: cleanInput.clienteNuevo || null,
     modo_cobro_dias: modoCobro,
     dias_cobrables: cleanInput.diasCobrables ?? null,
+    unidad_tiempo: cleanInput.unidadTiempo || 'DIAS',
+    horas_contratadas: cleanInput.horasContratadas || (esHoras ? 1 : null),
+    hora_entrega: cleanInput.horaEntrega || null,
+    hora_devolucion_estimada: cleanInput.horaDevolucionEstimada || null,
     subtotal_equipos: subtotalEquipos,
     flete_entrega: fleteEntrega,
     flete_recogida: fleteRecogida,
@@ -721,9 +737,10 @@ export async function crearAlquilerRapidoPosAction(
       const cant = Math.max(1, Number(it.cantidad || 1));
       const tarifa = Math.max(0, Number(it.tarifaAplicada || 0));
       const dias = Math.max(1, Number(it.diasCobro || 1));
+      const duracion = it.duracion || (esHoras ? cleanInput.horasContratadas || 1 : dias);
       const subtotal = it.subtotalLinea !== undefined && it.subtotalLinea !== null
         ? Math.round(Number(it.subtotalLinea))
-        : Math.round(cant * tarifa * dias);
+        : Math.round(cant * tarifa * (esHoras ? duracion : dias));
 
       const rawId = String(it.equipoId).replace(/\D/g, '');
       const equipoId = parseInt(rawId, 10) || Number(it.equipoId) || 0;
@@ -733,6 +750,7 @@ export async function crearAlquilerRapidoPosAction(
         cantidad: cant,
         tarifa_aplicada: tarifa,
         dias_contratados: dias,
+        duracion,
         subtotal_linea: subtotal,
         fecha_inicio: it.fechaInicio || new Date().toISOString().split('T')[0],
         fecha_fin: it.fechaFinEstimada || new Date(Date.now() + dias * 86400000).toISOString().split('T')[0],
@@ -814,9 +832,18 @@ export async function crearAlquilerRapidoPosAction(
   safeRevalidatePath('/inventario');
   safeRevalidatePath('/caja');
 
+  const dataFinal = {
+    ...resultData,
+    unidadTiempo: cleanInput.unidadTiempo || 'DIAS',
+    unidad_tiempo: cleanInput.unidadTiempo || 'DIAS',
+    horasContratadas: cleanInput.horasContratadas,
+    horaEntrega: cleanInput.horaEntrega,
+    horaDevolucionEstimada: cleanInput.horaDevolucionEstimada,
+  };
+
   return {
     success: true,
-    data: resultData,
+    data: dataFinal,
   };
 }
 
