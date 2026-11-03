@@ -1,4 +1,13 @@
+.next/
 .git/
+.gitnexus/
+VIdeo_pruebas/
+*.mp4
+.agent/
+.agents/
+.claude/
+.codebuddy/
+.continue/
 node_modules/
 tests/
 docs/
