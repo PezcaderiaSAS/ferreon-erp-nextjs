@@ -4,8 +4,9 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   Plus, Search, MoreVertical, FileSpreadsheet, FileText,
   Printer, CheckCircle, HardHat, History,
-  CheckCircle2, DollarSign, HelpCircle, ArrowLeftRight, Loader2, Zap, FileEdit
+  CheckCircle2, DollarSign, HelpCircle, ArrowLeftRight, Loader2, Zap, FileEdit, MessageSquare
 } from "lucide-react";
+import { NotificacionesCobranzaService } from '@/core/services/notificaciones-cobranza.service';
 import dynamic from 'next/dynamic';
 
 import { useAlquilerStore, AlquilerUI } from '@/infrastructure/state/alquilerStore';
@@ -379,6 +380,84 @@ export function AlquileresInteractiveIsland({
     estimateSize: () => 54,
     overscan: 5
   });
+
+  const handleNotificarWhatsApp = (alq: any) => {
+    const clienteNombre = alq.clientes?.nombre || alq.cliente_nombre || 'Cliente';
+    const clienteTelefono = alq.clientes?.telefono || alq.cliente_telefono || '';
+    const clienteNit = alq.clientes?.nit_cedula || alq.clientes?.nit || 'Sin Registrar';
+    const clienteEmail = alq.clientes?.email || '';
+
+    const items = (alq.alquiler_detalles || alq.detalles || []).map((d: any) => ({
+      nombreEquipo: d.equipos?.nombre || d.nombre || 'Equipo',
+      cantidad: Number(d.cantidad || 1),
+      tarifaHora: Number(d.tarifa_aplicada || d.tarifaDiaria || 0),
+    }));
+
+    const esHoras = alq.unidad_tiempo === 'HORAS' || Boolean(alq.horas_contratadas);
+
+    if (esHoras) {
+      const horaDevolucion = alq.hora_devolucion_estimada || 'Mismo Día';
+      const minEstimados = NotificacionesCobranzaService.parsearHoraAMinutos(horaDevolucion);
+      const minActuales = new Date().getHours() * 60 + new Date().getMinutes();
+      const estaVencido = minActuales > minEstimados + 15;
+
+      const resultado = estaVencido
+        ? NotificacionesCobranzaService.construirAlertaMoraExpressWhatsApp({
+            clienteNombre,
+            clienteTelefono,
+            alquilerConsecutivo: alq.consecutivo || alq.id,
+            items,
+            horasPactadas: alq.horas_contratadas || 1,
+            horaEntrega: alq.hora_entrega || 'Inmediato',
+            horaDevolucionEstimada: horaDevolucion,
+            empresaNombre: useEmpresaStore.getState().config?.razonSocial || 'Alquileres System',
+          })
+        : NotificacionesCobranzaService.construirRecordatorioExpressWhatsApp({
+            clienteNombre,
+            clienteTelefono,
+            alquilerConsecutivo: alq.consecutivo || alq.id,
+            items,
+            horasPactadas: alq.horas_contratadas || 1,
+            horaEntrega: alq.hora_entrega || 'Inmediato',
+            horaDevolucionEstimada: horaDevolucion,
+            empresaNombre: useEmpresaStore.getState().config?.razonSocial || 'Alquileres System',
+          });
+
+      if (!resultado.telefonoValido) {
+        useToastStore.getState().showErrorToast('El cliente no tiene un teléfono celular válido registrado (mínimo 10 dígitos).');
+        return;
+      }
+      window.open(resultado.url, '_blank', 'noopener,noreferrer');
+      useToastStore.getState().showSuccessToast('Recordatorio Express generado. Abriendo WhatsApp...');
+    } else {
+      const saldo = Number(alq.saldo_pendiente || alq.total || 0);
+      const resultado = NotificacionesCobranzaService.construirExtractoCarteraWhatsApp({
+        clienteNombre,
+        clienteNit,
+        clienteTelefono,
+        clienteEmail,
+        contratos: [
+          {
+            consecutivo: alq.consecutivo || alq.id,
+            fechaInicio: alq.fecha_inicio || '',
+            fechaFin: alq.fecha_fin || alq.fecha_fin_estimada || '',
+            equiposResumen: items.map((it: any) => `${it.cantidad}x ${it.nombreEquipo}`).join(', ') || 'Equipos contratados',
+            saldoPendiente: saldo,
+          },
+        ],
+        totalDeuda: saldo,
+        cuentaBancariaInfo: useEmpresaStore.getState().config?.cuentaBancariaInfo,
+        empresaNombre: useEmpresaStore.getState().config?.razonSocial || 'Alquileres System',
+      });
+
+      if (!resultado.telefonoValido) {
+        useToastStore.getState().showErrorToast('El cliente no tiene un teléfono celular válido registrado (mínimo 10 dígitos).');
+        return;
+      }
+      window.open(resultado.url, '_blank', 'noopener,noreferrer');
+      useToastStore.getState().showSuccessToast('Mensaje de cobranza generado. Abriendo WhatsApp...');
+    }
+  };
 
   const toggleDropdown = (id: string) => {
     setActiveDropdown(prev => (prev === id ? null : id));
@@ -1375,6 +1454,21 @@ export function AlquileresInteractiveIsland({
                           <span className="hidden sm:inline">PDF</span>
                         </button>
 
+                        <button
+                          type="button"
+                          onClick={() => handleNotificarWhatsApp(alq)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                          title={
+                            alq.unidad_tiempo === 'HORAS' || alq.horas_contratadas
+                              ? 'Enviar Recordatorio Express por WhatsApp'
+                              : 'Enviar Estado de Cuenta / Cobranza por WhatsApp'
+                          }
+                          aria-label={`Notificar por WhatsApp (Alquiler #${alq.consecutivo || alq.id})`}
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span className="hidden xl:inline">WhatsApp</span>
+                        </button>
+
                         <button 
                           type="button"
                           onClick={() => toggleDropdown(String(alq.id))}
@@ -1391,6 +1485,18 @@ export function AlquileresInteractiveIsland({
                         const puedeEditar = (alq.estado === 'COTIZACION' || alq.estado === 'ACTIVO') && !tieneDevoluciones;
                         return (
                           <div className="absolute right-8 top-10 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 py-1.5 flex flex-col text-left">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveDropdown(null);
+                                handleNotificarWhatsApp(alq);
+                              }}
+                              className="px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 text-left w-full cursor-pointer flex items-center gap-2 border-b border-slate-100"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span>Notificar por WhatsApp</span>
+                            </button>
                             {alq.estado === 'COTIZACION' && (
                               <button type="button" onClick={(e) => { e.stopPropagation(); openAction(alq, 'APROBAR_COTIZACION'); }} className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 text-left w-full cursor-pointer">Aprobar Cotización</button>
                             )}

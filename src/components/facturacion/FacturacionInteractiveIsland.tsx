@@ -15,8 +15,10 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Inbox,
-  RefreshCw
+  RefreshCw,
+  MessageSquare
 } from 'lucide-react';
+import { NotificacionesCobranzaService } from '@/core/services/notificaciones-cobranza.service';
 import { useCurrencyFormatter } from '@/lib/hooks/useCurrencyFormatter';
 import { useToastStore } from '@/infrastructure/state/toastStore';
 import { useAlquilerStore } from '@/infrastructure/state/alquilerStore';
@@ -165,7 +167,51 @@ export function FacturacionInteractiveIsland({
 
   const handleNotificarAtraso = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    showWarningToast(`Notificación de cobro enviada al cliente por la factura ${id}.`);
+    handleNotificarWhatsAppCobranza(e, id);
+  };
+
+  const handleNotificarWhatsAppCobranza = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const factura = todasLasFacturas.find(f => f.id === id);
+    if (!factura) {
+      showErrorToast('Factura no encontrada.');
+      return;
+    }
+
+    const alq = factura.alquilerOriginal as any;
+    const tel = alq?.clientes?.telefono || alq?.cliente_telefono || alq?.telefono || '';
+    const nit = alq?.clientes?.nit_cedula || alq?.clientes?.nit || alq?.nit || 'Sin Registrar';
+    const email = alq?.clientes?.email || alq?.email || '';
+    const equiposDetalles = (alq?.alquiler_detalles || alq?.detalles || []).map((d: any) => 
+      `${d.cantidad || 1}x ${d.equipos?.nombre || d.nombre || 'Equipo'}`
+    ).join(', ') || 'Maquinaria contratada';
+
+    const res = NotificacionesCobranzaService.construirExtractoCarteraWhatsApp({
+      clienteNombre: factura.cliente || 'Cliente',
+      clienteNit: nit,
+      clienteTelefono: tel,
+      clienteEmail: email,
+      contratos: [
+        {
+          consecutivo: factura.id,
+          fechaInicio: factura.fechaEmision,
+          fechaFin: factura.vencimiento,
+          equiposResumen: equiposDetalles,
+          saldoPendiente: factura.saldoPendiente > 0 ? factura.saldoPendiente : factura.total,
+        },
+      ],
+      totalDeuda: factura.saldoPendiente > 0 ? factura.saldoPendiente : factura.total,
+      cuentaBancariaInfo: empresaConfig?.cuentaBancariaInfo,
+      empresaNombre: empresaConfig?.razonSocial || 'Alquileres System',
+    });
+
+    if (!res.telefonoValido) {
+      showErrorToast('El cliente no tiene un celular válido (mínimo 10 dígitos).');
+      return;
+    }
+
+    window.open(res.url, '_blank', 'noopener,noreferrer');
+    showSuccessToast(`Cobranza para ${factura.cliente} generada. Abriendo WhatsApp...`);
   };
 
   const abrirModalPago = (e: React.MouseEvent, factura: FacturaUI) => {
@@ -371,6 +417,17 @@ export function FacturacionInteractiveIsland({
                       >
                         <FileBox className="text-[16px] w-5 h-5" /> {factura.estado === 'Pagada' && 'PDF'}
                       </button>
+
+                      {factura.estado !== 'Pagada' && (
+                        <button 
+                          type="button"
+                          onClick={(e) => handleNotificarWhatsAppCobranza(e, factura.id)}
+                          title="Cobranza 1-Clic por WhatsApp" 
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors active:scale-95 cursor-pointer"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 text-emerald-600" /> WhatsApp
+                        </button>
+                      )}
                       
                       <button 
                         type="button"

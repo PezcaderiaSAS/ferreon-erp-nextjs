@@ -73,3 +73,4 @@ describe('EnterprisePDFService - Modalidad de Cobro por Días Hábiles y Festivo
     expect(html).not.toContain('Modalidad Cobro:');
   });
 });
+
