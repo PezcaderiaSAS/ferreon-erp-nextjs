@@ -103,11 +103,9 @@ model Tenant {
   updatedAt            DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt            DateTime?    @map("deleted_at") @db.Timestamptz(6)
 
-  // Relaciones Multi-Tenant con entidades del ERP y WMS
+  // Relaciones Multi-Tenant con entidades del ERP
   users              User[]
   customers          Customer[]
-  warehouses         Warehouse[]
-  warehouseStocks    WarehouseStock[]
   equipments         Equipment[]
   rentalContracts    RentalContract[]
   rentalDetails      RentalDetail[]
@@ -170,31 +168,8 @@ model Customer {
 // 4. MÓDULO WMS: INFRAESTRUCTURA DE BODEGAS Y ALMACENAMIENTO
 // ----------------------------------------------------------------------------
 
-model Warehouse {
-  id          String    @id @default(uuid()) @db.Uuid
-  empresaId   String    @map("empresa_id") @db.Uuid
-  nombre      String    @db.VarChar(255)
-  codigo      String    @db.VarChar(50)
-  direccion   String?
-  esPrincipal Boolean   @default(false) @map("es_principal")
-  activa      Boolean   @default(true)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
-
-  tenant             Tenant              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  stocks             WarehouseStock[]
-  rentalContracts    RentalContract[]
-  inventoryMovements InventoryMovement[]
-
-  // Código único por empresa
-  @@unique([codigo, empresaId])
-  @@index([empresaId])
-  @@map("bodegas")
-}
-
 // ----------------------------------------------------------------------------
-// 5. MÓDULO WMS & ERP: MAQUINARIA, EQUIPOS E INVENTARIO
+// 4. MÓDULO ERP: MAQUINARIA, EQUIPOS E INVENTARIO
 // ----------------------------------------------------------------------------
 
 model Equipment {
@@ -218,7 +193,6 @@ model Equipment {
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   tenant             Tenant              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  warehouseStocks    WarehouseStock[]
   rentalDetails      RentalDetail[]
   inventoryMovements InventoryMovement[]
 
@@ -226,31 +200,6 @@ model Equipment {
   @@index([empresaId])
   @@index([codigo])
   @@map("equipos")
-}
-
-model WarehouseStock {
-  id        String @id @default(uuid()) @db.Uuid
-  empresaId String @map("empresa_id") @db.Uuid
-  bodegaId  String @map("bodega_id") @db.Uuid
-  equipoId  BigInt @map("equipo_id")
-
-  // Balances por bodega en números enteros
-  stockFisico    Int      @default(0) @map("stock_fisico")
-  stockReservado Int      @default(0) @map("stock_reservado")
-  ubicacionBin   String?  @map("ubicacion_bin") @db.VarChar(100)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  tenant    Tenant    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  warehouse Warehouse @relation(fields: [bodegaId], references: [id], onDelete: Restrict)
-  equipment Equipment @relation(fields: [equipoId], references: [id], onDelete: Restrict)
-
-  // Un solo balance por bodega y equipo dentro del mismo inquilino
-  @@unique([empresaId, bodegaId, equipoId])
-  @@index([empresaId])
-  @@index([bodegaId])
-  @@index([equipoId])
-  @@map("bodega_stocks")
 }
 
 // ----------------------------------------------------------------------------
@@ -262,32 +211,33 @@ model RentalContract {
   empresaId          String       @map("empresa_id") @db.Uuid
   consecutivo        Int
   clienteId          Int          @map("cliente_id")
-  bodegaOrigenId     String?      @map("bodega_origen_id") @db.Uuid
   cotizacionOrigenId String?      @map("cotizacion_origen_id")
   estado             RentalStatus @default(BORRADOR)
 
-  subtotalEquipos Decimal   @default(0) @map("subtotal_equipos") @db.Decimal(12, 2)
-  total           Decimal   @default(0) @db.Decimal(12, 2)
-  totalPagado     Decimal   @default(0) @map("total_pagado") @db.Decimal(12, 2)
-  saldoPendiente  Decimal   @default(0) @map("saldo_pendiente") @db.Decimal(12, 2)
-  deposito        Decimal   @default(0) @db.Decimal(12, 2)
-  aplicaIva       Boolean?  @default(false) @map("aplica_iva")
-  valorIva        Decimal?  @default(0) @map("valor_iva") @db.Decimal(12, 2)
-  creadoPor       String?   @map("creado_por")
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+  subtotalEquipos    Decimal   @default(0) @map("subtotal_equipos") @db.Decimal(12, 2)
+  total              Decimal   @default(0) @db.Decimal(12, 2)
+  totalPresupuestado Decimal?  @map("total_presupuestado") @db.Decimal(14, 2)
+  totalLiquidado     Decimal?  @map("total_liquidado") @db.Decimal(14, 2)
+  totalPagado        Decimal   @default(0) @map("total_pagado") @db.Decimal(12, 2)
+  saldoPendiente     Decimal   @default(0) @map("saldo_pendiente") @db.Decimal(12, 2)
+  deposito           Decimal   @default(0) @db.Decimal(12, 2)
+  depositoGarantia   Decimal?  @default(0) @map("deposito_garantia") @db.Decimal(14, 2)
+  depositoAplicado   Decimal?  @default(0) @map("deposito_aplicado") @db.Decimal(14, 2)
+  aplicaIva          Boolean?  @default(false) @map("aplica_iva")
+  valorIva           Decimal?  @default(0) @map("valor_iva") @db.Decimal(12, 2)
+  creadoPor          String?   @map("creado_por")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   tenant             Tenant              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   customer           Customer            @relation(fields: [clienteId], references: [id], onDelete: Restrict)
-  warehouse          Warehouse?          @relation(fields: [bodegaOrigenId], references: [id], onDelete: Restrict)
   details            RentalDetail[]
   inventoryMovements InventoryMovement[]
 
   @@unique([consecutivo, empresaId])
   @@index([empresaId])
   @@index([clienteId])
-  @@index([bodegaOrigenId])
   @@map("alquileres")
 }
 
@@ -337,7 +287,6 @@ model RentalDetail {
 model InventoryMovement {
   id             String       @id @default(uuid()) @db.Uuid
   empresaId      String       @map("empresa_id") @db.Uuid
-  bodegaId       String?      @map("bodega_id") @db.Uuid
   equipoId       BigInt       @map("equipo_id")
   alquilerId     Int?         @map("alquiler_id")
   tipoMovimiento MovementType @map("tipo_movimiento")
@@ -351,13 +300,11 @@ model InventoryMovement {
   createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   tenant    Tenant          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  warehouse Warehouse?      @relation(fields: [bodegaId], references: [id], onDelete: Restrict)
   equipment Equipment       @relation(fields: [equipoId], references: [id], onDelete: Restrict)
   rental    RentalContract? @relation(fields: [alquilerId], references: [id], onDelete: SetNull)
 
   @@index([empresaId])
   @@index([equipoId])
-  @@index([bodegaId])
   @@index([createdAt])
   @@map("kardex_inventario")
 }
