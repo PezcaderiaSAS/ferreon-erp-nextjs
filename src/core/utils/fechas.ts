@@ -237,3 +237,15 @@ export function formatearFechaISO(fechaInput: string | Date | null | undefined):
   const dia = String(d.getDate()).padStart(2, '0');
   return `${anio}-${mes}-${dia}`;
 }
+
+/**
+ * Suma un número de días calendario a una fecha y retorna en formato ISO "YYYY-MM-DD" local seguro.
+ */
+export function sumarDiasAFechaISO(
+  fechaInput: string | Date | null | undefined,
+  diasASumar: number
+): string {
+  const d = parsearFechaLocal(fechaInput);
+  d.setDate(d.getDate() + diasASumar);
+  return formatearFechaISO(d);
+}

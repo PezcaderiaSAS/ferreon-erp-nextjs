@@ -7,6 +7,14 @@ import { z } from 'zod';
 import { validateActionInput } from '@/lib/security/validation';
 import { AuditLogger } from '@/lib/security/audit-logger';
 
+function safeRevalidatePath(path: string) {
+  try {
+    revalidatePath(path);
+  } catch {
+    // Ignorado en entorno de pruebas unitarias sin RequestStore de Next.js
+  }
+}
+
 export interface ItemCorteEmitir {
   nombre: string;
   cantidad: number;
@@ -75,7 +83,7 @@ export async function emitirCuentaCobroPeriodicaAction(input: EmitirCuentaCobroI
     // 1. Validar el contrato de alquiler
     const { data: alq, error: alqErr } = await supabase
       .from('alquileres')
-      .select('id, cliente_id, consecutivo, numero_contrato, cliente_nombre, estado')
+      .select('id, cliente_id, consecutivo, estado, clientes ( nombre, nit_cedula, telefono )')
       .eq('id', numericAlquilerId)
       .eq('empresa_id', empresaId)
       .single();
@@ -126,7 +134,7 @@ export async function emitirCuentaCobroPeriodicaAction(input: EmitirCuentaCobroI
         tipo_documento: clean.tipoDocumento,
         subtotal: clean.subtotal,
         total_pagar: clean.totalNeto,
-        estado_pago: 'PENDIENTE',
+        estado_pago: 'EMITIDA',
         observaciones: JSON.stringify(metadataCorte),
       }])
       .select()
@@ -160,8 +168,8 @@ export async function emitirCuentaCobroPeriodicaAction(input: EmitirCuentaCobroI
       console.warn('Cache warning:', cErr);
     }
 
-    revalidatePath('/facturacion');
-    revalidatePath('/alquileres');
+    safeRevalidatePath('/facturacion');
+    safeRevalidatePath('/alquileres');
 
     return {
       success: true,
@@ -195,12 +203,13 @@ export async function obtenerHistorialCuentasCobroAction() {
         alquileres (
           id,
           consecutivo,
-          numero_contrato,
-          cliente_nombre,
-          obra_nombre,
-          detallesLogistica,
-          fecha_inicio,
-          fecha_fin
+          estado,
+          detalles_logistica,
+          clientes (
+            nombre,
+            nit_cedula,
+            telefono
+          )
         )
       `)
       .eq('empresa_id', empresaId)

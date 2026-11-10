@@ -133,16 +133,24 @@ export function useAlquilerForm({
   const [fechaInicioContrato, setFechaInicioContrato] = useState<string>(() => {
     if (initialData?.fecha_inicio) return formatearFechaISO(initialData.fecha_inicio);
     if (initialData?.fechaInicio) return formatearFechaISO(initialData.fechaInicio);
-    if (initialData?.detalles?.[0]?.fecha_inicio) return formatearFechaISO(initialData.detalles[0].fecha_inicio);
-    if (initialData?.detalles?.[0]?.fechaInicio) return formatearFechaISO(initialData.detalles[0].fechaInicio);
+    if (initialData?.fecha_inicio_contrato) return formatearFechaISO(initialData.fecha_inicio_contrato);
+    const sourceDetalles = initialData?.alquiler_detalles || initialData?.detalles || initialData?.items || initialData?.cotizaciones_detalles;
+    if (sourceDetalles?.[0]?.fecha_inicio) return formatearFechaISO(sourceDetalles[0].fecha_inicio);
+    if (sourceDetalles?.[0]?.fechaInicio) return formatearFechaISO(sourceDetalles[0].fechaInicio);
     return todayStr;
   });
 
   const [fechaFinEstimadaContrato, setFechaFinEstimadaContrato] = useState<string>(() => {
     if (initialData?.fecha_fin_estimada) return formatearFechaISO(initialData.fecha_fin_estimada);
     if (initialData?.fechaFinEstimada) return formatearFechaISO(initialData.fechaFinEstimada);
-    if (initialData?.detalles?.[0]?.fecha_fin_estimada) return formatearFechaISO(initialData.detalles[0].fecha_fin_estimada);
-    if (initialData?.detalles?.[0]?.fechaFinEstimada) return formatearFechaISO(initialData.detalles[0].fechaFinEstimada);
+    if (initialData?.fecha_fin) return formatearFechaISO(initialData.fecha_fin);
+    if (initialData?.fechaFin) return formatearFechaISO(initialData.fechaFin);
+    if (initialData?.fecha_fin_contrato) return formatearFechaISO(initialData.fecha_fin_contrato);
+    const sourceDetalles = initialData?.alquiler_detalles || initialData?.detalles || initialData?.items || initialData?.cotizaciones_detalles;
+    if (sourceDetalles?.[0]?.fecha_fin_estimada) return formatearFechaISO(sourceDetalles[0].fecha_fin_estimada);
+    if (sourceDetalles?.[0]?.fechaFinEstimada) return formatearFechaISO(sourceDetalles[0].fechaFinEstimada);
+    if (sourceDetalles?.[0]?.fecha_fin) return formatearFechaISO(sourceDetalles[0].fecha_fin);
+    if (sourceDetalles?.[0]?.fechaFin) return formatearFechaISO(sourceDetalles[0].fechaFin);
     return todayStr;
   });
 
@@ -173,11 +181,11 @@ export function useAlquilerForm({
     const sourceDetalles = initialData?.alquiler_detalles || initialData?.detalles || initialData?.items || initialData?.cotizaciones_detalles;
     if (sourceDetalles && sourceDetalles.length > 0) {
       return sourceDetalles.map((d: any, idx: number) => {
-        const start = d.fecha_inicio ? formatearFechaISO(d.fecha_inicio) : (d.fechaInicio ? formatearFechaISO(d.fechaInicio) : todayStr);
-        const end = d.fecha_fin ? formatearFechaISO(d.fecha_fin) : (d.fecha_fin_estimada ? formatearFechaISO(d.fecha_fin_estimada) : (d.fechaFinEstimada ? formatearFechaISO(d.fechaFinEstimada) : (d.fechaFin ? formatearFechaISO(d.fechaFin) : todayStr)));
-        const sDate = new Date(`${start}T00:00:00Z`);
-        const eDate = new Date(`${end}T00:00:00Z`);
-        const dias = Math.max(1, Math.ceil((eDate.getTime() - sDate.getTime()) / (1000 * 60 * 60 * 24)));
+        const fallbackStart = initialData?.fecha_inicio || initialData?.fechaInicio || todayStr;
+        const fallbackEnd = initialData?.fecha_fin_estimada || initialData?.fechaFinEstimada || initialData?.fecha_fin || initialData?.fechaFin || fallbackStart;
+        const start = d.fecha_inicio ? formatearFechaISO(d.fecha_inicio) : (d.fechaInicio ? formatearFechaISO(d.fechaInicio) : formatearFechaISO(fallbackStart));
+        const end = d.fecha_fin ? formatearFechaISO(d.fecha_fin) : (d.fecha_fin_estimada ? formatearFechaISO(d.fecha_fin_estimada) : (d.fechaFinEstimada ? formatearFechaISO(d.fechaFinEstimada) : (d.fechaFin ? formatearFechaISO(d.fechaFin) : formatearFechaISO(fallbackEnd))));
+        const dias = Number(d.dias_contratados || d.diasContratados || d.dias || calcularDiasEntreFechas(start, end));
         const precioDiario = Number(d.tarifa_aplicada ?? d.tarifaDiaria ?? d.precioDiario ?? d.valor_unitario ?? d.valorUnitario ?? 0);
         const cant = Number(d.cantidad) || 1;
         const subtotal = Number(d.subtotal_linea ?? d.subtotalLinea ?? d.subtotal ?? (precioDiario * cant * dias));
@@ -203,9 +211,7 @@ export function useAlquilerForm({
         };
       });
     }
-    const sDate = new Date(`${fechaInicioContrato}T00:00:00Z`);
-    const eDate = new Date(`${fechaFinEstimadaContrato}T00:00:00Z`);
-    const dias = Math.max(1, Math.ceil((eDate.getTime() - sDate.getTime()) / (1000 * 60 * 60 * 24)));
+    const dias = calcularDiasEntreFechas(fechaInicioContrato, fechaFinEstimadaContrato);
     return [{ 
       id: `row_0_${Date.now()}`, 
       lineaNumero: 1,
@@ -223,7 +229,7 @@ export function useAlquilerForm({
     }];
   });
 
-  // Sincronización de fechas maestras (Bloquea sobreescritura destructiva sobre ítems existentes)
+  // Sincronización de fechas maestras para todo el contrato
   const handleFechaInicioMasterChange = (newStart: string) => {
     setFechaInicioContrato(newStart);
     let targetEnd = fechaFinEstimadaContrato;
@@ -231,18 +237,22 @@ export function useAlquilerForm({
       targetEnd = newStart;
       setFechaFinEstimadaContrato(newStart);
     }
-    // Preservar ítems configurados; solo sincronizar fila inicial vacía si aún no tiene equipo
-    setItems(prev => {
-      if (prev.length === 1 && !prev[0].itemId) {
-        return [{
-          ...prev[0],
-          fechaInicio: newStart,
-          fechaFinEstimada: targetEnd,
-          dias: calcularDiasEntreFechas(newStart, targetEnd)
-        }];
-      }
-      return prev;
-    });
+    // Sincronizar todas las líneas con el nuevo rango maestro recalculando días y subtotales
+    setItems(prev => prev.map(item => {
+      const dias = calcularDiasEntreFechas(newStart, targetEnd);
+      const tarifa = Number(item.precioDiario) || 0;
+      const cant = Number(item.cantidad) || 1;
+      const subtotal = item.subtotalPersonalizado && item.subtotal !== undefined
+        ? item.subtotal
+        : Math.round(tarifa * cant * dias);
+      return {
+        ...item,
+        fechaInicio: newStart,
+        fechaFinEstimada: targetEnd,
+        dias,
+        subtotal
+      };
+    }));
   };
 
   const handleFechaFinMasterChange = (newEnd: string) => {
@@ -251,17 +261,22 @@ export function useAlquilerForm({
       targetEnd = fechaInicioContrato;
     }
     setFechaFinEstimadaContrato(targetEnd);
-    // Preservar ítems configurados; solo sincronizar fila inicial vacía
-    setItems(prev => {
-      if (prev.length === 1 && !prev[0].itemId) {
-        return [{
-          ...prev[0],
-          fechaFinEstimada: targetEnd,
-          dias: calcularDiasEntreFechas(prev[0].fechaInicio, targetEnd)
-        }];
-      }
-      return prev;
-    });
+    // Sincronizar todas las líneas con la nueva fecha fin recalculando días y subtotales
+    setItems(prev => prev.map(item => {
+      const start = item.fechaInicio || fechaInicioContrato;
+      const dias = calcularDiasEntreFechas(start, targetEnd);
+      const tarifa = Number(item.precioDiario) || 0;
+      const cant = Number(item.cantidad) || 1;
+      const subtotal = item.subtotalPersonalizado && item.subtotal !== undefined
+        ? item.subtotal
+        : Math.round(tarifa * cant * dias);
+      return {
+        ...item,
+        fechaFinEstimada: targetEnd,
+        dias,
+        subtotal
+      };
+    }));
   };
 
   const initialStateStr = useMemo(() => {
@@ -520,6 +535,24 @@ export function useAlquilerForm({
     });
   }, [equipos, empresaConfig?.id]);
 
+  const isEditMode = Boolean(initialData && (initialData.id !== undefined || initialData._id !== undefined));
+
+  // Mapa de reconciliación de stock para modo edición: unidades ya arrendadas en este mismo contrato
+  const initialQuantitiesByItem = useMemo(() => {
+    if (!isEditMode) return new Map<string, number>();
+    const sourceDetalles = initialData?.alquiler_detalles || initialData?.detalles || initialData?.items || initialData?.cotizaciones_detalles || [];
+    const map = new Map<string, number>();
+    for (const d of sourceDetalles) {
+      if (d.es_subcontratado || d.esSubcontratado) continue;
+      const eqId = String(d.equipo_id || d.equipoId || d.itemId || d.item_id || '');
+      if (eqId) {
+        const cant = Number(d.cantidad) || 0;
+        map.set(eqId, (map.get(eqId) || 0) + cant);
+      }
+    }
+    return map;
+  }, [isEditMode, initialData]);
+
   // Detección reactiva de stock y gestión de Subcontratación (Re-Rent)
   const verificarStockItem = useCallback((itemId: string, cantidad: number) => {
     if (!itemId) return { disponible: 0, stockInsuficiente: false, faltante: 0, equipo: null, noExisteEnTenant: false };
@@ -527,11 +560,14 @@ export function useAlquilerForm({
     if (!eq) {
       return { disponible: 0, stockInsuficiente: true, faltante: cantidad, equipo: null, noExisteEnTenant: true };
     }
-    const disponible = Number(eq?.stock_disponible ?? eq?.stockDisponible ?? 0);
+    const baseDisponible = Number(eq?.stock_disponible ?? eq?.stockDisponible ?? 0);
+    // En modo edición de contrato, acreditamos las unidades ya comprometidas en este mismo contrato para evitar falsos bloqueos
+    const cantInicialEnContrato = isEditMode ? (initialQuantitiesByItem.get(String(itemId)) || 0) : 0;
+    const disponible = baseDisponible + cantInicialEnContrato;
     const stockInsuficiente = cantidad > disponible;
     const faltante = stockInsuficiente ? cantidad - disponible : 0;
     return { disponible, stockInsuficiente, faltante, equipo: eq, noExisteEnTenant: false };
-  }, [equiposActivos]);
+  }, [equiposActivos, isEditMode, initialQuantitiesByItem]);
 
   const toggleSubcontratacionItem = (index: number, enable: boolean) => {
     setItems(prev => prev.map((item, i) => {
@@ -567,8 +603,6 @@ export function useAlquilerForm({
   const selectedCliente = useMemo(() => {
     return clientes.find(c => String(c.id) === String(clienteId));
   }, [clientes, clienteId]);
-
-  const isEditMode = Boolean(initialData && (initialData.id !== undefined || initialData._id !== undefined));
 
   const displayClienteNombre = selectedCliente?.nombre || initialData?.clienteNombre || initialData?.cliente?.nombre || '';
   const displayClienteNit = selectedCliente?.nit_cedula || selectedCliente?.nit || initialData?.clienteNit || initialData?.clienteDocumento || initialData?.cliente?.nit || '';
@@ -609,7 +643,18 @@ export function useAlquilerForm({
 
     // Análisis de contratos históricos activos del cliente con saldo pendiente
     const alqsCliente = (alquileres || []).filter(
-      a => String(a.cliente_id) === String(clienteId) && a.estado !== 'DEVUELTO' && a.estado !== 'CANCELADO'
+      a => {
+        if (String(a.cliente_id) !== String(clienteId)) return false;
+        if (a.estado === 'DEVUELTO' || a.estado === 'CANCELADO') return false;
+        // Evitar auto-bloqueo: excluir el contrato que se está editando actualmente
+        if (isEditMode && initialData) {
+          const idContratoActual = initialData.id ?? (initialData as any)._id;
+          if (idContratoActual && (String(a.id) === String(idContratoActual) || (a.consecutivo && initialData.consecutivo && String(a.consecutivo) === String(initialData.consecutivo)))) {
+            return false;
+          }
+        }
+        return true;
+      }
     );
 
     let saldoTotal = 0;
@@ -1142,15 +1187,8 @@ export function useAlquilerForm({
         return false;
       }
 
-      // Validar colateral mínimo solo si no está exonerado por línea de crédito corporativo
-      if (!depositoExoneradoCredito) {
-        const minimoRequerido = valorReposicionTotal * 0.1;
-        const garantiaTotal = Number(deposito) + Number(garantiaMonto);
-        if (garantiaTotal < minimoRequerido) {
-          setErrorMsg(`Colateral insuficiente: Se requiere un colateral (Depósito + Garantía) mínimo del 10% del valor de reposición (${formatearCOP(minimoRequerido)}). El actual es ${formatearCOP(garantiaTotal)}. Puede ajustar el depósito al 10% o exonerarlo por crédito corporativo en este panel.`);
-          return false;
-        }
-      }
+      // Regla de Negocio: Los depósitos y colaterales son completamente opcionales para generar contratos de alquiler
+      // No se bloquea la creación ni la edición si el depósito es $0 o no alcanza el 10% de reposición.
 
       // Validar disponibilidad de stock propio para items no subcontratados
       for (const it of items) {
@@ -1180,7 +1218,12 @@ export function useAlquilerForm({
     const optimisticId = initialData ? initialData.id : `temp_${Date.now()}`;
 
     try {
-      const consecutivoAsignado = initialData?.consecutivo && (initialData?.tipo === modo || initialData?.tipoDocumento === modo)
+      const consecutivoAsignado = initialData?.consecutivo && (
+        initialData?.tipo === modo ||
+        initialData?.tipoDocumento === modo ||
+        (modo === 'COTIZACION' && initialData?.estado === 'COTIZACION') ||
+        (modo === 'CONTRATO' && initialData?.estado !== 'COTIZACION')
+      )
         ? initialData.consecutivo
         : generarSiguienteConsecutivo(modo);
 
@@ -1189,8 +1232,8 @@ export function useAlquilerForm({
       alquilerUi.estado = modo === 'COTIZACION' ? 'COTIZACION' : 'ACTIVO';
       alquilerUi.tipo = modo;
 
-      // REGLA DE ORO DE BODEGA: Descuento atómico solo si es CONTRATO y solo para equipos propios
-      if (modo === 'CONTRATO') {
+      // REGLA DE ORO DE BODEGA: Descuento atómico solo si es CONTRATO, no es edición y solo para equipos propios
+      if (modo === 'CONTRATO' && !isEditMode) {
         items.forEach(it => {
           if (!it.esSubcontratado && it.itemId) {
             bodega.descontarStock(it.itemId, Number(it.cantidad) || 1);
@@ -1221,9 +1264,7 @@ export function useAlquilerForm({
         const itemsParaEditar = items.map((it, idx) => {
           const start = it.fechaInicio || todayStr;
           const end = it.fechaFinEstimada || todayStr;
-          const sDate = new Date(`${start}T00:00:00Z`);
-          const eDate = new Date(`${end}T00:00:00Z`);
-          const dias = it.dias || Math.max(1, Math.ceil((eDate.getTime() - sDate.getTime()) / (1000 * 60 * 60 * 24)));
+          const dias = it.dias || calcularDiasEntreFechas(start, end);
           const tarifa = Number(it.precioDiario) || 0;
           const cant = Number(it.cantidad) || 1;
           const sub = it.subtotalPersonalizado && it.subtotal !== undefined
@@ -1342,10 +1383,12 @@ export function useAlquilerForm({
               deficit: Math.max(1, dem - cap),
               diaPico: fConflicto,
             });
+            idempotencyManager.removeKey(idempotencyKey);
             setIsModalOverbookingOpen(true);
             setErrorMsg(`Conflicto de stock concurrente en línea #${lineaConflictoNum}: ${result.message}`);
             return false;
           }
+          idempotencyManager.removeKey(idempotencyKey);
           throw new Error(result.error || result.message);
         }
 

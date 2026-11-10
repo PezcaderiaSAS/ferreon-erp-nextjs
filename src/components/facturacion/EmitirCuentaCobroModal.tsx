@@ -10,6 +10,7 @@ import {
   LiquidacionCorteAlquiler,
   construirMensajeWhatsAppCuentaCobro
 } from '@/core/services/facturacion-recurrente.service';
+import { calcularDiasEntreFechas } from '@/core/utils/fechas';
 import { emitirCuentaCobroPeriodicaAction } from '@/app/actions/facturacion-recurrente';
 import { useEmpresaStore } from '@/infrastructure/state/empresaStore';
 
@@ -31,11 +32,48 @@ export function EmitirCuentaCobroModal({
   const [aplicaIva, setAplicaIva] = useState<boolean>(false);
   const [aplicaRetenciones, setAplicaRetenciones] = useState<boolean>(false);
   const [observaciones, setObservaciones] = useState<string>('');
+  const [fechaDesde, setFechaDesde] = useState<string>(liquidacion.fechaDesdeEfectiva);
+  const [fechaHasta, setFechaHasta] = useState<string>(liquidacion.fechaHastaEfectiva);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Recálculo reactivo si el usuario cambia tipo de documento
-  const subtotal = liquidacion.subtotal;
+  // Sincronizar fechas y estado si cambia la liquidación o se abre el modal
+  React.useEffect(() => {
+    if (isOpen && liquidacion) {
+      setFechaDesde(liquidacion.fechaDesdeEfectiva);
+      setFechaHasta(liquidacion.fechaHastaEfectiva);
+      setObservaciones('');
+      setErrorMsg(null);
+    }
+  }, [isOpen, liquidacion?.alquilerId, liquidacion?.fechaDesdeEfectiva, liquidacion?.fechaHastaEfectiva]);
+
+  // Recálculo reactivo de días según ajuste de fechas de corte
+  const diasEfectivos = React.useMemo(() => {
+    if (!fechaDesde || !fechaHasta) return 1;
+    let targetFin = fechaHasta;
+    if (targetFin < fechaDesde) targetFin = fechaDesde;
+    return calcularDiasEntreFechas(fechaDesde, targetFin);
+  }, [fechaDesde, fechaHasta]);
+
+  // Recálculo dinámico de maquinaria según días efectivos
+  const itemsRecalculados = React.useMemo(() => {
+    return liquidacion.items.map((it) => {
+      const cant = Math.max(1, Number(it.cantidad) || 1);
+      const tarifa = Math.max(0, Number(it.tarifaDiaria) || 0);
+      const sub = Math.round(cant * tarifa * diasEfectivos);
+      return {
+        ...it,
+        diasFacturables: diasEfectivos,
+        subtotal: sub,
+      };
+    });
+  }, [liquidacion.items, diasEfectivos]);
+
+  // Recálculo reactivo si el usuario cambia tipo de documento o fechas
+  const subtotal = React.useMemo(() => {
+    return itemsRecalculados.reduce((acc, it) => acc + it.subtotal, 0);
+  }, [itemsRecalculados]);
+
   const valorIva = (tipoDocumento === 'FACTURA_VENTA' || aplicaIva) ? Math.round(subtotal * 0.19) : 0;
   const valorRetefuente = aplicaRetenciones ? Math.round(subtotal * 0.025) : 0;
   const valorReteica = aplicaRetenciones ? Math.round(subtotal * 0.00966) : 0;
@@ -54,19 +92,20 @@ export function EmitirCuentaCobroModal({
     setIsSubmitting(true);
 
     try {
+      const fechaFinValidada = fechaHasta < fechaDesde ? fechaDesde : fechaHasta;
       const res = await emitirCuentaCobroPeriodicaAction({
         alquilerId: liquidacion.alquilerId,
         tipoDocumento,
-        fechaInicioPeriodo: liquidacion.fechaDesdeEfectiva,
-        fechaFinPeriodo: liquidacion.fechaHastaEfectiva,
-        diasFacturables: liquidacion.diasFacturablesPeriodo,
+        fechaInicioPeriodo: fechaDesde,
+        fechaFinPeriodo: fechaFinValidada,
+        diasFacturables: diasEfectivos,
         subtotal,
         valorIva,
         valorRetefuente,
         valorReteica,
         totalNeto,
         observaciones: observaciones.trim() || undefined,
-        items: liquidacion.items.map((it) => ({
+        items: itemsRecalculados.map((it) => ({
           nombre: it.nombre,
           cantidad: it.cantidad,
           dias: it.diasFacturables,
@@ -90,11 +129,11 @@ export function EmitirCuentaCobroModal({
           consecutivoDocumento: docCreado.consecutivoTexto,
           numeroContrato: liquidacion.numeroContrato,
           obraNombre: liquidacion.obraNombre,
-          fechaDesde: liquidacion.fechaDesdeEfectiva,
-          fechaHasta: liquidacion.fechaHastaEfectiva,
-          diasFacturados: liquidacion.diasFacturablesPeriodo,
+          fechaDesde,
+          fechaHasta,
+          diasFacturados: diasEfectivos,
           total: totalNeto,
-          itemsResumen: liquidacion.items.map((it) => ({
+          itemsResumen: itemsRecalculados.map((it) => ({
             nombre: it.nombre,
             cantidad: it.cantidad,
           })),
@@ -176,23 +215,38 @@ export function EmitirCuentaCobroModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
-            <div>
-              <span className="block text-[10px] text-slate-400 uppercase">Periodo del Corte</span>
-              <span className="font-mono tabular-nums font-medium text-slate-700 dark:text-slate-200">
-                {liquidacion.fechaDesdeEfectiva} al {liquidacion.fechaHastaEfectiva}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200/60 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+            <div className="col-span-1 sm:col-span-2">
+              <span className="block text-[10px] text-slate-400 uppercase font-semibold mb-1">
+                Ajustar Ventana de Corte
               </span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={fechaDesde}
+                  onChange={(e) => setFechaDesde(e.target.value)}
+                  className="px-2 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-mono tabular-nums text-slate-800 dark:text-slate-100"
+                />
+                <span className="text-slate-400 text-xs">al</span>
+                <input
+                  type="date"
+                  value={fechaHasta}
+                  min={fechaDesde}
+                  onChange={(e) => setFechaHasta(e.target.value)}
+                  className="px-2 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-mono tabular-nums text-slate-800 dark:text-slate-100"
+                />
+              </div>
             </div>
             <div>
-              <span className="block text-[10px] text-slate-400 uppercase">Días Devengados</span>
-              <span className="font-mono tabular-nums font-bold text-emerald-600 dark:text-emerald-400">
-                {liquidacion.diasFacturablesPeriodo} días en obra
+              <span className="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Días Devengados</span>
+              <span className="font-mono tabular-nums font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                {diasEfectivos} días en obra
               </span>
             </div>
             {liquidacion.obraNombre && (
-              <div className="col-span-2 sm:col-span-1 truncate">
-                <span className="block text-[10px] text-slate-400 uppercase">Obra</span>
-                <span className="truncate">{liquidacion.obraNombre}</span>
+              <div className="col-span-1 sm:col-span-3 truncate text-slate-400 text-[11px]">
+                <span className="font-semibold uppercase text-[10px]">Obra: </span>
+                <span>{liquidacion.obraNombre}</span>
               </div>
             )}
           </div>
@@ -201,11 +255,11 @@ export function EmitirCuentaCobroModal({
         {/* 2. Desglose de Maquinaria y Tarifas */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-2">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Detalle de Maquinaria Pro-Rata ({liquidacion.items.length})
+            Detalle de Maquinaria Pro-Rata ({itemsRecalculados.length})
           </span>
 
           <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-            {liquidacion.items.map((it, idx) => (
+            {itemsRecalculados.map((it, idx) => (
               <div key={idx} className="py-2 flex justify-between items-center text-xs">
                 <div>
                   <span className="font-medium text-slate-800 dark:text-slate-200">{it.nombre}</span>

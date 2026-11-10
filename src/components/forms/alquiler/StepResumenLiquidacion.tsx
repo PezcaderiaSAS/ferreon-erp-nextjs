@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, MapPin, AlertCircle, ShieldAlert, CheckCircle2, Building2, TrendingUp, Eye, Sparkles, Receipt, Loader2 } from 'lucide-react';
+import { FileText, MapPin, AlertCircle, ShieldAlert, ShieldCheck, CheckCircle2, Building2, TrendingUp, Eye, Sparkles, Receipt, Loader2 } from 'lucide-react';
 
 interface StepResumenLiquidacionProps {
   observaciones: string;
@@ -72,7 +72,7 @@ export const StepResumenLiquidacion: React.FC<StepResumenLiquidacionProps> = ({
 }) => {
   const colateralTotal = Number(deposito) + Number(garantiaMonto);
   const minimoColateralRequerido = valorReposicionTotal * 0.1;
-  const cumpleGarantia = colateralTotal >= minimoColateralRequerido || depositoExoneradoCredito;
+  const cumpleGarantia = colateralTotal >= minimoColateralRequerido || depositoExoneradoCredito || Boolean(isEditMode);
   const esCotizacion = tipoDocumento === 'COTIZACION';
 
   return (
@@ -215,8 +215,9 @@ export const StepResumenLiquidacion: React.FC<StepResumenLiquidacionProps> = ({
                     {cumpleGarantia ? "Colateral de Seguridad Cumplido (10%)" : "Atención: Colateral Insuficiente"}
                   </div>
                   <div className="text-[10.5px] mt-0.5 leading-relaxed">
-                    Mínimo requerido (10% reposición): <span className="font-mono font-bold">{formatearCOP(minimoColateralRequerido)}</span>. 
+                    Mínimo sugerido (10% reposición): <span className="font-mono font-bold">{formatearCOP(minimoColateralRequerido)}</span>. 
                     Colateral actual: <span className="font-mono font-bold">{formatearCOP(colateralTotal)}</span>.
+                    {!cumpleGarantia && " (Depósito opcional: no bloquea el registro del contrato)."}
                   </div>
                 </div>
               </div>

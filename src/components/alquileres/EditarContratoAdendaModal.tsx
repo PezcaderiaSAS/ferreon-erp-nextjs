@@ -22,6 +22,12 @@ import { useModalAccessibility } from '@/hooks/useModalAccessibility';
 import { useToastStore } from '@/infrastructure/state/toastStore';
 import { useBodegaStore } from '@/infrastructure/state/bodegaStore';
 import { generarAdendaContratoAction, ItemAdendaInput } from '@/app/actions/alquileres';
+import {
+  formatearFechaISO,
+  calcularDiasEntreFechas,
+  obtenerFechaHoyISO,
+  sumarDiasAFechaISO,
+} from '@/core/utils/fechas';
 
 interface EditarContratoAdendaModalProps {
   isOpen: boolean;
@@ -54,6 +60,7 @@ export function EditarContratoAdendaModal({
 
   // Estados del Formulario
   const [motivo, setMotivo] = useState<string>('PRORROGA');
+  const [fechaFinMaster, setFechaFinMaster] = useState<string>('');
   const [diasAdicionales, setDiasAdicionales] = useState<number>(0);
   const [montoDepositoAdicional, setMontoDepositoAdicional] = useState<number>(0);
   const [metodoPago, setMetodoPago] = useState<'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'NEQUI' | 'DAVIPLATA'>('EFECTIVO');
@@ -89,31 +96,44 @@ export function EditarContratoAdendaModal({
       setObservaciones('');
       setErrorMsg(null);
 
+      const fechaContratoInicio = alquiler.fecha_inicio || alquiler.fechaInicio || (alquiler as any).created_at || obtenerFechaHoyISO();
+      const fechaContratoFin = alquiler.fecha_fin || alquiler.fechaFinEstimada || alquiler.fecha_fin_estimada || sumarDiasAFechaISO(fechaContratoInicio, 7);
+
       // Mapear detalles actuales del contrato
-      const detallesOriginales = Array.isArray(alquiler.detalles) && alquiler.detalles.length > 0
-        ? alquiler.detalles
-        : (Array.isArray(alquiler.items) ? alquiler.items : []);
+      const detallesOriginales =
+        Array.isArray(alquiler.alquiler_detalles) && alquiler.alquiler_detalles.length > 0
+          ? alquiler.alquiler_detalles
+          : (Array.isArray(alquiler.detalles) && alquiler.detalles.length > 0
+            ? alquiler.detalles
+            : (Array.isArray(alquiler.items) ? alquiler.items : []));
 
       const rows: ItemFormRow[] = detallesOriginales.map((d: any) => {
         const cant = Number(d.cantidad || 1);
-        const tarifa = Number(d.tarifa_aplicada || d.tarifaAplicada || d.precio_unitario || 0);
-        const dias = Number(d.dias_contratados || d.diasCobro || 1);
+        const tarifa = Number(d.tarifa_aplicada || d.tarifaAplicada || d.precio_unitario || d.tarifa_diaria || d.precioDiario || 0);
+        const fInicio = d.fecha_inicio ? formatearFechaISO(d.fecha_inicio) : (d.fechaInicio ? formatearFechaISO(d.fechaInicio) : formatearFechaISO(fechaContratoInicio));
+        const fFin = d.fecha_fin ? formatearFechaISO(d.fecha_fin) : (d.fecha_fin_estimada ? formatearFechaISO(d.fecha_fin_estimada) : (d.fechaFinEstimada ? formatearFechaISO(d.fechaFinEstimada) : formatearFechaISO(fechaContratoFin)));
+        const dias = Number(d.dias_contratados || d.diasCobro || (fInicio && fFin ? calcularDiasEntreFechas(fInicio, fFin) : 1));
         const sub = Number(d.subtotal_linea || d.subtotalLinea || cant * tarifa * dias);
 
         return {
           equipoId: Number(d.equipo_id || d.equipoId || d.itemId || 0),
-          nombreItem: d.nombre_item || d.nombreItem || d.equipo?.nombre || `Equipo #${d.equipo_id || d.equipoId}`,
+          nombreItem: d.nombre_item || d.nombreItem || d.equipos?.nombre || d.equipo?.nombre || `Equipo #${d.equipo_id || d.equipoId}`,
           cantidad: cant,
           tarifaAplicada: tarifa,
           diasCobro: dias,
           subtotalLinea: sub,
-          fechaInicio: d.fecha_inicio || d.fechaInicio || undefined,
-          fechaFinEstimada: d.fecha_fin || d.fechaFinEstimada || undefined,
+          fechaInicio: fInicio,
+          fechaFinEstimada: fFin,
           esSubcontratado: Boolean(d.es_subcontratado || d.esSubcontratado),
         };
       });
 
       setItems(rows);
+      const latestFin = rows.reduce(
+        (max, r) => (!max || (r.fechaFinEstimada && r.fechaFinEstimada > max) ? (r.fechaFinEstimada || max) : max),
+        formatearFechaISO(fechaContratoFin)
+      );
+      setFechaFinMaster(latestFin);
     }
   }, [alquiler, isOpen]);
 
@@ -130,14 +150,45 @@ export function EditarContratoAdendaModal({
     setItems((prev) =>
       prev.map((it) => {
         const nuevosDias = Math.max(1, it.diasCobro + diasExtra);
+        const start = it.fechaInicio || obtenerFechaHoyISO();
+        const nuevaFechaFin = sumarDiasAFechaISO(start, nuevosDias);
         const nuevoSub = it.cantidad * it.tarifaAplicada * nuevosDias;
         return {
           ...it,
+          diasCobro: nuevosDias,
+          fechaFinEstimada: nuevaFechaFin,
+          subtotalLinea: nuevoSub,
+        };
+      })
+    );
+    if (items.length > 0) {
+      const refStart = items[0].fechaInicio || obtenerFechaHoyISO();
+      const refDias = Math.max(1, (items[0].diasCobro || 1) + diasExtra);
+      setFechaFinMaster(sumarDiasAFechaISO(refStart, refDias));
+    }
+  };
+
+  // Sincronización de fecha fin master con todas las líneas
+  const handleFechaFinMasterChange = (newEnd: string) => {
+    setFechaFinMaster(newEnd);
+    setItems((prev) =>
+      prev.map((it) => {
+        const start = it.fechaInicio || obtenerFechaHoyISO();
+        let targetEnd = newEnd;
+        if (targetEnd < start) {
+          targetEnd = start;
+        }
+        const nuevosDias = calcularDiasEntreFechas(start, targetEnd);
+        const nuevoSub = it.cantidad * it.tarifaAplicada * nuevosDias;
+        return {
+          ...it,
+          fechaFinEstimada: targetEnd,
           diasCobro: nuevosDias,
           subtotalLinea: nuevoSub,
         };
       })
     );
+    setMotivo((prev) => (prev === 'ADICION_EQUIPOS' ? prev : 'PRORROGA'));
   };
 
   // Modificar línea de equipo
@@ -146,7 +197,23 @@ export function EditarContratoAdendaModal({
       const next = [...prev];
       const target = { ...next[index], [field]: value };
 
-      if (field === 'cantidad' || field === 'tarifaAplicada' || field === 'diasCobro') {
+      if (field === 'fechaFinEstimada') {
+        const start = target.fechaInicio || obtenerFechaHoyISO();
+        let targetEnd = String(value);
+        if (targetEnd < start) {
+          targetEnd = start;
+          target.fechaFinEstimada = start;
+        }
+        const dias = calcularDiasEntreFechas(start, targetEnd);
+        target.diasCobro = dias;
+        target.subtotalLinea = Number(target.cantidad) * Number(target.tarifaAplicada) * dias;
+      } else if (field === 'diasCobro') {
+        const dias = Math.max(1, Number(value));
+        target.diasCobro = dias;
+        const start = target.fechaInicio || obtenerFechaHoyISO();
+        target.fechaFinEstimada = sumarDiasAFechaISO(start, dias);
+        target.subtotalLinea = Number(target.cantidad) * Number(target.tarifaAplicada) * dias;
+      } else if (field === 'cantidad' || field === 'tarifaAplicada') {
         target.subtotalLinea = Number(target.cantidad) * Number(target.tarifaAplicada) * Number(target.diasCobro);
       }
       next[index] = target;
@@ -182,6 +249,8 @@ export function EditarContratoAdendaModal({
 
     const tarifa = Number(eq.tarifa_diaria || eq.tarifaDiaria || 0);
     const dias = items[0]?.diasCobro || 1;
+    const start = items[0]?.fechaInicio || obtenerFechaHoyISO();
+    const fin = fechaFinMaster || items[0]?.fechaFinEstimada || sumarDiasAFechaISO(start, dias);
     const nuevoRow: ItemFormRow = {
       equipoId,
       nombreItem: eq.nombre || `Equipo #${equipoId}`,
@@ -189,6 +258,8 @@ export function EditarContratoAdendaModal({
       tarifaAplicada: tarifa,
       diasCobro: dias,
       subtotalLinea: 1 * tarifa * dias,
+      fechaInicio: start,
+      fechaFinEstimada: fin,
       esSubcontratado: false,
     };
 
@@ -333,8 +404,8 @@ export function EditarContratoAdendaModal({
             </div>
           )}
 
-          {/* Selector de Motivo y Atajos de Prórroga */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Selector de Motivo, Fecha Fin Master y Atajos de Prórroga */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Motivo Principal
@@ -350,6 +421,19 @@ export function EditarContratoAdendaModal({
                 <option value="AJUSTE_TARIFA">Ajuste de Tarifa Comercial</option>
                 <option value="MODIFICACION_MIXTA">Modificación Mixta</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-amber-500" />
+                <span>Fecha Fin Estimada (Master)</span>
+              </label>
+              <input
+                type="date"
+                value={fechaFinMaster}
+                onChange={(e) => handleFechaFinMasterChange(e.target.value)}
+                className="w-full text-xs px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 font-medium text-slate-800 dark:text-slate-200"
+              />
             </div>
 
             <div className="md:col-span-2">
@@ -417,11 +501,12 @@ export function EditarContratoAdendaModal({
                   <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-800">
                     <tr>
                       <th className="py-2.5 px-3">Equipo</th>
-                      <th className="py-2.5 px-3 w-20 text-center">Cant.</th>
-                      <th className="py-2.5 px-3 w-28 text-right">Tarifa/Día</th>
-                      <th className="py-2.5 px-3 w-20 text-center">Días</th>
-                      <th className="py-2.5 px-3 w-32 text-right">Subtotal</th>
-                      <th className="py-2.5 px-3 w-12 text-center"></th>
+                      <th className="py-2.5 px-2 w-16 text-center">Cant.</th>
+                      <th className="py-2.5 px-2 w-24 text-right">Tarifa/Día</th>
+                      <th className="py-2.5 px-2 w-16 text-center">Días</th>
+                      <th className="py-2.5 px-2 w-32 text-center">Fecha Fin</th>
+                      <th className="py-2.5 px-3 w-28 text-right">Subtotal</th>
+                      <th className="py-2.5 px-2 w-10 text-center"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -435,38 +520,46 @@ export function EditarContratoAdendaModal({
                             </span>
                           )}
                         </td>
-                        <td className="py-2 px-3 text-center">
+                        <td className="py-2 px-2 text-center">
                           <input
                             type="number"
                             min="1"
                             value={it.cantidad}
                             onChange={(e) => handleUpdateItem(idx, 'cantidad', Math.max(1, Number(e.target.value)))}
-                            className="w-16 text-center py-1 px-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                            className="w-14 text-center py-1 px-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
                           />
                         </td>
-                        <td className="py-2 px-3 text-right">
+                        <td className="py-2 px-2 text-right">
                           <input
                             type="number"
                             min="0"
                             step="500"
                             value={it.tarifaAplicada}
                             onChange={(e) => handleUpdateItem(idx, 'tarifaAplicada', Math.max(0, Number(e.target.value)))}
-                            className="w-24 text-right py-1 px-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                            className="w-20 text-right py-1 px-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
                           />
                         </td>
-                        <td className="py-2 px-3 text-center">
+                        <td className="py-2 px-2 text-center">
                           <input
                             type="number"
                             min="1"
                             value={it.diasCobro}
                             onChange={(e) => handleUpdateItem(idx, 'diasCobro', Math.max(1, Number(e.target.value)))}
-                            className="w-16 text-center py-1 px-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-amber-600 dark:text-amber-400"
+                            className="w-14 text-center py-1 px-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-amber-600 dark:text-amber-400"
+                          />
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <input
+                            type="date"
+                            value={it.fechaFinEstimada ? it.fechaFinEstimada.slice(0, 10) : ''}
+                            onChange={(e) => handleUpdateItem(idx, 'fechaFinEstimada', e.target.value)}
+                            className="w-32 text-center py-1 px-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-amber-500"
                           />
                         </td>
                         <td className="py-2 px-3 text-right font-semibold text-slate-900 dark:text-white">
                           {formatearCOP(it.subtotalLinea)}
                         </td>
-                        <td className="py-2 px-3 text-center">
+                        <td className="py-2 px-2 text-center">
                           <button
                             type="button"
                             onClick={() => handleRemoveItem(idx)}

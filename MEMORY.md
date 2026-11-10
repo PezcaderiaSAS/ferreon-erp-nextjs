@@ -1,6 +1,13 @@
 # Memoria de Sesión Persistente — Alquileres System
 
 ## Estado actual
+- **Flexibilidad Total en Contratos, Fechas de Corte y Depósitos Opcionales**:
+  - Depósitos no obligatorios: Eliminada la restricción de colateral del 10% en `useAlquilerForm.ts`, permitiendo formalizar y editar contratos con $0 de depósito. Etiquetado como `(Opcional)` en `StepClienteGarantias.tsx` y `StepResumenLiquidacion.tsx`.
+  - Reconciliación de stock en edición: `verificarStockItem` acredita la maquinaria asignada al contrato actual, eliminando falsos bloqueos de "Stock insuficiente" y doble descuento en Zustand.
+  - Sincronización de fechas: Propagación sincrónica de fechas maestras a ítems en `useAlquilerForm.ts`, selectores de fecha final explícita en `EditarContratoAdendaModal.tsx`, y sincronización reactiva en `EmitirCuentaCobroModal.tsx`.
+  - Facturación recurrente corregida: Eliminadas columnas inexistentes en `alquileres`, seteado `estado_pago: 'EMITIDA'`, y mapeo de `tarifa_aplicada` en `facturacion-recurrente.service.ts`.
+  - Test suites: Harness2 (5/5 tests pasados en 0.57s), Vitest (18/18 tests en `edicion-contrato-fechas-cortes.test.ts`, 4/4 en `alquiler-registro-fallo.test.tsx`), TypeScript `tsc --noEmit` con 0 errores y `npm run build` en código 0 (32/32 páginas).
+
 - **Suite de Migraciones Estructurales DB Desplegada (Fases 0 a 4)**:
   - Commit `ab815855` subido a `origin/main` y desplegado en Vercel Producción (`READY`).
   - Creadas las 5 migraciones canónicas SQL en `supabase/migrations/`:
@@ -17,8 +24,11 @@
 - **Suite de Integración Viva (`tests/integration/rls-zero-trust.test.ts`)**: Permite auditar en CI la inmunidad contra peticiones anónimas directamente contra Supabase.
 
 ## Aprendizajes y errores a evitar
-- Los tests de integración con `@supabase/supabase-js` requieren cargar explícitamente `.env.local` con `dotenv` para resolver las claves en el runner de Vitest.
-- Las migraciones complejas de RLS se ordenan secuencialmente comenzando por `ENABLE ROW LEVEL SECURITY` antes de crear políticas `FOR ALL TO authenticated`.
+- Los tests de integración con `@supabase/supabase-js` utilizan la función nativa `process.loadEnvFile('.env.local')` protegida por `fs.existsSync` para evitar dependencias externas en Vitest.
+- En la tabla `facturas`, el CHECK constraint de PostgreSQL sólo admite `EMITIDA`, `PAGADA` o `ANULADA` (no `PENDIENTE`).
+- En `alquiler_detalles`, la columna que almacena la tarifa en PostgreSQL se llama `tarifa_aplicada`.
+- En edición de contratos, la verificación de stock debe acreditar los ítems previamente asignados al mismo contrato para evitar bloqueos espurios de stock.
+- Los depósitos en garantía son opcionales en el flujo comercial de FerreOn y no deben bloquear la formalización ni adición de contratos.
 
 ## Próximos pasos
 1. Aplicar las migraciones generadas en el SQL Editor de Supabase Cloud.

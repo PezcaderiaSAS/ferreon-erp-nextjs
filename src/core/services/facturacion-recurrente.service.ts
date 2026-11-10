@@ -124,8 +124,36 @@ export function calcularCortePeriodicoAlquiler(
   periodo: PeriodoCorteFechas,
   opciones?: { aplicaIva?: boolean; aplicaRetenciones?: boolean }
 ): LiquidacionCorteAlquiler {
-  const inicioContrato = alquiler.fecha_inicio || alquiler.fechaInicio || alquiler.fecha_inicio_contrato || alquiler.created_at || '';
-  const finContrato = alquiler.fecha_fin || alquiler.fechaFin || alquiler.fecha_fin_contrato || null;
+  // Extraer ítems del contrato (detalles de maquinaria)
+  const detallesRaw = Array.isArray(alquiler.detalles)
+    ? alquiler.detalles
+    : Array.isArray(alquiler.alquiler_detalles)
+      ? alquiler.alquiler_detalles
+      : Array.isArray(alquiler.items)
+        ? alquiler.items
+        : [];
+
+  const primerDetalle = detallesRaw[0];
+  const inicioContrato =
+    alquiler.fecha_inicio ||
+    alquiler.fechaInicio ||
+    primerDetalle?.fecha_inicio ||
+    primerDetalle?.fechaInicio ||
+    alquiler.fecha_inicio_contrato ||
+    alquiler.created_at ||
+    '';
+
+  const finContrato =
+    alquiler.fecha_fin ||
+    alquiler.fechaFin ||
+    alquiler.fecha_fin_estimada ||
+    alquiler.fechaFinEstimada ||
+    primerDetalle?.fecha_fin ||
+    primerDetalle?.fechaFin ||
+    primerDetalle?.fecha_fin_estimada ||
+    primerDetalle?.fechaFinEstimada ||
+    alquiler.fecha_fin_contrato ||
+    null;
 
   const interseccion = calcularDiasFacturablesEnPeriodo(
     inicioContrato,
@@ -136,26 +164,37 @@ export function calcularCortePeriodicoAlquiler(
 
   const diasFacturables = interseccion.diasFacturables;
 
-  // Extraer ítems del contrato (detalles de maquinaria)
-  const detallesRaw = Array.isArray(alquiler.detalles)
-    ? alquiler.detalles
-    : Array.isArray(alquiler.alquiler_detalles)
-      ? alquiler.alquiler_detalles
-      : [];
-
   let subtotal = 0;
   const itemsCorte: DetalleEquipoCorte[] = [];
 
   if (detallesRaw.length > 0) {
     for (const det of detallesRaw) {
       const cantidad = Math.max(1, Number(det.cantidad) || 1);
-      const tarifaDiaria = Math.max(0, Number(det.tarifa_diaria ?? det.tarifaDiaria ?? det.precio_unitario ?? 0));
+      const tarifaDiaria = Math.max(
+        0,
+        Number(
+          det.tarifa_aplicada ??
+          det.tarifaAplicada ??
+          det.precioDiario ??
+          det.precio_unitario ??
+          det.tarifa_diaria ??
+          det.tarifaDiaria ??
+          det.equipos?.tarifa_diaria ??
+          0
+        )
+      );
       const subtotalItem = Math.round(cantidad * tarifaDiaria * diasFacturables);
       subtotal += subtotalItem;
 
       itemsCorte.push({
-        equipoId: det.equipo_id ?? det.equipoId,
-        nombre: det.equipos?.nombre || det.equipo_nombre || det.nombre || 'Equipo en Obra',
+        equipoId: det.equipo_id ?? det.equipoId ?? det.itemId,
+        nombre:
+          det.equipos?.nombre ||
+          det.nombreItem ||
+          det.nombre_item ||
+          det.equipo_nombre ||
+          det.nombre ||
+          'Equipo en Obra',
         cantidad,
         tarifaDiaria,
         diasFacturables,
@@ -190,15 +229,39 @@ export function calcularCortePeriodicoAlquiler(
   const totalNeto = Math.max(0, subtotal + valorIva - valorRetefuente - valorReteica);
   const esFacturable = diasFacturables > 0 && totalNeto > 0;
 
+  const clienteObj = alquiler.clientes || alquiler.cliente || {};
+  const clienteNombre =
+    alquiler.cliente_nombre ||
+    alquiler.clienteNombre ||
+    clienteObj.nombre ||
+    'Cliente de Obra';
+  const clienteDocumento =
+    alquiler.cliente_documento ||
+    alquiler.clienteNit ||
+    alquiler.cliente_nit ||
+    clienteObj.nit_cedula ||
+    clienteObj.nit ||
+    null;
+  const clienteTelefono =
+    alquiler.cliente_telefono ||
+    alquiler.clienteTelefono ||
+    clienteObj.telefono ||
+    null;
+  const obraNombre =
+    alquiler.obra_nombre ||
+    alquiler.detalles_logistica ||
+    alquiler.detallesLogistica ||
+    null;
+
   return {
     alquilerId: alquiler.id,
     numeroContrato: alquiler.numero_contrato || alquiler.consecutivo || `ALQ-${alquiler.id}`,
-    clienteNombre: alquiler.cliente_nombre || alquiler.clienteNombre || 'Cliente de Obra',
-    clienteDocumento: alquiler.cliente_documento || alquiler.clienteNit || null,
-    clienteTelefono: alquiler.cliente_telefono || alquiler.clienteTelefono || null,
-    obraNombre: alquiler.obra_nombre || alquiler.detallesLogistica || null,
-    fechaInicioContrato: inicioContrato.split('T')[0],
-    fechaFinContrato: finContrato ? finContrato.split('T')[0] : null,
+    clienteNombre,
+    clienteDocumento,
+    clienteTelefono,
+    obraNombre,
+    fechaInicioContrato: String(inicioContrato).split('T')[0],
+    fechaFinContrato: finContrato ? String(finContrato).split('T')[0] : null,
     diasFacturablesPeriodo: diasFacturables,
     fechaDesdeEfectiva: interseccion.fechaDesde,
     fechaHastaEfectiva: interseccion.fechaHasta,

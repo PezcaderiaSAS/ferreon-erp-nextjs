@@ -636,7 +636,9 @@ export const StepClienteGarantias: React.FC<StepClienteGarantiasProps> = ({
 
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-700">Depósito / Abono Inicial ($ COP)</label>
+              <label className="text-xs font-bold text-slate-700">
+                Depósito / Abono Inicial ($ COP) <span className="text-slate-400 font-normal text-[11px]">(Opcional)</span>
+              </label>
               {depositoExoneradoCredito && (
                 <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.2 rounded border border-indigo-200/60">
                   Exonerado
