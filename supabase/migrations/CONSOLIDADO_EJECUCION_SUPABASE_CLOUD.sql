@@ -23,6 +23,72 @@ BEGIN;
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
+-- 0. RESOLUCIÓN DE TENANT Y GARANTÍA DE COLUMNA EMPRESA_ID EN TODAS LAS TABLAS
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.get_current_tenant_id()
+RETURNS UUID
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT empresa_id 
+    FROM public.empresa_usuarios 
+    WHERE user_id = auth.uid() 
+      AND es_empresa_activa = TRUE 
+    LIMIT 1;
+$$;
+
+DO $$
+DECLARE
+    t TEXT;
+    tablas TEXT[] := ARRAY[
+        'clientes',
+        'equipos',
+        'alquileres',
+        'alquiler_detalles',
+        'alquiler_adendas',
+        'facturas',
+        'pagos',
+        'devoluciones',
+        'devolucion_detalles',
+        'cotizaciones',
+        'cotizaciones_detalles',
+        'kardex_inventario',
+        'sesiones_caja',
+        'movimientos_caja',
+        'proveedores',
+        'compras',
+        'subcontrataciones',
+        'proveedor_cuentas_pagar',
+        'proveedor_abonos_cxp',
+        'cliente_movimientos_saldo',
+        'pago_metodos_detalle'
+    ];
+BEGIN
+    FOREACH t IN ARRAY tablas LOOP
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = t) THEN
+            -- 1. Asegurar que la columna empresa_id exista en la tabla
+            EXECUTE format('ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS empresa_id UUID', t);
+
+            -- 2. Si existe tenant_id, rescatar valores legítimos que coincidan con una empresa
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = t AND column_name = 'tenant_id') THEN
+                EXECUTE format('UPDATE public.%I SET empresa_id = tenant_id WHERE empresa_id IS NULL AND tenant_id IN (SELECT id FROM public.empresas)', t);
+                
+                -- 3. Asignar el tenant principal a huérfanos antes de descartar tenant_id
+                EXECUTE format('UPDATE public.%I SET empresa_id = COALESCE((SELECT id FROM public.empresas WHERE id = ''ac8719ea-f16a-4538-b308-40d9511a14cb''), (SELECT id FROM public.empresas ORDER BY created_at ASC LIMIT 1)) WHERE empresa_id IS NULL', t);
+                
+                -- 4. Eliminar columna residual tenant_id
+                EXECUTE format('ALTER TABLE public.%I DROP COLUMN tenant_id', t);
+            ELSE
+                -- Si no existía tenant_id, rellenar cualquier empresa_id nulo con el tenant principal
+                EXECUTE format('UPDATE public.%I SET empresa_id = COALESCE((SELECT id FROM public.empresas WHERE id = ''ac8719ea-f16a-4538-b308-40d9511a14cb''), (SELECT id FROM public.empresas ORDER BY created_at ASC LIMIT 1)) WHERE empresa_id IS NULL', t);
+            END IF;
+        END IF;
+    END LOOP;
+END $$;
+
+-- ----------------------------------------------------------------------------
 -- 1. ASEGURAR HABILITACIÓN DE RLS EN LAS TABLAS TRANSACCIONALES
 -- ----------------------------------------------------------------------------
 ALTER TABLE IF EXISTS public.clientes ENABLE ROW LEVEL SECURITY;
