@@ -9,9 +9,9 @@
 
 ---
 
-### Fase 2: Capa de Base de Datos y Persistencia [ ]
-- [ ] **TASK-018-03 (DDL Supabase)**: Crear migración `supabase/migrations/20261110_modulo_rutas_y_fletes_bucaramanga.sql` con las tablas `zonas_flete_bucaramanga`, `rutas_despacho`, `ruta_paradas`, seeder de zonas del área metropolitana y políticas RLS Zero-Trust.
-- [ ] **TASK-018-04 (Prisma)**: Sincronizar modelos en `prisma/schema.prisma` y validar con `npx prisma validate`.
+### Fase 2: Capa de Base de Datos y Persistencia [x]
+- [x] **TASK-018-03 (DDL Supabase)**: Crear migración `supabase/migrations/20261110_modulo_rutas_y_fletes_bucaramanga.sql` con las tablas `zonas_flete_bucaramanga`, `rutas_despacho`, `ruta_paradas`, seeder de zonas del área metropolitana y políticas RLS Zero-Trust.
+- [x] **TASK-018-04 (Prisma)**: Sincronizar modelos en `prisma/schema.prisma` y validar con `npx prisma validate`.
 
 ---
 
