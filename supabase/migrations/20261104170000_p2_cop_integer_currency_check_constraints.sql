@@ -37,20 +37,37 @@ END $$;
 -- 1.2 Alquiler Detalles
 DO $$
 BEGIN
-    -- Saneamiento defensivo previo para redondear centavos residuales
-    UPDATE public.alquiler_detalles 
-    SET precio_unitario = ROUND(precio_unitario), 
-        subtotal_linea = ROUND(subtotal_linea)
-    WHERE precio_unitario != TRUNC(precio_unitario) 
-       OR subtotal_linea != TRUNC(subtotal_linea);
+    -- Manejo polimórfico defensivo: verificar si la columna es tarifa_aplicada o precio_unitario
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'alquiler_detalles' AND column_name = 'tarifa_aplicada') THEN
+        UPDATE public.alquiler_detalles 
+        SET tarifa_aplicada = ROUND(tarifa_aplicada), 
+            subtotal_linea = ROUND(subtotal_linea)
+        WHERE tarifa_aplicada != TRUNC(tarifa_aplicada) 
+           OR subtotal_linea != TRUNC(subtotal_linea);
 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'chk_alquiler_detalles_cop_entero' AND table_name = 'alquiler_detalles') THEN
-        ALTER TABLE public.alquiler_detalles 
-            ADD CONSTRAINT chk_alquiler_detalles_cop_entero 
-            CHECK (
-                precio_unitario = TRUNC(precio_unitario) 
-                AND subtotal_linea = TRUNC(subtotal_linea)
-            );
+        IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'chk_alquiler_detalles_cop_entero' AND table_name = 'alquiler_detalles') THEN
+            ALTER TABLE public.alquiler_detalles 
+                ADD CONSTRAINT chk_alquiler_detalles_cop_entero 
+                CHECK (
+                    tarifa_aplicada = TRUNC(tarifa_aplicada) 
+                    AND subtotal_linea = TRUNC(subtotal_linea)
+                );
+        END IF;
+    ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'alquiler_detalles' AND column_name = 'precio_unitario') THEN
+        UPDATE public.alquiler_detalles 
+        SET precio_unitario = ROUND(precio_unitario), 
+            subtotal_linea = ROUND(subtotal_linea)
+        WHERE precio_unitario != TRUNC(precio_unitario) 
+           OR subtotal_linea != TRUNC(subtotal_linea);
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'chk_alquiler_detalles_cop_entero' AND table_name = 'alquiler_detalles') THEN
+            ALTER TABLE public.alquiler_detalles 
+                ADD CONSTRAINT chk_alquiler_detalles_cop_entero 
+                CHECK (
+                    precio_unitario = TRUNC(precio_unitario) 
+                    AND subtotal_linea = TRUNC(subtotal_linea)
+                );
+        END IF;
     END IF;
 END $$;
 
@@ -60,16 +77,16 @@ BEGIN
     -- Saneamiento defensivo previo para redondear centavos residuales
     UPDATE public.facturas 
     SET total_pagar = ROUND(total_pagar), 
-        saldo_pendiente = ROUND(saldo_pendiente)
+        subtotal = ROUND(subtotal)
     WHERE total_pagar != TRUNC(total_pagar) 
-       OR saldo_pendiente != TRUNC(saldo_pendiente);
+       OR subtotal != TRUNC(subtotal);
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'chk_facturas_cop_entero' AND table_name = 'facturas') THEN
         ALTER TABLE public.facturas 
             ADD CONSTRAINT chk_facturas_cop_entero 
             CHECK (
                 total_pagar = TRUNC(total_pagar) 
-                AND saldo_pendiente = TRUNC(saldo_pendiente)
+                AND subtotal = TRUNC(subtotal)
             );
     END IF;
 END $$;
