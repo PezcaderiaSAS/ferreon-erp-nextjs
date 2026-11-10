@@ -3,9 +3,9 @@
 
 ---
 
-### Fase 1: Capa de Dominio Puro (TDD) [ ]
-- [ ] **TASK-018-01 (TDD)**: Escribir suite `tests/unit/logistica-rutas.service.test.ts` con cobertura de tarificación por zona/vehículo, cálculo de capacidad requerida, secuenciación de paradas y cálculo de avance porcentual.
-- [ ] **TASK-018-02 (Dominio)**: Implementar `src/core/services/logistica-rutas.service.ts` con tipado estricto, constantes de zonas metropolitanas de Bucaramanga y lógica pura haciendo pasar la suite al 100%.
+### Fase 1: Capa de Dominio Puro (TDD) [x]
+- [x] **TASK-018-01 (TDD)**: Escribir suite `tests/unit/logistica-rutas.service.test.ts` con cobertura de tarificación por zona/vehículo, cálculo de capacidad requerida, secuenciación de paradas y cálculo de avance porcentual.
+- [x] **TASK-018-02 (Dominio)**: Implementar `src/core/services/logistica-rutas.service.ts` con tipado estricto, constantes de zonas metropolitanas de Bucaramanga y lógica pura haciendo pasar la suite al 100%.
 
 ---
 
