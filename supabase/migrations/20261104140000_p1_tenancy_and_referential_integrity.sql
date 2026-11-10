@@ -34,7 +34,7 @@ BEGIN
         IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = t AND column_name = 'empresa_id') 
            AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = t AND column_name = 'tenant_id') THEN
             EXECUTE format('UPDATE public.%I SET empresa_id = tenant_id WHERE empresa_id IS NULL AND tenant_id IS NOT NULL', t);
-            EXECUTE format('ALTER TABLE public.%I DROP COLUMN tenant_id', t);
+            EXECUTE format('ALTER TABLE public.%I DROP COLUMN IF EXISTS tenant_id CASCADE', t);
         END IF;
     END LOOP;
 END $$;

@@ -58,16 +58,10 @@ BEGIN
             -- 2. Si existe tenant_id, rescatar valores legítimos que coincidan con una empresa
             IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = t AND column_name = 'tenant_id') THEN
                 EXECUTE format('UPDATE public.%I SET empresa_id = tenant_id WHERE empresa_id IS NULL AND tenant_id IN (SELECT id FROM public.empresas)', t);
-                
-                -- 3. Asignar el tenant principal a huérfanos antes de descartar tenant_id
-                EXECUTE format('UPDATE public.%I SET empresa_id = COALESCE((SELECT id FROM public.empresas WHERE id = ''ac8719ea-f16a-4538-b308-40d9511a14cb''), (SELECT id FROM public.empresas ORDER BY created_at ASC LIMIT 1)) WHERE empresa_id IS NULL', t);
-                
-                -- 4. Eliminar columna residual tenant_id
-                EXECUTE format('ALTER TABLE public.%I DROP COLUMN tenant_id', t);
-            ELSE
-                -- Si no existía tenant_id, rellenar cualquier empresa_id nulo con el tenant principal
-                EXECUTE format('UPDATE public.%I SET empresa_id = COALESCE((SELECT id FROM public.empresas WHERE id = ''ac8719ea-f16a-4538-b308-40d9511a14cb''), (SELECT id FROM public.empresas ORDER BY created_at ASC LIMIT 1)) WHERE empresa_id IS NULL', t);
             END IF;
+
+            -- 3. Asignar el tenant principal a huérfanos antes de crear políticas
+            EXECUTE format('UPDATE public.%I SET empresa_id = COALESCE((SELECT id FROM public.empresas WHERE id = ''ac8719ea-f16a-4538-b308-40d9511a14cb''), (SELECT id FROM public.empresas ORDER BY created_at ASC LIMIT 1)) WHERE empresa_id IS NULL', t);
         END IF;
     END LOOP;
 END $$;
@@ -93,6 +87,24 @@ ALTER TABLE IF EXISTS public.movimientos_caja ENABLE ROW LEVEL SECURITY;
 -- ----------------------------------------------------------------------------
 -- 2. PURGA DE POLÍTICAS HISTÓRICAS PERMISIVAS Y REDUNDANTES
 -- ----------------------------------------------------------------------------
+-- 2.0 Purga dinámica exhaustiva de cualquier política existente en las 14 tablas
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN (
+        SELECT schemaname, tablename, policyname 
+        FROM pg_policies 
+        WHERE schemaname = 'public' 
+          AND tablename IN (
+              'clientes', 'equipos', 'alquileres', 'alquiler_detalles', 'alquiler_adendas',
+              'facturas', 'pagos', 'devoluciones', 'devolucion_detalles', 'cotizaciones',
+              'cotizaciones_detalles', 'kardex_inventario', 'sesiones_caja', 'movimientos_caja'
+          )
+    ) LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I', r.policyname, r.schemaname, r.tablename);
+    END LOOP;
+END $$;
 -- 2.1 Clientes
 DROP POLICY IF EXISTS "Permitir lectura en clientes para usuarios autenticados" ON public.clientes;
 DROP POLICY IF EXISTS "Permitir escritura en clientes para usuarios autenticados" ON public.clientes;
