@@ -29,7 +29,9 @@
 - En `alquiler_detalles`, la columna que almacena la tarifa en PostgreSQL se llama `tarifa_aplicada`.
 - En edición de contratos, la verificación de stock debe acreditar los ítems previamente asignados al mismo contrato para evitar bloqueos espurios de stock.
 - Los depósitos en garantía son opcionales en el flujo comercial de FerreOn y no deben bloquear la formalización ni adición de contratos.
+- En migraciones de constraints COP entero (`TRUNC`), siempre se debe ejecutar un saneamiento previo con `ROUND()` sobre los datos legacy para garantizar que `ADD CONSTRAINT` nunca aborte por centavos residuales.
+- El script consolidado `supabase/migrations/CONSOLIDADO_EJECUCION_SUPABASE_CLOUD.sql` reúne las 5 fases en un solo bloque transaccional (`BEGIN ... COMMIT`) con registro en `schema_migrations`.
 
 ## Próximos pasos
-1. Aplicar las migraciones generadas en el SQL Editor de Supabase Cloud.
+1. Aplicar el script consolidado o las 5 migraciones en el SQL Editor de Supabase Cloud.
 2. Iniciar el desarrollo del siguiente hito: Módulo de rutas y logística de fletes Bucaramanga (**SPEC-018**).

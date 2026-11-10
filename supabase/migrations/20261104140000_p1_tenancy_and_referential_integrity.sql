@@ -77,15 +77,24 @@ ALTER TABLE IF EXISTS public.journal_entries
 
 -- Asignar el tenant principal (FERREON) a registros contables preexistentes huérfanos
 UPDATE public.financial_accounts 
-SET empresa_id = 'ac8719ea-f16a-4538-b308-40d9511a14cb' 
+SET empresa_id = COALESCE(
+    (SELECT id FROM public.empresas WHERE id = 'ac8719ea-f16a-4538-b308-40d9511a14cb'),
+    (SELECT id FROM public.empresas ORDER BY created_at ASC LIMIT 1)
+)
 WHERE empresa_id IS NULL;
 
 UPDATE public.transactions 
-SET empresa_id = 'ac8719ea-f16a-4538-b308-40d9511a14cb' 
+SET empresa_id = COALESCE(
+    (SELECT id FROM public.empresas WHERE id = 'ac8719ea-f16a-4538-b308-40d9511a14cb'),
+    (SELECT id FROM public.empresas ORDER BY created_at ASC LIMIT 1)
+)
 WHERE empresa_id IS NULL;
 
 UPDATE public.journal_entries 
-SET empresa_id = 'ac8719ea-f16a-4538-b308-40d9511a14cb' 
+SET empresa_id = COALESCE(
+    (SELECT id FROM public.empresas WHERE id = 'ac8719ea-f16a-4538-b308-40d9511a14cb'),
+    (SELECT id FROM public.empresas ORDER BY created_at ASC LIMIT 1)
+)
 WHERE empresa_id IS NULL;
 
 -- ----------------------------------------------------------------------------
