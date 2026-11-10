@@ -48,6 +48,8 @@ WHERE total_liquidado IS NULL OR (estado IN ('FINALIZADO', 'CANCELADO') AND tota
 -- 3. PARCHE EN EL SEEDER DE ONBOARDING (seed_dummy_tenant_data)
 -- ----------------------------------------------------------------------------
 -- Asegurar que si un contrato semilla se crea con total_pagado > 0, se inserte su recibo en public.pagos
+DROP FUNCTION IF EXISTS public.seed_dummy_tenant_data(UUID, UUID) CASCADE;
+
 CREATE OR REPLACE FUNCTION public.seed_dummy_tenant_data(p_empresa_id UUID, p_user_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
