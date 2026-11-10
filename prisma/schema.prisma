@@ -113,6 +113,9 @@ model Tenant {
   auditLogs          AuditLog[]
   cashSessions       CashSession[]
   cashMovements      CashMovement[]
+  zonasFlete         ZonaFleteBucaramanga[]
+  rutasDespacho      RutaDespacho[]
+  paradasRuta        RutaParada[]
 
   @@index([slug])
   @@map("empresas")
@@ -387,4 +390,84 @@ model CashMovement {
   @@index([sesionCajaId])
   @@map("movimientos_caja")
 }
+
+// ----------------------------------------------------------------------------
+// 8. LOGÍSTICA DE TRANSPORTE Y RUTAS BUCARAMANGA (SPEC-018)
+// ----------------------------------------------------------------------------
+
+model ZonaFleteBucaramanga {
+  id                    String        @id @default(uuid()) @db.Uuid
+  empresaId             String        @map("empresa_id") @db.Uuid
+  codigo                String        @db.VarChar(50)
+  nombre                String        @db.VarChar(150)
+  municipio             String        @db.VarChar(50)
+  tarifaBaseMotocarro   Decimal       @default(20000) @map("tarifa_base_motocarro") @db.Decimal(12, 2)
+  tarifaBaseCamioneta   Decimal       @default(45000) @map("tarifa_base_camioneta") @db.Decimal(12, 2)
+  tarifaBaseTurbo       Decimal       @default(90000) @map("tarifa_base_turbo") @db.Decimal(12, 2)
+  tiempoEstimadoMinutos Int           @default(45) @map("tiempo_estimado_minutos")
+  activo                Boolean       @default(true)
+  creadoEn              DateTime      @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  tenant                Tenant        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  paradas               RutaParada[]
+
+  @@unique([empresaId, codigo])
+  @@index([empresaId, municipio])
+  @@map("zonas_flete_bucaramanga")
+}
+
+model RutaDespacho {
+  id                  String        @id @default(uuid()) @db.Uuid
+  empresaId           String        @map("empresa_id") @db.Uuid
+  codigoRuta          String        @map("codigo_ruta") @db.VarChar(50)
+  fechaProgramada     DateTime      @default(now()) @map("fecha_programada") @db.Date
+  vehiculoPlaca       String        @map("vehiculo_placa") @db.VarChar(20)
+  vehiculoTipo        String        @default("CAMIONETA") @map("vehiculo_tipo") @db.VarChar(50)
+  conductorNombre     String        @map("conductor_nombre") @db.VarChar(100)
+  conductorTelefono   String?       @map("conductor_telefono") @db.VarChar(50)
+  estado              String        @default("PROGRAMADA") @db.VarChar(30)
+  kilometrosEstimados Int?          @default(0) @map("kilometros_estimados")
+  totalFletes         Decimal       @default(0) @map("total_fletes") @db.Decimal(14, 2)
+  observaciones       String?       @db.Text
+  creadoEn            DateTime      @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn       DateTime      @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(6)
+
+  tenant              Tenant        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  paradas             RutaParada[]
+
+  @@unique([empresaId, codigoRuta])
+  @@index([empresaId, fechaProgramada])
+  @@map("rutas_despacho")
+}
+
+model RutaParada {
+  id                  String               @id @default(uuid()) @db.Uuid
+  empresaId           String               @map("empresa_id") @db.Uuid
+  rutaId              String               @map("ruta_id") @db.Uuid
+  alquilerId          BigInt?              @map("alquiler_id")
+  clienteId           BigInt?              @map("cliente_id")
+  tipoParada          String               @default("ENTREGA_DESPACHO") @map("tipo_parada") @db.VarChar(30)
+  ordenSecuencia      Int                  @default(1) @map("orden_secuencia")
+  direccionObra       String               @map("direccion_obra") @db.Text
+  zonaId              String?              @map("zona_id") @db.Uuid
+  estadoParada        String               @default("PENDIENTE") @map("estado_parada") @db.VarChar(30)
+  horaLlegadaEstimada DateTime?            @map("hora_llegada_estimada") @db.Time(6)
+  horaCompletada      DateTime?            @map("hora_completada") @db.Timestamptz(6)
+  receptorNombre      String?              @map("receptor_nombre") @db.VarChar(100)
+  receptorTelefono    String?              @map("receptor_telefono") @db.VarChar(50)
+  observaciones       String?              @db.Text
+  evidenciaFotos      String[]             @default([]) @map("evidencia_fotos")
+  latitud             Decimal?             @db.Decimal(10, 8)
+  longitud            Decimal?             @db.Decimal(11, 8)
+  creadoEn            DateTime             @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  tenant              Tenant               @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  ruta                RutaDespacho         @relation(fields: [rutaId], references: [id], onDelete: Cascade)
+  zona                ZonaFleteBucaramanga? @relation(fields: [zonaId], references: [id], onDelete: SetNull)
+
+  @@index([rutaId, ordenSecuencia])
+  @@index([alquilerId])
+  @@map("ruta_paradas")
+}
+
 

@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- SCRIPT CONSOLIDADO DE MIGRACIONES ESTRUCTURALES — SUPABASE CLUSTER
 -- Proyecto: Alquileres System (FerreOn ERP)
 -- Cluster ID: eqruvswlpsttuyuglwts (us-west-2)
@@ -7,8 +7,6 @@
 -- ============================================================================
 
 BEGIN;
-
-
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- ARCHIVO: supabase/migrations/20261104130000_p0_security_seal_rls_hotfix.sql
@@ -456,7 +454,6 @@ WITH CHECK (
 );
 
 
-
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- ARCHIVO: supabase/migrations/20261104140000_p1_tenancy_and_referential_integrity.sql
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -608,7 +605,6 @@ BEGIN
 END $$;
 
 
-
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- ARCHIVO: supabase/migrations/20261104150000_p1_reconciliacion_financiera_ciclo_alquileres.sql
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -688,10 +684,18 @@ BEGIN
     VALUES (p_empresa_id, 'Constructora Andina Demo SAS', '901999888-1', '3109876543', 'contacto@constructorandina.demo', 'Cra 27 # 45-12, Bucaramanga')
     RETURNING id INTO v_cliente_id;
 
-    -- 2. Crear Equipo Demo
-    INSERT INTO public.equipos (empresa_id, codigo, nombre, categoria, estado, stock_total, stock_disponible, tarifa_dia, tarifa_semana, tarifa_mes)
-    VALUES (p_empresa_id, 'DEMO-VIB-01', 'Vibrador de Concreto 2.5 HP (Demo)', 'CONCRETO', 'Activo', 5, 4, 35000, 180000, 600000)
-    RETURNING id INTO v_equipo_id;
+    -- 2. Crear Equipo Demo (polimórfico defensivo)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'equipos' AND column_name = 'tarifa_diaria') THEN
+        EXECUTE 'INSERT INTO public.equipos (empresa_id, codigo, nombre, categoria, estado, stock_total, stock_disponible, tarifa_diaria)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id'
+        INTO v_equipo_id
+        USING p_empresa_id, 'DEMO-VIB-01', 'Vibrador de Concreto 2.5 HP (Demo)', 'CONCRETO', 'Activo', 5, 4, 35000;
+    ELSE
+        EXECUTE 'INSERT INTO public.equipos (empresa_id, codigo, nombre, categoria, estado, stock_total, stock_disponible, tarifa_dia, tarifa_semana, tarifa_mes)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id'
+        INTO v_equipo_id
+        USING p_empresa_id, 'DEMO-VIB-01', 'Vibrador de Concreto 2.5 HP (Demo)', 'CONCRETO', 'Activo', 5, 4, 35000, 180000, 600000;
+    END IF;
 
     -- 3. Crear Sesión de Caja Inicial
     INSERT INTO public.sesiones_caja (empresa_id, usuario_id, saldo_inicial, estado)
@@ -729,27 +733,16 @@ BEGIN
     )
     RETURNING id INTO v_alquiler_id;
 
-    -- 5. Insertar Detalle de Alquiler
-    INSERT INTO public.alquiler_detalles (
-        empresa_id,
-        alquiler_id,
-        equipo_id,
-        cantidad,
-        dias_cobrados,
-        precio_unitario,
-        subtotal_linea,
-        devuelto
-    )
-    VALUES (
-        p_empresa_id,
-        v_alquiler_id,
-        v_equipo_id,
-        1,
-        3,
-        35000,
-        105000,
-        FALSE
-    );
+    -- 5. Insertar Detalle de Alquiler (polimórfico defensivo)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'alquiler_detalles' AND column_name = 'tarifa_aplicada') THEN
+        EXECUTE 'INSERT INTO public.alquiler_detalles (empresa_id, alquiler_id, equipo_id, cantidad, dias_contratados, tarifa_aplicada, subtotal_linea, devuelto)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)'
+        USING p_empresa_id, v_alquiler_id, v_equipo_id, 1, 3, 35000, 105000, FALSE;
+    ELSE
+        EXECUTE 'INSERT INTO public.alquiler_detalles (empresa_id, alquiler_id, equipo_id, cantidad, dias_cobrados, precio_unitario, subtotal_linea, devuelto)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)'
+        USING p_empresa_id, v_alquiler_id, v_equipo_id, 1, 3, 35000, 105000, FALSE;
+    END IF;
 
     -- 6. Insertar Pago de Anticipo/Depósito Legítimo (Soluciona el bug de contratos huérfanos sin recibo)
     INSERT INTO public.pagos (
@@ -804,7 +797,6 @@ END;
 $$;
 
 
-
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 -- ARCHIVO: supabase/migrations/20261104160000_p2_dbre_partial_indexes_and_cleanup.sql
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -847,7 +839,6 @@ WHERE devuelto = FALSE;
 CREATE INDEX IF NOT EXISTS idx_facturas_cartera_pendiente 
 ON public.facturas (empresa_id, cliente_id, estado_pago) 
 WHERE estado_pago IN ('PENDIENTE', 'PARCIAL', 'VENCIDA');
-
 
 
 -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -962,26 +953,68 @@ BEGIN
     END IF;
 END $$;
 
--- 1.5 Tarifas de Equipos
+-- 1.5 Tarifas de Equipos (Manejo polimórfico defensivo: tarifa_diaria / tarifa_dia)
 DO $$
+DECLARE
+    v_col_dia text := NULL;
+    v_col_semana text := NULL;
+    v_col_mes text := NULL;
+    v_sql text;
+    v_set_clauses text[] := ARRAY[]::text[];
+    v_where_clauses text[] := ARRAY[]::text[];
+    v_chk_clauses text[] := ARRAY[]::text[];
 BEGIN
-    -- Saneamiento defensivo previo para redondear centavos residuales
-    UPDATE public.equipos 
-    SET tarifa_dia = ROUND(tarifa_dia), 
-        tarifa_semana = ROUND(COALESCE(tarifa_semana, 0)), 
-        tarifa_mes = ROUND(COALESCE(tarifa_mes, 0))
-    WHERE tarifa_dia != TRUNC(tarifa_dia) 
-       OR (tarifa_semana IS NOT NULL AND tarifa_semana != TRUNC(tarifa_semana))
-       OR (tarifa_mes IS NOT NULL AND tarifa_mes != TRUNC(tarifa_mes));
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'equipos') THEN
+        RETURN;
+    END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'chk_equipos_tarifas_cop_entero' AND table_name = 'equipos') THEN
-        ALTER TABLE public.equipos 
-            ADD CONSTRAINT chk_equipos_tarifas_cop_entero 
-            CHECK (
-                tarifa_dia = TRUNC(tarifa_dia) 
-                AND COALESCE(tarifa_semana, 0) = TRUNC(COALESCE(tarifa_semana, 0))
-                AND COALESCE(tarifa_mes, 0) = TRUNC(COALESCE(tarifa_mes, 0))
-            );
+    -- Detectar nombre de columna para tarifa diaria
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'equipos' AND column_name = 'tarifa_diaria') THEN
+        v_col_dia := 'tarifa_diaria';
+    ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'equipos' AND column_name = 'tarifa_dia') THEN
+        v_col_dia := 'tarifa_dia';
+    END IF;
+
+    -- Detectar nombre de columna para tarifa semanal
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'equipos' AND column_name = 'tarifa_semanal') THEN
+        v_col_semana := 'tarifa_semanal';
+    ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'equipos' AND column_name = 'tarifa_semana') THEN
+        v_col_semana := 'tarifa_semana';
+    END IF;
+
+    -- Detectar nombre de columna para tarifa mensual
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'equipos' AND column_name = 'tarifa_mensual') THEN
+        v_col_mes := 'tarifa_mensual';
+    ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'equipos' AND column_name = 'tarifa_mes') THEN
+        v_col_mes := 'tarifa_mes';
+    END IF;
+
+    IF v_col_dia IS NOT NULL THEN
+        v_set_clauses := array_append(v_set_clauses, quote_ident(v_col_dia) || ' = ROUND(' || quote_ident(v_col_dia) || ')');
+        v_where_clauses := array_append(v_where_clauses, quote_ident(v_col_dia) || ' != TRUNC(' || quote_ident(v_col_dia) || ')');
+        v_chk_clauses := array_append(v_chk_clauses, quote_ident(v_col_dia) || ' = TRUNC(' || quote_ident(v_col_dia) || ')');
+    END IF;
+
+    IF v_col_semana IS NOT NULL THEN
+        v_set_clauses := array_append(v_set_clauses, quote_ident(v_col_semana) || ' = ROUND(COALESCE(' || quote_ident(v_col_semana) || ', 0))');
+        v_where_clauses := array_append(v_where_clauses, '(' || quote_ident(v_col_semana) || ' IS NOT NULL AND ' || quote_ident(v_col_semana) || ' != TRUNC(' || quote_ident(v_col_semana) || '))');
+        v_chk_clauses := array_append(v_chk_clauses, 'COALESCE(' || quote_ident(v_col_semana) || ', 0) = TRUNC(COALESCE(' || quote_ident(v_col_semana) || ', 0))');
+    END IF;
+
+    IF v_col_mes IS NOT NULL THEN
+        v_set_clauses := array_append(v_set_clauses, quote_ident(v_col_mes) || ' = ROUND(COALESCE(' || quote_ident(v_col_mes) || ', 0))');
+        v_where_clauses := array_append(v_where_clauses, '(' || quote_ident(v_col_mes) || ' IS NOT NULL AND ' || quote_ident(v_col_mes) || ' != TRUNC(' || quote_ident(v_col_mes) || '))');
+        v_chk_clauses := array_append(v_chk_clauses, 'COALESCE(' || quote_ident(v_col_mes) || ', 0) = TRUNC(COALESCE(' || quote_ident(v_col_mes) || ', 0))');
+    END IF;
+
+    IF array_length(v_set_clauses, 1) > 0 THEN
+        v_sql := 'UPDATE public.equipos SET ' || array_to_string(v_set_clauses, ', ') || ' WHERE ' || array_to_string(v_where_clauses, ' OR ');
+        EXECUTE v_sql;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'chk_equipos_tarifas_cop_entero' AND table_name = 'equipos') THEN
+            v_sql := 'ALTER TABLE public.equipos ADD CONSTRAINT chk_equipos_tarifas_cop_entero CHECK (' || array_to_string(v_chk_clauses, ' AND ') || ')';
+            EXECUTE v_sql;
+        END IF;
     END IF;
 END $$;
 

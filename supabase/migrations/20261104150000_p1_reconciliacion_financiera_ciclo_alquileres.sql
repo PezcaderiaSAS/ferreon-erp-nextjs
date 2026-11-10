@@ -73,10 +73,18 @@ BEGIN
     VALUES (p_empresa_id, 'Constructora Andina Demo SAS', '901999888-1', '3109876543', 'contacto@constructorandina.demo', 'Cra 27 # 45-12, Bucaramanga')
     RETURNING id INTO v_cliente_id;
 
-    -- 2. Crear Equipo Demo
-    INSERT INTO public.equipos (empresa_id, codigo, nombre, categoria, estado, stock_total, stock_disponible, tarifa_dia, tarifa_semana, tarifa_mes)
-    VALUES (p_empresa_id, 'DEMO-VIB-01', 'Vibrador de Concreto 2.5 HP (Demo)', 'CONCRETO', 'Activo', 5, 4, 35000, 180000, 600000)
-    RETURNING id INTO v_equipo_id;
+    -- 2. Crear Equipo Demo (polimórfico defensivo)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'equipos' AND column_name = 'tarifa_diaria') THEN
+        EXECUTE 'INSERT INTO public.equipos (empresa_id, codigo, nombre, categoria, estado, stock_total, stock_disponible, tarifa_diaria)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id'
+        INTO v_equipo_id
+        USING p_empresa_id, 'DEMO-VIB-01', 'Vibrador de Concreto 2.5 HP (Demo)', 'CONCRETO', 'Activo', 5, 4, 35000;
+    ELSE
+        EXECUTE 'INSERT INTO public.equipos (empresa_id, codigo, nombre, categoria, estado, stock_total, stock_disponible, tarifa_dia, tarifa_semana, tarifa_mes)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id'
+        INTO v_equipo_id
+        USING p_empresa_id, 'DEMO-VIB-01', 'Vibrador de Concreto 2.5 HP (Demo)', 'CONCRETO', 'Activo', 5, 4, 35000, 180000, 600000;
+    END IF;
 
     -- 3. Crear Sesión de Caja Inicial
     INSERT INTO public.sesiones_caja (empresa_id, usuario_id, saldo_inicial, estado)
@@ -114,27 +122,16 @@ BEGIN
     )
     RETURNING id INTO v_alquiler_id;
 
-    -- 5. Insertar Detalle de Alquiler
-    INSERT INTO public.alquiler_detalles (
-        empresa_id,
-        alquiler_id,
-        equipo_id,
-        cantidad,
-        dias_cobrados,
-        precio_unitario,
-        subtotal_linea,
-        devuelto
-    )
-    VALUES (
-        p_empresa_id,
-        v_alquiler_id,
-        v_equipo_id,
-        1,
-        3,
-        35000,
-        105000,
-        FALSE
-    );
+    -- 5. Insertar Detalle de Alquiler (polimórfico defensivo)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'alquiler_detalles' AND column_name = 'tarifa_aplicada') THEN
+        EXECUTE 'INSERT INTO public.alquiler_detalles (empresa_id, alquiler_id, equipo_id, cantidad, dias_contratados, tarifa_aplicada, subtotal_linea, devuelto)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)'
+        USING p_empresa_id, v_alquiler_id, v_equipo_id, 1, 3, 35000, 105000, FALSE;
+    ELSE
+        EXECUTE 'INSERT INTO public.alquiler_detalles (empresa_id, alquiler_id, equipo_id, cantidad, dias_cobrados, precio_unitario, subtotal_linea, devuelto)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)'
+        USING p_empresa_id, v_alquiler_id, v_equipo_id, 1, 3, 35000, 105000, FALSE;
+    END IF;
 
     -- 6. Insertar Pago de Anticipo/Depósito Legítimo (Soluciona el bug de contratos huérfanos sin recibo)
     INSERT INTO public.pagos (

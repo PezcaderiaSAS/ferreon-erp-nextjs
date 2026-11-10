@@ -106,25 +106,67 @@ BEGIN
     END IF;
 END $$;
 
--- 1.5 Tarifas de Equipos
+-- 1.5 Tarifas de Equipos (Manejo polimórfico defensivo: tarifa_diaria / tarifa_dia)
 DO $$
+DECLARE
+    v_col_dia text := NULL;
+    v_col_semana text := NULL;
+    v_col_mes text := NULL;
+    v_sql text;
+    v_set_clauses text[] := ARRAY[]::text[];
+    v_where_clauses text[] := ARRAY[]::text[];
+    v_chk_clauses text[] := ARRAY[]::text[];
 BEGIN
-    -- Saneamiento defensivo previo para redondear centavos residuales
-    UPDATE public.equipos 
-    SET tarifa_dia = ROUND(tarifa_dia), 
-        tarifa_semana = ROUND(COALESCE(tarifa_semana, 0)), 
-        tarifa_mes = ROUND(COALESCE(tarifa_mes, 0))
-    WHERE tarifa_dia != TRUNC(tarifa_dia) 
-       OR (tarifa_semana IS NOT NULL AND tarifa_semana != TRUNC(tarifa_semana))
-       OR (tarifa_mes IS NOT NULL AND tarifa_mes != TRUNC(tarifa_mes));
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'equipos') THEN
+        RETURN;
+    END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'chk_equipos_tarifas_cop_entero' AND table_name = 'equipos') THEN
-        ALTER TABLE public.equipos 
-            ADD CONSTRAINT chk_equipos_tarifas_cop_entero 
-            CHECK (
-                tarifa_dia = TRUNC(tarifa_dia) 
-                AND COALESCE(tarifa_semana, 0) = TRUNC(COALESCE(tarifa_semana, 0))
-                AND COALESCE(tarifa_mes, 0) = TRUNC(COALESCE(tarifa_mes, 0))
-            );
+    -- Detectar nombre de columna para tarifa diaria
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'equipos' AND column_name = 'tarifa_diaria') THEN
+        v_col_dia := 'tarifa_diaria';
+    ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'equipos' AND column_name = 'tarifa_dia') THEN
+        v_col_dia := 'tarifa_dia';
+    END IF;
+
+    -- Detectar nombre de columna para tarifa semanal
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'equipos' AND column_name = 'tarifa_semanal') THEN
+        v_col_semana := 'tarifa_semanal';
+    ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'equipos' AND column_name = 'tarifa_semana') THEN
+        v_col_semana := 'tarifa_semana';
+    END IF;
+
+    -- Detectar nombre de columna para tarifa mensual
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'equipos' AND column_name = 'tarifa_mensual') THEN
+        v_col_mes := 'tarifa_mensual';
+    ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'equipos' AND column_name = 'tarifa_mes') THEN
+        v_col_mes := 'tarifa_mes';
+    END IF;
+
+    IF v_col_dia IS NOT NULL THEN
+        v_set_clauses := array_append(v_set_clauses, quote_ident(v_col_dia) || ' = ROUND(' || quote_ident(v_col_dia) || ')');
+        v_where_clauses := array_append(v_where_clauses, quote_ident(v_col_dia) || ' != TRUNC(' || quote_ident(v_col_dia) || ')');
+        v_chk_clauses := array_append(v_chk_clauses, quote_ident(v_col_dia) || ' = TRUNC(' || quote_ident(v_col_dia) || ')');
+    END IF;
+
+    IF v_col_semana IS NOT NULL THEN
+        v_set_clauses := array_append(v_set_clauses, quote_ident(v_col_semana) || ' = ROUND(COALESCE(' || quote_ident(v_col_semana) || ', 0))');
+        v_where_clauses := array_append(v_where_clauses, '(' || quote_ident(v_col_semana) || ' IS NOT NULL AND ' || quote_ident(v_col_semana) || ' != TRUNC(' || quote_ident(v_col_semana) || '))');
+        v_chk_clauses := array_append(v_chk_clauses, 'COALESCE(' || quote_ident(v_col_semana) || ', 0) = TRUNC(COALESCE(' || quote_ident(v_col_semana) || ', 0))');
+    END IF;
+
+    IF v_col_mes IS NOT NULL THEN
+        v_set_clauses := array_append(v_set_clauses, quote_ident(v_col_mes) || ' = ROUND(COALESCE(' || quote_ident(v_col_mes) || ', 0))');
+        v_where_clauses := array_append(v_where_clauses, '(' || quote_ident(v_col_mes) || ' IS NOT NULL AND ' || quote_ident(v_col_mes) || ' != TRUNC(' || quote_ident(v_col_mes) || '))');
+        v_chk_clauses := array_append(v_chk_clauses, 'COALESCE(' || quote_ident(v_col_mes) || ', 0) = TRUNC(COALESCE(' || quote_ident(v_col_mes) || ', 0))');
+    END IF;
+
+    IF array_length(v_set_clauses, 1) > 0 THEN
+        v_sql := 'UPDATE public.equipos SET ' || array_to_string(v_set_clauses, ', ') || ' WHERE ' || array_to_string(v_where_clauses, ' OR ');
+        EXECUTE v_sql;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'chk_equipos_tarifas_cop_entero' AND table_name = 'equipos') THEN
+            v_sql := 'ALTER TABLE public.equipos ADD CONSTRAINT chk_equipos_tarifas_cop_entero CHECK (' || array_to_string(v_chk_clauses, ' AND ') || ')';
+            EXECUTE v_sql;
+        END IF;
     END IF;
 END $$;
