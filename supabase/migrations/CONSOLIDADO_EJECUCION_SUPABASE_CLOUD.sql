@@ -892,7 +892,7 @@ END $$;
 -- ============================================================================
 -- REGISTRO DE MIGRACIONES EN SCHEMA_MIGRATIONS
 -- ============================================================================
-DO 
+DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'supabase_migrations' AND table_name = 'schema_migrations') THEN
         INSERT INTO supabase_migrations.schema_migrations (version, statements, name)
@@ -904,6 +904,6 @@ BEGIN
             ('20261104170000', NULL, 'p2_cop_integer_currency_check_constraints')
         ON CONFLICT (version) DO NOTHING;
     END IF;
-END ;
+END $$;
 
 COMMIT;
