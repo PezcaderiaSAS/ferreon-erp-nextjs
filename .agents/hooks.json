@@ -1,0 +1,37 @@
+{
+  "cghost-cockpit-boot": {
+    "enabled": true,
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "python .agents/hooks/session_start.py",
+        "timeout": 5
+      }
+    ]
+  },
+  "zero-trust-and-commit-gate": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .agents/hooks/pre_tool_guard.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "cghost-stop-gate": {
+    "enabled": true,
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python .agents/hooks/stop_gate.py",
+        "timeout": 10
+      }
+    ]
+  }
+}

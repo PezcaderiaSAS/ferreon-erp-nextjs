@@ -1,6 +1,7 @@
 # Active Context — Alquileres System (FerreOn ERP & WMS)
 
 ## 1. Estado de los Hitos Arquitectónicos Activos
+
 - **Hito 1 (`SPEC-2026-ARCH-RESTRUCT-001`):** ✅ **100% COMPLETADO Y CERTIFICADO** (Alquileres, Bodega RPC pesimista, Server Actions, Memory Bank Canónico).
 - **Hito 2 (`SPEC-2026-ARCH-RESTRUCT-002`):** ✅ **100% COMPLETADO Y CERTIFICADO** (Compras & Proveedores: RSC + Client Island + ComprasTransaccionalService).
 - **Hito 3 (`SPEC-2026-ARCH-RESTRUCT-003`):** ✅ **100% COMPLETADO Y CERTIFICADO** (Caja & Arqueos: RSC + Client Island + CajaTransaccionalService).
@@ -27,9 +28,9 @@
 - **Hito 25 (Blindaje Canónico de Fechas, Zona Horaria UTC-5 y Carga para PDFs - SPEC-2026-FECHAS-PDF-INTEGRITY-001):** ✅ **100% COMPLETADO Y CERTIFICADO** (Eliminación de desfasajes de 1 día causados por conversiones UTC en `mappers.ts`, `AlquileresInteractiveIsland.tsx`, `ContratoAlquilerPDF.tsx`, `EnterprisePDFService`, `facturacion-transaccional.service.ts`, `OrdenSubcontratacionPDFModal.tsx`, `ReciboCajaMixtoPDFModal.tsx`, `ComprobanteDevolucionPDFModal.tsx` y `CotizacionRapidaModal.tsx`; blindaje de sobreescritura en cascada en `useAlquilerForm.ts`; soporte para contratos retroactivos; 87/87 suites pasando con 500/500 tests unitarios e integrados al 100%; 0 errores en `tsc --noEmit`).
 - **Hito 27 (Hardening Estructural Supabase Cloud P0-P2 y Moneda COP Entera):** ✅ **100% COMPLETADO Y DESPLEGADO EN PRODUCCIÓN** (Ejecución exitosa del script consolidado `CONSOLIDADO_EJECUCION_SUPABASE_CLOUD.sql` en Supabase Cloud con resultado `Success. No rows returned`. Blindaje polimórfico defensivo en `public.equipos` para `tarifa_diaria`/`tarifa_dia` y constraints COP enteros. Desplegado a `origin/main` con commit `ad9a26d`).
 - **Hito 28 (Módulo de Rutas, Logística y Fletes Bucaramanga - SPEC-018):** 🟢 **EN PROGRESO — FASE 1 & 2 CERTIFICADAS** (Dominio puro `LogisticaRutasService` con 13/13 tests en verde, DDL en Supabase `20261110_modulo_rutas_y_fletes_bucaramanga.sql` y sincronización Prisma `prisma validate` + `prisma generate` completadas).
+- **Hito 29 (Gobernanza Cognitiva & Memoria Viva C://GHOST v3.0):** ✅ **100% COMPLETADO Y OPERATIVO** (Adopción de los 10 Protocolos Universales, ventana deslizante `STATUS.md` ≤ 100 líneas, `IDEAS.md` Fuga Cero, `CHANGELOG.md`, `docs/adr/0006-adopcion-cghost-brain-v3-y-memoria-viva.md` y Lifecycle Hooks Zero-Trust `.agents/hooks/`).
 
 - **Estado de Pruebas y Build:** Compilación Next.js 33/33 rutas en verde, 0 errores de TypeScript (`tsc --noEmit`), suite de pruebas pasando al 100% (500 tests en 87 suites), 0 errores en consola.
-
 
 ---
 
@@ -125,6 +126,7 @@
 ---
 
 ## 3. Próximos Pasos en el Roadmap (Para el Próximo Git Pull)
+
 - **Verificación en Producción Vercel:** Inspección de `/configuracion` para validar visualización de carga de firma digital tras despliegue de Vercel.
 - **Prueba Operativa de Rúbrica:** Carga de firma digital corporativa y emisión de contrato PDF de prueba para confirmar estampa en encabezado/pie de página.
 - **Harness2 & Suite de Agentes:** Ejecutar suite de validación `harness2` (`pytest`) y mantener activos Ruflo, ECC v2.0.0, GitNexus y workflows.

@@ -43,11 +43,23 @@ This project is indexed by GitNexus as **ferreon-erp-nextjs** (38800 symbols, 47
 
 <!-- gitnexus:end -->
 
-## Constitución Técnica y Banco de Memoria Canónico (Ground Truth para Agentes)
+---
+
+# 🧠 Gobernanza Cognitiva y Memoria Viva: Metodología C://GHOST v3.0
+
+Este repositorio se rige por la **Metodología C://GHOST v3.0 Universal**, cuyos 10 Protocolos Maestros, Handoff estructurado y reglas operativas están definidos canónicamente en:
+👉 [`.agents/AGENTS.md`](file:///.agents/AGENTS.md)
+
+## Repositorio de Conciencia (Protocolo 0)
+- **Estado Activo & Ventana Deslizante (≤ 100 líneas):** [`STATUS.md`](file:///STATUS.md)
+- **Incubadora Fuga Cero (Protocolo 6):** [`IDEAS.md`](file:///IDEAS.md)
+- **Histórico Permanente de Tareas:** [`CHANGELOG.md`](file:///CHANGELOG.md)
+
+## Constitución Técnica y Banco de Memoria Canónico (Ground Truth)
 Todo agente o subagente que opere sobre este proyecto DEBE consultar obligatoriamente `docs/constitution.md` y los 5 archivos de `docs/memory-bank/` antes de proponer cambios estructurales o modificar código:
 0. `docs/constitution.md`: Principios innegociables v5.0 (RSC, Server Actions, RLS, Moneda COP, Disyuntor de Artefactos y Loop DevTools Dual).
 1. `docs/memory-bank/productContext.md`: Visión del producto, terminología oficial y directriz de marca (**Alquileres System**).
 2. `docs/memory-bank/systemPatterns.md`: Estándares de Next.js App Router (RSC, Client Islands, Server Actions delgadas, RPC pesimista y límites de Zustand).
 3. `docs/memory-bank/techContext.md`: Stack técnico consolidado, directrices de pooler (6543 vs 5432) y Upstash Redis.
-4. `docs/memory-bank/activeContext.md`: Registro de decisiones de arquitectura y el hito activo (`SPEC-2026-ARCH-RESTRUCT-001`).
+4. `docs/memory-bank/activeContext.md`: Registro de decisiones de arquitectura y el hito activo (`SPEC-2026-ARCH-RESTRUCT-001` y `SPEC-018`).
 5. `docs/memory-bank/progress.md`: Mapa de deuda técnica y checklist de optimización.
