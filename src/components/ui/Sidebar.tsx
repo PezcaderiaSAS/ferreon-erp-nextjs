@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, FileSpreadsheet, Package, ShoppingBag, Handshake, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X, LogOut, Palette, Wallet, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, FileSpreadsheet, Package, ShoppingBag, Handshake, ArrowLeftRight, FileText, Users, CreditCard, Sparkles, X, LogOut, Palette, Wallet, ShieldCheck, ChevronLeft, ChevronRight, Truck } from 'lucide-react';
 import { useEmpresaStore, applyThemeToDOM } from '../../infrastructure/state/empresaStore';
 import { useLayoutStore } from '../../infrastructure/state/layoutStore';
 import { useTenantStore } from '../../infrastructure/state/tenantStore';
@@ -30,6 +30,7 @@ const SIDEBAR_LINKS: SidebarLinkItem[] = [
   { href: '/compras', icon: ShoppingBag, label: 'Compras', modulo: 'COMPRAS' },
   { href: '/subcontrataciones', icon: Handshake, label: 'Subcontratación', modulo: 'SUBCONTRATACIONES' },
   { href: '/devoluciones', icon: ArrowLeftRight, label: 'Devoluciones', modulo: 'DEVOLUCIONES' },
+  { href: '/logistica', icon: Truck, label: 'Logística & Rutas', modulo: 'LOGISTICA' },
   { href: '/facturacion', icon: FileText, label: 'Facturación', modulo: 'FACTURACION' },
   { href: '/caja', icon: Wallet, label: 'Caja & POS', modulo: 'CAJA' },
   { href: '/clientes', icon: Users, label: 'Clientes' },

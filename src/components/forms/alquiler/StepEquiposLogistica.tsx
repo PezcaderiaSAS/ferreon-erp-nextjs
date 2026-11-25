@@ -18,6 +18,7 @@ import { formatearMonedaConLetras } from '../../../core/utils/numero-a-letras';
 import { ItemRow } from './types';
 import { ModalResolucionOverbooking, OverbookingConflictInfo } from './ModalResolucionOverbooking';
 import { CrearSubcontratacionModal, type ItemFormRow } from '@/components/subcontrataciones';
+import { ZONAS_METROPOLITANAS_CANONICAS, TipoVehiculoTransporte } from '@/core/services/logistica-rutas.service';
 
 export interface StepEquiposLogisticaProps {
   items: ItemRow[];
@@ -102,6 +103,9 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
     isOpen: false,
     items: [],
   });
+
+  const [zonaFleteSeleccionada, setZonaFleteSeleccionada] = React.useState<string>('');
+  const [vehiculoFleteSeleccionado, setVehiculoFleteSeleccionado] = React.useState<TipoVehiculoTransporte>(TipoVehiculoTransporte.CAMIONETA);
 
   return (
     <div className="space-y-4 animate-fadeIn">
@@ -579,6 +583,68 @@ export const StepEquiposLogistica: React.FC<StepEquiposLogisticaProps> = ({
           <Truck className="w-4 h-4 text-amber-600" />
           <span>Fletes y Logística de Traslado</span>
         </h3>
+
+        {/* Asistente Matriz de Fletes Bucaramanga (SPEC-018) */}
+        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+              <span>📍</span>
+              Asistente Tarifario Metropolitano (Bucaramanga & AM)
+            </span>
+            <span className="text-[10px] text-teal-600 font-semibold">
+              Matriz WMS
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div>
+              <select
+                value={zonaFleteSeleccionada}
+                onChange={(e) => setZonaFleteSeleccionada(e.target.value)}
+                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 outline-none"
+              >
+                <option value="">Seleccione Zona AMB...</option>
+                {ZONAS_METROPOLITANAS_CANONICAS.map((z) => (
+                  <option key={z.codigo} value={z.codigo}>
+                    {z.municipio} - {z.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <select
+                value={vehiculoFleteSeleccionado}
+                onChange={(e) => setVehiculoFleteSeleccionado(e.target.value as TipoVehiculoTransporte)}
+                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 outline-none"
+              >
+                <option value={TipoVehiculoTransporte.MOTOCARRO}>Motocarro (≤ 350 Kg)</option>
+                <option value={TipoVehiculoTransporte.CAMIONETA}>Camioneta (≤ 1.200 Kg)</option>
+                <option value={TipoVehiculoTransporte.TURBO_NPR}>Turbo NPR (≤ 4.500 Kg)</option>
+              </select>
+            </div>
+
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  const z = ZONAS_METROPOLITANAS_CANONICAS.find((item) => item.codigo === zonaFleteSeleccionada);
+                  if (!z) return;
+                  let tarifa = z.tarifaBaseCamioneta;
+                  if (vehiculoFleteSeleccionado === TipoVehiculoTransporte.MOTOCARRO) tarifa = z.tarifaBaseMotocarro;
+                  if (vehiculoFleteSeleccionado === TipoVehiculoTransporte.TURBO_NPR) tarifa = z.tarifaBaseTurbo;
+
+                  setFleteEntrega(tarifa);
+                  setFleteRecogida(tarifa);
+                }}
+                disabled={!zonaFleteSeleccionada}
+                className="w-full px-3 py-1.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white rounded-lg text-xs font-bold transition-all shadow-xs"
+              >
+                Aplicar Flete Sugerido
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">

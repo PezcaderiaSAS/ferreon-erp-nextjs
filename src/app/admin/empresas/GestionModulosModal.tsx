@@ -15,7 +15,8 @@ import {
   FileText, 
   Wallet, 
   CreditCard,
-  Loader2
+  Loader2,
+  Truck
 } from 'lucide-react';
 import { ModuloKey, MODULOS_DISPONIBLES, obtenerModulosDefault } from '@/core/services/licencias-modulos.service';
 import { toggleModuloEmpresaAction, EmpresaDirectorioItem } from '@/app/actions/ultraadmin';
@@ -37,6 +38,7 @@ const MODULO_ICONOS: Record<ModuloKey, React.ElementType> = {
   DEVOLUCIONES: ArrowLeftRight,
   SUBCONTRATACIONES: Handshake,
   FACTURACION: FileText,
+  LOGISTICA: Truck,
 };
 
 export function GestionModulosModal({

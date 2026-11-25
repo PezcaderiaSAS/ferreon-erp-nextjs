@@ -33,7 +33,8 @@ export type ModuloKey =
   | 'CAJA'
   | 'DEVOLUCIONES'
   | 'SUBCONTRATACIONES'
-  | 'FACTURACION';
+  | 'FACTURACION'
+  | 'LOGISTICA';
 
 export const MODULOS_DISPONIBLES: { key: ModuloKey; nombre: string; descripcion: string }[] = [
   { key: 'ALQUILERES', nombre: 'Alquileres & Contratos', descripcion: 'Gestión comercial de contratos, reservas y entregas' },
@@ -44,7 +45,8 @@ export const MODULOS_DISPONIBLES: { key: ModuloKey; nombre: string; descripcion:
   { key: 'CAJA', nombre: 'Caja & Tesorería POS', descripcion: 'Aperturas, arqueos ciegos por denominación y control de efectivo' },
   { key: 'DEVOLUCIONES', nombre: 'Devoluciones & Split-Line', descripcion: 'Recepción técnica, clasificación de daños y compensación de garantía' },
   { key: 'SUBCONTRATACIONES', nombre: 'Maquinaria Subcontratada', descripcion: 'Equipos de aliados comerciales a dos tiempos y liquidación con retenciones' },
-  { key: 'FACTURACION', nombre: 'Facturación Comercial', descripcion: 'Emisión formal de facturas y cuentas por cobrar en PDF' }
+  { key: 'FACTURACION', nombre: 'Facturación Comercial', descripcion: 'Emisión formal de facturas y cuentas por cobrar en PDF' },
+  { key: 'LOGISTICA', nombre: 'Logística & Rutas BGA', descripcion: 'Matriz de fletes metropolitana, hojas de ruta y trazabilidad de entregas' }
 ];
 
 export type PermisosModuloCustom = Record<string, boolean>;
@@ -61,6 +63,7 @@ export function obtenerModulosDefault(): Record<ModuloKey, boolean> {
     DEVOLUCIONES: true,
     SUBCONTRATACIONES: true,
     FACTURACION: true,
+    LOGISTICA: true,
   };
 }
 

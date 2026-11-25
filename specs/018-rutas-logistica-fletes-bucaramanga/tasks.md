@@ -24,16 +24,16 @@
 
 ---
 
-### Fase 4: Componentes de UI/UX (Linear High-Density) [ ]
+### Fase 4: Componentes de UI/UX (Linear High-Density) [x]
 
-- [ ] **TASK-018-06 (Skeleton & RSC)**: Construir `LogisticaSkeleton.tsx` y el Server Component `src/app/logistica/page.tsx` con streaming concurrente vía `<Suspense>`.
-- [ ] **TASK-018-07 (Client Island)**: Desarrollar `src/components/logistica/LogisticaInteractiveIsland.tsx` con métricas de flota, selector de fecha y timeline interactivo de paradas.
-- [ ] **TASK-018-08 (Modales Operativos)**: Construir `CrearRutaModal.tsx` (despacho agrupado) y `RegistrarEvidenciaModal.tsx` (confirmación con foto y GPS).
-- [ ] **TASK-018-09 (Integración Wizard)**: Integrar selector de zonas de Bucaramanga en `StepEquiposLogistica.tsx` enlazado reactivamente al cálculo de flete en `useAlquilerForm.ts`.
+- [x] **TASK-018-06 (Skeleton & RSC)**: Construir `LogisticaSkeleton.tsx` y el Server Component `src/app/logistica/page.tsx` con streaming concurrente vía `<Suspense>`.
+- [x] **TASK-018-07 (Client Island)**: Desarrollar `src/components/logistica/LogisticaInteractiveIsland.tsx` con métricas de flota, selector de fecha y timeline interactivo de paradas.
+- [x] **TASK-018-08 (Modales Operativos)**: Construir `CrearRutaModal.tsx` (despacho agrupado) y `RegistrarEvidenciaModal.tsx` (confirmación con foto y GPS).
+- [x] **TASK-018-09 (Integración Wizard)**: Integrar selector de zonas de Bucaramanga en `StepEquiposLogistica.tsx` enlazado reactivamente al cálculo de flete en `useAlquilerForm.ts`.
 
 ---
 
-### Fase 5: QA Integral, Auditoría Harness² y Despliegue [ ]
+### Fase 5: QA Integral, Auditoría Harness² y Despliegue [x]
 
-- [ ] **TASK-018-10 (QA & Tests)**: Ejecutar `tsc --noEmit`, suite Vitest (`tests/unit/logistica-rutas.service.test.ts`), `npm run build` y suite obligatoria de Harness².
-- [ ] **TASK-018-11 (Git & Despliegue)**: Registrar commit canónico, push a `origin/main` y actualizar `MEMORY.md`.
+- [x] **TASK-018-10 (QA & Tests)**: Ejecutar `tsc --noEmit`, suite Vitest (`tests/unit/logistica-rutas.service.test.ts`), `npx prisma validate` y suite obligatoria de Harness² (5/5 en verde).
+- [ ] **TASK-018-11 (Git & Despliegue)**: Registrar commit canónico y consultar al usuario para push a `origin/main`.
