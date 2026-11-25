@@ -44,7 +44,10 @@ export type AuditActionType =
   | "ABONO_PROVEEDOR"
   | "LIBERAR_MANTENIMIENTO"
   | "MANTENIMIENTO_PREVENTIVO"
-  | "REGISTRAR_FIRMA_CLIENTE";
+  | "REGISTRAR_FIRMA_CLIENTE"
+  | "CREAR_RUTA_DESPACHO"
+  | "CAMBIO_ESTADO_RUTA"
+  | "ACTUALIZAR_PARADA_RUTA";
 
 export type AuditModuloType =
   | "SEGURIDAD"
@@ -59,7 +62,8 @@ export type AuditModuloType =
   | "CONFIGURACION"
   | "TENANTS"
   | "SUBCONTRATACIONES"
-  | "CAJA_POS";
+  | "CAJA_POS"
+  | "LOGISTICA";
 
 export interface AuditDetalleCambio {
   campo?: string;

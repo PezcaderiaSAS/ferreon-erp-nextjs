@@ -18,9 +18,9 @@
 
 ---
 
-### Fase 3: Server Actions & Backend Integration [ ]
+### Fase 3: Server Actions & Backend Integration [x]
 
-- [ ] **TASK-018-05 (Server Actions)**: Desarrollar `src/app/actions/logistica.ts` (< 80 líneas por función) con validación Zod, `AuditLogger.logAsync`, revalidación de ruta y caché Upstash Redis.
+- [x] **TASK-018-05 (Server Actions)**: Desarrollar `src/app/actions/logistica.ts` (< 80 líneas por función) con validación Zod, `AuditLogger.log`, revalidación de ruta y caché Upstash Redis.
 
 ---
 

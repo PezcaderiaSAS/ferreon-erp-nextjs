@@ -4,7 +4,7 @@
     "SessionStart": [
       {
         "type": "command",
-        "command": "python .agents/hooks/session_start.py",
+        "command": "python hooks/session_start.py",
         "timeout": 5
       }
     ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .agents/hooks/pre_tool_guard.py",
+            "command": "python hooks/pre_tool_guard.py",
             "timeout": 10
           }
         ]
@@ -29,7 +29,7 @@
     "Stop": [
       {
         "type": "command",
-        "command": "python .agents/hooks/stop_gate.py",
+        "command": "python hooks/stop_gate.py",
         "timeout": 10
       }
     ]
