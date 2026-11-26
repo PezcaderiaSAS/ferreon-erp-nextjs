@@ -1,7 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = 'https://eqruvswlpsttuyuglwts.supabase.co';
-const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxcnV2c3dscHN0dHV5dWdsd3RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNTY5NjYsImV4cCI6MjEwMjgzMjk2Nn0.q9gvsVz6EG6hjHNDoEDcZ_BdE_8T8zBRWS481MsyZMU';
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!url || !anonKey) {
+  console.error(
+    '[test-rls2] Faltan variables de entorno requeridas: NEXT_PUBLIC_SUPABASE_URL (o SUPABASE_URL) y NEXT_PUBLIC_SUPABASE_ANON_KEY.'
+  );
+  console.error('Ejecuta con: node --env-file=.env.development.local test-rls2.mjs');
+  process.exit(1);
+}
 
 const supabase = createClient(url, anonKey);
 

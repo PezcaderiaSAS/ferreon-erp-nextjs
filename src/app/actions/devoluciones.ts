@@ -197,12 +197,45 @@ export async function procesarDevolucionAvanzadaAction(input: ProcesarDevolucion
     }
   });
 
+  // 4b. Sincronizar Subcontrataciones atadas al Contrato (TICKET SUB-003)
+  try {
+    const { data: subsVinculadas } = await supabase
+      .from('subcontrataciones')
+      .select('id, consecutivo, estado')
+      .eq('empresa_id', empresaId)
+      .eq('alquiler_id', numericAlquilerId)
+      .in('estado', ['EN_CLIENTE', 'EN_OBRA', 'ORDENADA', 'ACTIVA']);
+
+    if (subsVinculadas && subsVinculadas.length > 0) {
+      await supabase
+        .from('subcontrataciones')
+        .update({
+          estado: 'RECIBIDA_EN_BODEGA',
+          observaciones: 'Actualizado automáticamente: Maquinaria retornada por el cliente tras devolución del contrato. Pendiente devolución física al aliado.'
+        })
+        .eq('empresa_id', empresaId)
+        .eq('alquiler_id', numericAlquilerId)
+        .in('estado', ['EN_CLIENTE', 'EN_OBRA', 'ORDENADA', 'ACTIVA']);
+
+      AuditLogger.logAsync({
+        modulo: 'SUBCONTRATACIONES',
+        accion: 'CAMBIO_ESTADO_SUBCONTRATACION',
+        descripcion: `Sincronizadas ${subsVinculadas.length} subcontrataciones atadas al contrato ID ${numericAlquilerId} a estado RECIBIDA_EN_BODEGA (Retorno Pendiente)`,
+        entidadId: String(numericAlquilerId),
+        detalles: { subcontrataciones: subsVinculadas.map(s => s.consecutivo) }
+      });
+    }
+  } catch (errSubSync) {
+    console.warn('[procesarDevolucionAvanzadaAction] Advertencia sincronizando subcontrataciones:', errSubSync);
+  }
+
   // 5. Invalidar Caché Distribuida
   await invalidarCacheDevoluciones(empresaId);
 
   // 6. Revalidar rutas en Next.js
   revalidatePath('/devoluciones');
   revalidatePath('/alquileres');
+  revalidatePath('/subcontrataciones');
   revalidatePath('/bodega');
   revalidatePath('/subcontrataciones');
   revalidatePath('/caja');

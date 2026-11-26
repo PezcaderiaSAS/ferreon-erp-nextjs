@@ -3,6 +3,8 @@
 > Registro cronológico permanente de todos los hitos y tareas cerradas que salen de la ventana deslizante de `STATUS.md`.
 
 ## [Fase C://GHOST v3.0 — Gobernanza Cognitiva & Memoria Viva]
+- **[2026-11-26] [REMEDIACION-OPS]:** Remediación integral FE-001..OPS-001 y SUB-001..SUB-004 (Sincronización paginador cotizaciones, consecutivos correlativos COT-YYYY-XXXX, blindaje de rentabilidad y seriales de subcontratación, sincronización de devolución en bodega, auditoría RLS dashboard y hardening DevOps).
+- **[2026-11-25] [SPEC-018-F4]:** UI/UX Linear High-Density `/logistica`, Hojas de Ruta, Evidencia GPS/Fotos y Asistente WMS Bucaramanga en Wizard.
 - **[2026-11-25] [SPEC-018-F3]:** Implementación de Server Actions de Logística en `src/app/actions/logistica.ts` (Zod, `AuditLogger.log`, Redis y tipado estricto).
 - **[2026-11-25] [C-GHOST-V3]:** Siembra y adaptación canónica de la metodología C://GHOST Brain v3.0 (Protocolos 0 al 10, Tríada de Memoria Viva `STATUS.md`, `IDEAS.md`, `CHANGELOG.md`, Hooks de ciclo de vida Zero-Trust `.agents/hooks/` y ADR-0006).
 

@@ -2,10 +2,75 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { checkRateLimit } from './lib/redis';
 import { generateNonce, buildCspHeader, applyBaseSecurityHeaders } from './lib/security/csp';
+import {
+  normalizeHost,
+  shouldApplyNoIndex,
+  resolveCanonicalRedirectUrl,
+} from './config/env';
+
+const PRIVATE_NOINDEX_PREFIXES = [
+  '/api',
+  '/auth',
+  '/admin',
+  '/alquileres',
+  '/bodega',
+  '/caja',
+  '/clientes',
+  '/compras',
+  '/configuracion',
+  '/cotizaciones',
+  '/dashboard',
+  '/devoluciones',
+  '/facturacion',
+  '/logistica',
+  '/onboarding',
+  '/subcontrataciones',
+  '/unauthorized',
+  '/design-system',
+  '/neumorphism-demo',
+  '/dmca',
+  '/unsubscribe',
+];
+
+function isPrivateNoIndexPath(pathname: string): boolean {
+  return PRIVATE_NOINDEX_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
+function finalizeResponse(
+  res: NextResponse,
+  requestHost: string,
+  pathname: string
+): NextResponse {
+  applyBaseSecurityHeaders(res.headers);
+  if (shouldApplyNoIndex(requestHost, process.env) || isPrivateNoIndexPath(pathname)) {
+    res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  }
+  return res;
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isDev = process.env.NODE_ENV === 'development';
+  const requestHost = normalizeHost(
+    request.headers.get('x-forwarded-host') ||
+      request.headers.get('host') ||
+      request.nextUrl.hostname
+  );
+
+  // 0. Redirección 301 condicional hacia el dominio canónico (solo Producción y sin bucles)
+  const canonicalRedirectUrl = resolveCanonicalRedirectUrl(
+    request.nextUrl,
+    requestHost,
+    process.env
+  );
+  if (canonicalRedirectUrl) {
+    const redirectResponse = NextResponse.redirect(canonicalRedirectUrl, { status: 301 });
+    applyBaseSecurityHeaders(redirectResponse.headers);
+    redirectResponse.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    return redirectResponse;
+  }
 
   // 1. Rate Limiting Perimetral (Sliding Window en Upstash Redis)
   if (pathname.startsWith('/auth') || pathname.startsWith('/api')) {
@@ -32,8 +97,7 @@ export async function middleware(request: NextRequest) {
           },
         }
       );
-      applyBaseSecurityHeaders(rateLimitResponse.headers);
-      return rateLimitResponse;
+      return finalizeResponse(rateLimitResponse, requestHost, pathname);
     }
   }
 
@@ -46,9 +110,18 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set('x-nonce', nonce);
   requestHeaders.set('Content-Security-Policy', cspHeader);
 
-  // 3. FAST-PATH: Excluir recursos internos de Next.js y archivos estáticos
-  if (pathname.startsWith('/_next') || pathname.includes('.')) {
-    return NextResponse.next();
+  // 3. FAST-PATH: Excluir recursos internos de Next.js y archivos estáticos (preservando headers en /robots.txt y archivos públicos)
+  if (pathname.startsWith('/_next')) {
+    const nextInternalResponse = NextResponse.next();
+    if (shouldApplyNoIndex(requestHost, process.env)) {
+      nextInternalResponse.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    }
+    return nextInternalResponse;
+  }
+
+  if (pathname.includes('.')) {
+    const fileResponse = NextResponse.next();
+    return finalizeResponse(fileResponse, requestHost, pathname);
   }
 
   // 4. FAST-PATH PARA APIs: Respuesta con cabeceras de transporte seguro sin llamada a Supabase Auth en middleware
@@ -58,8 +131,7 @@ export async function middleware(request: NextRequest) {
         headers: requestHeaders,
       },
     });
-    applyBaseSecurityHeaders(apiResponse.headers);
-    return apiResponse;
+    return finalizeResponse(apiResponse, requestHost, pathname);
   }
 
   // 5. FAST-PATH PARA RUTAS PÚBLICAS / AUTH / LANDING / LEGAL: Inyectar cabeceras perimetrales completas y CSP
@@ -77,9 +149,8 @@ export async function middleware(request: NextRequest) {
         headers: requestHeaders,
       },
     });
-    applyBaseSecurityHeaders(publicResponse.headers);
     publicResponse.headers.set('Content-Security-Policy', cspHeader);
-    return publicResponse;
+    return finalizeResponse(publicResponse, requestHost, pathname);
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -92,9 +163,8 @@ export async function middleware(request: NextRequest) {
         headers: requestHeaders,
       },
     });
-    applyBaseSecurityHeaders(fallbackResponse.headers);
     fallbackResponse.headers.set('Content-Security-Policy', cspHeader);
-    return fallbackResponse;
+    return finalizeResponse(fallbackResponse, requestHost, pathname);
   }
 
   let response = NextResponse.next({
@@ -144,8 +214,7 @@ export async function middleware(request: NextRequest) {
     loginUrl.pathname = '/auth/login';
     loginUrl.searchParams.set('redirectTo', pathname);
     const redirectResponse = NextResponse.redirect(loginUrl);
-    applyBaseSecurityHeaders(redirectResponse.headers);
-    return redirectResponse;
+    return finalizeResponse(redirectResponse, requestHost, pathname);
   }
 
   // 8. Control de acceso por roles, Onboarding y Tenants
@@ -160,8 +229,7 @@ export async function middleware(request: NextRequest) {
       const onboardingUrl = request.nextUrl.clone();
       onboardingUrl.pathname = '/onboarding';
       const redirectResponse = NextResponse.redirect(onboardingUrl);
-      applyBaseSecurityHeaders(redirectResponse.headers);
-      return redirectResponse;
+      return finalizeResponse(redirectResponse, requestHost, pathname);
     }
   } else {
     // Si ya cuenta con empresa activa y visita /onboarding, redirigir al dashboard
@@ -169,8 +237,7 @@ export async function middleware(request: NextRequest) {
       const dashboardUrl = request.nextUrl.clone();
       dashboardUrl.pathname = '/dashboard';
       const redirectResponse = NextResponse.redirect(dashboardUrl);
-      applyBaseSecurityHeaders(redirectResponse.headers);
-      return redirectResponse;
+      return finalizeResponse(redirectResponse, requestHost, pathname);
     }
   }
 
@@ -178,8 +245,7 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/admin')) {
     if (userRole !== 'ULTRAADMIN' && userRole !== 'SUPERADMIN') {
       const unauthorizedResponse = NextResponse.rewrite(new URL('/unauthorized', request.url));
-      applyBaseSecurityHeaders(unauthorizedResponse.headers);
-      return unauthorizedResponse;
+      return finalizeResponse(unauthorizedResponse, requestHost, pathname);
     }
   }
 
@@ -187,8 +253,7 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/configuracion')) {
     if (userRole !== 'ULTRAADMIN' && userRole !== 'SUPERADMIN' && userRole !== 'ADMIN') {
       const unauthorizedResponse = NextResponse.rewrite(new URL('/unauthorized', request.url));
-      applyBaseSecurityHeaders(unauthorizedResponse.headers);
-      return unauthorizedResponse;
+      return finalizeResponse(unauthorizedResponse, requestHost, pathname);
     }
   }
 
@@ -216,8 +281,7 @@ export async function middleware(request: NextRequest) {
               const disabledResponse = NextResponse.rewrite(
                 new URL('/unauthorized?motivo=modulo_deshabilitado', request.url)
               );
-              applyBaseSecurityHeaders(disabledResponse.headers);
-              return disabledResponse;
+              return finalizeResponse(disabledResponse, requestHost, pathname);
             }
             break;
           }
@@ -229,10 +293,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // 10. Inyección Definitiva de Cabeceras Perimetrales y Content-Security-Policy
-  applyBaseSecurityHeaders(response.headers);
   response.headers.set('Content-Security-Policy', cspHeader);
-
-  return response;
+  return finalizeResponse(response, requestHost, pathname);
 }
 
 export const config = {

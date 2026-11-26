@@ -135,26 +135,37 @@ const CrearCotizacionZodSchema = z.object({
 }).passthrough();
 
 /**
- * Genera un código consecutivo amigable y correlativo único (ej: COT-1001)
+ * Genera un código consecutivo amigable y correlativo único (ej: COT-2026-0001)
  */
 async function generarConsecutivoCotizacion(supabase: any, empresaId?: string | null): Promise<string> {
+  const anio = new Date().getFullYear();
   try {
     let query = supabase
       .from('cotizaciones')
-      .select('*', { count: 'exact', head: true });
+      .select('consecutivo')
+      .ilike('consecutivo', `COT-${anio}-%`);
 
     if (empresaId) {
       query = query.eq('empresa_id', empresaId);
     }
 
-    const { count, error } = await query;
-
+    const { data, error } = await query;
     if (error) throw error;
-    const siguiente = (count || 0) + 1;
-    return `COT-${String(siguiente).padStart(4, '0')}`;
+
+    let maxSeq = 0;
+    (data || []).forEach((row: any) => {
+      const match = String(row.consecutivo || '').match(new RegExp(`^COT-${anio}-(\\d+)$`));
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxSeq) maxSeq = num;
+      }
+    });
+
+    const siguiente = maxSeq + 1;
+    return `COT-${anio}-${String(siguiente).padStart(4, '0')}`;
   } catch (err) {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    return `COT-${randomSuffix}`;
+    return `COT-${anio}-${randomSuffix}`;
   }
 }
 

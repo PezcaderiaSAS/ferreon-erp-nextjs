@@ -15,6 +15,8 @@ export interface SubcontratacionItemInput {
   costoDiarioUnitario: number;
   tarifaDiariaCliente?: number;
   alquilerDetalleId?: string | number;
+  serialTercero?: string;
+  marca?: string;
 }
 
 export interface CrearSubcontratacionInput {
@@ -42,6 +44,8 @@ const SubcontratacionItemZodSchema = z.object({
   costoDiarioUnitario: z.coerce.number().min(0, 'El costo diario no puede ser negativo'),
   tarifaDiariaCliente: z.coerce.number().min(0).optional().default(0),
   alquilerDetalleId: z.union([z.string(), z.number()]).optional().nullable(),
+  serialTercero: z.string().optional().nullable(),
+  marca: z.string().optional().nullable(),
 }).passthrough();
 
 const CrearSubcontratacionZodSchema = z.object({
@@ -96,7 +100,9 @@ export async function crearSubcontratacionAction(input: CrearSubcontratacionInpu
       costo_diario_unitario: item.costoDiarioUnitario,
       tarifa_diaria_cliente: item.tarifaDiariaCliente || 0,
       subtotal_costo: subtotalLinea,
-      alquiler_detalle_id: item.alquilerDetalleId ? (typeof item.alquilerDetalleId === 'string' ? parseInt(item.alquilerDetalleId, 10) || null : item.alquilerDetalleId) : null
+      alquiler_detalle_id: item.alquilerDetalleId ? (typeof item.alquilerDetalleId === 'string' ? parseInt(item.alquilerDetalleId, 10) || null : item.alquilerDetalleId) : null,
+      serial_tercero: item.serialTercero?.trim() || null,
+      marca: item.marca?.trim() || null
     };
   });
 

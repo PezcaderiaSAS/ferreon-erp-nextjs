@@ -17,6 +17,8 @@ export interface SubcontratacionDetalleItem {
   tarifaDiariaCliente: number;
   subtotalCosto: number;
   alquilerDetalleId?: string | number;
+  serialTercero?: string;
+  marca?: string;
 }
 
 export class SubcontratacionEntity extends BaseAuditableEntity {

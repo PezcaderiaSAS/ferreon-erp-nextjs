@@ -38,6 +38,9 @@ export async function obtenerDashboardDataAction(empresaIdParam?: string): Promi
     }
 
     const empresaId = empresaIdParam || (await resolveEmpresaId(user.id));
+    if (!empresaId) {
+      return { success: false, error: 'Empresa o tenant no identificado para el usuario.' };
+    }
 
     // Ejecutar consultas en paralelo en Supabase (Alquileres, Equipos, Devoluciones, Tareas, Cotizaciones, Facturas y Pagos)
     const [alquileresRes, equiposRes, devolucionesRes, tareasRes, cotizacionesRes, facturasRes, pagosRes] = await Promise.all([

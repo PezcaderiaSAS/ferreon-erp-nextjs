@@ -1127,7 +1127,7 @@ export function AlquileresInteractiveIsland({
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <span className="text-xs font-bold text-slate-700">
               {activeTab === 'contratos' && `Mostrando ${alquileresFiltrados.length} contrato(s) en ejecución`}
-              {activeTab === 'cotizaciones' && `Mostrando ${cotizacionesList.length} cotización(es) comercial(es)`}
+              {activeTab === 'cotizaciones' && `Mostrando ${cotizacionesConsolidadas.length} cotización(es) comercial(es)`}
               {activeTab === 'historial' && `Mostrando ${alquileresFiltrados.length} contrato(s) en histórico`}
             </span>
           </div>
