@@ -8,8 +8,8 @@
 - **Estado del Gate (Protocolo 7):** 🟢 Build y Pruebas en Verde (0 errores TS, 30/30 Vitest, 5/5 Harness², Prisma Válido)
 
 ## 🎯 Tarea Activa (En Curso)
-- [x] **SPRINT-REMEDIACION-OPS:** Resueltos y verificados los 9 tickets de auditoría DOM, base de datos, UX y DevOps (FE-001, DB-001, FE-002, SUB-001..SUB-004, BE-001, OPS-001).
-- [ ] **TASK-SIGUIENTE:** Confirmación del usuario para `git push origin main` y despliegue continuo en Vercel.
+- [x] **DESPLIEGUE-MAIN:** Despliegue a producción ejecutado en GitHub `main` (`a3391f4`), disparando CI/CD automático en Vercel.
+- [ ] **TASK-SIGUIENTE:** Ejecución de migraciones DDL (`20261126_*.sql`) en Supabase Cloud producción.
 
 ## 🗺️ Mapa de Módulos del Sistema
 | Módulo / Capa | Estado | Skill Asociada | Notas |
